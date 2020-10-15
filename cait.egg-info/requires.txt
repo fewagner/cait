@@ -1,0 +1,8 @@
+h5py
+pickle-mixin
+numpy
+matplotlib
+tsfel
+pandas
+scipy
+numba
