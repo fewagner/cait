@@ -10,7 +10,7 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from cait.features._fem import get_elements, plot_S1
+from .features import get_elements, plot_S1
 import tsfel as ts
 
 
@@ -88,9 +88,25 @@ class EventInterface:
         self.f = h5py.File(path_h5, 'r')
         self.channels = channels
 
-        self.nmbrs = {'events': len(self.f['events']['event'][0]),
-                      'testpulses': len(self.f['testpulses']['event'][0]),
-                      'noise': len(self.f['noise']['event'][0])}
+        self.nmbrs = {}
+
+        try:
+            self.nmbrs['events'] = len(self.f['events']['event'][0])
+            print('Nmbr triggered events: ', self.nmbrs['events'])
+        except KeyError:
+            print('No triggered events in h5 file.')
+
+        try:
+            self.nmbrs['testpulses'] = len(self.f['testpulses']['event'][0])
+            print('Nmbr testpulses: ', self.nmbrs['testpulses'])
+        except KeyError:
+            print('No Testpulses in h5 file.')
+
+        try:
+            self.nmbrs['noise'] = len(self.f['noise']['event'][0])
+            print('Nmbr noise: ', self.nmbrs['noise'])
+        except KeyError:
+            print('No noise in h5 file.')
 
         print('Bck File loaded.')
 
@@ -103,8 +119,8 @@ class EventInterface:
 
         try:
             for type in self.which_to_label:
-                self.labels[type] = np.zeros([self.nmbr_channels == 2, self.nmbrs[type]])
-                np.savetxt(self.path_csv + type + '.csv', self.labels_event, delimiter='\n')
+                self.labels[type] = np.zeros([self.nmbr_channels, self.nmbrs[type]])
+                np.savetxt(self.path_csv + type + '.csv', self.labels[type], delimiter='\n')
 
         except NameError:
             print('Error! Load a bck file first.')
@@ -242,7 +258,7 @@ class EventInterface:
     # Save Features with library
     def save_features(self, path):
         try:
-            path_features = '{}run{}_{}/Features'.format(path, self.run, self.module)
+            path_features = '{}run{}_{}/features_{}_{}'.format(path, self.run, self.module, self.bck_naming, self.bck_nmbr)
             pickle.dump(self.features, open(path_features, 'wb'))
             print('Saved Features to {}.'.format(path_features))
         except AttributeError:
@@ -250,7 +266,7 @@ class EventInterface:
 
     # Load Features with library
     def load_features(self, path):
-        path_features = '{}run{}_{}/Features'.format(path, self.run, self.module)
+        path_features = '{}run{}_{}/features'.format(path, self.run, self.module)
         self.features = pickle.load(open(path_features, 'rb'))
         print('Loaded Features from {}.'.format(path_features))
 
@@ -508,7 +524,10 @@ class EventInterface:
             print('Start labeling from idx {}.'.format(start_from_idx))
             label_all_classes = True
 
-        print('Labels autosave to {}.'.format(self.path_csv))
+        try:
+            print('Labels autosave to {}.'.format(self.path_csv))
+        except AttributeError:
+            print('Load or create labels file first!')
 
         for type in self.which_to_label:
 

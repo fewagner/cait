@@ -8,9 +8,9 @@ import h5py
 import numpy as np
 from cait.data._raw import read_rdt_file
 from cait.features._mp import calc_main_parameters
-from cait.fit.pm_fit import fit_pulse_shape
+from cait.fit._pm_fit import fit_pulse_shape
 from .baselines import calculate_mean_nps
-from cait.fit.sev import generate_standard_event
+from cait.fit._sev import generate_standard_event
 from cait.filter._of import optimal_transfer_function
 
 # ------------------------------------------------------------

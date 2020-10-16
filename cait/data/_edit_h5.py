@@ -5,7 +5,7 @@
 from multiprocessing import Pool
 import numpy as np
 import h5py
-from cait.features._mp import calc_main_parameters
+from ..features._mp import calc_main_parameters
 
 
 def edit_h5_dataset(path,

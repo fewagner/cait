@@ -5,7 +5,7 @@
 import numpy as np
 import numba as nb
 import struct
-from cait.fit.pm_fit import arrays_equal
+from ..fit._pm_fit import arrays_equal
 from pathlib import Path
 
 from ._progressBar import printProgressBar
@@ -173,7 +173,7 @@ def read_rdt_file(fname, path, phonon_channel, light_channel,
 
             else:
                 f.seek(skip_bytes, 1)
-        print()
+        # print()
 
         p_metainfo = np.array(p_metainfo)
         l_metainfo = np.array(l_metainfo)
@@ -198,8 +198,8 @@ def read_rdt_file(fname, path, phonon_channel, light_channel,
             p_pulse = p_pulse[0:min_rd]
             l_pulse = l_pulse[0:min_rd]
 
-        print(p_metainfo)
-        print(l_metainfo)
+        # print(p_metainfo)
+        # print(l_metainfo)
 
         # check wether the timestamps of the phonon and light events correspond
         if comp_tstamp and not arrays_equal(p_metainfo[:, 10], l_metainfo[:, 10]):

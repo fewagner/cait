@@ -5,7 +5,7 @@
 import numpy as np
 import numba as nb
 import struct
-from cait.fit.pm_fit import arrays_equal
+from cait.fit._pm_fit import arrays_equal
 from pathlib import Path
 
 from ._progressBar import printProgressBar

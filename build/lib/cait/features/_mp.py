@@ -3,10 +3,9 @@
 # ------------------------------------------------------------
 
 import numpy as np
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from cait.fit import baseline_template_quad
-from cait.filter import box_car_smoothing
+from ..fit._bl_fit import fit_quadratic_baseline
+from ..filter._ma import box_car_smoothing
 
 # ------------------------------------------------------------
 # MAIN PARAMETERS CLASS

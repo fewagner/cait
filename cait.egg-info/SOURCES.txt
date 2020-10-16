@@ -23,6 +23,6 @@ cait/filter/_ma.py
 cait/filter/_of.py
 cait/fit/__init__.py
 cait/fit/_bl_fit.py
+cait/fit/_pm_fit.py
+cait/fit/_sev.py
 cait/fit/_templates.py
-cait/fit/pm_fit.py
-cait/fit/sev.py

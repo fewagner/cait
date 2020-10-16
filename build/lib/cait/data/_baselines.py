@@ -3,7 +3,7 @@
 # -----------------------------------------------------------
 
 import numpy as np
-from cait.fit._templates import baseline_template_quad, baseline_template_cubic
+from ..fit._templates import baseline_template_quad, baseline_template_cubic
 from scipy.optimize import curve_fit
 
 

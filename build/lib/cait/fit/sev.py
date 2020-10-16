@@ -3,7 +3,7 @@
 # ------------------------------------------------------------
 
 import numpy as np
-from cait.fit.pm_fit import fit_pulse_shape
+from cait.fit._pm_fit import fit_pulse_shape
 
 
 # ------------------------------------------------------------
