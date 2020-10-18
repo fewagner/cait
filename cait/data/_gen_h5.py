@@ -40,8 +40,7 @@ def gen_dataset_from_rdt(path_rdt,
                       phonon_channel=phonon_channel,
                       light_channel=light_channel,
                       tpa_list=tpa_list,
-                      read_events=-1,
-                      verb=True)
+                      read_events=-1)
 
     h5f = h5py.File("{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname,
                                                    phonon_channel, light_channel), 'w')

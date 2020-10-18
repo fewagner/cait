@@ -27,7 +27,7 @@ def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
 
 def read_rdt_file(fname, path, phonon_channel, light_channel,
                   tpa_list=[0.0], read_events=-1, comp_tstamp=True,
-                  remove_offset=False, verb=False):
+                  remove_offset=False):
     """
     Reads a given given hdf5 file and filters out a specific phonon and light
     channel as well as chosen testpulse amplitudes.
@@ -40,7 +40,6 @@ def read_rdt_file(fname, path, phonon_channel, light_channel,
     :param read_events: Number of events which are read. (default: -1 = read till end)
     :param comp_tstamp:
     :param remove_offset: Removes the offset of an event. (default: False)
-    :param verb: When enabled additional output is given. (default: False)
     :return: returns two arrays of shape (2,n,13) and (2,n,m), where the first
             one contains the metainformation of the filtered events and the
             secound contain the pulses.
@@ -93,10 +92,10 @@ def read_rdt_file(fname, path, phonon_channel, light_channel,
 
 
         for enbr in range(read_events):
-            if verb:
-                printProgressBar(enbr+1, read_events, prefix = 'Reading progress:', suffix = 'Complete', length = 50)
-                # if enbr % 5000 == 0:
-                #     print('Read {} events.'.format(enbr))
+            # if verb:
+            printProgressBar(enbr+1, read_events, prefix = 'Reading progress:', suffix = 'Complete', length = 50)
+            # if enbr % 5000 == 0:
+            #     print('Read {} events.'.format(enbr))
 
             detector_nbr = struct.unpack('i', f.read(4))[0]
 

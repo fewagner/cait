@@ -1,4 +1,3 @@
 venv/
-examples_private/
 examples/toy_data/*
 examples/toy_models/*
