@@ -1,11 +1,4 @@
 
-import sys
-import os
-
-print('[change directory]')
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append('..')
-
 from cait import EventInterface
 
 if __name__ == '__main__':

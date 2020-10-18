@@ -13,7 +13,6 @@ import math
 from .features import get_elements, plot_S1
 import tsfel as ts
 
-
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
