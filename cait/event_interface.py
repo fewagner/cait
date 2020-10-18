@@ -89,6 +89,8 @@ class EventInterface:
 
         self.nmbrs = {}
 
+
+
         try:
             self.nmbrs['events'] = len(self.f['events']['event'][0])
             print('Nmbr triggered events: ', self.nmbrs['events'])
