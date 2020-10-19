@@ -87,7 +87,7 @@ def gen_dataset_from_rdt(path_rdt,
         #     l_fitpar_event = np.zeros([len(pulse_event[1]), 6])
 
 
-        print('CREATE DATASET.')
+        print('CREATE DATASET WITH EVENTS.')
 
         events = h5f.create_group('events')
         events.create_dataset('event', data=np.array(pulse_event))
@@ -168,20 +168,24 @@ def gen_dataset_from_rdt(path_rdt,
     # ################# PROCESS NOISE #################
     # if we filtered for noise
     if -1.0 in tpa_list:
+        print('WORKING ON EVENTS WITH TPA = -1.')
+
         metainfo_noise = metainfo[:, metainfo[1, :, 12] == -1.0, :]
         pulse_noise = pulse[:, metainfo[1, :, 12] == -1.0, :]
 
+        print('CREATE DATASET WITH NOISE.')
         noise = h5f.create_group('noise')
         noise.create_dataset('event', data=np.array(pulse_noise))
         noise.create_dataset('hours', data=np.array(metainfo_noise[0, :, 10]))
 
-        p_mean_nps, _ = calculate_mean_nps(pulse_noise[0, :, :])
-        l_mean_nps, _ = calculate_mean_nps(pulse_noise[1, :, :])
+        p_mean_nps, _ = calculate_mean_nps(pulse_noise[0, :, :], record_length=len(pulse_noise[0, 0]))
+        l_mean_nps, _ = calculate_mean_nps(pulse_noise[1, :, :], record_length=len(pulse_noise[0, 0]))
         noise.create_dataset('nps', data=np.array([p_mean_nps, l_mean_nps]))
 
     if (-1.0 in tpa_list) and (0 in tpa_list) and calc_sev:
         # ################# OPTIMUMFILTER #################
         # H = optimal_transfer_function(standardevent, mean_nps)
+        print('CREATE OPTIMUM FILTER.')
         optimumfilter = h5f.create_group('optimumfilter')
         optimumfilter.create_dataset('optimumfilter',
                                      data=np.array([optimal_transfer_function(p_stdevent_pulse, p_mean_nps),
@@ -190,12 +194,14 @@ def gen_dataset_from_rdt(path_rdt,
     # ################# PROCESS TESTPULSES #################
     # if we filtered for testpulses
     if np.logical_and(tpa_list != -1.0, tpa_list != 0.0).any():
+        print('WORKING ON EVENTS WITH TPA > 0.')
         tp_list = np.logical_and(metainfo[1, :, 12] != -1.0, metainfo[1, :, 12] != 0.0)
 
         metainfo_tp = metainfo[:, tp_list, :]
         pulse_tp = pulse[:, tp_list, :]
 
         if calc_mp:
+            print('CALCULATE MP.')
 
             with get_context("spawn").Pool(processes) as p:  # basically a for loop running on 4 processes
                 p_mainpar_list_tp = p.map(calc_main_parameters, pulse_tp[0, :, :])
@@ -209,6 +215,7 @@ def gen_dataset_from_rdt(path_rdt,
 
 
         if calc_fit:
+            print('CALCULATE FIT.')
 
             with get_context("spawn").Pool(processes) as p:
                 p_fitpar_tp = np.array(p.map(fit_pulse_shape, pulse_tp[0, :, :]))
@@ -218,6 +225,7 @@ def gen_dataset_from_rdt(path_rdt,
 
             fitpar_tp = np.array([p_fitpar_tp, l_fitpar_tp])
 
+        print('CREATE DATASET WITH TESTPULSES.')
         testpulses = h5f.create_group('testpulses')
         testpulses.create_dataset('event', data=np.array(pulse_tp))
         testpulses.create_dataset('hours', data=np.array(metainfo_tp[0, :, 10]))

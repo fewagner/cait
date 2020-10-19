@@ -1,3 +1,4 @@
+setuptools
 h5py
 pickle-mixin
 numpy

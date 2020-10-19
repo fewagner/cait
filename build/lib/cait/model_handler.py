@@ -83,6 +83,7 @@ class ModelHandler:
 
     def train_classifier(self, channel, test_size=0.3, random_seed=None):
 
+        print('Start training model for channel {}.'.format(channel))
         if self.model_type == 'rf':
 
             events = np.empty((0, self.record_length))
