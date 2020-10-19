@@ -15,11 +15,8 @@ if __name__ == '__main__':
     dh.convert_dataset(path_rdt='toy_data/run35_DetF/',
                        fname='bck_001',
                        path_h5='toy_data/run35_DetF/',
-                       tpa_list=[0.],
+                       tpa_list=[0., -1],
                        calc_mp=True,
                        calc_fit=False,
                        calc_sev=False,
                        processes=4)
-
-    # add labels
-    dh.import_labels(path_labels='toy_data/')
