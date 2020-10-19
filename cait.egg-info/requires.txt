@@ -6,3 +6,4 @@ tsfel
 pandas
 scipy
 numba
+sklearn

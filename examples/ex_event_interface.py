@@ -1,10 +1,13 @@
 
-from cait import EventInterface
+import os
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+import cait as ai
 
 if __name__ == '__main__':
 
     # create instance of EventInterface
-    ei = EventInterface(module='DetF',
+    ei = ai.EventInterface(module='DetF',
                         run=35,
                         record_length=16384,
                         sample_frequency=25000,

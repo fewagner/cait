@@ -2,11 +2,13 @@
 # IMPORTS
 # ---------------------------------------------------------------
 
+import os
 import numpy as np
 import numba as nb
 import struct
 from ..fit._pm_fit import arrays_equal
 from pathlib import Path
+import pathlib
 
 from ._progressBar import printProgressBar
 

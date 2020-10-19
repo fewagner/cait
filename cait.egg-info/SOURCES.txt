@@ -18,6 +18,7 @@ cait/data/_raw.py
 cait/features/__init__.py
 cait/features/_fem.py
 cait/features/_mp.py
+cait/features/_ts_feat.py
 cait/filter/__init__.py
 cait/filter/_ma.py
 cait/filter/_of.py

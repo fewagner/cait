@@ -10,10 +10,15 @@ experiment, but also suitable for the COSINUS and NUCLEUS experiment.
 
 ### Installation
 
-For installing Cait, first clone the Git repository. The folder of the repository contains a wheel file:
+For installing Cait, first install and upgrade the following helper libraries:
+
+> pip install -U wheel setuptools twine
+
+Then clone the Git repository. The folder of the repository contains a wheel file:
 
 > dist/*.whl
 
+If there are multiple wheel files, choose the one with the highes version number. 
 For installation of the library, run:
 
 > pip install /path/to/wheelfile.whl
