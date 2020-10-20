@@ -28,7 +28,7 @@ def fftnoise(f):
     return np.fft.irfft(f)
 
 
-def calculate_mean_nps(baselines, order_polynom=3, clean = True, record_length=16384):
+def calculate_mean_nps(baselines, order_polynom=3, clean=True, record_length=16384):
 
     # clean baselines
     if clean:
@@ -75,7 +75,7 @@ def calculate_mean_nps(baselines, order_polynom=3, clean = True, record_length=1
 
     # get mean NPS
     counter_baselines = 0
-    mean_nps = np.zeros(8193)
+    mean_nps = np.zeros(int(record_length/2) + 1)
 
     for i, bl in enumerate(baselines):
         bl = bl - np.mean(bl[:500])
