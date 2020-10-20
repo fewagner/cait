@@ -70,7 +70,8 @@ class DataHandler:
                 # print all headerinfos
 
                 if (test_pulse_amplitude in tpa_list):
-                    print('#############################################################')
+                    print(
+                        '#############################################################')
                     print('EVENT NUMBER: ', nmbr_event)
 
                     print('detector number (starting at 0): ', detector_nmbr)
@@ -117,9 +118,8 @@ class DataHandler:
         print('Hdf5 dataset created in  {}'.format(path_h5))
 
         if self.nmbr_channels == 2:
-            self.path_h5 = "{}/run{}_{}/{}-P_Ch{}-L_Ch{}.h5".format(path_h5, self.run, self.module,
-                                                                    fname, self.channels[0],
-                                                                    self.channels[1])
+            self.path_h5 = "{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname, self.channels[0],
+                                                          self.channels[1])
             self.fname = fname
 
         else:
@@ -130,9 +130,9 @@ class DataHandler:
     def set_filepath(self, path_h5, fname):
 
         if self.nmbr_channels == 2:
-            self.path_h5 = "{}/run{}_{}/{}-P_Ch{}-L_Ch{}.h5".format(path_h5, self.run, self.module,
-                                                                    fname, self.channels[0],
-                                                                    self.channels[1])
+            self.path_h5 = "{}run{}_{}/{}-P_Ch{}-L_Ch{}.h5".format(path_h5, self.run, self.module,
+                                                                   fname, self.channels[0],
+                                                                   self.channels[1])
             self.fname = fname
 
         else:
@@ -150,8 +150,10 @@ class DataHandler:
         print('CALCULATE MAIN PARAMETERS.')
 
         with Pool(processes) as p:  # basically a for loop running on 4 processes
-            p_mainpar_list_event = p.map(calc_main_parameters, events['event'][0, :, :])
-            l_mainpar_list_event = p.map(calc_main_parameters, events['event'][1, :, :])
+            p_mainpar_list_event = p.map(
+                calc_main_parameters, events['event'][0, :, :])
+            l_mainpar_list_event = p.map(
+                calc_main_parameters, events['event'][1, :, :])
         mainpar_event = np.array([[o.getArray() for o in p_mainpar_list_event],
                                   [o.getArray() for o in l_mainpar_list_event]])
 
@@ -167,7 +169,8 @@ class DataHandler:
         if not path_hdf5:
             path_hdf5 = self.path_h5
 
-        path_labels = '{}/run{}_{}/labels_{}_events.csv'.format(path_labels, self.run, self.module, self.fname)
+        path_labels = '{}run{}_{}/labels_{}_events.csv'.format(
+            path_labels, self.run, self.module, self.fname)
 
         h5f = h5py.File(path_hdf5, 'r+')
 
@@ -189,16 +192,21 @@ class DataHandler:
                 events.create_dataset('labels', data=labels_event)
                 events['labels'].attrs.create(name='unlabeled', data=0)
                 events['labels'].attrs.create(name='Event_Pulse', data=1)
-                events['labels'].attrs.create(name='Test/Control_Pulse', data=2)
+                events['labels'].attrs.create(
+                    name='Test/Control_Pulse', data=2)
                 events['labels'].attrs.create(name='Noise', data=3)
                 events['labels'].attrs.create(name='Squid_Jump', data=4)
                 events['labels'].attrs.create(name='Spike', data=5)
-                events['labels'].attrs.create(name='Early_or_late_Trigger', data=6)
+                events['labels'].attrs.create(
+                    name='Early_or_late_Trigger', data=6)
                 events['labels'].attrs.create(name='Pile_Up', data=7)
                 events['labels'].attrs.create(name='Carrier_Event', data=8)
-                events['labels'].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
-                events['labels'].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
-                events['labels'].attrs.create(name='Decaying_Baseline', data=11)
+                events['labels'].attrs.create(
+                    name='Strongly_Saturated_Event_Pulse', data=9)
+                events['labels'].attrs.create(
+                    name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                events['labels'].attrs.create(
+                    name='Decaying_Baseline', data=11)
                 events['labels'].attrs.create(name='Temperature Rise', data=12)
                 events['labels'].attrs.create(name='Stick Event', data=13)
                 events['labels'].attrs.create(name='Sawtooth Cycle', data=14)
