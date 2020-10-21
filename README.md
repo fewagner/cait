@@ -4,7 +4,7 @@ Cait (abbreviation for "Cryogenic Artificial Intelligence Tools") is a Python 3 
 of raw data from cryogenic dark matter experiments. In the current version, it is tailored to the needs of the CRESST
 experiment, but also suitable for the COSINUS and NUCLEUS experiment.
 
-- **Documentation:** https://git.cryocluster.org/fwagner/cait/-/wikis/home
+- **Documentation:** https://git.cryocluster.org/fwagner/cait/-/wikis/0.-Getting-Started
 - **Source Code:** https://git.cryocluster.org/fwagner/cait
 - **Bug Report:** https://git.cryocluster.org/fwagner/cait/-/issues
 
