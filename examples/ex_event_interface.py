@@ -1,3 +1,8 @@
+"""
+This is an example of how to open a HDF5 data set and label it.
+See also the How-Tos on the Wiki page!
+https://git.cryocluster.org/fwagner/cait/-/wikis/4.2-How-To:-View-and-Label-Events
+"""
 
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

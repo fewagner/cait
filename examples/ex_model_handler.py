@@ -1,4 +1,9 @@
+"""
+This is an example of how to train a machine learning model on all channels
 
+See also the How-Tos on the Wiki page!
+https://git.cryocluster.org/fwagner/cait/-/wikis/4.3-Train-and-Evaluate-ML-Models
+"""
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 

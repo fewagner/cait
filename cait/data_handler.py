@@ -10,8 +10,11 @@ import numpy as np
 import h5py
 from multiprocessing import Pool
 import struct
+import matplotlib.pyplot as plt
 from .data._gen_h5 import gen_dataset_from_rdt
 from .features._mp import calc_main_parameters
+from .fit._sev import generate_standard_event
+from .filter._of import optimal_transfer_function
 
 
 # -----------------------------------------------------------
@@ -130,21 +133,21 @@ class DataHandler:
     def set_filepath(self, path_h5, fname):
 
         if self.nmbr_channels == 2:
-            self.path_h5 = "{}run{}_{}/{}-P_Ch{}-L_Ch{}.h5".format(path_h5, self.run, self.module,
-                                                                   fname, self.channels[0],
-                                                                   self.channels[1])
+            self.path_h5 = "{}/run{}_{}/{}-P_Ch{}-L_Ch{}.h5".format(path_h5, self.run, self.module,
+                                                                    fname, self.channels[0],
+                                                                    self.channels[1])
             self.fname = fname
 
         else:
             raise NotImplementedError('Only for two channels implemented!')
 
     # Recalculate MP
-    def recalc_mp(self, type, path_hdf5=None, processes=4):
+    def recalc_mp(self, type, path_h5=None, processes=4):
 
-        if not path_hdf5:
-            path_hdf5 = self.path_h5
+        if not path_h5:
+            path_h5 = self.path_h5
 
-        h5f = h5py.File(path_hdf5, 'r+')
+        h5f = h5py.File(path_h5, 'r+')
         events = h5f[type]
 
         print('CALCULATE MAIN PARAMETERS.')
@@ -163,16 +166,124 @@ class DataHandler:
     def recalc_fit(self, path):
         raise NotImplementedError('Not implemented.')
 
+    def recalc_sev(self,
+                   use_labels=True,
+                   pulse_height_intervall=[0.5, 1.5],
+                   left_right_cutoff=None,
+                   rise_time_intervall=None,
+                   decay_time_intervall=None,
+                   onset_intervall=None,
+                   remove_offset=True,
+                   verb=True):
+
+        h5f = h5py.File(self.path_h5, 'r+')
+        events = h5f['events']['event']
+        mainpar = h5f['events']['mainpar']
+
+        if use_labels:
+            labels = h5f['events']['labels']
+        else:
+            labels = [None, None]
+
+        # [pulse_height, t_zero, t_rise, t_max, t_decaystart, t_half, t_end, offset, linear_drift, quadratic_drift]
+        p_stdevent_pulse, p_stdevent_fitpar = generate_standard_event(events=events[0, :, :],
+                                                                      main_parameters=mainpar[0, :, :],
+                                                                      labels=labels[0],
+                                                                      pulse_height_intervall=pulse_height_intervall,
+                                                                      left_right_cutoff=left_right_cutoff,
+                                                                      rise_time_intervall=rise_time_intervall,
+                                                                      decay_time_intervall=decay_time_intervall,
+                                                                      onset_intervall=onset_intervall,
+                                                                      remove_offset=remove_offset,
+                                                                      verb=verb)
+
+        l_stdevent_pulse, l_stdevent_fitpar = generate_standard_event(events=events[1, :, :],
+                                                                      main_parameters=mainpar[1, :, :],
+                                                                      labels=labels[1],
+                                                                      pulse_height_intervall=pulse_height_intervall,
+                                                                      left_right_cutoff=left_right_cutoff,
+                                                                      rise_time_intervall=rise_time_intervall,
+                                                                      decay_time_intervall=decay_time_intervall,
+                                                                      onset_intervall=onset_intervall,
+                                                                      remove_offset=remove_offset,
+                                                                      verb=verb)
+
+        stdevent = h5f.require_group('stdevent')
+
+        stdevent.require_dataset('event',
+                                 shape=(2, len(p_stdevent_pulse)),
+                                 dtype='f')
+        stdevent['event'][...] = np.array([p_stdevent_pulse, l_stdevent_pulse])
+        stdevent.require_dataset('fitpar',
+                                 shape=(2, len(p_stdevent_fitpar)),
+                                 dtype='f')
+        stdevent['fitpar'][...] = np.array([p_stdevent_fitpar, l_stdevent_fitpar])
+
+        # description of the fitparameters (data=column_in_fitpar)
+        stdevent['fitpar'].attrs.create(name='t_0', data=0)
+        stdevent['fitpar'].attrs.create(name='A_n', data=1)
+        stdevent['fitpar'].attrs.create(name='A_t', data=2)
+        stdevent['fitpar'].attrs.create(name='tau_n', data=3)
+        stdevent['fitpar'].attrs.create(name='tau_in', data=4)
+        stdevent['fitpar'].attrs.create(name='tau_t', data=5)
+
+        mp = np.array([calc_main_parameters(p_stdevent_pulse).getArray(),
+                       calc_main_parameters(l_stdevent_pulse).getArray()])
+
+        stdevent.require_dataset('mainpar',
+                                 shape=mp.shape,
+                                 dtype='f',
+                                 data=mp)
+        # description of the mainpar (data=col_in_mainpar)
+        stdevent['mainpar'].attrs.create(name='pulse_height', data=0)
+        stdevent['mainpar'].attrs.create(name='t_zero', data=1)
+        stdevent['mainpar'].attrs.create(name='t_rise', data=2)
+        stdevent['mainpar'].attrs.create(name='t_max', data=3)
+        stdevent['mainpar'].attrs.create(name='t_decaystart', data=4)
+        stdevent['mainpar'].attrs.create(name='t_half', data=5)
+        stdevent['mainpar'].attrs.create(name='t_end', data=6)
+        stdevent['mainpar'].attrs.create(name='offset', data=7)
+        stdevent['mainpar'].attrs.create(name='linear_drift', data=8)
+        stdevent['mainpar'].attrs.create(name='quadratic_drift', data=9)
+
+        print('SEV updated.')
+
+        h5f.close()
+
+    def recalc_of(self):
+
+        h5f = h5py.File(self.path_h5, 'r+')
+        p_stdevent_pulse = h5f['stdevent']['event'][0]
+        p_mean_nps = h5f['noise']['nps'][0]
+        l_stdevent_pulse = h5f['stdevent']['event'][1]
+        l_mean_nps = h5f['noise']['nps'][1]
+
+        print('CREATE OPTIMUM FILTER.')
+
+        of = np.array([optimal_transfer_function(p_stdevent_pulse, p_mean_nps),
+                       optimal_transfer_function(l_stdevent_pulse, l_mean_nps)])
+
+        optimumfilter = h5f.require_group('optimumfilter')
+        optimumfilter.require_dataset('optimumfilter',
+                                      shape=of.shape,
+                                      dtype='f')
+
+        optimumfilter['optimumfilter'][...] = of
+
+        print('OF updated.')
+
+        h5f.close()
+
     # Import label CSV file in hdf5 file
-    def import_labels(self, path_labels, path_hdf5=None):
+    def import_labels(self, path_labels, path_h5=None):
 
-        if not path_hdf5:
-            path_hdf5 = self.path_h5
+        if not path_h5:
+            path_h5 = self.path_h5
 
-        path_labels = '{}run{}_{}/labels_{}_events.csv'.format(
+        path_labels = '{}/run{}_{}/labels_{}_events.csv'.format(
             path_labels, self.run, self.module, self.fname)
 
-        h5f = h5py.File(path_hdf5, 'r+')
+        h5f = h5py.File(path_h5, 'r+')
 
         if path_labels != '' and os.path.isfile(path_labels):
             labels_event = np.genfromtxt(path_labels)
@@ -217,21 +328,69 @@ class DataHandler:
         elif (path_labels != ''):
             print("File '{}' does not exist.".format(path_labels))
 
-    # Set parameters for pulse simulations
-    def prep_events(self, path_stdevent, path_baselines):
-        raise NotImplementedError('Not implemented.')
+    # Plot the SEV
+    def show_SEV(self, block=True):
+        f = h5py.File(self.path_h5, 'r')
 
-    # Set parameters for testpulse simulations
-    def prep_tp(self, path_stdevent, path_baselines):
-        raise NotImplementedError('Not implemented.')
+        # plot
+        plt.close()
+        plt.subplot(211)
+        plt.plot(f['stdevent']['event'][0], color='blue')
+        plt.title('Phonon SEV')
+        plt.subplot(212)
+        plt.plot(f['stdevent']['event'][1], color='red')
+        plt.title('Light SEV')
+        plt.show(block=block)
 
-    # Set parameters for noise simulation
-    def prep_noise(self, path_baselines):
-        raise NotImplementedError('Not implemented.')
+    # Plot the NPS
+    def show_NPS(self, block=True):
+        f = h5py.File(self.path_h5, 'r')
 
-    # Set parameters for carrier simulation
-    def prep_carrier(self, path_stdevent, path_baseline):
-        raise NotImplementedError('Not implemented.')
+        # plot
+        plt.close()
+        plt.subplot(211)
+        plt.loglog(f['noise']['nps'][0], color='blue')
+        plt.title('Phonon NPS')
+        plt.subplot(212)
+        plt.loglog(f['noise']['nps'][1], color='red')
+        plt.title('Light NPS')
+        plt.show(block=block)
+
+    # Plot the OF
+    def show_OF(self, block=True):
+        f = h5py.File(self.path_h5, 'r')
+
+        of = f['optimumfilter']['optimumfilter']
+        of = np.abs(of)**2
+
+        # plot
+        plt.close()
+        plt.subplot(211)
+        plt.loglog(of[0], color='blue')
+        plt.title('Phonon OF')
+        plt.subplot(212)
+        plt.loglog(of[1], color='red')
+        plt.title('Light OF')
+        plt.show(block=block)
+
+    # show histogram of main parameter
+    def show_hist(self):
+        # choose which mp to plot
+        raise NotImplementedError('Not Implemented.')
+
+    # show light yield plot
+    def show_LY(self):
+        # choose which labels to plot
+        # choose which channels (e.g. for Gode modules)
+        raise NotImplementedError('Not Implemented.')
+
+    # calc stdevent testpulses
+    def calc_SEV_tp(self):
+        raise NotImplementedError('Not Implemented.')
+
+    # calc stdevent carrier
+    def calc_SEV_carrier(self):
+        raise NotImplementedError('Not Implemented.')
 
     # Simulate Dataset with specific classes
     def simulate_fakenoise_dataset(self, classes_size):
@@ -239,20 +398,4 @@ class DataHandler:
 
     # Simulate Dataset with real noise
     def simulate_realnoise_dataset(self, path_noise, classes_size):
-        raise NotImplementedError('Not implemented.')
-
-    # Calculate OF from NPS and Stdevent
-    def calc_of(self, path):
-        raise NotImplementedError('Not implemented.')
-
-    # Create SEV from Labels
-    def calc_SEV(self):
-        raise NotImplementedError('Not implemented.')
-
-    # Calculate NPS directly from noise events
-    def calc_NPS(self):
-        raise NotImplementedError('Not implemented.')
-
-    # Create Optimum Filter Function
-    def calc_OF(self):
         raise NotImplementedError('Not implemented.')
