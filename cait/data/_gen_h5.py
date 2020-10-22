@@ -60,6 +60,11 @@ def gen_dataset_from_rdt(path_rdt,
         metainfo_event = metainfo[:, metainfo[1, :, 12] == 0, :]
         pulse_event = pulse[:, metainfo[1, :, 12] == 0, :]
 
+        events = h5f.create_group('events')
+        events.create_dataset('event', data=np.array(pulse_event))
+        events.create_dataset('hours', data=np.array(metainfo_event[0, :, 10]))
+        print('CREATE DATASET WITH EVENTS.')
+
         # for small numbers of events only additional overhead is introduced
         processes = 1 if pulse_event.shape[1] < 5 else processes
 
@@ -76,37 +81,6 @@ def gen_dataset_from_rdt(path_rdt,
             mainpar_event = np.array([[o.getArray() for o in p_mainpar_list_event],
                                       [o.getArray() for o in l_mainpar_list_event]])
 
-        if calc_fit:
-
-            print('CALCULATE FIT.')
-
-            with get_context("spawn").Pool(processes) as p:
-                p_fitpar_event = np.array(
-                    p.map(fit_pulse_shape, pulse_event[0, :, :]))
-                l_fitpar_event = np.array(
-                    p.map(fit_pulse_shape, pulse_event[1, :, :]))
-
-            fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
-        # else:
-        #     p_fitpar_event = np.zeros([len(pulse_event[0]), 6])
-        #     l_fitpar_event = np.zeros([len(pulse_event[1]), 6])
-
-        print('CREATE DATASET WITH EVENTS.')
-
-        events = h5f.create_group('events')
-        events.create_dataset('event', data=np.array(pulse_event))
-        events.create_dataset('hours', data=np.array(metainfo_event[0, :, 10]))
-        if calc_fit:
-            events.create_dataset('fitpar', data=np.array(fitpar_event))
-            # description of the fitparameters (data=column_in_fitpar)
-            events['fitpar'].attrs.create(name='t_0', data=0)
-            events['fitpar'].attrs.create(name='A_n', data=1)
-            events['fitpar'].attrs.create(name='A_t', data=2)
-            events['fitpar'].attrs.create(name='tau_n', data=3)
-            events['fitpar'].attrs.create(name='tau_in', data=4)
-            events['fitpar'].attrs.create(name='tau_t', data=5)
-
-        if calc_mp:
             events.create_dataset('mainpar', data=np.array(mainpar_event))
             # description of the mainpar (data=col_in_mainpar)
             events['mainpar'].attrs.create(name='pulse_height', data=0)
@@ -119,6 +93,27 @@ def gen_dataset_from_rdt(path_rdt,
             events['mainpar'].attrs.create(name='offset', data=7)
             events['mainpar'].attrs.create(name='linear_drift', data=8)
             events['mainpar'].attrs.create(name='quadratic_drift', data=9)
+
+        if calc_fit:
+
+            print('CALCULATE FIT.')
+
+            with get_context("spawn").Pool(processes) as p:
+                p_fitpar_event = np.array(
+                    p.map(fit_pulse_shape, pulse_event[0, :, :]))
+                l_fitpar_event = np.array(
+                    p.map(fit_pulse_shape, pulse_event[1, :, :]))
+
+            fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
+
+            events.create_dataset('fitpar', data=np.array(fitpar_event))
+            # description of the fitparameters (data=column_in_fitpar)
+            events['fitpar'].attrs.create(name='t_0', data=0)
+            events['fitpar'].attrs.create(name='A_n', data=1)
+            events['fitpar'].attrs.create(name='A_t', data=2)
+            events['fitpar'].attrs.create(name='tau_n', data=3)
+            events['fitpar'].attrs.create(name='tau_in', data=4)
+            events['fitpar'].attrs.create(name='tau_t', data=5)
 
         if calc_sev:
 
@@ -217,6 +212,14 @@ def gen_dataset_from_rdt(path_rdt,
         metainfo_tp = metainfo[:, tp_list, :]
         pulse_tp = pulse[:, tp_list, :]
 
+        print('CREATE DATASET WITH TESTPULSES.')
+        testpulses = h5f.create_group('testpulses')
+        testpulses.create_dataset('event', data=np.array(pulse_tp))
+        testpulses.create_dataset(
+            'hours', data=np.array(metainfo_tp[0, :, 10]))
+        testpulses.create_dataset(
+            'testpulseamplitute', data=np.array(metainfo_tp[0, :, 12]))
+
         if calc_mp:
             print('CALCULATE MP.')
 
@@ -233,38 +236,6 @@ def gen_dataset_from_rdt(path_rdt,
 
             mainpar_tp = np.array([p_mainpar_tp, l_mainpar_tp])
 
-        if calc_fit:
-            print('CALCULATE FIT.')
-
-            with get_context("spawn").Pool(processes) as p:
-                p_fitpar_tp = np.array(
-                    p.map(fit_pulse_shape, pulse_tp[0, :, :]))
-
-            with get_context("spawn").Pool(processes) as p:
-                l_fitpar_tp = np.array(
-                    p.map(fit_pulse_shape, pulse_tp[1, :, :]))
-
-            fitpar_tp = np.array([p_fitpar_tp, l_fitpar_tp])
-
-        print('CREATE DATASET WITH TESTPULSES.')
-        testpulses = h5f.create_group('testpulses')
-        testpulses.create_dataset('event', data=np.array(pulse_tp))
-        testpulses.create_dataset(
-            'hours', data=np.array(metainfo_tp[0, :, 10]))
-        testpulses.create_dataset(
-            'testpulseamplitute', data=np.array(metainfo_tp[0, :, 12]))
-
-        if calc_fit:
-            testpulses.create_dataset('fitpar', data=np.array(fitpar_tp))
-            # description of the fitparameters (data=column_in_fitpar)
-            testpulses['fitpar'].attrs.create(name='t_0', data=0)
-            testpulses['fitpar'].attrs.create(name='A_n', data=1)
-            testpulses['fitpar'].attrs.create(name='A_t', data=2)
-            testpulses['fitpar'].attrs.create(name='tau_n', data=3)
-            testpulses['fitpar'].attrs.create(name='tau_in', data=4)
-            testpulses['fitpar'].attrs.create(name='tau_t', data=5)
-
-        if calc_mp:
             testpulses.create_dataset('mainpar', data=np.array(mainpar_tp))
             # description of the mainpar (data=col_in_mainpar)
             testpulses['mainpar'].attrs.create(name='pulse_height', data=0)
@@ -277,6 +248,27 @@ def gen_dataset_from_rdt(path_rdt,
             testpulses['mainpar'].attrs.create(name='offset', data=7)
             testpulses['mainpar'].attrs.create(name='linear_drift', data=8)
             testpulses['mainpar'].attrs.create(name='quadratic_drift', data=9)
+
+        if calc_fit:
+            print('CALCULATE FIT.')
+
+            with get_context("spawn").Pool(processes) as p:
+                p_fitpar_tp = np.array(
+                    p.map(fit_pulse_shape, pulse_tp[0, :, :]))
+                l_fitpar_tp = np.array(
+                    p.map(fit_pulse_shape, pulse_tp[1, :, :]))
+
+            fitpar_tp = np.array([p_fitpar_tp, l_fitpar_tp])
+
+            testpulses.create_dataset('fitpar', data=np.array(fitpar_tp))
+            # description of the fitparameters (data=column_in_fitpar)
+            testpulses['fitpar'].attrs.create(name='t_0', data=0)
+            testpulses['fitpar'].attrs.create(name='A_n', data=1)
+            testpulses['fitpar'].attrs.create(name='A_t', data=2)
+            testpulses['fitpar'].attrs.create(name='tau_n', data=3)
+            testpulses['fitpar'].attrs.create(name='tau_in', data=4)
+            testpulses['fitpar'].attrs.create(name='tau_t', data=5)
+
 
     h5f.close()
 

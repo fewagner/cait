@@ -3,8 +3,8 @@
 # ------------------------------------------------------------
 
 import numpy as np
-from ..fit import fit_pulse_shape
-
+from ..fit._pm_fit import fit_pulse_shape
+from ..fit._templates import pulse_template
 
 # ------------------------------------------------------------
 # FUNCTION
@@ -19,7 +19,9 @@ def generate_standard_event(events,
                             decay_time_intervall=None,
                             onset_intervall=None,
                             remove_offset=True,
-                            verb=False):
+                            verb=False,
+                            scale_fit_height=True,
+                            sample_length=0.04):
     if verb:
         print('{} Events handed.'.format(len(main_parameters)))
 
@@ -82,6 +84,12 @@ def generate_standard_event(events,
     standardevent = np.mean(events[use_indices == 1], axis=0)
     standardevent /= np.max(standardevent)
 
-    par = fit_pulse_shape(standardevent)
+    par = fit_pulse_shape(standardevent, sample_length=sample_length)
+
+    if scale_fit_height:
+        t = (np.arange(0, len(standardevent), dtype=float) - len(standardevent) / 4) * sample_length
+        fit_max = np.max(pulse_template(t, *par))
+        par[1] /= fit_max
+        par[2] /= fit_max
 
     return standardevent, par

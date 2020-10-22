@@ -15,6 +15,9 @@ from .data._gen_h5 import gen_dataset_from_rdt
 from .features._mp import calc_main_parameters
 from .fit._sev import generate_standard_event
 from .filter._of import optimal_transfer_function
+from .fit._templates import pulse_template
+from .fit._pm_fit import fit_pulse_shape
+from functools import partial
 
 
 # -----------------------------------------------------------
@@ -32,6 +35,13 @@ class DataHandler:
         self.record_length = record_length
         self.nmbr_channels = len(channels)
         self.channels = channels
+
+        if self.nmbr_channels == 2:
+            self.channel_names = ['Phonon', 'Light']
+            self.colors = ['red', 'blue']
+        elif self.nmbr_channels == 3:
+            self.channel_names = ['Channel 1', 'Channel 2', 'Channel 3']
+            self.colors = ['red', 'red', 'blue']
 
         print('DataHandler Instance created.')
 
@@ -163,8 +173,44 @@ class DataHandler:
         events['mainpar'][...] = mainpar_event
 
     # Recalculate Fit
-    def recalc_fit(self, path):
-        raise NotImplementedError('Not implemented.')
+    def recalc_fit(self, path_h5=None, type='events',processes=4):
+
+        if type not in ['events', 'testpulses']:
+            raise NameError('Type must be events or testpulses.')
+
+        if not path_h5:
+            path_h5 = self.path_h5
+
+        h5f = h5py.File(path_h5, 'r+')
+        events = h5f[type]['event']
+
+        print('CALCULATE FIT.')
+
+        # get start values from SEV fit if exists
+        try:
+            if type == 'events':
+                sev_fitpar = h5f['stdevent']['fitpar']
+                p_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[0])
+                l_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[1])
+            else:
+                raise NameError('This is only to break the loop, bc type is not events.')
+        except NameError:
+            p_fit_pm = fit_pulse_shape
+            l_fit_pm = fit_pulse_shape
+
+        with Pool(processes) as p:
+            p_fitpar_event = np.array(
+                p.map(p_fit_pm, events[0, :, :]))
+            l_fitpar_event = np.array(
+                p.map(l_fit_pm, events[1, :, :]))
+
+        fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
+
+        events.require_dataset('fitpar',
+                               shape=fitpar_event.shape,
+                               dtype='f')
+
+        events['fitpar'][...] = fitpar_event
 
     def recalc_sev(self,
                    use_labels=True,
@@ -174,7 +220,9 @@ class DataHandler:
                    decay_time_intervall=None,
                    onset_intervall=None,
                    remove_offset=True,
-                   verb=True):
+                   verb=True,
+                   scale_fit_height=True,
+                   sample_length=0.04):
 
         h5f = h5py.File(self.path_h5, 'r+')
         events = h5f['events']['event']
@@ -195,7 +243,9 @@ class DataHandler:
                                                                       decay_time_intervall=decay_time_intervall,
                                                                       onset_intervall=onset_intervall,
                                                                       remove_offset=remove_offset,
-                                                                      verb=verb)
+                                                                      verb=verb,
+                                                                      scale_fit_height=scale_fit_height,
+                                                                      sample_length=sample_length)
 
         l_stdevent_pulse, l_stdevent_fitpar = generate_standard_event(events=events[1, :, :],
                                                                       main_parameters=mainpar[1, :, :],
@@ -206,7 +256,9 @@ class DataHandler:
                                                                       decay_time_intervall=decay_time_intervall,
                                                                       onset_intervall=onset_intervall,
                                                                       remove_offset=remove_offset,
-                                                                      verb=verb)
+                                                                      verb=verb,
+                                                                      scale_fit_height=scale_fit_height,
+                                                                      sample_length=sample_length)
 
         stdevent = h5f.require_group('stdevent')
 
@@ -329,17 +381,22 @@ class DataHandler:
             print("File '{}' does not exist.".format(path_labels))
 
     # Plot the SEV
-    def show_SEV(self, block=True):
+    def show_SEV(self, block=True, sample_length=0.04):
         f = h5py.File(self.path_h5, 'r')
+        sev = f['stdevent']['event']
+        sev_fitpar = f['stdevent']['fitpar']
+
+        t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
         # plot
         plt.close()
-        plt.subplot(211)
-        plt.plot(f['stdevent']['event'][0], color='blue')
-        plt.title('Phonon SEV')
-        plt.subplot(212)
-        plt.plot(f['stdevent']['event'][1], color='red')
-        plt.title('Light SEV')
+
+        for i, ch in enumerate(self.channel_names):
+            plt.subplot(2, 1, i + 1)
+            plt.plot(t, sev[i], color=self.colors[i])
+            plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='orange')
+            plt.title(ch + ' SEV')
+
         plt.show(block=block)
 
     # Plot the NPS
@@ -348,12 +405,12 @@ class DataHandler:
 
         # plot
         plt.close()
-        plt.subplot(211)
-        plt.loglog(f['noise']['nps'][0], color='blue')
-        plt.title('Phonon NPS')
-        plt.subplot(212)
-        plt.loglog(f['noise']['nps'][1], color='red')
-        plt.title('Light NPS')
+
+        for i, ch in enumerate(self.channel_names):
+            plt.subplot(2, 1, i + 1)
+            plt.loglog(f['noise']['nps'][i], color=self.colors[i])
+            plt.title(ch + ' NPS')
+
         plt.show(block=block)
 
     # Plot the OF
@@ -361,16 +418,16 @@ class DataHandler:
         f = h5py.File(self.path_h5, 'r')
 
         of = f['optimumfilter']['optimumfilter']
-        of = np.abs(of)**2
+        of = np.abs(of) ** 2
 
         # plot
         plt.close()
-        plt.subplot(211)
-        plt.loglog(of[0], color='blue')
-        plt.title('Phonon OF')
-        plt.subplot(212)
-        plt.loglog(of[1], color='red')
-        plt.title('Light OF')
+
+        for i, ch in enumerate(self.channel_names):
+            plt.subplot(2, 1, i + 1)
+            plt.loglog(of[i], color=self.colors[i])
+            plt.title(ch + ' OF')
+
         plt.show(block=block)
 
     # show histogram of main parameter

@@ -27,7 +27,8 @@ if __name__ == '__main__':
 
     # recalculate SEV and OF and plot them all
     dh.recalc_sev(use_labels=True,
-                   pulse_height_intervall=[0.1, 2])
+                  pulse_height_intervall=[0.1, 2],
+                  scale_fit_height=True)
     dh.recalc_of()
 
     # plot SEV

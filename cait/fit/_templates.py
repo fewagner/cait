@@ -17,6 +17,7 @@ def baseline_template_cubic(t, c0, c1, c2, c3):
 
 
 def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
+
     pulse = (t>=t0).astype(float)
     t_red = t[t>=t0]
     pulse[t>=t0] *= (An*(np.exp(-(t_red-t0)/tau_n) - np.exp(-(t_red-t0)/tau_in)) + \

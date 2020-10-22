@@ -7,6 +7,7 @@ import numba as nb
 from scipy.optimize import curve_fit
 from ..fit._templates import pulse_template
 
+
 # -------------------------------------------------------
 # FUNCTIONS
 # -------------------------------------------------------
@@ -21,19 +22,21 @@ def arrays_equal(a, b):
     return True
 
 
-def fit_pulse_shape(event):
-    max_event = np.max(event)
+def fit_pulse_shape(event, x0=None, sample_length=0.04):
     record_length = event.shape[0]
-    par_0 = np.array([record_length/4, max_event/2, max_event/2,
-                        2.52196961e+03,  9.04381862e+00, 4.63752654e+02])
-    t_dummy = np.arange(0, record_length, dtype=float)  # - record_length/4
+    if x0 is None:
+        height_event = np.max(event)
+        x0 = [0, 1/height_event, 0.2/height_event, 5, 2, 1]
+
+    t_dummy = (np.arange(0, record_length, dtype=float) - record_length / 4) * sample_length
     try:
-        par, cov = curve_fit(f=pulse_template,
-                                xdata=t_dummy,
-                                ydata=event,
-                                p0=[par_0], bounds=(-np.inf, np.inf),
-                                maxfev=2000)
+        par, _ = curve_fit(f=pulse_template,
+                           xdata=t_dummy,
+                           ydata=event,
+                           p0=x0)
+        # , bounds=(-np.inf, np.inf),
+        # maxfev=2000)
     except RuntimeError:
         print("Error - curve_fit failed")
-        return np.zeros(par_0.shape)
+        return np.zeros(x0.shape)
     return par
