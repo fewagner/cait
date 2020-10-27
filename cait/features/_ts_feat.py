@@ -9,9 +9,21 @@ import tsfel as ts
 # FUNCTIONS
 # ---------------------------------------------------------
 
-def calc_ts_features(events, mainpar, nmbr_channels,
-                     nmbr_events, record_length,
+def calc_ts_features(events, nmbr_channels,
+                     nmbr_events, record_length, mainpar = None,
                      down=1, sample_frequency=25000, scaler=None):
+    """
+
+    :param events:
+    :param nmbr_channels:
+    :param nmbr_events:
+    :param record_length:
+    :param mainpar:
+    :param down:
+    :param sample_frequency:
+    :param scaler:
+    :return:
+    """
 
     # downsample
     events = events.reshape(nmbr_channels, nmbr_events, int(record_length/down), down)
@@ -35,16 +47,17 @@ def calc_ts_features(events, mainpar, nmbr_channels,
                                                           window_size=int(record_length/down)))
 
         # add mainpar
-        features[i]['Pulse Height'] = mainpar[i, :, 0]
-        features[i]['Onset'] = mainpar[i, :, 1]
-        features[i]['Rise Time'] = mainpar[i, :, 2]
-        features[i]['Max Time'] = mainpar[i, :, 3]
-        features[i]['Decay Start'] = mainpar[i, :, 4]
-        features[i]['Half Time'] = mainpar[i, :, 5]
-        features[i]['End Time'] = mainpar[i, :, 6]
-        features[i]['Offset'] = mainpar[i, :, 7]
-        features[i]['Linear Drift'] = mainpar[i, :, 8]
-        features[i]['Quadratic Drift'] = mainpar[i, :, 9]
+        if mainpar is not None:
+            features[i]['Pulse Height'] = mainpar[i, :, 0]
+            features[i]['Onset'] = mainpar[i, :, 1]
+            features[i]['Rise Time'] = mainpar[i, :, 2]
+            features[i]['Max Time'] = mainpar[i, :, 3]
+            features[i]['Decay Start'] = mainpar[i, :, 4]
+            features[i]['Half Time'] = mainpar[i, :, 5]
+            features[i]['End Time'] = mainpar[i, :, 6]
+            features[i]['Offset'] = mainpar[i, :, 7]
+            features[i]['Linear Drift'] = mainpar[i, :, 8]
+            features[i]['Quadratic Drift'] = mainpar[i, :, 9]
 
         # remove inf indices
         inf_indices = features[i].index[np.isinf(features[i]).any(1)]
@@ -53,7 +66,7 @@ def calc_ts_features(events, mainpar, nmbr_channels,
         # scale
         features[i] = features[i].to_numpy()
         features[i][inf_indices] = 0
-        if scaler:
-            features[i] = scaler.transform(features[i])
+        if scaler is not None:
+            features[i] = scaler[i].transform(features[i])
 
     return features
