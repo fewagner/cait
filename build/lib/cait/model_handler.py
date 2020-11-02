@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 import pickle
 
 from .features._ts_feat import calc_ts_features
-
+from .datasets._rf_dataset import get_rf_dataset
 
 # -----------------------------------------------------
 # ML MODULE
@@ -37,6 +37,7 @@ class ModelHandler:
         self.nmbr_channels = nmbr_channels
         self.scalers = [None, None, None]
         self.classes = classes
+        self.info = ''
 
         if self.model_type != 'rf':
             raise NotImplementedError('Other models than Randfom Forest are not yet implemented.')
@@ -81,104 +82,51 @@ class ModelHandler:
         print('Added paths of hdf5 bck files.')
 
 
-    def train_classifier(self, channel, test_size=0.3, random_seed=None):
+    def train_rf(self,
+                 channel,
+                 test_size=0.3,
+                 random_seed=None,
+                 include_ts_features=True):
 
         print('Start training model for channel {}.'.format(channel))
-        if self.model_type == 'rf':
+        if self.model_type != 'rf':
+            raise AttributeError('This instance has another classifier!')
 
-            events = np.empty((0, self.record_length))
-            mainpar = np.empty((0, 10))
-            labels = np.empty((0))
+        X_train, X_test, y_train, y_test, scaler = get_rf_dataset(paths_h5=self.paths_h5,
+                                                          channel=channel,
+                                                          include_ts_features=include_ts_features,
+                                                          random_seed=random_seed,
+                                                          test_size=test_size)
 
-            for path in self.paths_h5:
-                f = h5py.File(path, 'r')
-                events = np.concatenate((events, np.array(f['events']['event'])[channel]), axis=0)
-                mainpar = np.concatenate((mainpar, np.array(f['events']['mainpar'])[channel]), axis=0)
-                labels = np.concatenate((labels, np.array(f['events']['labels'])[channel]), axis=0)
-                f.close()
+        self.models[channel].fit(X_train, y_train)
+        self.scalers[channel] = scaler
+        self.random_seed = random_seed
+        self.test_size = test_size
 
-            events = events.reshape((-1, self.record_length))
-            labels = labels.reshape((-1))
+        print('Training Score: ', self.models[channel].score(X_train, y_train))
+        print('Test Score: ', self.models[channel].score(X_test, y_test))
 
-            unique, counts = np.unique(labels, return_counts=True)
-            print('Label Counts: ', np.asarray((unique, counts)).T)
+    def scores_rf(self, channel, include_ts_features=True):
 
-            nmbr_events = events.shape[0]
+        if self.model_type != 'rf':
+            raise AttributeError('This instance has another classifier!')
 
-            features = calc_ts_features(events=events,
-                                        mainpar=mainpar,
-                                        nmbr_channels=1,
-                                        nmbr_events=nmbr_events,
-                                        record_length=self.record_length,
-                                        down=self.down,
-                                        sample_frequency=self.sample_frequency,
-                                        scaler=None)
-            features = np.array(features).reshape((nmbr_events, -1))
-            print('Features calculated.')
+        X_train, X_test, y_train, y_test, scaler = get_rf_dataset(paths_h5=self.paths_h5,
+                                                                  channel=channel,
+                                                                  include_ts_features=include_ts_features,
+                                                                  random_seed=self.random_seed,
+                                                                  test_size=self.test_size,
+                                                                  scalers=self.scalers)
 
-            scaler = StandardScaler()
-            X = scaler.fit_transform(features)
-            print('Features scaled.')
-
-            np.random.seed(seed=random_seed)
-
-            X_train, X_test, y_train, y_test = train_test_split(X, labels, test_size=test_size)
-
-            self.models[channel].fit(X_train, y_train)
-            self.scalers[channel] = scaler
-            self.random_seed = random_seed
-            self.test_size = test_size
-
-            print('Training Score: ', self.models[channel].score(X_train, y_train))
-            print('Test Score: ', self.models[channel].score(X_test, y_test))
-
-    def scores_classifier(self, channel):
-
-        if self.model_type == 'rf':
-
-            events = np.empty((0, self.record_length))
-            mainpar = np.empty((0, 10))
-            labels = np.empty((0))
-
-            for path in self.paths_h5:
-                f = h5py.File(path, 'r')
-                events = np.concatenate((events, np.array(f['events']['event'])[channel]), axis=0)
-                mainpar = np.concatenate((mainpar, np.array(f['events']['mainpar'])[channel]), axis=0)
-                labels = np.concatenate((labels, np.array(f['events']['labels'])[channel]), axis=0)
-                f.close()
-
-            events = events.reshape((-1, self.record_length))
-            labels = labels.reshape((-1))
-
-            print('Labels: ', labels.value_counts())
-
-            nmbr_events = events.shape[0]
-
-            features = calc_ts_features(events=events,
-                                        mainpar=mainpar,
-                                        nmbr_channels=1,
-                                        nmbrs=nmbr_events,
-                                        down=self.down,
-                                        sample_frequency=self.sample_frequency,
-                                        scaler=None)
-            print('Features calculated.')
-
-            scaler = StandardScaler()
-            X = scaler.fit_transform(features)
-            print('Features scaled.')
-
-            np.random.seed(seed=self.random_seed)
-
-            X_train, y_train, X_test, y_test = train_test_split(X, labels, test_size=self.test_size)
-
-            print('Training Score: ', self.models[channel].score(X_train, y_train))
-            print('Test Score: ', self.models[channel].score(X_test, y_test))
+        print('Training Score: ', self.models[channel].score(X_train, y_train))
+        print('Test Score: ', self.models[channel].score(X_test, y_test))
 
     def add_scaler(self, scaler, channel):
         self.scalers[channel] = scaler
         print('Added scaler for channel {}.'.format(channel))
 
     def save(self, path):
+        self.info = input('Write info about this instance: ')
         path_model = '{}/{}_run{}_{}'.format(path, self.model_type, self.run, self.module)
         pickle.dump(self, open(path_model, 'wb'))
         print('Save Model to {}.'.format(path_model))

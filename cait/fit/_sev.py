@@ -13,6 +13,7 @@ from ..fit._templates import pulse_template
 def generate_standard_event(events,
                             main_parameters,
                             labels=None,
+                            correct_label = 1,
                             pulse_height_intervall=None,
                             left_right_cutoff=None,
                             rise_time_intervall=None,
@@ -30,7 +31,7 @@ def generate_standard_event(events,
     # use only those that are labeled as event
 
     if not labels is None:
-        use_indices[labels != 1] = 0
+        use_indices[labels != correct_label] = 0
 
         if verb:
             print('{} with Label Event Pulse.'.format(len(np.where(use_indices == 1)[0])))

@@ -7,4 +7,6 @@ from ._raw import *
 __all__=['get_nps',
          'edit_h5_dataset',
          'gen_dataset_from_rdt',
-         'convert_to_V']
+         'convert_to_V',
+         'noise_function',
+         'get_cc_noise']

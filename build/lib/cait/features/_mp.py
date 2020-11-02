@@ -124,6 +124,19 @@ class MainParameters():
 # ------------------------------------------------------------
 
 def get_times(t_zero, t_rise, t_decaystart, t_half, t_end):
+    """
+    Calculate the Rise Length, Peak Length, Length of First and Seconf Half of Decay
+
+    :param t_zero: integer, time of the pulse onset
+    :param t_rise: integer, time when rise is finished
+    :param t_decaystart: integer, end of peak
+    :param t_half: integer, half of decay
+    :param t_end: integer, decay over time
+    :return: (int: length of the rise,
+            int: length of peak,
+            int: length of first decay half,
+            int: length of second decay half)
+    """
     length_rise = t_rise - t_zero
     length_peak = t_decaystart - t_rise
     length_firsthalfdecay = t_half - t_decaystart
@@ -133,12 +146,20 @@ def get_times(t_zero, t_rise, t_decaystart, t_half, t_end):
 
 
 def calc_main_parameters(event, down=1):
+    """
+    Calculates the Main Parameters for an Event.
+    Optional, the event can be downsampled by a given factor befor the calculation
+
+    :param event: 1D array, the event
+    :param down: integer, power of 2, the factor for downsampling
+    :return: instance of MainParameters, see :class:`~simulate.MainParameters`
+    """
 
     length_event = len(event)
 
     offset = np.mean(event[:500])
 
-    # box car smoothing
+    # smoothing
     if down == 1:
         event_smoothed = box_car_smoothing(event - offset)
     else:
@@ -169,35 +190,35 @@ def calc_main_parameters(event, down=1):
         event_nodrift = event_nodrift - quadratic_drift * np.linspace(0, length_event_smoothed - 1, length_event_smoothed) ** 2
 
     maximum_index = np.argmax(event_nodrift)
-    maximum_pulse_height = event_smoothed[maximum_index]
-    # maximum_pulse_height_condition = event_nodrift[maximum_index]
+    # maximum_pulse_height = event_smoothed[maximum_index]
+    maximum_pulse_height_condition = event_smoothed[maximum_index]
 
     # get the times
-    t_zero = np.where(event_smoothed[:maximum_index] < 0.2 * maximum_pulse_height)
+    t_zero = np.where(event_smoothed[:maximum_index] < 0.2 * maximum_pulse_height_condition)
     if t_zero[0].size > 0:
         t_zero = t_zero[0][-1]
     else:
         t_zero = 0
 
-    t_rise = np.where(event_smoothed[t_zero:] > 0.8 * maximum_pulse_height)
+    t_rise = np.where(event_smoothed[t_zero:] > 0.8 * maximum_pulse_height_condition)
     if t_rise[0].size > 0:
         t_rise = t_rise[0][0] + t_zero
     else:
         t_rise = 0
 
-    t_end = np.where(event_smoothed[maximum_index:] < 0.368 * maximum_pulse_height)
+    t_end = np.where(event_smoothed[maximum_index:] < 0.368 * maximum_pulse_height_condition)
     if t_end[0].size > 0:
         t_end = t_end[0][0] + maximum_index
     else:
         t_end = length_event_smoothed - 1
 
-    t_half = np.where(event_smoothed[:t_end+1] > 0.736 * maximum_pulse_height)
+    t_half = np.where(event_smoothed[:t_end+1] > 0.736 * maximum_pulse_height_condition)
     if t_half[0].size > 0:
         t_half = t_half[0][-1]
     else:
         t_half = t_end
 
-    t_decaystart = np.where(event_smoothed[:t_half+1] > 0.9 * maximum_pulse_height)
+    t_decaystart = np.where(event_smoothed[:t_half+1] > 0.9 * maximum_pulse_height_condition)
     if t_decaystart[0].size > 0:
         t_decaystart = t_decaystart[0][-1]
     else:
@@ -221,4 +242,4 @@ def calc_additional_parameters(event, down=64):
 
     #TODO
 
-    return
+    pass

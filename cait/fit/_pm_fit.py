@@ -26,7 +26,7 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04):
     record_length = event.shape[0]
     if x0 is None:
         height_event = np.max(event)
-        x0 = [0, 1/height_event, 0.2/height_event, 5, 2, 1]
+        x0 = np.array([0, 1/height_event, 0.2/height_event, 5, 2, 1])
 
     t_dummy = (np.arange(0, record_length, dtype=float) - record_length / 4) * sample_length
     try:

@@ -55,7 +55,16 @@ class EventInterface:
     # Load in the hdf5 dataset
     def load_bck(self, path, bck_nmbr, channels,
                  bck_naming='bck',
+                 appendix=True,
                  which_to_label=['events']):
+
+        if appendix:
+            if self.nmbr_channels == 2:
+                app = '-P_Ch{}-L_Ch{}'.format(*channels)
+            elif self.nmbr_channels == 3:
+                app = '-1_Ch{}-2_Ch{}-3_Ch{}'.format(*channels)
+        else:
+            app = ''
 
         if all([type in self.valid_types for type in which_to_label]):
             self.which_to_label = which_to_label
@@ -68,21 +77,11 @@ class EventInterface:
         if not len(channels) == self.nmbr_channels:
             raise ValueError('List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        if len(channels) == 2:
-            path_h5 = path + 'run{}_{}/{}_{}-P_Ch{}-L_Ch{}.h5'.format(self.run,
-                                                                      self.module,
-                                                                      bck_naming,
-                                                                      bck_nmbr,
-                                                                      *channels)
-        elif len(channels) == 3:
-            path_h5 = path + 'run{}_{}/{}_{}-1_Ch{}-2_Ch{}-3_Ch{}.h5'.format(self.run,
-                                                                             self.module,
-                                                                             bck_naming,
-                                                                             bck_nmbr,
-                                                                             *channels)
-        else:
-            print('Need 2 or 3 channels!')
-            return
+        path_h5 = path + 'run{}_{}/{}_{}{}.h5'.format(self.run,
+                                                                  self.module,
+                                                                  bck_naming,
+                                                                  bck_nmbr,
+                                                                  app)
 
         self.f = h5py.File(path_h5, 'r')
         self.channels = channels
@@ -196,6 +195,7 @@ class EventInterface:
         raise NotImplementedError('Not implemented!')
 
     # Calculate Features with library
+    # TODO kill this, this is now in DataHandler!!
     def calculate_features(self, type, scaler=None):
 
         if not type in self.valid_types:

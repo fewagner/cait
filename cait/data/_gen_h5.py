@@ -187,20 +187,23 @@ def gen_dataset_from_rdt(path_rdt,
         noise.create_dataset('event', data=np.array(pulse_noise))
         noise.create_dataset('hours', data=np.array(metainfo_noise[0, :, 10]))
 
-        p_mean_nps, _ = calculate_mean_nps(
-            pulse_noise[0, :, :], record_length=len(pulse_noise[0, 0]))
-        l_mean_nps, _ = calculate_mean_nps(
-            pulse_noise[1, :, :], record_length=len(pulse_noise[0, 0]))
+        p_mean_nps, _ = calculate_mean_nps(pulse_noise[0, :, :])
+        l_mean_nps, _ = calculate_mean_nps(pulse_noise[1, :, :])
         noise.create_dataset('nps', data=np.array([p_mean_nps, l_mean_nps]))
 
     if (-1.0 in tpa_list) and (0 in tpa_list) and calc_sev:
         # ################# OPTIMUMFILTER #################
         # H = optimal_transfer_function(standardevent, mean_nps)
         print('CREATE OPTIMUM FILTER.')
+
+        of = np.array([optimal_transfer_function(p_stdevent_pulse, p_mean_nps),
+                                                    optimal_transfer_function(l_stdevent_pulse, l_mean_nps)])
+
         optimumfilter = h5f.create_group('optimumfilter')
-        optimumfilter.create_dataset('optimumfilter',
-                                     data=np.array([optimal_transfer_function(p_stdevent_pulse, p_mean_nps),
-                                                    optimal_transfer_function(l_stdevent_pulse, l_mean_nps)]))
+        optimumfilter.create_dataset('optimumfilter_real',
+                                     data=of.real)
+        optimumfilter.create_dataset('optimumfilter_imag',
+                                     data=of.imag)
 
     # ################# PROCESS TESTPULSES #################
     # if we filtered for testpulses
@@ -218,7 +221,7 @@ def gen_dataset_from_rdt(path_rdt,
         testpulses.create_dataset(
             'hours', data=np.array(metainfo_tp[0, :, 10]))
         testpulses.create_dataset(
-            'testpulseamplitute', data=np.array(metainfo_tp[0, :, 12]))
+            'testpulseamplitude', data=np.array(metainfo_tp[0, :, 12]))
 
         if calc_mp:
             print('CALCULATE MP.')
