@@ -10,9 +10,8 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from .features import get_elements, plot_S1
-import tsfel as ts
-
+from .features._fem import get_elements, plot_S1
+from .features._ts_feat import calc_ts_features
 
 # -----------------------------------------------------------
 # CLASS
@@ -56,7 +55,16 @@ class EventInterface:
     # Load in the hdf5 dataset
     def load_bck(self, path, bck_nmbr, channels,
                  bck_naming='bck',
+                 appendix=True,
                  which_to_label=['events']):
+
+        if appendix:
+            if self.nmbr_channels == 2:
+                app = '-P_Ch{}-L_Ch{}'.format(*channels)
+            elif self.nmbr_channels == 3:
+                app = '-1_Ch{}-2_Ch{}-3_Ch{}'.format(*channels)
+        else:
+            app = ''
 
         if all([type in self.valid_types for type in which_to_label]):
             self.which_to_label = which_to_label
@@ -69,26 +77,18 @@ class EventInterface:
         if not len(channels) == self.nmbr_channels:
             raise ValueError('List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        if len(channels) == 2:
-            path_h5 = path + 'run{}_{}/{}_{}-P_Ch{}-L_Ch{}.h5'.format(self.run,
-                                                                      self.module,
-                                                                      bck_naming,
-                                                                      bck_nmbr,
-                                                                      *channels)
-        elif len(channels) == 3:
-            path_h5 = path + 'run{}_{}/{}_{}-1_Ch{}-2_Ch{}-3_Ch{}.h5'.format(self.run,
-                                                                             self.module,
-                                                                             bck_naming,
-                                                                             bck_nmbr,
-                                                                             *channels)
-        else:
-            print('Need 2 or 3 channels!')
-            return
+        path_h5 = path + 'run{}_{}/{}_{}{}.h5'.format(self.run,
+                                                                  self.module,
+                                                                  bck_naming,
+                                                                  bck_nmbr,
+                                                                  app)
 
         self.f = h5py.File(path_h5, 'r')
         self.channels = channels
 
         self.nmbrs = {}
+
+
 
         try:
             self.nmbrs['events'] = len(self.f['events']['event'][0])
@@ -195,6 +195,7 @@ class EventInterface:
         raise NotImplementedError('Not implemented!')
 
     # Calculate Features with library
+    # TODO kill this, this is now in DataHandler!!
     def calculate_features(self, type, scaler=None):
 
         if not type in self.valid_types:
@@ -212,47 +213,13 @@ class EventInterface:
             print('Load according Bck File first!')
             return
 
-        # downsample
-        events = events.reshape(self.nmbr_channels, self.nmbrs[type], self.window_size, self.down)
-        events = np.mean(events, axis=3)
-
-        # remove offset
-        events = events[:, :, :] - np.mean(events[:, :, :int(1000 / self.down)], axis=2)[..., np.newaxis]
-
-        # calc features
-        cfg_file = ts.get_features_by_domain()
-
-        features = []
-        for i in range(self.nmbr_channels):
-            features.append(ts.time_series_features_extractor(cfg_file,
-                                                              events[i].reshape((-1)),
-                                                              fs=int(self.sample_frequency / self.down),
-                                                              window_splitter=True,
-                                                              window_size=self.window_size))
-
-            # add mainpar
-            features[i]['Pulse Height'] = mainpar[i, :, 0]
-            features[i]['Onset'] = mainpar[i, :, 1]
-            features[i]['Rise Time'] = mainpar[i, :, 2]
-            features[i]['Max Time'] = mainpar[i, :, 3]
-            features[i]['Decay Start'] = mainpar[i, :, 4]
-            features[i]['Half Time'] = mainpar[i, :, 5]
-            features[i]['End Time'] = mainpar[i, :, 6]
-            features[i]['Offset'] = mainpar[i, :, 7]
-            features[i]['Linear Drift'] = mainpar[i, :, 8]
-            features[i]['Quadratic Drift'] = mainpar[i, :, 9]
-
-            # remove inf indices
-            inf_indices = features[i].index[np.isinf(features[i]).any(1)]
-            print('INF Indices channel {}: {}'.format(i, inf_indices))
-
-            # scale
-            features[i] = features[i].to_numpy()
-            features[i][inf_indices] = 0
-            if scaler:
-                features[i] = scaler.transform(features[i])
-
-        self.features[type] = features
+        self.features[type] = calc_ts_features(events=events,
+                                               mainpar=mainpar,
+                                               nmbr_channels=self.nmbr_channels,
+                                               nmbrs=self.nmbrs[type],
+                                               down=self.down,
+                                               sample_frequency=self.sample_frequency,
+                                               scaler=scaler)
         print('Features calculated.')
 
     # Save Features with library

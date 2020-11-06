@@ -28,8 +28,11 @@ In applications those requirements will never be perfectly fulfilled, so we will
 def normalization_constant(stdevent, nps):
     """
     this function is needed as utility for the function optimal_transition_function and calculates the normalization constant s.t. the amplitude of a peak is preserved
-    stdevent is the array of the standardevent with length N
-    nps is the array of the noise power spectrum with length N/2 i guess
+    Remark: This function does not seem to wokr corretly. Either mistake in the paper or in the code.
+
+    :param stdevent:  1D array of the standardevent with length N
+    :param nps: 1D array of the noise power spectrum with length N/2 + 1
+    :return: integer, the normalization constant
     """
 
     stdevent_fft = rfft(stdevent)  # fft or the stdevent
@@ -42,8 +45,10 @@ def normalization_constant(stdevent, nps):
 def optimal_transfer_function(stdevent, nps):
     """
     this function calculates the transition function for an optimal filter
-    stdevent is the pulse shape standard event array with length N
-    nps is the NPS of a baseline, with length N/2 i guess
+
+    :param stdevent: 1D array, pulse shape standard event with length N
+    :param nps: 1D array, the NPS of a baseline, with length N/2 + 1
+    :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
     """
 
     tau_m = (np.argmax(stdevent) * 0.04) / (52.16 * len(stdevent) / 8192)  # index of maximal value
@@ -63,8 +68,9 @@ def optimal_transfer_function(stdevent, nps):
 def filter_event(event, transfer_function):
     """
     this function filters a single event
-    event is the array of the one event that should be filtered, size N
-    transition_function is the filter in fourier space, size N/2 i guess
+    :param event: 1D array of the one event that should be filtered, size N
+    :param transition_function: the filter in fourier space, size N/2 +1 complex numpy array
+    :return: 1D array length N, the filtered event
     """
 
     event_fft = rfft(event)  # do fft of event
@@ -78,16 +84,21 @@ def filter_event(event, transfer_function):
 def get_amplitudes(events_array, stdevent, nps):
     """
     this function determines the amplitudes of several events with optimal sig-noise-ratio
-    events_array is an MxN array of M events each length N
-    stdevent is the standardevent, an array of length N
-    nps is the noise power spectrum, an array of length N/2 i guess
+
+    :param events_array: 2D array (nmbr_events, rec_length), the events to determine ph
+    :param stdevent: 1D array, the standardevent
+    :param nps: 1D array, length N/2 + 1, the noise power spectrum
+    :return: 1D array size (nmbr_events), the phs after of filtering
     """
+
+    length = len(events_array[0])
+    events_array = events_array - np.mean(events_array[:, :int(length/8), np.newaxis], axis=1)
 
     # calc transition function
     transition_function = optimal_transfer_function(stdevent, nps)
     # filter events
     events_filtered = np.array([filter_event(event, transition_function) for event in events_array])
     # get maximal heights of filtered events
-    amplitudes = np.max(events_filtered, axis=0)
+    amplitudes = np.max(events_filtered, axis=1)
 
     return amplitudes

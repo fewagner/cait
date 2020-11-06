@@ -10,13 +10,13 @@ import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import math
-from .features import get_elements, plot_S1
-import tsfel as ts
-
+from .features._fem import get_elements, plot_S1
+from .features._ts_feat import calc_ts_features
 
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
+
 
 class EventInterface:
 
@@ -56,34 +56,35 @@ class EventInterface:
     # Load in the hdf5 dataset
     def load_bck(self, path, bck_nmbr, channels,
                  bck_naming='bck',
+                 appendix=True,
                  which_to_label=['events']):
+
+        if appendix:
+            if self.nmbr_channels == 2:
+                app = '-P_Ch{}-L_Ch{}'.format(*channels)
+            elif self.nmbr_channels == 3:
+                app = '-1_Ch{}-2_Ch{}-3_Ch{}'.format(*channels)
+        else:
+            app = ''
 
         if all([type in self.valid_types for type in which_to_label]):
             self.which_to_label = which_to_label
         else:
-            raise ValueError('which_to_label must be a list and contain at least one of events, testpulses, noise.')
+            raise ValueError(
+                'which_to_label must be a list and contain at least one of events, testpulses, noise.')
 
         self.bck_naming = bck_naming
         self.bck_nmbr = bck_nmbr
 
         if not len(channels) == self.nmbr_channels:
-            raise ValueError('List of channels must vale length {}.'.format(self.nmbr_channels))
+            raise ValueError(
+                'List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        if len(channels) == 2:
-            path_h5 = path + 'run{}_{}/{}_{}-P_Ch{}-L_Ch{}.h5'.format(self.run,
-                                                                      self.module,
-                                                                      bck_naming,
-                                                                      bck_nmbr,
-                                                                      *channels)
-        elif len(channels) == 3:
-            path_h5 = path + 'run{}_{}/{}_{}-1_Ch{}-2_Ch{}-3_Ch{}.h5'.format(self.run,
-                                                                             self.module,
-                                                                             bck_naming,
-                                                                             bck_nmbr,
-                                                                             *channels)
-        else:
-            print('Need 2 or 3 channels!')
-            return
+        path_h5 = path + 'run{}_{}/{}_{}{}.h5'.format(self.run,
+                                                                  self.module,
+                                                                  bck_naming,
+                                                                  bck_nmbr,
+                                                                  app)
 
         self.f = h5py.File(path_h5, 'r')
         self.channels = channels
@@ -113,14 +114,18 @@ class EventInterface:
     # Create CSV file for labeling
     def create_labels_csv(self, path):
 
-        self.path_csv = path + 'run{}_{}/labels_{}_{}_'.format(self.run, self.module, self.bck_naming, self.bck_nmbr)
+        self.path_csv = path + \
+            'run{}_{}/labels_{}_{}_'.format(self.run,
+                                            self.module, self.bck_naming, self.bck_nmbr)
 
         self.labels = {}
 
         try:
             for type in self.which_to_label:
-                self.labels[type] = np.zeros([self.nmbr_channels, self.nmbrs[type]])
-                np.savetxt(self.path_csv + type + '.csv', self.labels[type], delimiter='\n')
+                self.labels[type] = np.zeros(
+                    [self.nmbr_channels, self.nmbrs[type]])
+                np.savetxt(self.path_csv + type + '.csv',
+                           self.labels[type], delimiter='\n')
 
         except NameError:
             print('Error! Load a bck file first.')
@@ -131,7 +136,9 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv = path + 'run{}_{}/labels_{}_{}_'.format(self.run, self.module, self.bck_naming, self.bck_nmbr)
+        self.path_csv = path + \
+            'run{}_{}/labels_{}_{}_'.format(self.run,
+                                            self.module, self.bck_naming, self.bck_nmbr)
 
         filename = self.path_csv + type + '.csv'
         print('Loading Labels from {}.'.format(filename))
@@ -148,13 +155,16 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv = path + 'run{}_{}/labels_{}_{}_'.format(self.run, self.module, self.bck_naming, self.bck_nmbr)
+        self.path_csv = path + \
+            'run{}_{}/labels_{}_{}_'.format(self.run,
+                                            self.module, self.bck_naming, self.bck_nmbr)
 
         # check if hdf5 file has labels
         if not self.f[type]['labels']:
             print('Load HDF5 File with labels first!')
         else:
-            np.savetxt(self.path_csv + type + '.csv', np.array(self.f[type]['labels']), delimiter='\n')
+            np.savetxt(self.path_csv + type + '.csv',
+                       np.array(self.f[type]['labels']), delimiter='\n')
             print('Labels from HDF5 imported to {}.'.format(self.path_csv))
 
     # Load RF model(s), also define downsample rate
@@ -195,6 +205,7 @@ class EventInterface:
         raise NotImplementedError('Not implemented!')
 
     # Calculate Features with library
+    # TODO kill this, this is now in DataHandler!!
     def calculate_features(self, type, scaler=None):
 
         if not type in self.valid_types:
@@ -212,53 +223,20 @@ class EventInterface:
             print('Load according Bck File first!')
             return
 
-        # downsample
-        events = events.reshape(self.nmbr_channels, self.nmbrs[type], self.window_size, self.down)
-        events = np.mean(events, axis=3)
-
-        # remove offset
-        events = events[:, :, :] - np.mean(events[:, :, :int(1000 / self.down)], axis=2)[..., np.newaxis]
-
-        # calc features
-        cfg_file = ts.get_features_by_domain()
-
-        features = []
-        for i in range(self.nmbr_channels):
-            features.append(ts.time_series_features_extractor(cfg_file,
-                                                              events[i].reshape((-1)),
-                                                              fs=int(self.sample_frequency / self.down),
-                                                              window_splitter=True,
-                                                              window_size=self.window_size))
-
-            # add mainpar
-            features[i]['Pulse Height'] = mainpar[i, :, 0]
-            features[i]['Onset'] = mainpar[i, :, 1]
-            features[i]['Rise Time'] = mainpar[i, :, 2]
-            features[i]['Max Time'] = mainpar[i, :, 3]
-            features[i]['Decay Start'] = mainpar[i, :, 4]
-            features[i]['Half Time'] = mainpar[i, :, 5]
-            features[i]['End Time'] = mainpar[i, :, 6]
-            features[i]['Offset'] = mainpar[i, :, 7]
-            features[i]['Linear Drift'] = mainpar[i, :, 8]
-            features[i]['Quadratic Drift'] = mainpar[i, :, 9]
-
-            # remove inf indices
-            inf_indices = features[i].index[np.isinf(features[i]).any(1)]
-            print('INF Indices channel {}: {}'.format(i, inf_indices))
-
-            # scale
-            features[i] = features[i].to_numpy()
-            features[i][inf_indices] = 0
-            if scaler:
-                features[i] = scaler.transform(features[i])
-
-        self.features[type] = features
+        self.features[type] = calc_ts_features(events=events,
+                                               mainpar=mainpar,
+                                               nmbr_channels=self.nmbr_channels,
+                                               nmbrs=self.nmbrs[type],
+                                               down=self.down,
+                                               sample_frequency=self.sample_frequency,
+                                               scaler=scaler)
         print('Features calculated.')
 
     # Save Features with library
     def save_features(self, path):
         try:
-            path_features = '{}run{}_{}/features_{}_{}'.format(path, self.run, self.module, self.bck_naming, self.bck_nmbr)
+            path_features = '{}run{}_{}/features_{}_{}'.format(
+                path, self.run, self.module, self.bck_naming, self.bck_nmbr)
             pickle.dump(self.features, open(path_features, 'wb'))
             print('Saved Features to {}.'.format(path_features))
         except AttributeError:
@@ -266,7 +244,8 @@ class EventInterface:
 
     # Load Features with library
     def load_features(self, path):
-        path_features = '{}run{}_{}/features'.format(path, self.run, self.module)
+        path_features = '{}run{}_{}/features'.format(
+            path, self.run, self.module)
         self.features = pickle.load(open(path_features, 'rb'))
         print('Loaded Features from {}.'.format(path_features))
 
@@ -377,12 +356,14 @@ class EventInterface:
 
         # downsample
         if not self.down == 1:
-            event = event.reshape(self.nmbr_channels, self.window_size, self.down)
+            event = event.reshape(self.nmbr_channels,
+                                  self.window_size, self.down)
             event = np.mean(event, axis=2)
 
         # derivative
         if self.show_derivative:
-            event = self.down * np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
+            event = self.down * \
+                np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
             appendix = 'Derivative'
 
         # optimum filter
@@ -394,7 +375,8 @@ class EventInterface:
         if self.show_triangulation:
             elements = []
             for i in range(self.nmbr_channels):
-                elements.append(get_elements(event[i], std_thres=self.std_thres[i]))
+                elements.append(get_elements(
+                    event[i], std_thres=self.std_thres[i]))
 
         # mp
         if self.show_mp:
@@ -416,7 +398,8 @@ class EventInterface:
             plt.subplot(self.nmbr_channels, 1, i + 1)
             plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
             plt.plot(event[i], label=self.channel_names[i], color=colors[i])
-            plt.title('{} {} + {} {}'.format(type, idx, self.channel_names[i], appendix))
+            plt.title('{} {} + {} {}'.format(type, idx,
+                                             self.channel_names[i], appendix))
 
             # triangulation
             if self.show_triangulation:
@@ -424,7 +407,8 @@ class EventInterface:
 
             # main parameters
             if self.show_mp:
-                self._plot_mp(main_par[i], color=anti_colors[i], down=self.down)
+                self._plot_mp(
+                    main_par[i], color=anti_colors[i], down=self.down)
 
         plt.show(block=False)
         # -------- END PLOTTING --------
@@ -471,10 +455,12 @@ class EventInterface:
         print('12 ... Temperature Rise')
         print('13 ... Stick Event')
         print('14 ... Sawtooth Cycle')
+        print('15 ... Human Disturbance')
         print('99 ... unknown/other')
 
     def _ask_for_label(self, idx, which='phonon'):
-        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx)'.format(idx, which))
+        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx)'.format(
+            idx, which))
 
         while True:
             user_input = input('{}: '.format(which))
@@ -483,7 +469,8 @@ class EventInterface:
                 if label > 0:
                     return label
                 else:
-                    print('Enter Integer > 0 or q end, b back, n next, o options, i idx')
+                    print(
+                        'Enter Integer > 0 or q end, b back, n next, o options, i idx')
             except ValueError:
                 if user_input == 'q':
                     return -1
@@ -496,7 +483,8 @@ class EventInterface:
                 elif user_input == 'i':
                     return -5
                 else:
-                    print('Enter Integer > 0 or q end, b back, n next, o options, i idx')
+                    print(
+                        'Enter Integer > 0 or q end, b back, n next, o options, i idx')
 
     def _ask_for_idx(self, length):
         while True:
@@ -519,7 +507,8 @@ class EventInterface:
     # o … show set options and ask for changes, options are down - der - mp - predRF - predLSTM - triang - of - … - q
     def start_labeling(self, start_from_idx, label_only_class=None):
         if label_only_class:
-            print('Start labeling from idx {}, label only class {}.'.format(start_from_idx, label_only_class))
+            print('Start labeling from idx {}, label only class {}.'.format(
+                start_from_idx, label_only_class))
         else:
             print('Start labeling from idx {}.'.format(start_from_idx))
             label_all_classes = True
@@ -562,6 +551,7 @@ class EventInterface:
                             break
                         else:
                             self.labels[type][i, idx] = user_input
-                            np.savetxt(self.path_csv + type + '.csv', self.labels[type], delimiter='\n')
+                            np.savetxt(self.path_csv + type + '.csv',
+                                       self.labels[type], delimiter='\n')
 
                 idx += 1

@@ -13,3 +13,6 @@ def fit_quadratic_baseline(event):
     quadratic_drift = popt[2]
 
     return offset, linear_drift, quadratic_drift
+
+def get_rms(x, y):
+    return np.sum((x - y)**2)

@@ -9,4 +9,5 @@ __all__=['fit_quadratic_baseline',
          'generate_standard_event',
          'baseline_template_quad',
          'baseline_template_cubic',
-         'pulse_template']
+         'pulse_template',
+         'sev_fit_template']
