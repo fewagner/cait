@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
     name='cait',
-    version='0.1.0a2',
+    version='0.1.0a3',
     author='Felix Wagner',
     author_email="felix.wagner@oeaw.ac.at",
     description='Cryogenic Artificial Intelligence Tools',
