@@ -329,6 +329,7 @@ class EventInterface:
     def viewer_options(self):
         """
         Prints out all the options that are available in the event viewer/labeling tool
+
         :return: -
         """
         print('---------- OPTIONS: ----------')
