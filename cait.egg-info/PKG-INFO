@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: cait
-Version: 0.1.0a2
+Version: 0.1.0a3
 Summary: Cryogenic Artificial Intelligence Tools
 Home-page: https://git.cryocluster.org/fwagner/cait
 Author: Felix Wagner
@@ -12,7 +12,7 @@ Description: # cait
         of raw data from cryogenic dark matter experiments. In the current version, it is tailored to the needs of the CRESST
         experiment, but also suitable for the COSINUS and NUCLEUS experiment.
         
-        - **Documentation:** https://git.cryocluster.org/fwagner/cait/-/wikis/home
+        - **Documentation:** https://git.cryocluster.org/fwagner/cait/-/wikis/0.-Getting-Started
         - **Source Code:** https://git.cryocluster.org/fwagner/cait
         - **Bug Report:** https://git.cryocluster.org/fwagner/cait/-/issues
         

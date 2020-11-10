@@ -12,6 +12,9 @@ from ..filter._ma import box_car_smoothing
 # ------------------------------------------------------------
 
 class MainParameters():
+    """
+    Class to contain the main parameters
+    """
 
     def __init__(self,
                  pulse_height=0,
@@ -24,6 +27,20 @@ class MainParameters():
                  offset=0,
                  linear_drift=0,
                  quadratic_drift=0):
+        """
+        Provide the main parameters
+
+        :param pulse_height: float, the height of the event
+        :param t_zero: int, the sample index where the rise starts
+        :param t_rise: int, the sample index where the rise reaches 80%
+        :param t_max: int, the sample index of the max event
+        :param t_decaystart: int, the sample index where the peak falls down to 90%
+        :param t_half: int, the sample index where the peak falls down to 73%
+        :param t_end: int, the sample index where the peak falls down to 36%
+        :param offset: float, the mean of the first 1/8 of the record length
+        :param linear_drift: float, the linear slope of the event baseline
+        :param quadratic_drift: float, the quadratic slope of the event baseline
+        """
         self.pulse_height = pulse_height
         self.t_zero = t_zero
         self.t_rise = t_rise
@@ -36,6 +53,11 @@ class MainParameters():
         self.quadratic_drift = quadratic_drift
 
     def print_all(self):
+        """
+        Method to print all the stored main parameters
+
+        :return: -
+        """
         print('Pulse height: ', self.pulse_height)
         print('Index of Rise Start: ', self.t_zero)
         print('Index of Rise End: ', self.t_rise)
@@ -48,6 +70,12 @@ class MainParameters():
         print('Quadratic drift: ', self.quadratic_drift)
 
     def compare(self, other):
+        """
+        Method to compare the main parameters with those of another instance
+
+        :param other: the other instance of main parameters
+        :return: bool, states if the main parameters are the same
+        """
         if self.pulse_height != other.pulse_height:
             return False
         if self.t_zero != other.t_zero:
@@ -72,6 +100,11 @@ class MainParameters():
         return True
 
     def getArray(self):
+        """
+        Returns an array with the main parameters that are stored
+
+        :return: 1D array length 10, the main parameters
+        """
         return np.array([self.pulse_height,
                          self.t_zero,
                          self.t_rise,
@@ -86,7 +119,17 @@ class MainParameters():
     def plotParameters(self,
                        down=1,
                        offset_in_samples=0,
-                       color = 'r', zorder=0):
+                       color = 'r', zorder=10):
+        """
+        Plots the main parameters on overlaid to an event
+
+        :param down: int, the downsample rate of the event that should be overlaid
+        :param offset_in_samples: int, set if the x axis does not start at zero
+        :param color: string, the color of the main parameters in the scatter plot
+        :param zorder: int, the plot with the highest zorder is plot on top of the others
+            this should be choosen high, such that the main parameters are visible
+        :return: -
+        """
 
         # t = np.linspace(0, nmbr_samples-1, nmbr_samples) - nmbr_samples/4
         # start rise, top rise, max, start decay, half decay, end decay
@@ -112,6 +155,11 @@ class MainParameters():
 
 
     def get_differences(self):
+        """
+        Return the differences in the samples times
+
+        :return: 1D array with length 2: (length_rise, length_peak, length_decay)
+        """
         length_rise = self.t_rise - self.t_zero
         length_peak = self.t_decaystart - self.t_rise
         length_decay = self.t_end - self.t_decaystart
@@ -157,7 +205,7 @@ def calc_main_parameters(event, down=1):
 
     length_event = len(event)
 
-    offset = np.mean(event[:500])
+    offset = np.mean(event[:int(length_event/8)])
 
     # smoothing
     if down == 1:

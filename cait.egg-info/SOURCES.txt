@@ -40,4 +40,5 @@ cait/simulate/__init__.py
 cait/simulate/_sim_bl.py
 cait/simulate/_sim_pulses.py
 cait/trigger/__init__.py
+cait/trigger/_ma_trigger.py
 cait/trigger/_z_scores.py

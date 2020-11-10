@@ -23,6 +23,9 @@ from ..data._baselines import calculate_mean_nps
 # -----------------------------------------------------------
 
 class FeaturesMixin(object):
+    """
+    A Mixin Class to the DataHandler Class with methods for the calculation of features of the data.
+    """
 
     # -----------------------------------------------------------
     # FEATURE CALCULATION
@@ -30,6 +33,14 @@ class FeaturesMixin(object):
 
     # Recalculate MP
     def recalc_mp(self, type, path_h5=None, processes=4):
+        """
+        Calculate the Main Parameters for the Events in an HDF5 File.
+
+        :param type: string, either events or testpulses
+        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
+        :param processes: int, the number of processes to use for the calculation
+        :return: -
+        """
 
         if not path_h5:
             path_h5 = self.path_h5
@@ -54,6 +65,14 @@ class FeaturesMixin(object):
 
     # Recalculate Fit
     def recalc_fit(self, path_h5=None, type='events', processes=4):
+        """
+        Calculate the Parameteric Fit for the Events in an HDF5 File.
+        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
+
+        :param type: string, either events or testpulses
+        :param processes: int, the number of processes to use for the calculation
+        :return: -
+        """
 
         if type not in ['events', 'testpulses']:
             raise NameError('Type must be events or testpulses.')
@@ -105,6 +124,33 @@ class FeaturesMixin(object):
                    verb=True,
                    scale_fit_height=True,
                    sample_length=0.04):
+        """
+        Calculate the Standard Event for the Events in the HDF5 File.
+
+        :param type: string, either "events" or "testpulses"
+        :param use_labels: bool, if True a labels file must be included in the hdf5 file,
+            then only the events labeled as events or testpulses are included in the calculation
+        :param pulse_height_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the pulse heights to include into the creation of the SEV
+        :param left_right_cutoff: list of NMBR_CHANNELS floats, the maximal abs value of the linear slope of events
+            to be included in the Sev calculation; based on the sample index as x-values
+        :param rise_time_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the rise time to include into the creation of the SEV;
+            based on the sample index as x-values
+        :param decay_time_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the decay time to include into the creation of the SEV;
+            based on the sample index as x-values
+        :param onset_intervall:  list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the onset time to include into the creation of the SEV;
+            based on the sample index as x-values
+        :param remove_offset: bool, if True the offset is removed before the events are superposed for the
+            sev calculation; highly recommended!
+        :param verb: bool, if True some verbal feedback is output about the progress of the method
+        :param scale_fit_height: bool, if True the parametric fit to the sev is normalized to height 1 after
+            the fit is done
+        :param sample_length: float, the length of one sample in milliseconds
+        :return: -
+        """
 
         h5f = h5py.File(self.path_h5, 'r+')
         events = h5f[type]['event']
@@ -189,6 +235,11 @@ class FeaturesMixin(object):
         h5f.close()
 
     def recalc_of(self):
+        """
+        Calculate the Optimum Filer from the NPS and the SEV
+
+        :return: -
+        """
 
         h5f = h5py.File(self.path_h5, 'r+')
         p_stdevent_pulse = h5f['stdevent']['event'][0]
@@ -218,6 +269,15 @@ class FeaturesMixin(object):
 
     # calculate TS Features
     def calc_features(self, type='events', downsample=None):
+        """
+        Calcuate the TimeSeries features from the library tsfel and store in the HDF5 dataset
+
+        :param type: string, either events, testpulses or noise
+        :param downsample: int, the factor to downsample the events before the calculation;
+            in experiments, a downsampling to a total event length of 256 provided the same
+            results as working with the high sample frequency, but saved large amounts of runtime
+        :return: -
+        """
 
         f = h5py.File(self.path_h5, 'r+')
         events = np.array(f[type]['event'])
@@ -342,6 +402,12 @@ class FeaturesMixin(object):
         raise NotImplementedError('Not Implemented.')
 
     def calc_bl_coefficients(self, verb=False):
+        """
+        Calcualted the fit coefficients with a cubic polynomial on the noise baselines.
+
+        :param verb: bool, if True the code provides verbal feedback about the progress
+        :return: -
+        """
 
         print('Calculating Baseline Coefficients.')
 

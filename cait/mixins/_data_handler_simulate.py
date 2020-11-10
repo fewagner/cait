@@ -14,6 +14,9 @@ from ..data._baselines import calculate_mean_nps
 
 
 class SimulateMixin(object):
+    """
+    A Mixin Class for the DataHandler class with methods to simulate data sets.
+    """
 
     # Simulate Dataset with specific classes
     def simulate_pulses(self,
@@ -32,23 +35,28 @@ class SimulateMixin(object):
                         lamb=0.01,
                         sample_length=0.04):
         """
+        Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
 
-
-        :param path_sim:
-        :param size_events:
-        :param size_tp:
-        :param size_noise:
-        :param ev_ph_intervals:
-        :param ev_discrete_phs:
-        :param tp_ph_intervals:
-        :param tp_discrete_phs:
-        :param t0_interval:
-        :param fake_noise:
-        :param store_of:
-        :param rms_thresholds:
-        :param lamb:
-        :param sample_length:
-        :return:
+        :param path_sim: string, the full path where to store the simulated data set
+        :param size_events: int, the number of events to simulate; if >0 we need a sev in the hdf5
+        :param size_tp: int, the number of testpulses to simulate; if >0 we need a tp-sev in the hdf5
+        :param size_noise: int, the number of noise baselines to simulate
+        :param ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists, the interval in which the pulse heights
+            are continuously distributed
+        :param ev_discrete_phs: list of NMBR_CHANNELS lists - the discrete values, from which the pulse heights
+            are uniformly sampled. if the ph_intervals argument is set, this option will be ignored
+        :param tp_ph_intervals: analogous to ev_ph_intervals, but for the testpulses
+        :param tp_discrete_phs: analogous to ev_ph_intervals, but for the testpulses
+        :param t0_interval: 2-tuple or list, the interval from which the pulse onset are continuously sampled
+        :param fake_noise: bool, the True the noise will be taken not from the measured baselines from the
+            hdf5 set, but simulated
+        :param store_of: bool, if True the optimum filter will be saved to the simulated datasets
+        :param rms_thresholds: list of two floats, above which value noise baselines are excluded for the
+            distribution of polynomial coefficients (i.e. a parameter for the fake noise simulation), also a
+            cut parameter for the noise baselines from the h5 set if no fake ones are taken
+        :param lamb: float, a parameter for the fake baseline simulation, increase if calculation time is too long
+        :param sample_length: float, the length of one sample in milliseconds
+        :return: -
         """
 
         # create file handle

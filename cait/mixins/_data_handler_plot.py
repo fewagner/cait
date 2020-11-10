@@ -12,12 +12,23 @@ from ..fit._templates import pulse_template
 # -----------------------------------------------------------
 
 class PlotMixin(object):
+    """
+    Mixin Class for the DataHandler to make essential plots for the analysis
+    """
 
     # Plot the SEV
     def show_SEV(self,
                  type='stdevent',
                  block=True,
                  sample_length=0.04):
+        """
+        Plot the standardevent of all channels
+        :param type: string, either stdevent for events or stdevent_tp for testpulses
+        :param block: bool, if False the matplotlib generated figure window does not block
+            the futher code execution
+        :param sample_length: float, the length of a sample milliseconds
+        :return: -
+        """
 
         f = h5py.File(self.path_h5, 'r')
         sev = f[type]['event']
@@ -40,6 +51,12 @@ class PlotMixin(object):
 
     # Plot the NPS
     def show_NPS(self, block=True):
+        """
+        Plot the Noise Power Spectrum of all channels
+        :param block: bool, if False the matplotlib generated figure window does not block
+            the futher code execution
+        :return: -
+        """
         f = h5py.File(self.path_h5, 'r')
 
         # plot
@@ -56,6 +73,12 @@ class PlotMixin(object):
 
     # Plot the OF
     def show_OF(self, block=True):
+        """
+        Plot the Optimum Filter of all channels
+        :param block: bool, if False the matplotlib generated figure window does not block
+            the futher code execution
+        :return: -
+        """
         f = h5py.File(self.path_h5, 'r')
 
         of = np.array(f['optimumfilter']['optimumfilter_real']) + \
@@ -96,7 +119,7 @@ class PlotMixin(object):
         :param block: bool, if the plot blocks the code when executed in cmd
         :param bins: int, the number of bins for the histogram
         :param range: 2D tuple of floats, the interval that is shown in the histogram
-        :return:
+        :return: -
         """
 
         hf5 = h5py.File(self.path_h5, 'r+')
@@ -129,16 +152,22 @@ class PlotMixin(object):
                   bins=100,
                   block=False,
                   range=None):
-        # pulse_height
-        # t_zero
-        # t_rise
-        # t_max
-        # t_decaystart
-        # t_half
-        # t_end
-        # offset
-        # linear_drift
-        # quadratic_drift
+        """
+        Show a histogram of main parameter values
+
+        :param which_mp: string, possible are: [pulse_height, t_zero, t_rise, t_max, t_decaystart, t_half, t_end
+            offset, linear_drift, quadratic_drift]
+        :param which_channel: int, the number of the channel from that we want the histogram
+        :param type: string, either events or testpulses
+        :param which_labels: list or None, if set only events with these labels are included; needs a labels file
+            to be included in the hdf5 set
+        :param bins: int, the number of bins in the histogram
+        :param block: bool, if False the matplotlib generated figure window does not block
+            the futher code execution
+        :param range: 2-tuple or None, if set the range of the histogram
+        :return: -
+        """
+
 
         f_h5 = h5py.File(self.path_h5, 'r')
         nmbr_mp = f_h5[type]['mainpar'].attrs[which_mp]
@@ -172,4 +201,5 @@ class PlotMixin(object):
     def show_LY(self):
         # choose which labels to plot
         # choose which channels (e.g. for Gode modules)
+        # TODO
         raise NotImplementedError('Not Implemented.')

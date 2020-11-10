@@ -12,6 +12,9 @@ from scipy.stats import norm
 # -----------------------------------------------------------
 
 class AnalysisMixin(object):
+    """
+    A Mixin to the DataHandler class with methods for the typical raw data analysis.
+    """
 
     def calc_resolution(self,
                         cpe_factors,

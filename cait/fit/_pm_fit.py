@@ -14,6 +14,13 @@ from ..fit._templates import pulse_template
 
 @nb.njit
 def arrays_equal(a, b):
+    """
+    A utlis function to compare if two arrays are the same, not used anymore in the current build
+
+    :param a: the first array
+    :param b: the second array
+    :return: bool, if the same arrays or not
+    """
     if a.shape != b.shape:
         return False
     for ai, bi in zip(a.flat, b.flat):
@@ -23,6 +30,14 @@ def arrays_equal(a, b):
 
 
 def fit_pulse_shape(event, x0=None, sample_length=0.04):
+    """
+    Fits the pulse shape model to a given event and returns the fit parameters
+
+    :param event: 1D array, the event to fit
+    :param x0: None or 1D array (t0, An, At, tau_n, tau_in, tau_t); the start values for the fit
+    :param sample_length: float, the length of one sample in milliseconds
+    :return: 1D array length 6, the fitted parameters
+    """
     record_length = event.shape[0]
     if x0 is None:
         height_event = np.max(event)

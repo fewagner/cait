@@ -15,6 +15,10 @@ def edit_h5_dataset(path,
                     light_channel,
                     recalc_main_par=True,
                     processes=4):
+    """
+    THIS FUNCTION IS NO LONGER USED!
+    Edit the HDF5 dataset, e.g. add labels and calculate main parameters.
+    """
     path_to_eventlabels = '{}labels_{}_events.csv'.format(path, fname)
     h5f = h5py.File("{}{}-P_Ch{}-L_Ch{}.h5".format(path_plots, fname,
                                                    phonon_channel, light_channel), 'r+')

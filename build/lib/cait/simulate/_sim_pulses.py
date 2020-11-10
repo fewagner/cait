@@ -38,7 +38,8 @@ def simulate_events(path_h5,
     :param fake_noise: bool, if true use simulated noise baselines, otherwise measured ones
     :param use_bl_from_idx: the start index of the baselines that are used
     :param rms_threshold: float, above which value noise baselines are excluded for the
-        distribution of polynomial coefficients
+        distribution of polynomial coefficients; also, a cut value for the baselines if not the
+        fake ones but the ones from the h5 set are taken
     :param lamb: float, the parameter for the bl simulation method
     :param sample_length: float, the length in ms of one sample from an event
     :return: (3D array of size (nmbr channels, size, record_length), the simulated events,
@@ -61,7 +62,7 @@ def simulate_events(path_h5,
         if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
             bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
             counter = 0
-            while len(take_idx) < size: # clean the baselines
+            while len(take_idx) < size:  # clean the baselines
                 take_it = True
                 for c in range(nmbr_channels):
                     if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold

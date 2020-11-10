@@ -3,3 +3,8 @@ examples/toy_data/*
 examples/toy_models/*
 damir_label/
 __pycache__/
+.eggs/
+.idea/
+cait.egg-info/
+build/
+.DS_Store

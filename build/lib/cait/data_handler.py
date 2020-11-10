@@ -21,8 +21,20 @@ class DataHandler(SimulateMixin,
                   PlotMixin,
                   FeaturesMixin,
                   AnalysisMixin):
+    """
+    A class for the processing of raw data set. Uses Mixins for most features.
+    """
 
     def __init__(self, run, module, channels, record_length, sample_frequency=25000):
+        """
+        Give general information of the detector
+
+        :param run: int, the number of the run
+        :param module: string, the naming of the detector module
+        :param channels: list, the channels in the bck file that belong to the module
+        :param record_length: int, the number of samples in one record window
+        :param sample_frequency: int, the sample requency of the recording
+        """
         # ask user things like which detector working on etc
         if len(channels) != 2:
             raise NotImplementedError('Only for 2 channels implemented.')
@@ -75,6 +87,15 @@ class DataHandler(SimulateMixin,
                       path_labels,
                       type='events',
                       path_h5=None):
+        """
+        Include the *.csv file with the labels into the HDF5 File.
+        :param path_labels: string, path to the folder that contains the run_module folder
+            e.g. "data" --> look for labels in "data/runXY_moduleZ/labels_bck_0XX_<type>"
+        :param type: string, the type of labels, typically "events" or "testpulses"
+        :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
+            e.g. "data/hdf5s/bck_001[...].h5"
+        :return: -
+        """
 
         if not path_h5:
             path_h5 = self.path_h5
@@ -128,6 +149,11 @@ class DataHandler(SimulateMixin,
             print("File '{}' does not exist.".format(path_labels))
 
     def get_filehandle(self, path=None):
+        """
+        Returns the opened filestream to the hdf5 file
+        :param path: string, optional, give a path to the hdf5 file
+        :return: h5py file object
+        """
         if path is None:
             f = h5py.File(self.path_h5, 'r+')
         else:

@@ -13,16 +13,19 @@ def calc_ts_features(events, nmbr_channels,
                      nmbr_events, record_length, mainpar = None,
                      down=1, sample_frequency=25000, scaler=None):
     """
+    Calculates the features of the time series with the tsfel library
 
-    :param events:
-    :param nmbr_channels:
-    :param nmbr_events:
-    :param record_length:
-    :param mainpar:
-    :param down:
-    :param sample_frequency:
-    :param scaler:
-    :return:
+    :param events: 3D array (nmbr_channels, nmbr_events, record_length), the events to calc features
+    :param nmbr_channels: int, the number of the channels
+    :param nmbr_events: int, the number of the events
+    :param record_length: int, the length of the record window
+    :param mainpar: 3D array (nmbr_channels, nmbr_events, nmbr_mp=10), the main parameters to include
+        in the saved features, can also be None
+    :param down: int, the factor to downsample the events befor feature calculation, in experiments it worked
+        well to have downsmapling down to an array length of 256
+    :param sample_frequency: int, the recording sampling frequency
+    :param scaler: scaler object from the sklearn library, the scaler to use on the calculated features
+    :return: 3D array (nmbr_channels, nmbr_events, nmbr_features), the calculated features
     """
 
     # downsample
