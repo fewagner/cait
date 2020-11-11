@@ -13,7 +13,7 @@ setup(
     long_description_content_type="text/markdown",
     url="https://git.cryocluster.org/fwagner/cait",
     packages=find_packages(include=['cait', 'cait.*']),
-    install_requires=['setuptools',
+    install_requires=['setuptools>=47.1.1',
                       'h5py',
                       'pickle-mixin',
                       'numpy',
