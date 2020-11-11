@@ -207,16 +207,19 @@ class EvaluationTools:
                 self.__add_data(
                     np.delete(ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
             elif which_data == 'timeseries':
-                self.__add_data(np.copy(ds['events/event'][channel, only_idx, :]))
+                self.__add_data(
+                    np.copy(ds['events/event'][channel, only_idx, :]))
 
             # add also the events and the mainpar seperately
             self.__add_events(ds['events/event'][channel, only_idx, :])
-            self.__add_mainpar(ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs.items())
+            self.__add_mainpar(
+                ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs.items())
 
             # if there are labels in the h5 set then also add them
             if 'labels' in ds['events']:
                 # add the labels of all the events
-                self.__add_label_nbrs(np.copy(ds['events/labels'][channel, only_idx]))
+                self.__add_label_nbrs(
+                    np.copy(ds['events/labels'][channel, only_idx]))
 
                 # add the colors that correspond to the labels
                 if len(np.unique(self.label_nbrs)) > len(self.color_order):
@@ -273,9 +276,9 @@ class EvaluationTools:
             raise AttributeError('Add predictions first!')
 
         np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events.csv',
-                   np.array(self.predictions[pred_method][1]), delimiter='\n') # the index 1 should access the pred
+                   np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
 
-    def split_test_train(self, test_size, scaler = None):
+    def split_test_train(self, test_size, scaler=None):
         if test_size <= 0 or test_size >= 1:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The parameter 'test_size' can only have values between 0 and 1.")
@@ -283,7 +286,8 @@ class EvaluationTools:
         self.test_size = test_size
         total_nbr = np.sum(self.events_per_file)
         event_num = np.arange(total_nbr)
-        event_num_train, event_num_test = train_test_split(event_num, test_size=test_size)
+        event_num_train, event_num_test = train_test_split(
+            event_num, test_size=test_size)
 
         self.is_train = np.isin(event_num, event_num_train)
         self.is_traintest_valid = True
@@ -304,7 +308,8 @@ class EvaluationTools:
         return np.array([self.labels[i] for i in label_nbrs])
 
     def convert_to_colors(self, label_nbrs, verb=False):
-        unique_label_dict = dict([(l, i) for i, l in enumerate(np.unique(label_nbrs))])
+        unique_label_dict = dict(
+            [(l, i) for i, l in enumerate(np.unique(label_nbrs))])
         if len(unique_label_dict) > len(self.color_order):
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -327,18 +332,18 @@ class EvaluationTools:
     def get_train(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.get_train_event_nbrs(verb=verb), \
-               self.get_train_data(verb=verb), \
-               self.get_train_features(verb=verb), \
-               self.get_train_file_nbrs(verb=verb), \
-               self.get_train_label_nbrs(verb=verb)
+            self.get_train_data(verb=verb), \
+            self.get_train_features(verb=verb), \
+            self.get_train_file_nbrs(verb=verb), \
+            self.get_train_label_nbrs(verb=verb)
 
     def get_test(self, verb=False):
         self.__check_test_set(verb=verb)
         return self.get_test_event_nbrs(verb=verb), \
-               self.get_test_data(verb=verb), \
-               self.get_test_features(verb=verb), \
-               self.get_test_file_nbrs(verb=verb), \
-               self.get_test_label_nbrs(verb=verb)
+            self.get_test_data(verb=verb), \
+            self.get_test_features(verb=verb), \
+            self.get_test_file_nbrs(verb=verb), \
+            self.get_test_label_nbrs(verb=verb)
 
     # ------- get event numbers -------
     def get_train_event_nbrs(self, verb=False):
@@ -601,8 +606,8 @@ class EvaluationTools:
 
     # ################### PLOT ###################
 
-    def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True, \
-                           figsize=None, perplexity=30, as_cols=False, rdseed=1, \
+    def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True,
+                           figsize=None, perplexity=30, as_cols=False, rdseed=1,
                            verb=False):
         """
         Plots given data with TSNE to compare different labels.
@@ -665,7 +670,9 @@ class EvaluationTools:
                     text = "{}, {}".format(self.files[self.get_file_nbrs(plt_what)[id]].split('/')[-1].split('-')[0],
                                            self.get_event_nbrs(plt_what)[id])
                     if plt_labels:
-                        text = text + ", {}".format(self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
+                        text = text + \
+                            ", {}".format(
+                                self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
                 else:
                     text = "{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
@@ -676,7 +683,8 @@ class EvaluationTools:
             for i in range(nrows * ncols):
                 vis = annot[i].get_visible()
                 if event.inaxes == ax[i]:
-                    cont, ind = sc[i].contains(event)  # cont: bool, whether it contains something or not
+                    # cont: bool, whether it contains something or not
+                    cont, ind = sc[i].contains(event)
                     # print(ind)
                     if cont:
                         update_annot(ind)
@@ -697,7 +705,8 @@ class EvaluationTools:
                         id = ind['ind'][0]
 
                         text = "{}, {}".format(
-                            self.files[self.get_file_nbrs(plt_what, verb=verb)[id]].split('/')[-1].split('-')[0],
+                            self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                                id]].split('/')[-1].split('-')[0],
                             self.get_event_nbrs(plt_what, verb=verb)[id])
                         if plt_labels:
                             text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]],
@@ -729,11 +738,13 @@ class EvaluationTools:
                             id = ind['ind'][0]
 
                             text = "{}, {}".format(
-                                self.files[self.get_file_nbrs(plt_what, verb=verb)[id]].split('/')[-1].split('-')[0],
+                                self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                                    id]].split('/')[-1].split('-')[0],
                                 self.get_event_nbrs(plt_what, verb=verb)[id])
                             if plt_labels:
                                 text = text + ", {} = {}".format(
-                                    self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]],
+                                    self.labels[self.get_label_nbrs(
+                                        plt_what, verb=verb)[id]],
                                     self.get_label_nbrs(plt_what, verb=verb)[id])
 
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
@@ -757,16 +768,20 @@ class EvaluationTools:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
-                            import ipdb;
+                            import ipdb
                             ipdb.set_trace()
 
         if not self.save_pgf:
-            print("-------------------------------------------------------------------------")
+            print(
+                "-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
-            print('When clicking on a singel event a window with its timeseries is opened.')
-            print("Hovering over a a singel event and pressing 'm' also opnes the timeseries")
+            print(
+                'When clicking on a single event a window with its timeseries is opened.')
+            print(
+                "Hovering over a a single event and pressing 'm' also opnes the timeseries")
             print("of this event and adds the calculated mainparameters to the plot.")
-            print("-------------------------------------------------------------------------")
+            print(
+                "-------------------------------------------------------------------------")
 
         # -------- PLOT --------
         # PCA
@@ -774,15 +789,18 @@ class EvaluationTools:
         # princcomp = pca.fit_transform(x_data)
 
         # TSNE
-        princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(self.get_features(plt_what, verb=verb))
+        princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
+            self.get_features(plt_what, verb=verb))
 
         if self.save_pgf:
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
-            fig, ax = plt.subplots(nrows=nrows, ncols=ncols, sharex=True, sharey=True)
+            fig, ax = plt.subplots(
+                nrows=nrows, ncols=ncols, sharex=True, sharey=True)
         else:
-            fig, ax = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
+            fig, ax = plt.subplots(
+                nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
 
         annot = [None] * nrows * ncols
         sc = [None] * nrows * ncols
@@ -806,7 +824,8 @@ class EvaluationTools:
             pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
-                pop[i] = mpl.patches.Patch(color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
+                pop[i] = mpl.patches.Patch(
+                    color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
         # import ipdb; ipdb.set_trace()
@@ -842,9 +861,11 @@ class EvaluationTools:
 
             set_mpl_backend_fontsize(10)
             if pred_methods == [] and plt_labels:
-                plt.savefig('{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
+                plt.savefig(
+                    '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
             else:
-                plt.savefig('{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
+                plt.savefig(
+                    '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
         else:
             fig.canvas.mpl_connect('key_press_event', on_key)
             fig.canvas.mpl_connect("motion_notify_event", hover)
@@ -859,13 +880,15 @@ class EvaluationTools:
                                figsize=None,
                                bins='auto',
                                verb=False):
-        max_height = self.get_mainpar(verb=verb)[:, self.mainpar_labels['pulse_height']]
+        max_height = self.get_mainpar(
+            verb=verb)[:, self.mainpar_labels['pulse_height']]
 
         max_max_height = np.max(max_height)
         min_max_height = np.min(max_height)
 
         unique_label_nbrs = np.unique(self.get_label_nbrs(verb=verb))
-        max_height_per_label = dict([(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
+        max_height_per_label = dict(
+            [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
         nrows = math.ceil(len(unique_label_nbrs) / ncols)
 
@@ -902,10 +925,12 @@ class EvaluationTools:
             # set_mpl_backend_pgf()
             mpl.use('pdf')
 
-        max_height = self.get_mainpar(verb=verb)[:, self.mainpar_labels['pulse_height']]
+        max_height = self.get_mainpar(
+            verb=verb)[:, self.mainpar_labels['pulse_height']]
 
         unique_label_nbrs = np.unique(self.get_label_nbrs(verb=verb))
-        max_height_per_label = dict([(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
+        max_height_per_label = dict(
+            [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
         for i, l in self.labels.items():
             if l == 'Event_Pulse':
@@ -916,7 +941,8 @@ class EvaluationTools:
         fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
         ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
-                label=['{}'.format(self.labels[events_nbr]), '{}'.format(self.labels[saturated_nbr])],
+                label=['{}'.format(self.labels[events_nbr]),
+                       '{}'.format(self.labels[saturated_nbr])],
                 bins=bins)
 
         ax.set_xlabel('pulse height [mV]')
@@ -927,7 +953,8 @@ class EvaluationTools:
             ax.set_yscale('log')
         if self.save_pgf:
             if ylog:
-                plt.savefig('{}evt_sat_hist-ylog.pdf'.format(self.save_plot_dir))
+                plt.savefig(
+                    '{}evt_sat_hist-ylog.pdf'.format(self.save_plot_dir))
             else:
                 plt.savefig('{}evt_sat_hist.pdf'.format(self.save_plot_dir))
         else:
@@ -956,12 +983,14 @@ class EvaluationTools:
                       "correct labels are supported by this function.")
             return
 
-        max_height = self.get_mainpar(what, verb=verb)[:, self.mainpar_labels['pulse_height']]
+        max_height = self.get_mainpar(what, verb=verb)[
+            :, self.mainpar_labels['pulse_height']]
 
         max_max_height = np.max(max_height)
         min_max_height = np.min(max_height)
 
-        unique_label_nbrs, unique_label_counts = np.unique(self.get_label_nbrs(what, verb=verb), return_counts=True)
+        unique_label_nbrs, unique_label_counts = np.unique(
+            self.get_label_nbrs(what, verb=verb), return_counts=True)
         data_dict_sorted = dict(
             [(l, ([None] * c, [None] * c, [None] * c)) for l, c in zip(unique_label_nbrs, unique_label_counts)])
 
@@ -990,8 +1019,10 @@ class EvaluationTools:
                 upper = (i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
                     data_dict_sorted[l][2])
                 lower = i * bin_size
-                bin_boundries[l][0][i] = np.mean(data_dict_sorted[l][0][lower:upper])
-                bin_boundries[l][1][i] = np.mean(data_dict_sorted[l][2][lower:upper])
+                bin_boundries[l][0][i] = np.mean(
+                    data_dict_sorted[l][0][lower:upper])
+                bin_boundries[l][1][i] = np.mean(
+                    data_dict_sorted[l][2][lower:upper])
 
         # import ipdb; ipdb.set_trace()
         nrows = math.ceil(len(unique_label_nbrs) / ncols)
@@ -1039,12 +1070,14 @@ class EvaluationTools:
                       "correct labels are supported by this function.")
             return
 
-        max_height = self.get_mainpar(what, verb=verb)[:, self.mainpar_labels['pulse_height']]
+        max_height = self.get_mainpar(what, verb=verb)[
+            :, self.mainpar_labels['pulse_height']]
 
         max_max_height = np.max(max_height)
         min_max_height = np.min(max_height)
 
-        unique_label_nbrs, unique_label_counts = np.unique(self.get_label_nbrs(what, verb=verb), return_counts=True)
+        unique_label_nbrs, unique_label_counts = np.unique(
+            self.get_label_nbrs(what, verb=verb), return_counts=True)
         data_dict_sorted = dict(
             [(l, ([None] * c, [None] * c, [None] * c)) for l, c in zip(unique_label_nbrs, unique_label_counts)])
 
@@ -1073,8 +1106,10 @@ class EvaluationTools:
                 upper = (i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
                     data_dict_sorted[l][2])
                 lower = i * bin_size
-                bin_boundries[l][0][i] = np.mean(data_dict_sorted[l][0][lower:upper])
-                bin_boundries[l][1][i] = np.mean(data_dict_sorted[l][2][lower:upper])
+                bin_boundries[l][0][i] = np.mean(
+                    data_dict_sorted[l][0][lower:upper])
+                bin_boundries[l][1][i] = np.mean(
+                    data_dict_sorted[l][2][lower:upper])
 
         # import ipdb; ipdb.set_trace()
 
@@ -1095,12 +1130,13 @@ class EvaluationTools:
         ax.set_xlim(0, 0.2)
         # plt.gcf().subplots_adjust(bottom=-0.1)
         if self.save_pgf:
-            plt.savefig('{}correctly_labeled_events-{}.pgf'.format(self.save_plot_dir, pred_method))
+            plt.savefig(
+                '{}correctly_labeled_events-{}.pgf'.format(self.save_plot_dir, pred_method))
         else:
             plt.show()
         plt.close()
 
-    def confusion_matrix_pred(self, pred_method, what='all', rotation_xticklabels=0, \
+    def confusion_matrix_pred(self, pred_method, what='all', rotation_xticklabels=0,
                               force_xlabelnbr=False, figsize=None, verb=False):
 
         if self.save_pgf:
@@ -1117,14 +1153,16 @@ class EvaluationTools:
                              "Prediction method {} is not in the predictions dictionary.\n".format(pred_method) +
                              "Valid options are: {}".format(self.predictions.keys()))
 
-        ylabels_order = [self.labels[l] + " ({})".format(l) for l in np.unique(self.get_label_nbrs(what, verb=verb))]
+        ylabels_order = [self.labels[l] + " ({})".format(l)
+                         for l in np.unique(self.get_label_nbrs(what, verb=verb))]
 
         # import ipdb; ipdb.set_trace()
 
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
         else:
-            xlabels_order = np.unique(self.get_pred(pred_method, what, verb=verb))
+            xlabels_order = np.unique(
+                self.get_pred(pred_method, what, verb=verb))
 
         diff = len(ylabels_order) - len(xlabels_order)
         for i in range(abs(diff)):
@@ -1140,7 +1178,8 @@ class EvaluationTools:
             pred_labels = [pred_labels_dict[l] for l in pred_labels]
 
         if self.get_pred_true_labels(pred_method) and force_xlabelnbr:
-            xlabels_order = [l.split(')')[0] for l in [l.split('(')[-1] for l in xlabels_order]]
+            xlabels_order = [l.split(')')[0] for l in [l.split(
+                '(')[-1] for l in xlabels_order]]
 
         if type(xlabels_order) is np.ndarray:
             xlabels_order = xlabels_order.tolist()
@@ -1165,11 +1204,14 @@ class EvaluationTools:
                 i = int(y + 0.5)
                 j = int(x + 0.5)
 
-                selected_label_nbr = np.unique(self.get_label_nbrs(verb=verb))[i]
+                selected_label_nbr = np.unique(
+                    self.get_label_nbrs(verb=verb))[i]
                 if self.get_pred_true_labels(pred_method):
-                    selected_pred_nbr = np.unique(self.get_label_nbrs(verb=verb))[j]
+                    selected_pred_nbr = np.unique(
+                        self.get_label_nbrs(verb=verb))[j]
                 else:
-                    selected_pred_nbr = np.unique(self.get_pred(pred_method, verb=verb))[j]
+                    selected_pred_nbr = np.unique(
+                        self.get_pred(pred_method, verb=verb))[j]
 
                 selection = np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
                                            self.get_pred(pred_method, what, verb) == selected_pred_nbr)
@@ -1204,7 +1246,8 @@ class EvaluationTools:
             ax.set_yticklabels([''] + ylabels_order)
 
         if xlabels_order != []:
-            ax.set_xticklabels([''] + xlabels_order, rotation=rotation_xticklabels)
+            ax.set_xticklabels([''] + xlabels_order,
+                               rotation=rotation_xticklabels)
 
         plt.gcf().subplots_adjust(left=0.5)
 
@@ -1218,7 +1261,8 @@ class EvaluationTools:
             fig.canvas.mpl_connect('button_press_event', onclick)
             plt.show()
         else:
-            plt.savefig('{}confMat-{}.pgf'.format(self.save_plot_dir, pred_method))
+            plt.savefig(
+                '{}confMat-{}.pgf'.format(self.save_plot_dir, pred_method))
 
         plt.close()
 
