@@ -135,6 +135,7 @@ class EvaluationTools:
                              file,
                              channel,
                              which_data='mainpar',
+                             all_labeled=False,
                              only_idx=None,
                              force_add=False):
 
@@ -169,8 +170,6 @@ class EvaluationTools:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "Parameter 'pl_channel' has to be of type int.")
 
-        print('self.pl_channel = {}'.format(self.pl_channel))
-
         # if file already exists ask again
         if force_add == True and self.files != None and file in self.files:
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -192,9 +191,17 @@ class EvaluationTools:
             if 'events' not in ds.keys():
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "No group 'events' in the provided hdf5 file '{}'.".format(file))
-
-            # if we got a list of idx to only include in the dataset then only use these
-            if only_idx is not None:
+            # if the all_labeled flag is set, include exactly the events that are labeled
+            if all_labeled:
+                only_idx = []
+                length_events = ds['events/event'].shape[1]
+                for i in range(length_events):
+                    if ds['events/labels'][channel, i] != 0:
+                        only_idx.append(i)
+                nbr_events_added = len(only_idx)
+                del length_events
+            # elif we got a list of idx to only include in the dataset then only use these
+            elif only_idx is not None:
                 nbr_events_added = len(only_idx)
             else:
                 nbr_events_added = ds['events/event'].shape[1]
@@ -263,19 +270,20 @@ class EvaluationTools:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "A prediction method with the name '{}' allready exists.".format(pred_method))
 
-    def save_prediction(self, pred_method, path, fname):
+    def save_prediction(self, pred_method, path, fname, channel):
         """
         Saves the predictions as a CDV file
 
         :param pred_method: string, the name of the model that made the predictions
         :param path: string, path to the folder that should contain the predictions
         :param fname: string, the name of the file, e.g. "bck_001"
+        :param channel: int, the number of the channel in the module, e.g. Phonon 0, Light 1
         :return: -
         """
         if self.predictions is None:
             raise AttributeError('Add predictions first!')
 
-        np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events.csv',
+        np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
 
     def split_test_train(self, test_size, scaler=None):

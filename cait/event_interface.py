@@ -152,7 +152,7 @@ class EventInterface:
         :return: -
         """
 
-        self.path_csv = path + \
+        self.path_csv_labels = path + \
             'run{}_{}/labels_{}_{}_'.format(self.run,
                                             self.module, self.bck_naming, self.bck_nmbr)
 
@@ -160,7 +160,7 @@ class EventInterface:
             for type in self.which_to_label:
                 self.labels[type] = np.zeros(
                     [self.nmbr_channels, self.nmbrs[type]])
-                np.savetxt(self.path_csv + type + '.csv',
+                np.savetxt(self.path_csv_labels + type + '.csv',
                            self.labels[type], delimiter='\n')
 
         except NameError:
@@ -180,11 +180,11 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv = path + \
+        self.path_csv_labels = path + \
             'run{}_{}/labels_{}_{}_'.format(self.run,
                                             self.module, self.bck_naming, self.bck_nmbr)
 
-        filename = self.path_csv + type + '.csv'
+        filename = self.path_csv_labels + type + '.csv'
         print('Loading Labels from {}.'.format(filename))
 
         labels = np.loadtxt(filename, delimiter='\n')
@@ -205,7 +205,7 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv = path + \
+        self.path_csv_labels = path + \
             'run{}_{}/labels_{}_{}_'.format(self.run,
                                             self.module, self.bck_naming, self.bck_nmbr)
 
@@ -213,9 +213,9 @@ class EventInterface:
         if not self.f[type]['labels']:
             print('Load HDF5 File with labels first!')
         else:
-            np.savetxt(self.path_csv + type + '.csv',
+            np.savetxt(self.path_csv_labels + type + '.csv',
                        np.array(self.f[type]['labels']), delimiter='\n')
-            print('Labels from HDF5 exported to {}.'.format(self.path_csv))
+            print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
 
     # ------------------------------------------------------------
     # PREDICTIONS HANDLING
@@ -235,11 +235,11 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv = path + \
+        self.path_csv_predictions = path + \
             'run{}_{}/{}_predictions_{}_{}_'.format(self.run,
                                             self.module, model, self.bck_naming, self.bck_nmbr)
 
-        filename = self.path_csv + type + '.csv'
+        filename = self.path_csv_predictions + type + '.csv'
         print('Loading Predictions from {}.'.format(filename))
 
         predictions = np.loadtxt(filename, delimiter='\n')
@@ -270,7 +270,7 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv = path + \
+        self.path_csv_predictions = path + \
             'run{}_{}/{}_predictions_{}_{}_'.format(self.run,
                                             self.module, model, self.bck_naming, self.bck_nmbr)
 
@@ -278,9 +278,9 @@ class EventInterface:
         if not self.f[type]['{}_predictions'.format(model)]:
             print('Load HDF5 File with labels first!')
         else:
-            np.savetxt(self.path_csv + type + '.csv',
+            np.savetxt(self.path_csv_predictions + type + '.csv',
                        np.array(self.f[type]['{}_predictions'.format(model)]), delimiter='\n')
-            print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv))
+            print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
 
     # ------------------------------------------------------------
     # FEATURE HANDLING
@@ -526,8 +526,9 @@ class EventInterface:
         print('11 ... Decaying Baseline')
         print('12 ... Temperature Rise')
         print('13 ... Stick Event')
-        print('14 ... Sawtooth Cycle')
+        print('14 ... Square Waves')
         print('15 ... Human Disturbance')
+        print('16 ... Large Sawtooth')
         print('99 ... unknown/other')
 
     def _ask_for_label(self, idx, which='phonon'):
@@ -603,23 +604,24 @@ class EventInterface:
 
         :param start_from_idx: int, an index to start labeling from
         :param label_only_class: int, if set only events of this class will be shown
-
+        :param label_only_prediction: int, if set only events of this prediction will be shown
+        :param model: string, the naming of the model that made the predictions
         :return: -
         """
         if label_only_class:
             print('Start labeling from idx {}, label only class {}.'.format(
                 start_from_idx, label_only_class))
-            label_all_classes = False
+            # label_all_classes = False
         elif label_only_prediction:
             print('Start labeling from idx {}, label only prediction {}.'.format(
                 start_from_idx, label_only_prediction))
-            label_all_classes = False
+            # label_all_classes = False
         else:
             print('Start labeling from idx {}.'.format(start_from_idx))
-            label_all_classes = True
+            # label_all_classes = True
 
         try:
-            print('Labels autosave to {}.'.format(self.path_csv))
+            print('Labels autosave to {}.'.format(self.path_csv_labels))
         except AttributeError:
             print('Load or create labels file first!')
 
@@ -628,9 +630,16 @@ class EventInterface:
             idx = np.copy(start_from_idx)
 
             while idx < self.nmbrs[type]:
-                if (label_only_class == self.labels[type][:, idx]).any() or \
-                        (label_only_prediction == self.predictions[type][self.model_names[type].index(model)][:, idx]).any() or \
-                    (label_all_classes):
+                if label_only_class is not None:
+                    class_condition = (label_only_class == self.labels[type][:, idx]).any()
+                else:
+                    class_condition = True
+                if label_only_prediction is not None:
+                    prediction_condition = (label_only_prediction == self.predictions[type][self.model_names[type].index(model)][:, idx]).any()
+                else:
+                    prediction_condition = True
+
+                if class_condition and prediction_condition: # or label_all_classes:
 
                     self._print_labels()
                     self.show(idx, type)
@@ -658,7 +667,7 @@ class EventInterface:
                             break
                         else:
                             self.labels[type][i, idx] = user_input
-                            np.savetxt(self.path_csv + type + '.csv',
+                            np.savetxt(self.path_csv_labels + type + '.csv',
                                        self.labels[type], delimiter='\n')
 
                 idx += 1

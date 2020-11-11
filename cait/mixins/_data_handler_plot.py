@@ -157,8 +157,8 @@ class PlotMixin(object):
         """
         Show a histogram of main parameter values
 
-        :param which_mp: string, possible are: [pulse_height, t_zero, t_rise, t_max, t_decaystart, t_half, t_end
-            offset, linear_drift, quadratic_drift]
+        :param which_mp: string, possible are: ['pulse_height', 't_zero', 't_rise', 't_max', 't_decaystart', 't_half', 't_end',
+            'offset', 'linear_drift', 'quadratic_drift']
         :param which_channel: int, the number of the channel from that we want the histogram
         :param type: string, either events or testpulses
         :param which_labels: list or None, if set only events with these labels are included; needs a labels file
