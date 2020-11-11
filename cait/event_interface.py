@@ -51,10 +51,12 @@ class EventInterface:
         self.std_thres = []
         for i in range(self.nmbr_channels):
             self.std_thres.append(0.001)
-        self.rf_pred = False
-        self.lstm_pred = False
         self.only_wrong = False
         self.show_filtered = False
+        self.sev = False
+        self.labels = {}
+        self.predictions = {}
+        self.model_names = {}
         self.valid_types = ['events', 'testpulses', 'noise']
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
@@ -62,6 +64,10 @@ class EventInterface:
             self.channel_names = ['Channel 1', 'Channel 2', 'Channel 3']
 
         print('Event Interface Instance created.')
+
+    # ------------------------------------------------------------
+    # INCLUDE THE DATA
+    # ------------------------------------------------------------
 
     # Load in the hdf5 dataset
     def load_bck(self, path, bck_nmbr, channels,
@@ -132,6 +138,10 @@ class EventInterface:
 
         print('Bck File loaded.')
 
+    # ------------------------------------------------------------
+    # LABELS HANDLING
+    # ------------------------------------------------------------
+
     # Create CSV file for labeling
     def create_labels_csv(self, path):
         """
@@ -145,8 +155,6 @@ class EventInterface:
         self.path_csv = path + \
             'run{}_{}/labels_{}_{}_'.format(self.run,
                                             self.module, self.bck_naming, self.bck_nmbr)
-
-        self.labels = {}
 
         try:
             for type in self.which_to_label:
@@ -180,8 +188,6 @@ class EventInterface:
         print('Loading Labels from {}.'.format(filename))
 
         labels = np.loadtxt(filename, delimiter='\n')
-        self.labels = {}
-
         labels.resize((self.nmbr_channels, self.nmbrs[type]))
         self.labels[type] = labels
 
@@ -209,29 +215,76 @@ class EventInterface:
         else:
             np.savetxt(self.path_csv + type + '.csv',
                        np.array(self.f[type]['labels']), delimiter='\n')
-            print('Labels from HDF5 imported to {}.'.format(self.path_csv))
+            print('Labels from HDF5 exported to {}.'.format(self.path_csv))
 
-    # Load RF model(s), also define downsample rate
-    # TODO test this function
-    def load_rf(self, path):
-        path_model = '{}/rf_{}_{}'.format(path, self.run, self.module)
-        rf_model = pickle.load(open(path_model, 'rb'))
-        if rf_model.down == self.down:
-            self.rf_model = rf_model
-            print('RF model loaded from {}.'.format(path_model))
-        else:
-            raise ValueError('Downsample rate must match.')
+    # ------------------------------------------------------------
+    # PREDICTIONS HANDLING
+    # ------------------------------------------------------------
 
-    # Load LSTM model(s), also define downsample rate
-    # TODO test this function
-    def load_lstm(self, path):
-        path_model = '{}/lstm_{}_{}'.format(path, self.run, self.module)
-        lstm_model = pickle.load(open(path_model, 'rb'))
-        if lstm_model.down == self.down:
-            self.lstm_model = lstm_model
-            print('LSTM model loaded from {}.'.format(path_model))
+    def load_predictions_csv(self, path, type, model):
+        """
+        Load a csv file with predictions
+
+        :param path: string, the path to the file folder,
+            e.g. "data/" --> file name "data/runXY_MODULE/<model>_predictions_bck_001_type.csv"
+        :param type: string, either events, testpulses or noise
+        :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
+        :return: -
+        """
+
+        if not type in self.valid_types:
+            raise ValueError('Type should be events, testpulses or noise.')
+
+        self.path_csv = path + \
+            'run{}_{}/{}_predictions_{}_{}_'.format(self.run,
+                                            self.module, model, self.bck_naming, self.bck_nmbr)
+
+        filename = self.path_csv + type + '.csv'
+        print('Loading Predictions from {}.'.format(filename))
+
+        predictions = np.loadtxt(filename, delimiter='\n')
+        predictions.resize((self.nmbr_channels, self.nmbrs[type]))
+
+        # append the predictions
+        if type not in self.predictions.keys():
+            self.predictions[type] = []
+        self.predictions[type].append(predictions)
+
+        # append the model name
+        if type not in self.model_names.keys():
+            self.model_names[type] = []
+        self.model_names[type].append(model)
+
+
+    def export_predictions(self, path, type, model):
+        """
+        Save the predictions included in the HDF5 file as CSV file
+
+        :param path: string, the path to the file folder,
+            e.g. "data/" --> file name "data/runXY_MODULE/<model>_predictions_bck_001_type.csv"
+        :param type: string, either events or testpulses or noise
+        :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
+        :return: -
+        """
+
+        if not type in self.valid_types:
+            raise ValueError('Type should be events, testpulses or noise.')
+
+        self.path_csv = path + \
+            'run{}_{}/{}_predictions_{}_{}_'.format(self.run,
+                                            self.module, model, self.bck_naming, self.bck_nmbr)
+
+        # check if hdf5 file has labels
+        if not self.f[type]['{}_predictions'.format(model)]:
+            print('Load HDF5 File with labels first!')
         else:
-            raise ValueError('Downsample rate must match.')
+            np.savetxt(self.path_csv + type + '.csv',
+                       np.array(self.f[type]['{}_predictions'.format(model)]), delimiter='\n')
+            print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv))
+
+    # ------------------------------------------------------------
+    # FEATURE HANDLING
+    # ------------------------------------------------------------
 
     # Load NPS, also define downsample rate
     def load_nps(self, path, length_event):
@@ -245,50 +298,9 @@ class EventInterface:
     def load_of(self, path, length_event):
         raise NotImplementedError('Not implemented!')
 
-    # # Calculate Features with library
-    # # TODO kill this, this is now in DataHandler!!
-    # def calculate_features(self, type, scaler=None):
-    #
-    #     if not type in self.valid_types:
-    #         raise ValueError('Type should be events, testpulses or noise.')
-    #
-    #     try:
-    #         self.features
-    #     except AttributeError:
-    #         self.features = {}
-    #
-    #     try:
-    #         events = np.array(self.f[type]['event'])
-    #         mainpar = np.array(self.f[type]['mainpar'])
-    #     except NameError:
-    #         print('Load according Bck File first!')
-    #         return
-    #
-    #     self.features[type] = calc_ts_features(events=events,
-    #                                            mainpar=mainpar,
-    #                                            nmbr_channels=self.nmbr_channels,
-    #                                            nmbrs=self.nmbrs[type],
-    #                                            down=self.down,
-    #                                            sample_frequency=self.sample_frequency,
-    #                                            scaler=scaler)
-    #     print('Features calculated.')
-
-    # # Save Features with library
-    # def save_features(self, path):
-    #     try:
-    #         path_features = '{}run{}_{}/features_{}_{}'.format(
-    #             path, self.run, self.module, self.bck_naming, self.bck_nmbr)
-    #         pickle.dump(self.features, open(path_features, 'wb'))
-    #         print('Saved Features to {}.'.format(path_features))
-    #     except AttributeError:
-    #         print('Calculate or Load Features first!')
-
-    # # Load Features with library
-    # def load_features(self, path):
-    #     path_features = '{}run{}_{}/features'.format(
-    #         path, self.run, self.module)
-    #     self.features = pickle.load(open(path_features, 'rb'))
-    #     print('Loaded Features from {}.'.format(path_features))
+    # ------------------------------------------------------------
+    # LABEL AND VIEWER INTERFACE
+    # ------------------------------------------------------------
 
     def _plot_mp(self, main_par, down=1, color='r', offset_in_samples=0):
         """
@@ -336,10 +348,9 @@ class EventInterface:
         print('down ... downsample')
         print('der ... show derivative of event')
         print('mp ... show main parameters')
-        print('rf ... show prediction of RF')
-        print('lstm ... show prediction of LSTM')
         print('triang ... show triangulation')
         print('of ... show filtered event')
+        print('sev ... show fitted standardevent')
         print('q ... quit options menu')
 
         while True:
@@ -382,14 +393,9 @@ class EventInterface:
                 print('Show Main Parameters set to: ', self.show_mp)
 
             # random forest
-            elif user_input == 'rf':
-                self.rf_pred = not self.rf_pred
-                print('Show RF prediction set to: ', self.rf_pred)
-
-            # lstm
-            elif user_input == 'lstm':
-                self.lstm_pred = not self.lstm_pred
-                print('Show LSTM prediction set to: ', self.lstm_pred)
+            elif user_input == 'sev':
+                self.sev = not self.sev
+                print('Show SEV fit set to: ', self.sev)
 
             # quit
             elif user_input == 'q':
@@ -444,6 +450,10 @@ class EventInterface:
         if self.show_mp:
             main_par = np.array(self.f[type]['mainpar'][:, idx])
 
+        # sev TODO
+        elif self.sev:
+            raise NotImplementedError('Not implemented!')
+
         # def colors
         if self.nmbr_channels == 2:
             colors = ['blue', 'red']
@@ -472,6 +482,8 @@ class EventInterface:
                 self._plot_mp(
                     main_par[i], color=anti_colors[i], down=self.down)
 
+            # sev TODO
+
         plt.show(block=False)
         # -------- END PLOTTING --------
 
@@ -485,20 +497,13 @@ class EventInterface:
         except NameError:
             print('No or incorrect Labels.')
 
-        # rf
-        if self.rf_pred:
-            try:
-                # what about features??
-                print('RF not implmented.')
-            except AttributeError:
-                print('No RF.')
+        # predictions
+        if len(self.predictions) > 0:
+            for p_arr in self.predictions[type]:
+                pred = p_arr[:, idx]
+                for i, nm in enumerate(self.channel_names):
+                    print('Prediction {}: {}'.format(nm, pred[i]))
 
-        # lstm
-        if self.lstm_pred:
-            try:
-                self.lstm_model(event)
-            except AttributeError:
-                print('No LSTM.')
 
     def _print_labels(self):
         """
@@ -581,7 +586,12 @@ class EventInterface:
                 print('Enter valid index!')
 
 
-    def start_labeling(self, start_from_idx, label_only_class=None):
+    def start_labeling(self,
+                       start_from_idx,
+                       label_only_class=None,
+                       label_only_prediction=None,
+                       model=None,
+                       all_wrong_pred=False):
         """
         Starts the label/view interface
         The user gets the events shown and is asked for labels. There are viewer options available:
@@ -593,11 +603,16 @@ class EventInterface:
 
         :param start_from_idx: int, an index to start labeling from
         :param label_only_class: int, if set only events of this class will be shown
+
         :return: -
         """
         if label_only_class:
             print('Start labeling from idx {}, label only class {}.'.format(
                 start_from_idx, label_only_class))
+            label_all_classes = False
+        elif label_only_prediction:
+            print('Start labeling from idx {}, label only prediction {}.'.format(
+                start_from_idx, label_only_prediction))
             label_all_classes = False
         else:
             print('Start labeling from idx {}.'.format(start_from_idx))
@@ -613,7 +628,9 @@ class EventInterface:
             idx = np.copy(start_from_idx)
 
             while idx < self.nmbrs[type]:
-                if (label_only_class == self.labels[type][:, idx]).any() or (label_all_classes):
+                if (label_only_class == self.labels[type][:, idx]).any() or \
+                        (label_only_prediction == self.predictions[type][self.model_names[type].index(model)][:, idx]).any() or \
+                    (label_all_classes):
 
                     self._print_labels()
                     self.show(idx, type)

@@ -45,6 +45,8 @@ class EvaluationTools:
 
     color_order = mpl_default_colors
 
+    scaler = None
+
     # ################### PRIVATE ###################
 
     def __add_data(self, data):
@@ -129,32 +131,47 @@ class EvaluationTools:
 
     # ################### OTHER ###################
 
-    def add_events_from_file(self, file, pl_channel, which_data='mainpar', force_add=False):
+    def add_events_from_file(self,
+                             file,
+                             channel,
+                             which_data='mainpar',
+                             only_idx=None,
+                             force_add=False):
+
+        # --------------------------------------------
+        # INPUT HANDLING
+        # --------------------------------------------
+
+        # check if the file input has type string
         if type(file) is not str:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The variabel must be of type string and not '{}'.".format(type(file)))
 
+        # check if the file is accessable
         if not os.path.isfile(file):
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The given hdf5 file '{}' does not exist.".format(file))
 
+        # check if the data key is correct
         if which_data != 'mainpar' and which_data != 'timeseries':
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
                              "Only 'mainpar' or 'timeseries' are valid options to read from file.")
 
-        if type(pl_channel) is int:
-            if pl_channel == 0 or pl_channel == 1:
-                self.pl_channel = pl_channel
+        # check if we look at a correct channel
+        if type(channel) is int:
+            if channel == 0 or channel == 1:
+                self.pl_channel = channel
             else:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "Parameter 'pl_channel = {}' has no valid value.\n" +
-                                 "(Use '0' for the phonon and '1' for the light)".format(pl_channel))
+                                 "(Use '0' for the phonon and '1' for the light)".format(channel))
         else:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "Parameter 'pl_channel' has to be of type int.")
 
         print('self.pl_channel = {}'.format(self.pl_channel))
 
+        # if file already exists ask again
         if force_add == True and self.files != None and file in self.files:
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Data from this file already exists. Continue? [y/N]")
@@ -162,46 +179,70 @@ class EvaluationTools:
             if cont != 'y' and cont != 'Y':
                 return
 
+        # --------------------------------------------
+        # THE ACTUAL HAPPENING
+        # --------------------------------------------
+
+        # here the files are added as data source
         self.__add_files(file)
+
         with h5py.File(file, 'r') as ds:
 
+            # check if the hdf5 set has events
             if 'events' not in ds.keys():
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "No group 'events' in the provided hdf5 file '{}'.".format(file))
 
-            nbr_events_added = ds['events/event'].shape[1]
+            # if we got a list of idx to only include in the dataset then only use these
+            if only_idx is not None:
+                nbr_events_added = len(only_idx)
+            else:
+                nbr_events_added = ds['events/event'].shape[1]
+                only_idx = [i for i in range(nbr_events_added)]
+
+            # find the index of the current file in the list of files
             file_index = self.files.index(file)
 
             if which_data == 'mainpar':
                 self.__add_data(
-                    np.delete(ds['events/mainpar'][pl_channel, :, :], ds['events/mainpar'].attrs['offset'], axis=1))
-            else:
-                self.__add_data(np.copy(ds['events/event'][pl_channel, :, :]))
+                    np.delete(ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
+            elif which_data == 'timeseries':
+                self.__add_data(np.copy(ds['events/event'][channel, only_idx, :]))
 
-            self.__add_events(ds['events/event'][pl_channel, :, :])
-            self.__add_mainpar(ds['events/mainpar'][pl_channel, :, :], ds['events/mainpar'].attrs.items())
+            # add also the events and the mainpar seperately
+            self.__add_events(ds['events/event'][channel, only_idx, :])
+            self.__add_mainpar(ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs.items())
 
+            # if there are labels in the h5 set then also add them
             if 'labels' in ds['events']:
-                self.__add_label_nbrs(np.copy(ds['events/labels'][pl_channel, :]))
+                # add the labels of all the events
+                self.__add_label_nbrs(np.copy(ds['events/labels'][channel, only_idx]))
 
+                # add the colors that correspond to the labels
                 if len(np.unique(self.label_nbrs)) > len(self.color_order):
                     print(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
                           "The color_order only contains {} where as there are {} unique labels.".format(
                               len(self.color_order), len(np.unique(self.label_nbrs))))
 
+                # add the namings of the labels
                 self.__add_labels(list(ds['events/labels'].attrs.items()))
 
+            # if there are no labels, add the events all as unlabeled
             else:
                 self.__add_label_nbrs(['unlabeld'] * nbr_events_added)
                 self.__add_labels([('unlabeld', 0)])
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                      "In the provided hdf5 file are no label_nbrs available an therefore are set to 'unlabeld'.")
+                      "In the provided hdf5 file are no label_nbrs available an therefore are set to 'unlabeled'.")
 
+            # add a numbering to each event to which file it belongs
             self.__add_file_nbrs(np.full(nbr_events_added, file_index))
 
+            # add a continuous numbering to the events such that they are uniquely identifiable
             self.__add_event_nbrs(
                 np.arange(self.events_per_file[file_index], self.events_per_file[file_index] + nbr_events_added))
+            # increase the value of the stored counter of the events per file
             self.events_per_file[file_index] += nbr_events_added
+            # reset the train_test split variable because new data was added
             self.is_traintest_valid = False
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
@@ -219,7 +260,22 @@ class EvaluationTools:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "A prediction method with the name '{}' allready exists.".format(pred_method))
 
-    def split_test_train(self, test_size):
+    def save_prediction(self, pred_method, path, fname):
+        """
+        Saves the predictions as a CDV file
+
+        :param pred_method: string, the name of the model that made the predictions
+        :param path: string, path to the folder that should contain the predictions
+        :param fname: string, the name of the file, e.g. "bck_001"
+        :return: -
+        """
+        if self.predictions is None:
+            raise AttributeError('Add predictions first!')
+
+        np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events.csv',
+                   np.array(self.predictions[pred_method][1]), delimiter='\n') # the index 1 should access the pred
+
+    def split_test_train(self, test_size, scaler = None):
         if test_size <= 0 or test_size >= 1:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The parameter 'test_size' can only have values between 0 and 1.")
@@ -231,7 +287,12 @@ class EvaluationTools:
 
         self.is_train = np.isin(event_num, event_num_train)
         self.is_traintest_valid = True
-        self.features = StandardScaler().fit_transform(self.data)
+        if scaler is not None:
+            self.scaler = scaler
+        else:
+            self.scaler = StandardScaler()
+            self.scaler.fit(self.data)
+        self.features = self.scaler.transform(self.data)
 
     def convert_to_labels(self, label_nbrs, verb=False):
         unique_label_nbrs = np.unique(label_nbrs)
@@ -792,7 +853,12 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-    def pulse_height_histogram(self, ncols=2, extend_plot=False, figsize=None, verb=False):
+    def pulse_height_histogram(self,
+                               ncols=2,
+                               extend_plot=False,
+                               figsize=None,
+                               bins='auto',
+                               verb=False):
         max_height = self.get_mainpar(verb=verb)[:, self.mainpar_labels['pulse_height']]
 
         max_max_height = np.max(max_height)
@@ -812,7 +878,7 @@ class EvaluationTools:
             if k * ncols + j > i:
                 break
             ax[k][j].set_title(self.labels[l])
-            ax[k][j].hist(max_height_per_label[l], bins='auto')
+            ax[k][j].hist(max_height_per_label[l], bins=bins)
 
         fig.tight_layout()
         if extend_plot:

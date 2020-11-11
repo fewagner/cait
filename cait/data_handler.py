@@ -82,7 +82,6 @@ class DataHandler(SimulateMixin,
         self.fname = fname
 
 
-    # Import label CSV file in hdf5 file
     def import_labels(self,
                       path_labels,
                       type='events',
@@ -147,6 +146,70 @@ class DataHandler(SimulateMixin,
 
         elif (path_labels != ''):
             print("File '{}' does not exist.".format(path_labels))
+
+    def import_predictions(self,
+                           model,
+                           path_predictions,
+                           type='events',
+                           path_h5=None):
+        """
+        Include the *.csv file with the predictions of a model into the HDF5 File.
+        :param model: string, the naming for the type of model, e.g. Random Forest --> "RF"
+        :param path_predictions: string, path to the folder that contains the csv file
+            e.g. "data" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>"
+        :param type: string, the type of labels, typically "events" or "testpulses"
+        :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
+            e.g. "data/hdf5s/bck_001[...].h5"
+        :return: -
+        """
+
+        if not path_h5:
+            path_h5 = self.path_h5
+
+        path_predictions = '{}{}_predictions_{}_{}.csv'.format(
+            path_predictions, model, self.run, self.module, self.fname, type)
+
+        h5f = h5py.File(path_h5, 'r+')
+
+        if path_predictions != '' and os.path.isfile(path_predictions):
+            labels = np.genfromtxt(path_predictions)
+            labels = labels.astype('int32')
+            length = len(labels)
+            labels.resize((2, int(length / 2)))
+
+            print(h5f.keys())
+
+            events = h5f[type]
+
+            if "{}_predictions".format(model) in events:
+                events["{}_predictions".format(model)][...] = labels
+                print('Edited Predictions.')
+
+            else:
+                events.create_dataset("{}_predictions".format(model), data=labels)
+                events["{}_predictions".format(model)].attrs.create(name='unlabeled', data=0)
+                events["{}_predictions".format(model)].attrs.create(name='Event_Pulse', data=1)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Test/Control_Pulse', data=2)
+                events["{}_predictions".format(model)].attrs.create(name='Noise', data=3)
+                events["{}_predictions".format(model)].attrs.create(name='Squid_Jump', data=4)
+                events["{}_predictions".format(model)].attrs.create(name='Spike', data=5)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Early_or_late_Trigger', data=6)
+                events["{}_predictions".format(model)].attrs.create(name='Pile_Up', data=7)
+                events["{}_predictions".format(model)].attrs.create(name='Carrier_Event', data=8)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Strongly_Saturated_Event_Pulse', data=9)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Decaying_Baseline', data=11)
+                events["{}_predictions".format(model)].attrs.create(name='Temperature Rise', data=12)
+                events["{}_predictions".format(model)].attrs.create(name='Stick Event', data=13)
+                events["{}_predictions".format(model)].attrs.create(name='Sawtooth Cycle', data=14)
+                events["{}_predictions".format(model)].attrs.create(name='unknown/other', data=99)
+
+                print('Added {} Predictions.'.format(model))
 
     def get_filehandle(self, path=None):
         """

@@ -22,11 +22,11 @@ filepath = ['{}{}.h5'.format(path, f) for f in fnames]
 pl_channel = 0
 
 et.add_events_from_file(file = filepath[0],
-                        pl_channel = pl_channel,
+                        channel= pl_channel,
                         which_data = 'mainpar'
                         )
 et.add_events_from_file(file = filepath[1],
-                        pl_channel = pl_channel,
+                        channel= pl_channel,
                         which_data = 'mainpar'
                         )
 

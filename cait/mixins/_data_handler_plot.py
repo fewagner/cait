@@ -149,6 +149,8 @@ class PlotMixin(object):
                   which_channel=0,
                   type='events',
                   which_labels=None,
+                  which_predictions=None,
+                  pred_model=None,
                   bins=100,
                   block=False,
                   range=None):
@@ -161,13 +163,16 @@ class PlotMixin(object):
         :param type: string, either events or testpulses
         :param which_labels: list or None, if set only events with these labels are included; needs a labels file
             to be included in the hdf5 set
+        :param which_predictions: list or None, if set only events with these predictions are included;
+            needs a predictions file to be included in the hdf5 set
+        :param pred_model: string, the naming of the model that made the predictions; must match the naming of the
+            predictions in the HDF5 file
         :param bins: int, the number of bins in the histogram
         :param block: bool, if False the matplotlib generated figure window does not block
             the futher code execution
         :param range: 2-tuple or None, if set the range of the histogram
         :return: -
         """
-
 
         f_h5 = h5py.File(self.path_h5, 'r')
         nmbr_mp = f_h5[type]['mainpar'].attrs[which_mp]
@@ -176,6 +181,10 @@ class PlotMixin(object):
             pars = []
             for lab in which_labels:
                 pars.append(par[f_h5[type]['labels'][which_channel] == lab])
+        elif which_predictions is not None:
+            pars = []
+            for pred in which_predictions:
+                pars.append(par[f_h5[type]['{}_predictions'.format(pred_model)][which_channel] == pred])
 
         # choose which mp to plot
         plt.close()
@@ -185,6 +194,13 @@ class PlotMixin(object):
                          bins=bins,
                          color=self.colors[which_channel],
                          label='Label ' + str(l), alpha=0.8,
+                         range=range)
+        elif which_predictions is not None:
+            for p, l in zip(pars, which_predictions):
+                plt.hist(p,
+                         bins=bins,
+                         color=self.colors[which_channel],
+                         label='Prediction ' + str(l), alpha=0.8,
                          range=range)
         else:
             plt.hist(par,

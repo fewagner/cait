@@ -4,6 +4,7 @@ damir_label/
 .idea/
 cait.egg-info/
 .DS_Store
+/examples/plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -119,3 +120,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+/examples/plots/
