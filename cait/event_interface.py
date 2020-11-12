@@ -529,6 +529,7 @@ class EventInterface:
         print('14 ... Square Waves')
         print('15 ... Human Disturbance')
         print('16 ... Large Sawtooth')
+        print('17 ... Cosinus Tail')
         print('99 ... unknown/other')
 
     def _ask_for_label(self, idx, which='phonon'):

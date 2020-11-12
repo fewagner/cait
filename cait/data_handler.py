@@ -140,6 +140,7 @@ class DataHandler(SimulateMixin,
                 events['labels'].attrs.create(name='Square Waves', data=14)
                 events['labels'].attrs.create(name='Human Disturbance', data=15)
                 events['labels'].attrs.create(name='Large Sawtooth', data=16)
+                events['labels'].attrs.create(name='Cosinus Tail', data=17)
                 events['labels'].attrs.create(name='unknown/other', data=99)
 
                 print('Added Labels.')
@@ -226,6 +227,7 @@ class DataHandler(SimulateMixin,
                 events["{}_predictions".format(model)].attrs.create(name='Sawtooth Cycle', data=14)
                 events["{}_predictions".format(model)].attrs.create(name='Human Disturbance', data=15)
                 events["{}_predictions".format(model)].attrs.create(name='Large Sawtooth', data=16)
+                events["{}_predictions".format(model)].attrs.create(name='Cosinus Tail', data=17)
                 events["{}_predictions".format(model)].attrs.create(name='unknown/other', data=99)
 
                 print('Added {} Predictions.'.format(model))
