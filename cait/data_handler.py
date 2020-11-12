@@ -108,9 +108,7 @@ class DataHandler(SimulateMixin,
             labels = np.genfromtxt(path_labels)
             labels = labels.astype('int32')
             length = len(labels)
-            labels.resize((2, int(length / 2)))
-
-            print(h5f.keys())
+            labels.resize((self.nmbr_channels, int(length / self.nmbr_channels)))
 
             events = h5f[type]
 
@@ -139,7 +137,10 @@ class DataHandler(SimulateMixin,
                     name='Decaying_Baseline', data=11)
                 events['labels'].attrs.create(name='Temperature Rise', data=12)
                 events['labels'].attrs.create(name='Stick Event', data=13)
-                events['labels'].attrs.create(name='Sawtooth Cycle', data=14)
+                events['labels'].attrs.create(name='Square Waves', data=14)
+                events['labels'].attrs.create(name='Human Disturbance', data=15)
+                events['labels'].attrs.create(name='Large Sawtooth', data=16)
+                events['labels'].attrs.create(name='Cosinus Tail', data=17)
                 events['labels'].attrs.create(name='unknown/other', data=99)
 
                 print('Added Labels.')
@@ -151,13 +152,17 @@ class DataHandler(SimulateMixin,
                            model,
                            path_predictions,
                            type='events',
+                           only_channel=None,
                            path_h5=None):
         """
         Include the *.csv file with the predictions of a model into the HDF5 File.
         :param model: string, the naming for the type of model, e.g. Random Forest --> "RF"
         :param path_predictions: string, path to the folder that contains the csv file
             e.g. "data" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>"
+            if the only_channel is not None, then additionally "_Ch<only_channel>" is append to the
+            looked for file
         :param type: string, the type of labels, typically "events" or "testpulses"
+        :param only_channel: int, if the labels are only for a specific channel then define here which channel
         :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
             e.g. "data/hdf5s/bck_001[...].h5"
         :return: -
@@ -166,20 +171,33 @@ class DataHandler(SimulateMixin,
         if not path_h5:
             path_h5 = self.path_h5
 
-        path_predictions = '{}{}_predictions_{}_{}.csv'.format(
-            path_predictions, model, self.run, self.module, self.fname, type)
+        if only_channel is not None:
+            app = '_Ch{}'.format(only_channel)
+        else:
+            app = ''
+
+        path_predictions = '{}{}_predictions_{}_{}{}.csv'.format(
+            path_predictions, model, self.fname, type, app)
 
         h5f = h5py.File(path_h5, 'r+')
+        events = h5f[type]
 
         if path_predictions != '' and os.path.isfile(path_predictions):
             labels = np.genfromtxt(path_predictions)
             labels = labels.astype('int32')
             length = len(labels)
-            labels.resize((2, int(length / 2)))
-
-            print(h5f.keys())
-
-            events = h5f[type]
+            if only_channel is None:
+                labels.resize((self.nmbr_channels, int(length / self.nmbr_channels)))
+            elif "{}_predictions".format(model) in events: # not overwrite the other channels
+                labels_full = np.array(events["{}_predictions".format(model)][...])
+                labels_full[only_channel, :] = labels[:]
+                labels = np.copy(labels_full)
+                del labels_full  # free the memory of the dummy array again
+            else: # overwrite the other channels with zeros
+                labels_full = np.zeros([self.nmbr_channels, length])
+                labels_full[only_channel, :] = labels
+                labels = np.copy(labels_full)
+                del labels_full  # free the memory of the dummy array again
 
             if "{}_predictions".format(model) in events:
                 events["{}_predictions".format(model)][...] = labels
@@ -207,9 +225,15 @@ class DataHandler(SimulateMixin,
                 events["{}_predictions".format(model)].attrs.create(name='Temperature Rise', data=12)
                 events["{}_predictions".format(model)].attrs.create(name='Stick Event', data=13)
                 events["{}_predictions".format(model)].attrs.create(name='Sawtooth Cycle', data=14)
+                events["{}_predictions".format(model)].attrs.create(name='Human Disturbance', data=15)
+                events["{}_predictions".format(model)].attrs.create(name='Large Sawtooth', data=16)
+                events["{}_predictions".format(model)].attrs.create(name='Cosinus Tail', data=17)
                 events["{}_predictions".format(model)].attrs.create(name='unknown/other', data=99)
 
                 print('Added {} Predictions.'.format(model))
+
+        else:
+            raise KeyError('No prediction file found at {}.'.format(path_predictions))
 
     def get_filehandle(self, path=None):
         """
