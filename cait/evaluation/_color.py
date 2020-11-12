@@ -11,10 +11,12 @@ class console_colors:
 
 
 mpl_default_colors = [u'#1f77b4', u'#ff7f0e', u'#2ca02c', u'#d62728', u'#9467bd',
-                      u'#8c564b', u'#e377c2', u'#7f7f7f', u'#bcbd22', u'#17becf', u'#7b002c', u'#00006a']
+                      u'#8c564b', u'#e377c2', u'#7f7f7f', u'#bcbd22', u'#17becf',
+                      u'#7b002c', u'#00006a', u'#76ff7b', u'#ffbf76']
 
 mpl_tab_colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple',
-                  'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan', 'tab:bordeaux', 'tab:navy']
+                  'tab:brown', 'tab:pink', 'tab:gray', 'tab:olive', 'tab:cyan',
+                  'tab:bordeaux', 'tab:navy', 'tab:light green', 'tab:light orange']
 
 
 xkcd_color_palette = [
