@@ -50,12 +50,22 @@ class EvaluationTools:
     # ################### PRIVATE ###################
 
     def __add_data(self, data):
+        """
+        Adds data to the property data.
+
+        :param data: list of floats, added to the property data
+        """
         if self.data is None:
             self.data = data
         else:
             self.data = np.vstack([self.data, data])
 
     def __add_events(self, events):
+        """
+        Adds events to the property events.
+
+        :param data: list of ints, added to the property events
+        """
         if self.events is None:
             self.events = events
         else:
@@ -122,6 +132,10 @@ class EvaluationTools:
             self.file_nbrs = np.hstack([self.file_nbrs, file_nbrs])
 
     def __check_train_set(self, verb=False):
+        """
+        Checks wether there exists a seperation in a training and test data.
+        If not then it genereates one with the property test_size.
+        """
         if not self.is_traintest_valid:
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -138,6 +152,17 @@ class EvaluationTools:
                              all_labeled=False,
                              only_idx=None,
                              force_add=False):
+        """
+        Reads in a labels, data from a channel of a given hdf5 file and
+        adds this data to the properties
+
+        :param file: hd5 file, file from which the data should be read
+        :param channel: int, the number of the channel (e.g. phonon channel)
+        :param which_data: string, default 'mainpar',select which data should be used as data (e.g. mainparameters, timeseries)
+        :param all_labeled: boolean, default False, flag is set, include exactly the events that are labeled
+        :param only_idx: list of int, indices only include in the dataset then only use these
+        :param force_add: boolean, default False, lets you add a file twice when set to True
+        """
 
         # --------------------------------------------
         # INPUT HANDLING
@@ -256,6 +281,14 @@ class EvaluationTools:
             self.is_traintest_valid = False
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
+        """
+        Adds a new prediction method with labels to the predictions property.
+
+        :param pred_method: string, the name of the model that made the predictions
+        :param path: list of int, contains the predicted labels for the events
+        :param true_labels: boolean, default False, set to True when predicted labels correspond to actual label numbers (as in superviced learning methods)
+        :param verb: boolean, default False, if True addtional output is printed to the console
+        """
         if len(pred) != len(self.label_nbrs):
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The parameter 'pred' must have the same amoutn of entries ({}) as " +
@@ -287,6 +320,15 @@ class EvaluationTools:
                    np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
 
     def split_test_train(self, test_size, scaler=None):
+        """
+        Seperates the dataset into a training set and a test set with the
+        size is determined by the input test_size in percent.
+        It also uses a scaler to make features out of the data.
+        When no scaler is provided the StandardScaler from sklearn is used.
+
+        :param test_size: float in (0,1), size of the test set
+        :param scaler: scaler, default None, used to
+        """
         if test_size <= 0 or test_size >= 1:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The parameter 'test_size' can only have values between 0 and 1.")
@@ -307,6 +349,13 @@ class EvaluationTools:
         self.features = self.scaler.transform(self.data)
 
     def convert_to_labels(self, label_nbrs, verb=False):
+        """
+        Converts given label numbers to the corresponding label.
+
+        :param label_nbrs: list of int, contain the label numbers
+        :param verb: boolean, default False, if True addtional output is printed to the console
+        :return:
+        """
         unique_label_nbrs = np.unique(label_nbrs)
         if not np.isin(unique_label_nbrs, list(self.labels.keys())).all():
             if verb:
@@ -618,17 +667,18 @@ class EvaluationTools:
                            figsize=None, perplexity=30, as_cols=False, rdseed=1,
                            verb=False):
         """
-        Plots given data with TSNE to compare different labels.
-        @params:
-            pl_channel      - Required  : Data to be plotted.
-            x_data          - Required  : Data to be plotted.
-            y_pred          - Required  : Lists of labels.
-            subtitles       - Required  : Lists of subtitles.
-            filepathlist    - Required  : Lists of paths.
-            true_labels     - Optional  : The true labels.
-            perplexity      - Optional  : Perplexity for the TSNE.
-            as_cols         - Optional  : If true plots are in columns. (Default False)
-            rdseed          - Optional  : Random seed for numpy random. (Default 1)
+        Plots data with TSNE when given a one or a list of predictions method
+        to compare different labels.
+
+        :param pl_channel:      - Required  : Data to be plotted.
+        :param x_data:          - Required  : Data to be plotted.
+        :param y_pred:          - Required  : Lists of labels.
+        :param subtitles:       - Required  : Lists of subtitles.
+        :param filepathlist:    - Required  : Lists of paths.
+        :param true_labels:     - Optional  : The true labels.
+        :param perplexity:      - Optional  : Perplexity for the TSNE.
+        :param as_cols:         - Optional  : If true plots are in columns. (Default False)
+        :param rdseed:          - Optional  : Random seed for numpy random. (Default 1)
         """
         np.random.seed(seed=rdseed)  # fixing random seed
 
@@ -723,15 +773,8 @@ class EvaluationTools:
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(plt_what, verb=verb)[id],
                             self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
-                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
-                                                                                        self.get_event_nbrs(plt_what,
-                                                                                                            verb=verb)[
-                                                                                            id],
-                                                                                        self.files[
-                                                                                            self.get_file_nbrs(plt_what,
-                                                                                                               verb=verb)[
-                                                                                                id]],
-                                                                                        text)
+                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
+                            plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
                         print(instr)
                         os.system(instr)
 
@@ -758,15 +801,8 @@ class EvaluationTools:
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
                                 self.get_event_nbrs(plt_what, verb=verb)[id],
                                 self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
-                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
-                                                                                               self.get_event_nbrs(
-                                                                                                   plt_what, verb=verb)[
-                                                                                                   id],
-                                                                                               self.files[
-                                                                                                   self.get_file_nbrs(
-                                                                                                       plt_what,
-                                                                                                       verb=verb)[id]],
-                                                                                               text)
+                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
+                                plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
                             os.system(instr)
             elif event.key == 'p':
                 for i in range(nrows * ncols):
@@ -888,6 +924,16 @@ class EvaluationTools:
                                figsize=None,
                                bins='auto',
                                verb=False):
+        """
+        Plots a histogram for all labels of the pulse hights in different
+        subplots.
+
+        :param ncols:           - optional, default 2 : number of plots side by side.
+        :param extend_plot:     - optional, default False : sets the x axis of all histograms to the same limits.
+        :param figsize:         - optional, default None : changes the overall figure size.
+        :param bins:            - optional, default auto : bins for the histograms.
+        :param verb:            - optional, default False : ouputs additional information.
+        """
         max_height = self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
 
@@ -929,6 +975,14 @@ class EvaluationTools:
         plt.close()
 
     def events_saturated_histogram(self, figsize=None, bins='auto', verb=False, ylog=False):
+        """
+        Plots a histogram for all event pulses and strongly saturated event pulses
+        in a single plot.
+
+        :param figsize:         - optional, default None : changes the overall figure size.
+        :param bins:            - optional, default auto : bins for the histograms.
+        :param ylog:            - optional, default False : if True the y axis is in log scale.
+        """
         if self.save_pgf:
             # set_mpl_backend_pgf()
             mpl.use('pdf')
@@ -953,7 +1007,7 @@ class EvaluationTools:
                        '{}'.format(self.labels[saturated_nbr])],
                 bins=bins)
 
-        ax.set_xlabel('pulse height [mV]')
+        ax.set_xlabel('pulse height [V]')
         ax.set_ylabel('number of events')
 
         plt.legend()
@@ -969,7 +1023,18 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-    def correctly_labeled_per_mv(self, pred_method, what='all', bin_size=4, ncols=2, extend_plot=False, verb=False):
+    def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, extend_plot=False, verb=False):
+        """
+        Plots the number of correctly predicted labels over volts (pulse height)
+        for every label.
+
+        :param pred_method:     - Required : Name of the predictions method.
+        :param what:            - Optional, default all : test or train data or all.
+        :param bin_size:        - Optional, default 4 : bin size for calculating the average.
+        :param ncols:           - Optional, default 2 : number of plots side by side.
+        :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
+        :param verb:            - Optional, default False : if True additional information is printed on the console.
+        """
         if self.save_pgf:
             set_mpl_backend_pgf()
 
@@ -1050,13 +1115,27 @@ class EvaluationTools:
                 ax[k][j].plot(bin_boundries[l][0],
                               bin_boundries[l][1])
 
-        plt.xlable('pulse height [mV]')
+        plt.xlable('pulse height [V]')
         plt.ylable('accuray')
         plt.show()
+
+
 
     def correctly_labeled_events_per_pulse_height(self, pred_method, what='all',
                                                   bin_size=4, ncols=2, extend_plot=False,
                                                   figsize=None, verb=False):
+        """
+        Plots the number of correctly predicted labels over volts (pulse height)
+        for events.
+
+        :param pred_method:     - Required : Name of the predictions method.
+        :param what:            - Optional, default all : test or train data or all.
+        :param bin_size:        - Optional, default 4 : bin size for calculating the average.
+        :param ncols:           - Optional, default 2 : number of plots side by side.
+        :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
+        :param figsize:         - optional, default None : changes the overall figure size.
+        :param verb:            - Optional, default False : if True additional information is printed on the console.
+        """
         if self.save_pgf:
             set_mpl_backend_pgf()
 
@@ -1133,7 +1212,7 @@ class EvaluationTools:
         ax.plot(bin_boundries[l][0],
                 bin_boundries[l][1])
 
-        ax.set_xlabel('pulse height [mV]')
+        ax.set_xlabel('pulse height [V]')
         ax.set_ylabel('accuray')
         ax.set_xlim(0, 0.2)
         # plt.gcf().subplots_adjust(bottom=-0.1)
@@ -1144,8 +1223,25 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
+
+
     def confusion_matrix_pred(self, pred_method, what='all', rotation_xticklabels=0,
                               force_xlabelnbr=False, figsize=None, verb=False):
+        """
+        Plots a confusion matrix to better visualize which labels are better
+        predicted by a certain prediction method.
+        In the (i,j) position the number of i labels which are predicted a j
+        are written.
+        When clicking on a matrix element the event number and from which file
+        is printed out in the console
+
+        :param pred_method:         - Required : Name of the predictions method.
+        :param what:                - Optional, default all : test or train data or all.
+        :param rotation_xticklabels:- Optional, default 0 : lets you rotate the x tick labels.
+        :param force_xlabelnbr:     - Optional, default False : uses the number instead of the labels for better readability.
+        :param figsize:             - optional, default None : changes the overall figure size.
+        :param verb:                - Optional, default False : if True additional information is printed on the console.
+        """
 
         if self.save_pgf:
             set_mpl_backend_pgf()
@@ -1164,7 +1260,6 @@ class EvaluationTools:
         ylabels_order = [self.labels[l] + " ({})".format(l)
                          for l in np.unique(self.get_label_nbrs(what, verb=verb))]
 
-        # import ipdb; ipdb.set_trace()
 
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
@@ -1193,7 +1288,6 @@ class EvaluationTools:
             xlabels_order = xlabels_order.tolist()
         if type(ylabels_order) is np.ndarray:
             ylabels_order = ylabels_order.tolist()
-        # import ipdb; ipdb.set_trace()
         cm = confusion_matrix(self.get_label_nbrs(what, verb=verb),
                               self.get_pred(pred_method, what, verb=verb))
         if verb:
@@ -1203,7 +1297,6 @@ class EvaluationTools:
             set_mpl_backend_pgf()
 
         def onclick(event):
-            # import ipdb; ipdb.set_trace()
             if event.inaxes == ax:
                 cont, ind = cax.contains(event)
 
@@ -1274,25 +1367,14 @@ class EvaluationTools:
 
         plt.close()
 
-        # if self.save_pgf:
-        #     self.plot_confusion_matrix(self.get_label_nbrs(what, verb=verb),
-        #                           pred_labels,
-        #                           xlabels_order=xlabels_order,
-        #                           ylabels_order=ylabels_order,
-        #                           rotation_xticklabels=rotation_xticklabels,
-        #                           figsize=figsize,
-        #                           save_fpath='{}confMat-{}.pgf'.format(self.save_plot_dir,pred_method),
-        #                           verbose=verb)
-        # else:
-        #     self.plot_confusion_matrix(self.get_label_nbrs(what, verb=verb),
-        #                           pred_labels,
-        #                           xlabels_order=xlabels_order,
-        #                           ylabels_order=ylabels_order,
-        #                           rotation_xticklabels=rotation_xticklabels,
-        #                           figsize=figsize,
-        #                           verbose=verb)
 
     def plot_labels_distribution(self, figsize=None):
+        """
+        Uses a bar graph to visualize how often a label occures in the
+        dataset
+
+        :param figsize:             - optional, default None : changes the overall figure size.
+        """
         if self.save_pgf:
             set_mpl_backend_pgf()
 

@@ -1,4 +1,8 @@
-# console colors
+# This file contains different color shemes and color sequences to color
+# matplotlib plots as well es consol text.
+
+
+# class for different console colors
 class console_colors:
     HEADER = '\033[95m'
     OKBLUE = '\033[94m'
