@@ -1,5 +1,12 @@
 import numpy as np
 
+def get_q(m):
+    """
+    Get the q value for an m-sample moving average
+
+    :param m: int, the number of samples after which the weights decay to 1/e
+    """
+    return np.exp(-1/m)
 
 class MovingAverageTrigger():
     """

@@ -3,12 +3,10 @@
 # -----------------------------------------------------------
 
 import h5py
-import pickle
 import numpy as np
 import matplotlib.pyplot as plt
 import math
 from .features._fem import get_elements, plot_S1
-from .features._ts_feat import calc_ts_features
 
 # -----------------------------------------------------------
 # CLASS
@@ -286,10 +284,6 @@ class EventInterface:
     # FEATURE HANDLING
     # ------------------------------------------------------------
 
-    # Load NPS, also define downsample rate
-    def load_nps(self, path, length_event):
-        raise NotImplementedError('Not implemented!')
-
     # Load Stdevent, also define downsample rate
     def load_sev(self, path, length_event):
         raise NotImplementedError('Not implemented!')
@@ -437,6 +431,7 @@ class EventInterface:
         # optimum filter
         elif self.show_filtered:
             raise NotImplementedError('Not implemented!')
+            # TODO filter the event
             appendix = 'Filtered'
 
         # triangulation
@@ -450,9 +445,10 @@ class EventInterface:
         if self.show_mp:
             main_par = np.array(self.f[type]['mainpar'][:, idx])
 
-        # sev TODO
+        # sev
         elif self.sev:
             raise NotImplementedError('Not implemented!')
+            # TODO get the parameters and the template
 
         # def colors
         if self.nmbr_channels == 2:
@@ -592,8 +588,7 @@ class EventInterface:
                        start_from_idx,
                        label_only_class=None,
                        label_only_prediction=None,
-                       model=None,
-                       all_wrong_pred=False):
+                       model=None):
         """
         Starts the label/view interface
         The user gets the events shown and is asked for labels. There are viewer options available:
@@ -636,7 +631,9 @@ class EventInterface:
                 else:
                     class_condition = True
                 if label_only_prediction is not None:
-                    prediction_condition = (label_only_prediction == self.predictions[type][self.model_names[type].index(model)][:, idx]).any()
+                    preds = self.predictions[type][self.model_names[type].index(model)][:, idx]
+                    prediction_condition = (label_only_prediction == preds).any()
+                    del preds
                 else:
                     prediction_condition = True
 

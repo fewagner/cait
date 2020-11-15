@@ -1,3 +1,7 @@
+# -----------------------------------------------------------
+# IMPORTS
+# -----------------------------------------------------------
+
 import os
 import h5py
 import numpy as np
@@ -14,6 +18,9 @@ from sklearn.manifold import TSNE
 from .evaluation._color import console_colors, mpl_default_colors
 from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
 
+# -----------------------------------------------------------
+# CLASS
+# -----------------------------------------------------------
 
 class EvaluationTools:
     save_plot_dir = './'
@@ -217,41 +224,44 @@ class EvaluationTools:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "No group 'events' in the provided hdf5 file '{}'.".format(file))
             # if the all_labeled flag is set, include exactly the events that are labeled
+            use_idx = []
             if all_labeled:
-                only_idx = []
-                length_events = ds['events/event'].shape[1]
-                for i in range(length_events):
+                if only_idx is None:
+                    length_events = ds['events/event'].shape[1]
+                    only_idx = [i for i in range(length_events)]
+                    del length_events
+                for i in only_idx:
                     if ds['events/labels'][channel, i] != 0:
-                        only_idx.append(i)
-                nbr_events_added = len(only_idx)
-                del length_events
+                        use_idx.append(i)
+                nbr_events_added = len(use_idx)
             # elif we got a list of idx to only include in the dataset then only use these
             elif only_idx is not None:
                 nbr_events_added = len(only_idx)
+                use_idx = only_idx
             else:
                 nbr_events_added = ds['events/event'].shape[1]
-                only_idx = [i for i in range(nbr_events_added)]
+                use_idx = [i for i in range(nbr_events_added)]
 
             # find the index of the current file in the list of files
             file_index = self.files.index(file)
 
             if which_data == 'mainpar':
                 self.__add_data(
-                    np.delete(ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
+                    np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
             elif which_data == 'timeseries':
                 self.__add_data(
-                    np.copy(ds['events/event'][channel, only_idx, :]))
+                    np.copy(ds['events/event'][channel, use_idx, :]))
 
             # add also the events and the mainpar seperately
-            self.__add_events(ds['events/event'][channel, only_idx, :])
+            self.__add_events(ds['events/event'][channel, use_idx, :])
             self.__add_mainpar(
-                ds['events/mainpar'][channel, only_idx, :], ds['events/mainpar'].attrs.items())
+                ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs.items())
 
             # if there are labels in the h5 set then also add them
             if 'labels' in ds['events']:
                 # add the labels of all the events
                 self.__add_label_nbrs(
-                    np.copy(ds['events/labels'][channel, only_idx]))
+                    np.copy(ds['events/labels'][channel, use_idx]))
 
                 # add the colors that correspond to the labels
                 if len(np.unique(self.label_nbrs)) > len(self.color_order):
@@ -280,6 +290,8 @@ class EvaluationTools:
             # reset the train_test split variable because new data was added
             self.is_traintest_valid = False
 
+        print('Added Events from file to instance.')
+
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
         """
         Adds a new prediction method with labels to the predictions property.
@@ -303,6 +315,8 @@ class EvaluationTools:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "A prediction method with the name '{}' allready exists.".format(pred_method))
 
+        print('Added Predictions to instance.')
+
     def save_prediction(self, pred_method, path, fname, channel):
         """
         Saves the predictions as a CDV file
@@ -318,6 +332,8 @@ class EvaluationTools:
 
         np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
+
+        print('Saved Predictions as CSV file.')
 
     def split_test_train(self, test_size, scaler=None):
         """
@@ -347,6 +363,8 @@ class EvaluationTools:
             self.scaler = StandardScaler()
             self.scaler.fit(self.data)
         self.features = self.scaler.transform(self.data)
+
+        print('Data set splitted and scaled.')
 
     def convert_to_labels(self, label_nbrs, verb=False):
         """

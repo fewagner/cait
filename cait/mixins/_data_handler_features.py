@@ -115,6 +115,7 @@ class FeaturesMixin(object):
     def recalc_sev(self,
                    type='events',
                    use_labels=True,
+                   correct_label=None,
                    pulse_height_intervall=[[0.5, 1.5], [0.5, 1.5]],
                    left_right_cutoff=None,
                    rise_time_intervall=None,
@@ -162,21 +163,24 @@ class FeaturesMixin(object):
         inp = [left_right_cutoff, rise_time_intervall, decay_time_intervall, onset_intervall]
         for i, var in enumerate(inp):
             if var is None:
-                inp[i] = [None for i in range(self.nmbr_channels)]
+                inp[i] = [None for c in range(self.nmbr_channels)]
 
         if use_labels:
             labels = h5f[type]['labels']
         else:
-            labels = [None, None]
+            labels = [None for c in range(self.nmbr_channels)]
 
-        if type == 'events':
-            sev = h5f.require_group('stdevent')
-            correct_label = 1
-        elif type == 'testpulses':
-            sev = h5f.require_group('stdevent_tp')
-            correct_label = 2
+        if correct_label is None:
+            if type == 'events':
+                sev = h5f.require_group('stdevent')
+                correct_label = 1
+            elif type == 'testpulses':
+                sev = h5f.require_group('stdevent_tp')
+                correct_label = 2
+            else:
+                raise NotImplementedError('Type must be events or testpulses!')
         else:
-            raise NotImplementedError('Type must be events or testpulses!')
+            sev = h5f.require_group('stdevent_{}'.format(correct_label))
 
         for c in range(self.nmbr_channels):
             std_evs.append(generate_standard_event(events=events[c, :, :],
@@ -397,9 +401,137 @@ class FeaturesMixin(object):
                     raise KeyError('Order Polynomial must be 0,1,2,3!')
 
     # calc stdevent carrier
-    def calc_SEV_carrier(self):
-        # TODO
-        raise NotImplementedError('Not Implemented.')
+    def calc_exceptional_sev(self,
+                             naming,
+                             channel=0,
+                             type='events',
+                             use_prediction_instead_label=False,
+                             model=None,
+                             correct_label=None,
+                             idx_list=None,
+                             pulse_height_intervall=[[0.5, 1.5], [0.5, 1.5]],
+                             left_right_cutoff=None,
+                             rise_time_intervall=None,
+                             decay_time_intervall=None,
+                             onset_intervall=None,
+                             remove_offset=True,
+                             verb=True,
+                             scale_fit_height=True,
+                             sample_length=0.04):
+        """
+        Calculate an exceptional Standard Event for a Class in the HDF5 File, for only one specific channel.
+
+        :param naming: string, pick a name for the type of event
+        :param channel: int, the number of the channel in the hdf5 file
+        :param type: string, either "events" or "testpulses"
+        :param use_prediction_instead_label: bool, if True then instead of the labels the predictions are used
+        :param model: string or None, if set this is the name of the model whiches predictions are in the
+            h5 file, e.g. "RF" --> look for "RF_predictions"
+        :param correct_label: int or None, if not None use only events with this label
+        :param idx_list: list of ints or None, if set then only these indices are used for the sev creation
+        :param pulse_height_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the pulse heights to include into the creation of the SEV
+        :param left_right_cutoff: list of NMBR_CHANNELS floats, the maximal abs value of the linear slope of events
+            to be included in the Sev calculation; based on the sample index as x-values
+        :param rise_time_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the rise time to include into the creation of the SEV;
+            based on the sample index as x-values
+        :param decay_time_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the decay time to include into the creation of the SEV;
+            based on the sample index as x-values
+        :param onset_intervall:  list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+            and lower bound for the onset time to include into the creation of the SEV;
+            based on the sample index as x-values
+        :param remove_offset: bool, if True the offset is removed before the events are superposed for the
+            sev calculation; highly recommended!
+        :param verb: bool, if True some verbal feedback is output about the progress of the method
+        :param scale_fit_height: bool, if True the parametric fit to the sev is normalized to height 1 after
+            the fit is done
+        :param sample_length: float, the length of one sample in milliseconds
+        :return: -
+        """
+
+        h5f = h5py.File(self.path_h5, 'r+')
+
+        if correct_label is None and idx_list is None:
+            raise KeyError('Provide either Correct Label or Index List!')
+
+        if correct_label is not None:
+            if use_prediction_instead_label:
+                if model is not None:
+                    labels = h5f[type]['{}_predictions'.format(model)][channel]
+                else:
+                    raise KeyError('Please provide a model string!')
+            else:
+                labels = h5f[type]['labels'][channel]
+        else:
+            labels = None
+
+        if idx_list is None:
+            idx_list = [i for i in range(len(labels))]
+
+        events = h5f[type]['event'][channel, idx_list, :]
+        mainpar = h5f[type]['mainpar'][channel, idx_list, :]
+        if labels is not None:
+            labels = labels[idx_list]
+
+        sev = h5f.require_group('stdevent_{}'.format(naming))
+
+        sev_event, par = generate_standard_event(events=events,
+                                main_parameters=mainpar,
+                                labels=labels,
+                                correct_label=correct_label,
+                                pulse_height_intervall=pulse_height_intervall,
+                                left_right_cutoff=left_right_cutoff,
+                                rise_time_intervall=rise_time_intervall,
+                                decay_time_intervall=decay_time_intervall,
+                                onset_intervall=onset_intervall,
+                                remove_offset=remove_offset,
+                                verb=verb,
+                                scale_fit_height=scale_fit_height,
+                                sample_length=sample_length)
+
+
+        sev.require_dataset('event',
+                            shape=(len(sev_event),),  # this is then length of sev
+                            dtype='f')
+        sev['event'][...] = sev_event
+        sev.require_dataset('fitpar',
+                            shape=(len(par),),
+                            dtype='f')
+        sev['fitpar'][...] = par
+
+        # description of the fitparameters (data=column_in_fitpar)
+        sev['fitpar'].attrs.create(name='t_0', data=0)
+        sev['fitpar'].attrs.create(name='A_n', data=1)
+        sev['fitpar'].attrs.create(name='A_t', data=2)
+        sev['fitpar'].attrs.create(name='tau_n', data=3)
+        sev['fitpar'].attrs.create(name='tau_in', data=4)
+        sev['fitpar'].attrs.create(name='tau_t', data=5)
+
+        mp = calc_main_parameters(sev_event).getArray()
+
+        sev.require_dataset('mainpar',
+                            shape=mp.shape,
+                            dtype='f')
+
+        sev['mainpar'][...] = mp
+
+        # description of the mainpar (data=col_in_mainpar)
+        sev['mainpar'].attrs.create(name='pulse_height', data=0)
+        sev['mainpar'].attrs.create(name='t_zero', data=1)
+        sev['mainpar'].attrs.create(name='t_rise', data=2)
+        sev['mainpar'].attrs.create(name='t_max', data=3)
+        sev['mainpar'].attrs.create(name='t_decaystart', data=4)
+        sev['mainpar'].attrs.create(name='t_half', data=5)
+        sev['mainpar'].attrs.create(name='t_end', data=6)
+        sev['mainpar'].attrs.create(name='offset', data=7)
+        sev['mainpar'].attrs.create(name='linear_drift', data=8)
+        sev['mainpar'].attrs.create(name='quadratic_drift', data=9)
+
+        print('{} SEV calculated.'.format(type))
+
+        h5f.close()
 
     def calc_bl_coefficients(self, verb=False):
         """
