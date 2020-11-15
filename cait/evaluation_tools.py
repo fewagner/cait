@@ -22,6 +22,7 @@ from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsiz
 # CLASS
 # -----------------------------------------------------------
 
+
 class EvaluationTools:
     save_plot_dir = './'
     save_pgf = False
@@ -1137,8 +1138,6 @@ class EvaluationTools:
         plt.ylable('accuray')
         plt.show()
 
-
-
     def correctly_labeled_events_per_pulse_height(self, pred_method, what='all',
                                                   bin_size=4, ncols=2, extend_plot=False,
                                                   figsize=None, verb=False):
@@ -1241,8 +1240,6 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
-
     def confusion_matrix_pred(self, pred_method, what='all', rotation_xticklabels=0,
                               force_xlabelnbr=False, figsize=None, verb=False):
         """
@@ -1277,7 +1274,6 @@ class EvaluationTools:
 
         ylabels_order = [self.labels[l] + " ({})".format(l)
                          for l in np.unique(self.get_label_nbrs(what, verb=verb))]
-
 
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
@@ -1362,10 +1358,12 @@ class EvaluationTools:
         fig.colorbar(cax)
 
         if ylabels_order != []:
-            ax.set_yticklabels([''] + ylabels_order)
+            ax.set_yticks(np.arange(len(ylabels_order)))
+            ax.set_yticklabels(ylabels_order)
 
         if xlabels_order != []:
-            ax.set_xticklabels([''] + xlabels_order,
+            ax.set_xticks(np.arange(len(xlabels_order)))
+            ax.set_xticklabels(xlabels_order,
                                rotation=rotation_xticklabels)
 
         plt.gcf().subplots_adjust(left=0.5)
@@ -1373,6 +1371,7 @@ class EvaluationTools:
         for (i, j), z in np.ndenumerate(cm):
             ax.text(j, i, '{:0.1f}'.format(z), ha='center', va='center')
 
+        ax.yaxis.set_label_position('right')
         plt.xlabel('Predicted Labels')
         plt.ylabel('Labels')
         fig.tight_layout()
@@ -1384,7 +1383,6 @@ class EvaluationTools:
                 '{}confMat-{}.pgf'.format(self.save_plot_dir, pred_method))
 
         plt.close()
-
 
     def plot_labels_distribution(self, figsize=None):
         """
