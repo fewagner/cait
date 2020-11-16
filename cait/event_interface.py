@@ -7,6 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 from .features._fem import get_elements, plot_S1
+from .filter._of import filter_event
+from .fit._templates import sev_fit_template
 
 # -----------------------------------------------------------
 # CLASS
@@ -284,13 +286,28 @@ class EventInterface:
     # FEATURE HANDLING
     # ------------------------------------------------------------
 
-    # Load Stdevent, also define downsample rate
-    def load_sev(self, path, length_event):
-        raise NotImplementedError('Not implemented!')
+    # Load OF
+    def load_of(self):
+        """
+        Add the optimal transfer function from the HDF5 file
+        """
+        of_real = np.array(self.f['optimumfilter']['optimumfilter_real'])
+        of_imag = np.array(self.f['optimumfilter']['optimumfilter_imag'])
+        self.of = of_real + 1j*of_imag
+        print('Added the optimal transfer function.')
 
-    # Load OF, also define downsample rate
-    def load_of(self, path, length_event):
-        raise NotImplementedError('Not implemented!')
+    def load_sev_par(self, sample_length=0.04):
+        """
+        Add the sev fit parameters from the HDF5 file
+        """
+        sev_par = np.array(self.f['stdevent']['fitpar'])
+        t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+        self.fit_models = []
+        for c in range(self.nmbr_channels):
+            self.fit_models.append(sev_fit_template(pm_par=sev_par[c], t=t))
+
+        print('Added the sev fit parameters.')
+
 
     # ------------------------------------------------------------
     # LABEL AND VIEWER INTERFACE
@@ -386,7 +403,7 @@ class EventInterface:
                 self.show_mp = not self.show_mp
                 print('Show Main Parameters set to: ', self.show_mp)
 
-            # random forest
+            # sev fit
             elif user_input == 'sev':
                 self.sev = not self.sev
                 print('Show SEV fit set to: ', self.sev)
@@ -416,6 +433,13 @@ class EventInterface:
         event = np.array(self.f[type]['event'][:, idx, :])
         appendix = ''
 
+        # optimum filter
+        if self.show_filtered:
+            for c in range(self.nmbr_channels):
+                offset = np.mean(event[c, :int(len(event[c])/8)])
+                event[c] = filter_event(event[c] - offset, self.of[c]) + offset
+            appendix = 'Filtered'
+
         # downsample
         if not self.down == 1:
             event = event.reshape(self.nmbr_channels,
@@ -427,12 +451,6 @@ class EventInterface:
             event = self.down * \
                 np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
             appendix = 'Derivative'
-
-        # optimum filter
-        elif self.show_filtered:
-            raise NotImplementedError('Not implemented!')
-            # TODO filter the event
-            appendix = 'Filtered'
 
         # triangulation
         if self.show_triangulation:
@@ -446,9 +464,12 @@ class EventInterface:
             main_par = np.array(self.f[type]['mainpar'][:, idx])
 
         # sev
-        elif self.sev:
-            raise NotImplementedError('Not implemented!')
-            # TODO get the parameters and the template
+        if self.sev:
+            sev_fit = []
+            fp = self.f['events']['sev_fit_par'][:, idx, :]
+            for c in range(self.nmbr_channels):
+                offset = np.mean(event[c, :int(len(event[c]) / 8)])
+                sev_fit.append(self.fit_models[c].sec(*fp[c]) + offset)
 
         # def colors
         if self.nmbr_channels == 2:
@@ -478,7 +499,10 @@ class EventInterface:
                 self._plot_mp(
                     main_par[i], color=anti_colors[i], down=self.down)
 
-            # sev TODO
+            # sev
+            if self.sev:
+                plt.plot(sev_fit[i], color='orange')
+
 
         plt.show(block=False)
         # -------- END PLOTTING --------
@@ -499,6 +523,11 @@ class EventInterface:
                 pred = p_arr[:, idx]
                 for i, nm in enumerate(self.channel_names):
                     print('Prediction {}: {}'.format(nm, pred[i]))
+
+        # TPA
+        if type == 'testpulses':
+            tpa = self.f['testpulses']['testpulseamplitude'][idx]
+            print('TPA: {}'.format(tpa))
 
 
     def _print_labels(self):

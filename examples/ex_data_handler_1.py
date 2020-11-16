@@ -13,21 +13,22 @@ import cait as ai
 
 if __name__ == '__main__':
     # create Instance of the DataHandler Class
-    dh = ai.DataHandler(run=35,
-                        module='DetF',
-                        channels=[26, 27],
-                        record_length=16384)
+    dh = ai.DataHandler(run=33,
+                        module='TUM38',
+                        channels=[36, 37],
+                        record_length=8192)
 
     # set the file path for the hdf5 file
     dh.set_filepath(path_h5='toy_data',
-                    fname='bck_001')
+                    fname='bck_013')
 
     # add labels
     dh.import_labels(path_labels='toy_data')
 
     # recalculate SEV and OF and plot them all
-    dh.recalc_sev(use_labels=True,
-                  pulse_height_intervall=[0.1, 2],
+    dh.recalc_sev(use_labels=False,
+                  onset_intervall=[[1500, 3000], [1500, 3000]],
+                  left_right_cutoff=[0.0001, 0.0001],
                   scale_fit_height=True)
     dh.recalc_of()
 

@@ -31,6 +31,10 @@ if __name__ == '__main__':
     # Attention! this overwrites an existing csv file!
     ei.create_labels_csv(path='toy_data/')
 
+    ei.load_of()
+
+    ei.load_sev_par()
+
     # start the labeling process interface
     # you could also look at an individual event by index
     ei.start_labeling(start_from_idx=1,

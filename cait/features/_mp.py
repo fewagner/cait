@@ -4,8 +4,10 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as sci
 from ..fit._bl_fit import fit_quadratic_baseline
 from ..filter._ma import box_car_smoothing
+from ..filter._of import filter_event
 
 # ------------------------------------------------------------
 # MAIN PARAMETERS CLASS
@@ -286,8 +288,114 @@ def calc_main_parameters(event, down=1):
 
     return main_parameters
 
-def calc_additional_parameters(event, down=64):
+def expectation(x, dist):
+    """
+    Calculate the expectation value of a random value function
 
-    #TODO
+    :param x: 1D array, the function of the random vaiable, applied to the x value array
+    :param dist: 1D array of same length as the other array, the values of the distribution
+    """
+    return (1/len(dist))*np.dot(x,dist)
 
-    pass
+def distribution_skewness(density):
+    """
+    Calculate the skewness of a distribution, given the density as array
+
+    :param density: 1D array, the density of the distribution we want the skewness from
+    :return: float, the skewness of the given distribution
+    """
+
+    density = density/np.sum(density)
+
+    x = np.arange(len(density))
+
+    mu = expectation(x, density)
+    sigma = expectation((x-mu)**2, density)
+    std_scores = (x-mu)/sigma
+    skew = expectation(std_scores**3, density)
+
+    return skew
+
+
+def calc_additional_parameters(event,
+                               optimal_transfer_function,
+                               down=1):
+    """
+    Calculate parameters additionally to the main parameters
+
+    :param optimal_transfer_function:
+    :param down:
+    :return: List of float values parameters (maximum of array,
+                     minimum of array,
+                     variance of first 1/8 or array,
+                     mean of first 1/8 or array,
+                     variance of last 1/8 or array,
+                     mean of last 1/8 or array,
+                     variance of whole array,
+                     mean of whole array,
+                     skewness of whole array,
+                     maximum of the derivative of the array,
+                     index of maximum of the derivative of the array,
+                     minimum of the derivative of the array,
+                     index of minimum of the derivative of the array,
+                     maximum of the filtered array,
+                     index of the maximum of the filtered array,
+                     distribution skewness of the filtered samples around the max of filtered array)
+    """
+
+    length_event = len(event)
+    event = event - np.mean(event[:int(length_event/8)])
+
+    # smoothing
+    if down == 1:
+        event_smoothed = box_car_smoothing(event)
+    else:
+        event_smoothed = event.reshape(int(length_event / down), down)
+        event_smoothed = np.mean(event_smoothed, axis=1)
+
+    length_event_smoothed = len(event_smoothed)
+
+    # Max and Min
+    max = np.max(event_smoothed)
+    min = np.max(event_smoothed)
+
+    # Variance and Mean of first 1 / 8 and last 1 / 8
+    var_start = np.var(event_smoothed[:int(length_event_smoothed/8)])
+    mean_start = np.mean(event_smoothed[:int(length_event_smoothed/8)])
+    var_end = np.var(event_smoothed[-int(length_event_smoothed/ 8):])
+    mean_end = np.mean(event_smoothed[-int(length_event_smoothed/ 8):])
+
+    # Variance, Mean and Skewness of whole array
+    var = np.var(event_smoothed)
+    mean = np.mean(event_smoothed)
+    skew = sci.skew(event_smoothed)
+
+    # Max, Min Derivative and position
+    der = np.diff(event_smoothed)
+    der_max = np.max(der)
+    der_maxind = np.argmax(der)
+    der_min = np.min(der)
+    der_minind = np.argmin(der)
+
+    # Min Value OF: Position maximum and skewness of samples around
+    filtered = filter_event(event, transfer_function=optimal_transfer_function)
+    filtered_max = np.max(filtered[int(length_event/8):-int(length_event/8)])
+    filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
+    filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
+
+    return np.array([max,
+                     min,
+                     var_start,
+                     mean_start,
+                     var_end,
+                     mean_end,
+                     var,
+                     mean,
+                     skew,
+                     der_max,
+                     der_maxind,
+                     der_min,
+                     der_minind,
+                     filtered_max,
+                     filtered_maxind,
+                     filtered_skew])

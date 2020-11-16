@@ -5,7 +5,7 @@
 import h5py
 import numpy as np
 from multiprocessing import Pool
-from ..features._mp import calc_main_parameters
+from ..features._mp import calc_main_parameters, calc_additional_parameters
 from functools import partial
 from ..fit._pm_fit import fit_pulse_shape
 from ..filter._of import optimal_transfer_function
@@ -51,12 +51,11 @@ class FeaturesMixin(object):
         print('CALCULATE MAIN PARAMETERS.')
 
         with Pool(processes) as p:  # basically a for loop running on 4 processes
-            p_mainpar_list_event = p.map(
-                calc_main_parameters, events['event'][0, :, :])
-            l_mainpar_list_event = p.map(
-                calc_main_parameters, events['event'][1, :, :])
-        mainpar_event = np.array([[o.getArray() for o in p_mainpar_list_event],
-                                  [o.getArray() for o in l_mainpar_list_event]])
+            mainpar_list_event = []
+            for c in range(self.nmbr_channels):
+                mainpar_list_event.append(p.map(
+                    calc_main_parameters, events['event'][c, :, :]))
+        mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
 
         events.require_dataset(name='mainpar',
                                shape=(mainpar_event.shape),
@@ -478,19 +477,18 @@ class FeaturesMixin(object):
         sev = h5f.require_group('stdevent_{}'.format(naming))
 
         sev_event, par = generate_standard_event(events=events,
-                                main_parameters=mainpar,
-                                labels=labels,
-                                correct_label=correct_label,
-                                pulse_height_intervall=pulse_height_intervall,
-                                left_right_cutoff=left_right_cutoff,
-                                rise_time_intervall=rise_time_intervall,
-                                decay_time_intervall=decay_time_intervall,
-                                onset_intervall=onset_intervall,
-                                remove_offset=remove_offset,
-                                verb=verb,
-                                scale_fit_height=scale_fit_height,
-                                sample_length=sample_length)
-
+                                                 main_parameters=mainpar,
+                                                 labels=labels,
+                                                 correct_label=correct_label,
+                                                 pulse_height_intervall=pulse_height_intervall,
+                                                 left_right_cutoff=left_right_cutoff,
+                                                 rise_time_intervall=rise_time_intervall,
+                                                 decay_time_intervall=decay_time_intervall,
+                                                 onset_intervall=onset_intervall,
+                                                 remove_offset=remove_offset,
+                                                 verb=verb,
+                                                 scale_fit_height=scale_fit_height,
+                                                 sample_length=sample_length)
 
         sev.require_dataset('event',
                             shape=(len(sev_event),),  # this is then length of sev
@@ -600,3 +598,36 @@ class FeaturesMixin(object):
         h5f['noise']['nps'] = mean_nps
 
         h5f.close()
+
+    def recalc_additional_mp(self, type, path_h5=None, down=1):
+        """
+        Calculate the additional Main Parameters for the Events in an HDF5 File.
+
+        :param type: string, either events or testpulses
+        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
+        :param down: int, the downsample rate before calculating the parameters
+        :return: -
+        """
+
+        if not path_h5:
+            path_h5 = self.path_h5
+
+        h5f = h5py.File(path_h5, 'r+')
+        events = h5f[type]
+
+        of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
+        of_imag = np.array(h5f['optimumfilter']['optimumfilter_real'])
+        of = of_real + 1j * of_imag
+
+        print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
+
+        add_par_event = []
+        for c in range(self.nmbr_channels):
+            add_par_event.append([calc_additional_parameters(ev, of[c], down=down) for ev in events['event'][c]])
+
+        add_par_event = np.array(add_par_event)
+
+        events.require_dataset(name='add_mainpar',
+                               shape=(add_par_event.shape),
+                               dtype='float')
+        events['add_mainpar'][...] = add_par_event

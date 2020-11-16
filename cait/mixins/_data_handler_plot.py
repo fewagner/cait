@@ -269,9 +269,24 @@ class PlotMixin(object):
                 only_idx=None,
                 type='events',
                 which_labels=None,
+                good_y_classes=None,
                 which_predictions=None,
                 pred_model=None,
                 block=False):
+        """
+        Make a Light Yield Plot out of specific Labels or Predictions
+
+        :param x_channel: int, the number of the channel that PHs are on the x axis
+        :param y_channel: int, the number of the channel that PHs are on the y axis
+        :param only_idx: list of ints or None, if set only these indices are used
+        :param type: string, either events or testpulses
+        :param which_labels: list of ints, the labels that are used in the plot
+        :param good_y_classes: list of ints or None, if set events with y class other than
+            in that list are not used in the plot
+        :param which_predictions: list of ints or None, the predictions that are used in the plot
+        :param pred_model: string, the naming of the model from that the predictions are
+        :param block: bool, if True the plots are non blocking in the cmd
+        """
 
         f_h5 = h5py.File(self.path_h5, 'r')
         x_par = f_h5[type]['mainpar'][x_channel, :, 0]
@@ -287,14 +302,28 @@ class PlotMixin(object):
             x_pars = []
             y_pars = []
             for lab in which_labels:
-                x_pars.append(x_par[f_h5[type]['labels'][x_channel, only_idx] == lab])
-                y_pars.append(y_par[f_h5[type]['labels'][x_channel, only_idx] == lab])
+                if good_y_classes is None:
+                    condition = f_h5[type]['labels'][x_channel, only_idx] == lab
+                else:
+                    condition = [e in good_y_classes for e in f_h5[type]['labels'][y_channel, only_idx]]
+                    condition = np.logical_and(f_h5[type]['labels'][x_channel, only_idx] == lab,
+                                               condition)
+                x_pars.append(x_par[condition])
+                y_pars.append(y_par[condition])
         elif which_predictions is not None:
             x_pars = []
             y_pars = []
             for pred in which_predictions:
-                x_pars.append(x_par[f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred])
-                y_pars.append(y_par[f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred])
+                if good_y_classes is None:
+                    condition = f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred
+                else:
+                    condition = [e in good_y_classes for e in
+                                 f_h5[type]['{}_predictions'.format(pred_model)][y_channel, only_idx]]
+                    condition = np.logical_and(
+                        f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred,
+                        condition)
+                x_pars.append(x_par[condition])
+                y_pars.append(y_par[condition])
 
         # choose which mp to plot
         plt.close()
