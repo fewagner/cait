@@ -1,4 +1,5 @@
 """
+DEPRICATED!!
 This is an example of how to train a machine learning model on all channels
 
 See also the How-Tos on the Wiki page!

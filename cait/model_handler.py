@@ -10,7 +10,7 @@ import pickle
 
 class ModelHandler:
     """
-    Wrapper class to store ML models and Scalers
+    Wrapper class to store ML models and scalers
     """
 
     def __init__(self, run, module, model_type, record_length, nmbr_channels,
@@ -54,5 +54,5 @@ class ModelHandler:
     def save(self, path):
         self.info = input('Write info about this instance: ')
         path_model = '{}/{}_run{}_{}'.format(path, self.model_type, self.run, self.module)
-        pickle.dump(self, open(path_model, 'wb'))
+        pickle.dump(self, open(path_model, 'wb'), pickle.HIGHEST_PROTOCOL)
         print('Save Model to {}.'.format(path_model))

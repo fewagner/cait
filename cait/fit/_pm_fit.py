@@ -3,7 +3,7 @@
 # -------------------------------------------------------
 
 import numpy as np
-import numba as nb
+# import numba as nb
 from scipy.optimize import curve_fit
 from ..fit._templates import pulse_template
 
@@ -12,7 +12,7 @@ from ..fit._templates import pulse_template
 # FUNCTIONS
 # -------------------------------------------------------
 
-@nb.njit
+# @nb.njit
 def arrays_equal(a, b):
     """
     A utlis function to compare if two arrays are the same, not used anymore in the current build

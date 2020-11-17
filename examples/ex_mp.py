@@ -1,3 +1,6 @@
+"""
+This is an example how to calculate the additional main parameters
+"""
 import os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import cait as ai

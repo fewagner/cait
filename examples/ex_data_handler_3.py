@@ -1,3 +1,7 @@
+"""
+This is an example how to calculate the SEV fit and the optimum filter for all events
+"""
+
 import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))

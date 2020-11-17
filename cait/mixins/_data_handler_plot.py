@@ -141,7 +141,7 @@ class PlotMixin(object):
     def show_values(self,
                     group,
                     key,
-                    idx0,
+                    idx0=None,
                     idx1=None,
                     idx2=None,
                     block=False,
@@ -164,16 +164,22 @@ class PlotMixin(object):
 
         hf5 = h5py.File(self.path_h5, 'r+')
 
-        if idx1 is None:
-            if idx2 is None:
-                vals = hf5[group][key][idx0]
-            else:
-                vals = hf5[group][key][idx0, :, idx2]
-        else:
-            if idx2 is None:
-                vals = hf5[group][key][idx0, idx1]
-            else:
-                vals = hf5[group][key][idx0, idx1, idx2]
+        if idx0 is None and idx1 is None and idx2 is None:
+            vals = hf5[group][key]
+        elif idx0 is None and idx1 is None and idx2 is not None:
+            vals = hf5[group][key][:, :, idx2]
+        elif idx0 is None and idx1 is not None and idx2 is None:
+            vals = hf5[group][key][:, idx1]
+        elif idx0 is None and idx1 is not None and idx2 is not None:
+            vals = hf5[group][key][:, idx1, idx2]
+        elif idx0 is not None and idx1 is None and idx2 is None:
+            vals = hf5[group][key][idx0]
+        elif idx0 is not None and idx1 is None and idx2 is not None:
+            vals = hf5[group][key][idx0, :, idx2]
+        elif idx0 is not None and idx1 is not None and idx2 is None:
+            vals = hf5[group][key][idx0, idx1]
+        elif idx0 is not None and idx1 is not None and idx2 is not None:
+            vals = hf5[group][key][idx0, idx1, idx2]
 
         plt.close()
 
@@ -181,6 +187,67 @@ class PlotMixin(object):
                  bins=bins,
                  range=range)
         plt.title('{} {} {},{},{}'.format(group, key, str(idx0), str(idx1), str(idx2)))
+        plt.show(block=block)
+
+    # show scatter plot of some value
+    def show_scatter(self,
+                     groups,
+                     keys,
+                     idx0s=[None, None],
+                     idx1s=[None, None],
+                     idx2s=[None, None],
+                     block=False,
+                     marker='.'):
+        """
+        Shows a scatter plot of some values from the HDF5 file
+
+        :param groups: list of string, The group index that is used in the hdf5 file,
+            typically either events, testpulses or noise; first list element applies to data on x,
+            second to data on y axis
+        :param keys: list of string, the key index of the hdf5 file, typically mainpar, fit_rms, ...;
+            first list element applies to data on x, second to data on y axis
+        :param idxs: list of int, the first index of the array; first list element applies to data on x,
+            second to data on y axis
+        :param idx0s: list of int or None, the second index of the array; first list element applies to data on x,
+            second to data on y axis
+        :param idx0s: list of int or None, the third index of the array; first list element applies to data on x,
+            second to data on y axis
+        :param block: bool, if the plot blocks the code when executed in cmd
+        :param marker: string, the marker type from pyplots scatter plot
+        :return: -
+        """
+
+        hf5 = h5py.File(self.path_h5, 'r+')
+        vals = []
+
+        for i in [0, 1]:
+            if idx0s[i] is None and idx1s[i] is None and idx2s[i] is None:
+                vals.append(hf5[groups[i]][keys[i]])
+            elif idx0s[i] is None and idx1s[i] is None and idx2s[i] is not None:
+                vals.append(hf5[groups[i]][keys[i]][:, :, idx2s[i]])
+            elif idx0s[i] is None and idx1s[i] is not None and idx2s[i] is None:
+                vals.append(hf5[groups[i]][keys[i]][:, idx1s[i]])
+            elif idx0s[i] is None and idx1s[i] is not None and idx2s[i] is not None:
+                vals.append(hf5[groups[i]][keys[i]][:, idx1s[i], idx2s[i]])
+            elif idx0s[i] is not None and idx1s[i] is None and idx2s[i] is None:
+                vals.append(hf5[groups[i]][keys[i]][idx0s[i]])
+            elif idx0s[i] is not None and idx1s[i] is None and idx2s[i] is not None:
+                vals.append(hf5[groups[i]][keys[i]][idx0s[i], :, idx2s[i]])
+            elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is None:
+                vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i]])
+            elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is not None:
+                vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i], idx2s[i]])
+
+        plt.close()
+
+        plt.scatter(vals[0],
+                    vals[1],
+                    marker=marker)
+        plt.title('(x): {} {} [{},{},{}]; (y): {} {} [{},{},{}]'.format(groups[0], keys[0],
+                                                                        str(idx0s[0]), str(idx1s[0]), str(idx2s[0]),
+                                                                        groups[1], keys[1],
+                                                                        str(idx0s[1]), str(idx1s[1]), str(idx2s[1])
+                                                                        ))
         plt.show(block=block)
 
     # show histogram of main parameter
@@ -272,7 +339,10 @@ class PlotMixin(object):
                 good_y_classes=None,
                 which_predictions=None,
                 pred_model=None,
-                block=False):
+                block=False,
+                marker='.',
+                alpha=0.8,
+                s=0.1):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
 
@@ -330,19 +400,25 @@ class PlotMixin(object):
         if which_labels is not None:
             for xp, yp, l in zip(x_pars, y_pars, which_labels):
                 plt.scatter(xp,
-                            yp,
-                            marker='.',
-                            label='Label ' + str(l), alpha=0.8)
+                            yp/xp,
+                            marker=marker,
+                            label='Label ' + str(l),
+                            alpha=alpha,
+                            s=s)
         elif which_predictions is not None:
             for xp, yp, l in zip(x_pars, y_pars, which_predictions):
                 plt.scatter(xp,
-                            yp,
-                            marker='.',
-                            label='Prediction ' + str(l), alpha=0.8)
+                            yp/xp,
+                            marker=marker,
+                            label='Prediction ' + str(l),
+                            alpha=alpha,
+                            s=s)
         else:
             plt.scatter(x_par,
-                        y_par,
-                        marker='.')
+                        y_par/y_par,
+                        marker=marker,
+                        alpha=alpha,
+                        s=s)
         plt.title(type + ' LY x_ch ' + str(x_channel) + ' y_ch ' + str(y_channel))
         plt.legend()
         plt.show(block=block)
