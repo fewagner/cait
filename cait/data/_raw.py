@@ -4,7 +4,7 @@
 
 # import os
 import numpy as np
-import numba as nb
+# import numba as nb
 import struct
 # from ..fit._pm_fit import arrays_equal
 from pathlib import Path
@@ -17,7 +17,7 @@ from ._progressBar import printProgressBar
 # FUNCTIONS
 # ---------------------------------------------------------------
 
-@nb.njit
+# @nb.njit
 def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
     """
     Converts an event from int to volt
