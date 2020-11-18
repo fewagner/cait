@@ -7,9 +7,11 @@ import os
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-from pytorch_lightning import Trainer
-from cait.datasets import CryoDataModule, Normalize, RemoveOffset, ToTensor, DownSample
+import cait as ai
+from cait.datasets import CryoDataModule
+from cait.datasets import Normalize, RemoveOffset, ToTensor, DownSample
 from cait.models import LSTMModule
+from pytorch_lightning import Trainer
 from torchvision import transforms
 import h5py
 

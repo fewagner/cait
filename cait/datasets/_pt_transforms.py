@@ -2,6 +2,7 @@
 
 import torch
 import numpy as np
+import torch.nn.functional as F
 
 # classes
 
@@ -110,5 +111,36 @@ class ToTensor(object):
         :rtype: dictionary
         """
         for key in sample.keys():
-            sample[key] = torch.from_numpy(sample[key])
+            sample[key] = torch.from_numpy(sample[key]).float()
+        return sample
+
+
+class OneHotEncode(object):
+    """
+    One Hot Encode the label incides
+    """
+
+    def __init__(self, keys, nmbr_classes):
+        """
+        Tell initial info to the instance
+
+        :param keys: the keys in each sample-dist we want to one hot encode
+        :type keys: list of strings
+        :param nmbr_classes: the number of classes to that we one hot encode
+        :type nmbr_classes: int
+        """
+        self.keys = keys
+        self.nmbr_classes = nmbr_classes
+
+    def __call__(self, sample):
+        """
+        This gets applied to every sample
+
+        :param sample: contains the features as 1D numpy arrays
+        :type sample: dictionary
+        :return: contains the features as 1D arrays with the keys in self.keys one hot encoded
+        :rtype: dictionary
+        """
+        for key in self.keys:
+            sample[key] = F.one_hot(sample[key].long(), num_classes=self.nmbr_classes)
         return sample
