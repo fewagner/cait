@@ -11,6 +11,12 @@ __all__ = ['EventInterface',
            'EvaluationTools',
            'StreamInterface',
            'data',
+           'datasets',
+           'evaluation',
            'features',
            'filter',
-           'fit']
+           'fit',
+           'models',
+           'simulate',
+           'trigger'
+           ]

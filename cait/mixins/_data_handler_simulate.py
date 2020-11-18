@@ -85,7 +85,6 @@ class SimulateMixin(object):
                                      sample_length=sample_length)
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='true_ph', data=phs)
-            data = f.create_group('onset')
             data.create_dataset(name='true_onset', data=t0s)
 
             # store sev
@@ -117,7 +116,6 @@ class SimulateMixin(object):
                                      sample_length=sample_length)
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='true_ph', data=phs)
-            data = f.create_group('onset')
             data.create_dataset(name='true_onset', data=t0s)
 
             # store sev
