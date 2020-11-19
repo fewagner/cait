@@ -12,6 +12,8 @@ def simulate_events(path_h5,
                     nmbr_channels,
                     ph_intervals=[[0, 1], [0, 1]],
                     discrete_ph=None,
+                    exceptional_sev_naming=None,
+                    channels_exceptional_sev=[0],
                     t0_interval=[-20, 20],  # in ms
                     fake_noise=True,
                     use_bl_from_idx=0,
@@ -33,6 +35,11 @@ def simulate_events(path_h5,
         with c the nmbr_channels; the heights are samples uniformly from these intervals
     :param discrete_ph: c Lists of values for the pulse heights for the c channels
         or None for ph intervals; the heights are sampled uniformly for the list
+    :param exceptional_sev_naming: string or None, if set, this is the group name for the
+        sev used for the simulation of events - by setting this, e.g. carrier events can be
+        simulated
+    :param channel_exceptional_sev: list of ints, the channels for that the exceptional sev is
+        used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1]
     :param t0_interval: Interval (l,u) with l lower bound for onset and u upper bound;
         the onsets are sampled uniformly from the interval
     :param fake_noise: bool, if true use simulated noise baselines, otherwise measured ones
@@ -92,13 +99,22 @@ def simulate_events(path_h5,
 
     # add pulses
     if type == 'events':
+        used_exept_sevs = 0  # this counts to get the exceptional event at correct index
         for c in range(nmbr_channels):
-            par = h5f['stdevent']['fitpar'][0]
+            if exceptional_sev_naming is None:
+                par = h5f['stdevent']['fitpar'][c]
+            else:
+                if c in channels_exceptional_sev:
+                    if len(channels_exceptional_sev) == 1:
+                        par = h5f[exceptional_sev_naming]['fitpar'] # has no channels
+                    else:
+                        par = h5f[exceptional_sev_naming]['fitpar'][used_exept_sevs]
+                        used_exept_sevs += 1
             for e in range(size):
                 sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
     elif type == 'testpulses':
         for c in range(nmbr_channels):
-            par = h5f['stdevent_tp']['fitpar'][0]
+            par = h5f['stdevent_tp']['fitpar'][c]
             for e in range(size):
                 sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
     elif type == 'noise':

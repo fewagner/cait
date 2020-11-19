@@ -19,8 +19,8 @@ class LSTMModule(LightningModule):
     Lightning module for the training of an LSTM model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
     """
-    def __init__(self, input_size, hidden_size, num_layers, seq_steps, device_name, nmbr_out, label_keys,
-                 feature_keys, lr, is_classifier=True, down=1, down_keys=None,
+    def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
+                 feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
                  norm_vals=None, offset_keys=None):
         """
         Initial information for the neural network module
@@ -106,7 +106,7 @@ class LSTMModule(LightningModule):
         if self.is_classifier:
             return F.nll_loss(logits, labels.long())
         else:
-            return F.mse_loss(logits, labels)
+            return F.mse_loss(logits, labels, reduction='mean')
 
     def training_step(self, batch, batch_idx):
 

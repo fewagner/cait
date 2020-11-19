@@ -10,7 +10,8 @@ class CryoDataModule(pl.LightningDataModule):
     Pytorch Lightning DataModule for processing of HDF5 dataset
     """
 
-    def __init__(self, hdf5_path, type, keys, channel_indices, transform=None, nmbr_events=None):
+    def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices,
+                 transform=None, nmbr_events=None):
         super().__init__()
         """
         Give instructions how to extract the data from the h5 set
@@ -21,6 +22,9 @@ class CryoDataModule(pl.LightningDataModule):
         :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
             of the data sets in the group, if None then no index is set (i.e. if the h5 data set does not belong to
             a specific channel)
+        :param feature_indices: list of lists or Nones, must have same length than the keys list, the feature indices
+            of the data sets in the group (third idx),
+            if None then no index is set (i.e. there is no third index in the set or all features are chosen)
         :param transform: pytorch transforms class, get applied to every sample when getitem is called
         :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
             from the hdf5 file with len(f['events/event'][0])
@@ -30,6 +34,7 @@ class CryoDataModule(pl.LightningDataModule):
         self.type = type
         self.keys = keys
         self.channel_indices = channel_indices
+        self.feature_indices = feature_indices
         self.transform = transform
         self.nmbr_events = nmbr_events
 
@@ -37,7 +42,7 @@ class CryoDataModule(pl.LightningDataModule):
                      shuffle_dataset=True, random_seed=None,
                      feature_keys=[], label_keys=[], keys_one_hot=[]):
         """
-        Called once to hand additional info about the data setup
+        Called once to hand additional info about the data setup, info for training
 
         :param val_size: the size of the validation set
         :type val_size: float between 0 and 1
@@ -89,6 +94,7 @@ class CryoDataModule(pl.LightningDataModule):
                                        type=self.type,
                                        keys=self.keys,
                                        channel_indices=self.channel_indices,
+                                       feature_indices=self.feature_indices,
                                        keys_one_hot=self.keys_one_hot,
                                        transform=self.transform,
                                        nmbr_events=self.nmbr_events)

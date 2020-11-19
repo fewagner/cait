@@ -65,7 +65,6 @@ class SimulateMixin(object):
 
         nmbr_thrown_events = 0
         nmbr_thrown_testpulses = 0
-        nmbr_thrown_noise = 0
 
         if size_events > 0:
             print('Simulating Events.')
