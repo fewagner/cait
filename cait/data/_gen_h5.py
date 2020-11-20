@@ -66,7 +66,7 @@ def gen_dataset_from_rdt(path_rdt,
         h5f = h5py.File("{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname,
                                                        channels[0], channels[1]), 'w')
     elif nmbr_channels > 2:
-        path = "{}{}-P_Ch{}-L_Ch{}".format(path_h5, fname)
+        path = "{}{}".format(path_h5, fname)
         for i, c in enumerate(channels):
             path += '-{}_Ch{}'.format(i+1, c)
         path += ".h5"
@@ -101,14 +101,17 @@ def gen_dataset_from_rdt(path_rdt,
 
             print('CALCULATE MAIN PARAMETERS.')
 
-            mainpar_event = np.empty([nmbr_channels, nmbr_events, 10], dtype=float) # 10 is number main parameters
+            # 10 is number main parameters
+            mainpar_event = np.empty(
+                [nmbr_channels, nmbr_events, 10], dtype=float)
 
             # basically a for loop running on multiple processes
             with get_context("spawn").Pool(processes) as p:
                 for c in range(nmbr_channels):
                     mainpar_list_event = p.map(
                         calc_main_parameters, pulse_event[c, :, :])
-                    mainpar_event[c, :, :] = np.array([o.getArray() for o in mainpar_list_event])
+                    mainpar_event[c, :, :] = np.array(
+                        [o.getArray() for o in mainpar_list_event])
 
             events.create_dataset('mainpar', data=np.array(mainpar_event))
             # description of the mainpar (data=col_in_mainpar)
@@ -127,7 +130,9 @@ def gen_dataset_from_rdt(path_rdt,
 
             print('CALCULATE FIT.')
 
-            fitpar_event = np.empty([nmbr_channels, nmbr_events, 6], dtype=float)  # 6 is number fit parameters
+            # 6 is number fit parameters
+            fitpar_event = np.empty(
+                [nmbr_channels, nmbr_events, 6], dtype=float)
 
             with get_context("spawn").Pool(processes) as p:
                 for c in range(nmbr_channels):
@@ -148,23 +153,22 @@ def gen_dataset_from_rdt(path_rdt,
             # ################# STD EVENT #################
             # [pulse_height, t_zero, t_rise, t_max, t_decaystart, t_half, t_end, offset, linear_drift, quadratic_drift]
 
-
             sev_pulse_list = []
             sev_fitpar_list = []
             for c in range(nmbr_channels):
                 stdevent_pulse, stdevent_fitpar = generate_standard_event(pulse_event[c, :, :],
-                                                                              mainpar_event[c,
-                                                                                            :, :],
-                                                                              pulse_height_intervall=[
-                                                                                  0.05, 1.5],
-                                                                              left_right_cutoff=0.1,
-                                                                              rise_time_intervall=[
-                                                                                  5, 100],
-                                                                              decay_time_intervall=[
-                                                                                  50, 2500],
-                                                                              onset_intervall=[
-                                                                                  1500, 3000],
-                                                                              verb=True)
+                                                                          mainpar_event[c,
+                                                                                        :, :],
+                                                                          pulse_height_intervall=[
+                    0.05, 1.5],
+                    left_right_cutoff=0.1,
+                    rise_time_intervall=[
+                    5, 100],
+                    decay_time_intervall=[
+                    50, 2500],
+                    onset_intervall=[
+                    1500, 3000],
+                    verb=True)
                 sev_pulse_list.append(stdevent_pulse)
                 sev_fitpar_list.append(stdevent_fitpar)
 
@@ -208,18 +212,23 @@ def gen_dataset_from_rdt(path_rdt,
         noise.create_dataset('event', data=np.array(pulse_noise))
         noise.create_dataset('hours', data=np.array(metainfo_noise[0, :, 10]))
 
-        mean_nps_all = []
-        for c in range(nmbr_channels):
-            mean_nps, _ = calculate_mean_nps(pulse_noise[c, :, :])
-            mean_nps_all.append(mean_nps)
-        noise.create_dataset('nps', data=np.array(mean_nps_all))
+        if np.shape(pulse_noise)[1] != 0:
+            mean_nps_all = []
+            for c in range(nmbr_channels):
+                mean_nps, _ = calculate_mean_nps(pulse_noise[c, :, :])
+                mean_nps_all.append(mean_nps)
+            noise.create_dataset('nps', data=np.array(mean_nps_all))
+
+        else:
+            print("DataError: No existing noise data for this channel")
 
     if (-1.0 in tpa_list) and (0 in tpa_list) and calc_sev:
         # ################# OPTIMUMFILTER #################
         # H = optimal_transfer_function(standardevent, mean_nps)
         print('CREATE OPTIMUM FILTER.')
 
-        of = np.array([optimal_transfer_function(sev, nps) for sev, nps in zip(sev_pulse_list, mean_nps_all)])
+        of = np.array([optimal_transfer_function(sev, nps)
+                       for sev, nps in zip(sev_pulse_list, mean_nps_all)])
 
         optimumfilter = h5f.create_group('optimumfilter')
         optimumfilter.create_dataset('optimumfilter_real',
@@ -256,7 +265,8 @@ def gen_dataset_from_rdt(path_rdt,
                 for c in range(nmbr_channels):
                     mainpar_list_tp = p.map(
                         calc_main_parameters, pulse_tp[c, :, :])
-                    mainpar_tp[c] = np.array([o.getArray() for o in mainpar_list_tp])
+                    mainpar_tp[c] = np.array(
+                        [o.getArray() for o in mainpar_list_tp])
 
             testpulses.create_dataset('mainpar', data=np.array(mainpar_tp))
             # description of the mainpar (data=col_in_mainpar)
@@ -289,7 +299,6 @@ def gen_dataset_from_rdt(path_rdt,
             testpulses['fitpar'].attrs.create(name='tau_n', data=3)
             testpulses['fitpar'].attrs.create(name='tau_in', data=4)
             testpulses['fitpar'].attrs.create(name='tau_t', data=5)
-
 
     h5f.close()
 

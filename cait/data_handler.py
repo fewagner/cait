@@ -36,8 +36,9 @@ class DataHandler(SimulateMixin,
         :param sample_frequency: int, the sample requency of the recording
         """
         # ask user things like which detector working on etc
-        if len(channels) != 2:
-            raise NotImplementedError('Only for 2 channels implemented.')
+        if len(channels) > 3:
+            raise NotImplementedError(
+                'Only for 3 channels or less implemented.')
         self.run = run
         self.module = module
         self.record_length = record_length
@@ -45,7 +46,8 @@ class DataHandler(SimulateMixin,
         self.channels = channels
         self.sample_frequency = sample_frequency
         self.sample_length = 1000 / self.sample_frequency
-        self.t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * self.sample_length
+        self.t = (np.arange(0, self.record_length, dtype=float) -
+                  self.record_length / 4) * self.sample_length
 
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
@@ -78,9 +80,8 @@ class DataHandler(SimulateMixin,
 
         # check if the channel number matches the file, otherwise error
         self.path_h5 = "{}/run{}_{}/{}{}.h5".format(path_h5, self.run, self.module,
-                                                                fname, app)
+                                                    fname, app)
         self.fname = fname
-
 
     def import_labels(self,
                       path_labels,
@@ -108,7 +109,8 @@ class DataHandler(SimulateMixin,
             labels = np.genfromtxt(path_labels)
             labels = labels.astype('int32')
             length = len(labels)
-            labels.resize((self.nmbr_channels, int(length / self.nmbr_channels)))
+            labels.resize(
+                (self.nmbr_channels, int(length / self.nmbr_channels)))
 
             events = h5f[type]
 
@@ -138,7 +140,8 @@ class DataHandler(SimulateMixin,
                 events['labels'].attrs.create(name='Temperature Rise', data=12)
                 events['labels'].attrs.create(name='Stick Event', data=13)
                 events['labels'].attrs.create(name='Square Waves', data=14)
-                events['labels'].attrs.create(name='Human Disturbance', data=15)
+                events['labels'].attrs.create(
+                    name='Human Disturbance', data=15)
                 events['labels'].attrs.create(name='Large Sawtooth', data=16)
                 events['labels'].attrs.create(name='Cosinus Tail', data=17)
                 events['labels'].attrs.create(name='unknown/other', data=99)
@@ -187,13 +190,16 @@ class DataHandler(SimulateMixin,
             labels = labels.astype('int32')
             length = len(labels)
             if only_channel is None:
-                labels.resize((self.nmbr_channels, int(length / self.nmbr_channels)))
-            elif "{}_predictions".format(model) in events: # not overwrite the other channels
-                labels_full = np.array(events["{}_predictions".format(model)][...])
+                labels.resize(
+                    (self.nmbr_channels, int(length / self.nmbr_channels)))
+            # not overwrite the other channels
+            elif "{}_predictions".format(model) in events:
+                labels_full = np.array(
+                    events["{}_predictions".format(model)][...])
                 labels_full[only_channel, :] = labels[:]
                 labels = np.copy(labels_full)
                 del labels_full  # free the memory of the dummy array again
-            else: # overwrite the other channels with zeros
+            else:  # overwrite the other channels with zeros
                 labels_full = np.zeros([self.nmbr_channels, length])
                 labels_full[only_channel, :] = labels
                 labels = np.copy(labels_full)
@@ -204,36 +210,52 @@ class DataHandler(SimulateMixin,
                 print('Edited Predictions.')
 
             else:
-                events.create_dataset("{}_predictions".format(model), data=labels)
-                events["{}_predictions".format(model)].attrs.create(name='unlabeled', data=0)
-                events["{}_predictions".format(model)].attrs.create(name='Event_Pulse', data=1)
+                events.create_dataset(
+                    "{}_predictions".format(model), data=labels)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='unlabeled', data=0)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Event_Pulse', data=1)
                 events["{}_predictions".format(model)].attrs.create(
                     name='Test/Control_Pulse', data=2)
-                events["{}_predictions".format(model)].attrs.create(name='Noise', data=3)
-                events["{}_predictions".format(model)].attrs.create(name='Squid_Jump', data=4)
-                events["{}_predictions".format(model)].attrs.create(name='Spike', data=5)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Noise', data=3)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Squid_Jump', data=4)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Spike', data=5)
                 events["{}_predictions".format(model)].attrs.create(
                     name='Early_or_late_Trigger', data=6)
-                events["{}_predictions".format(model)].attrs.create(name='Pile_Up', data=7)
-                events["{}_predictions".format(model)].attrs.create(name='Carrier_Event', data=8)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Pile_Up', data=7)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Carrier_Event', data=8)
                 events["{}_predictions".format(model)].attrs.create(
                     name='Strongly_Saturated_Event_Pulse', data=9)
                 events["{}_predictions".format(model)].attrs.create(
                     name='Strongly_Saturated_Test/Control_Pulse', data=10)
                 events["{}_predictions".format(model)].attrs.create(
                     name='Decaying_Baseline', data=11)
-                events["{}_predictions".format(model)].attrs.create(name='Temperature Rise', data=12)
-                events["{}_predictions".format(model)].attrs.create(name='Stick Event', data=13)
-                events["{}_predictions".format(model)].attrs.create(name='Sawtooth Cycle', data=14)
-                events["{}_predictions".format(model)].attrs.create(name='Human Disturbance', data=15)
-                events["{}_predictions".format(model)].attrs.create(name='Large Sawtooth', data=16)
-                events["{}_predictions".format(model)].attrs.create(name='Cosinus Tail', data=17)
-                events["{}_predictions".format(model)].attrs.create(name='unknown/other', data=99)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Temperature Rise', data=12)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Stick Event', data=13)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Sawtooth Cycle', data=14)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Human Disturbance', data=15)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Large Sawtooth', data=16)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Cosinus Tail', data=17)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='unknown/other', data=99)
 
                 print('Added {} Predictions.'.format(model))
 
         else:
-            raise KeyError('No prediction file found at {}.'.format(path_predictions))
+            raise KeyError(
+                'No prediction file found at {}.'.format(path_predictions))
 
     def get_filehandle(self, path=None):
         """

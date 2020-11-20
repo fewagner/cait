@@ -10,6 +10,7 @@ from ..data._gen_h5 import gen_dataset_from_rdt
 # CLASS
 # -----------------------------------------------------------
 
+
 class RdtMixin(object):
     """
     Mixin for the DataHandler, includes methods to process the RDT files
@@ -129,12 +130,12 @@ class RdtMixin(object):
             self.fname = fname
 
         elif self.nmbr_channels > 2:
-            path = "{}{}-P_Ch{}-L_Ch{}".format(path_h5, fname)
+            path = "{}{}".format(path_h5, fname)
             for i, c in enumerate(self.channels):
                 path += '-{}_Ch{}'.format(i + 1, c)
             path += ".h5"
         else:
-            raise NotImplementedError('Only for two and more channels implemented!')
+            raise NotImplementedError(
+                'Only for two and more channels implemented!')
 
         print('Filepath and -name saved.')
-
