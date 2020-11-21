@@ -296,8 +296,7 @@ class EvaluationTools:
         if verb:
             print('Added Events from file to instance.')
 
-    def set_data(self,
-                 data):
+    def set_data(self, data):
         """
         Replaces mainparameters or timeseries with a chosen data set of data.
 
@@ -309,10 +308,10 @@ class EvaluationTools:
                              "The the length of data {} does not correspond to the" +
                              " number of events {}.".format(data.shape[0], self.events.shape[0]))
 
+        self.data = data
         self.features = self.scaler.transform(self.data)
 
-    def set_scaler(self,
-                   scaler):
+    def set_scaler(self, scaler):
         """
         Sets the scaler for generating the featuers from the data set.
         Per default the sklearn.preprocessing.StandardScaler() is used.
