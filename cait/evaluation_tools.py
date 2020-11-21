@@ -306,8 +306,8 @@ class EvaluationTools:
 
         if data.shape[0] != self.events.shape[0]:
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "The the length of data ({}) does not correspond to the" +
-                             " number of events ({}).".format(data.shape[0], self.events.shape[0]))
+                             "The the length of data {} does not correspond to the" +
+                             " number of events {}.".format(data.shape[0], self.events.shape[0]))
 
         self.features = self.scaler.transform(self.data)
 
@@ -319,18 +319,38 @@ class EvaluationTools:
 
         :param scaler: scaler for normalizing the data
         """
-        if scaler is not None:
-            self.scaler = scaler
-        else:
+        if scaler is None:
             self.scaler = StandardScaler()
-            self.scaler.fit(self.data)
+        else:
+            self.scaler = scaler
         self.gen_features()
 
     def gen_features(self):
         """
         Normalizes the data and saves it into features.
         """
-        self.features = self.scaler.transform(self.data)
+        if self.scaler == StandardScaler():
+            self.scaler.fit(self.data)
+            self.features = self.scaler.transform(self.data)
+        else:
+            print("If the StandardScaler is not used the features have to " +
+                  "be transformed manually using 'set_features()'.")
+
+    def set_features(self, featuers):
+        """
+        If a
+
+        :param scaler: scaler for normalizing the data
+        """
+        featuers = np.array(featuers)
+        if self.data.shape != featuers.shape:
+            raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
+                             "The shape of featuers {}".format(featuers.shape) +
+                             " has to be the same as "+
+                             "shape of data {}".format(self.data.shape) +
+                             ", since they should just be transformed.")
+        self.features = featuers
+
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
         """
@@ -373,7 +393,6 @@ class EvaluationTools:
 
         np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
-
 
         print('Saved Predictions as CSV file.')
 
