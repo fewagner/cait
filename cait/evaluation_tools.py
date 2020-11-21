@@ -159,7 +159,8 @@ class EvaluationTools:
                              which_data='mainpar',
                              all_labeled=False,
                              only_idx=None,
-                             force_add=False):
+                             force_add=False,
+                             verb=False):
         """
         Reads in a labels, data from a channel of a given hdf5 file and
         adds this data to the properties
@@ -170,6 +171,7 @@ class EvaluationTools:
         :param all_labeled: boolean, default False, flag is set, include exactly the events that are labeled
         :param only_idx: list of int, indices only include in the dataset then only use these
         :param force_add: boolean, default False, lets you add a file twice when set to True
+        :param verb: boolean, default False, if True additional messages are printed
         """
 
         # --------------------------------------------
@@ -291,7 +293,44 @@ class EvaluationTools:
             # reset the train_test split variable because new data was added
             self.is_traintest_valid = False
 
-        print('Added Events from file to instance.')
+        if verb:
+            print('Added Events from file to instance.')
+
+    def set_data(self,
+                 data):
+        """
+        Replaces mainparameters or timeseries with a chosen data set of data.
+
+        :param data: dataset which is analysed
+        """
+
+        if data.shape[0] != self.events.shape[0]:
+            raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
+                             "The the length of data ({}) does not correspond to the" +
+                             " number of events ({}).".format(data.shape[0], self.events.shape[0]))
+
+        self.features = self.scaler.transform(self.data)
+
+    def set_scalar(self,
+                   scalar):
+        """
+        Sets the scalar for generating the featuers from the data set.
+        Per default the sklearn.preprocessing.StandardScaler() is used.
+
+        :param scalar: scalar for normalizing the data
+        """
+        if scaler is not None:
+            self.scaler = scaler
+        else:
+            self.scaler = StandardScaler()
+            self.scaler.fit(self.data)
+        self.gen_features()
+
+    def gen_features(self):
+        """
+        Normalizes the data and saves it into features.
+        """
+        self.features = self.scalar.transform(self.data)
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
         """
@@ -316,7 +355,8 @@ class EvaluationTools:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "A prediction method with the name '{}' allready exists.".format(pred_method))
 
-        print('Added Predictions to instance.')
+        if verb:
+            print('Added Predictions to instance.')
 
     def save_prediction(self, pred_method, path, fname, channel):
         """
@@ -326,7 +366,7 @@ class EvaluationTools:
         :param path: string, path to the folder that should contain the predictions
         :param fname: string, the name of the file, e.g. "bck_001"
         :param channel: int, the number of the channel in the module, e.g. Phonon 0, Light 1
-        :return: -
+        :param verb: boolean, default False, if True  additional ouput is printed
         """
         if self.predictions is None:
             raise AttributeError('Add predictions first!')
@@ -334,17 +374,16 @@ class EvaluationTools:
         np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
 
+
         print('Saved Predictions as CSV file.')
 
-    def split_test_train(self, test_size, scaler=None):
+    def split_test_train(self, test_size, verb=False):
         """
         Seperates the dataset into a training set and a test set with the
         size is determined by the input test_size in percent.
-        It also uses a scaler to make features out of the data.
-        When no scaler is provided the StandardScaler from sklearn is used.
 
         :param test_size: float in (0,1), size of the test set
-        :param scaler: scaler, default None, used to
+        :param verb: boolean, default False, if True additional output is printed
         """
         if test_size <= 0 or test_size >= 1:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
@@ -358,14 +397,10 @@ class EvaluationTools:
 
         self.is_train = np.isin(event_num, event_num_train)
         self.is_traintest_valid = True
-        if scaler is not None:
-            self.scaler = scaler
-        else:
-            self.scaler = StandardScaler()
-            self.scaler.fit(self.data)
-        self.features = self.scaler.transform(self.data)
 
-        print('Data set splitted and scaled.')
+        self.gen_features()
+        if verb:
+            print('Data set splitted.')
 
     def convert_to_labels(self, label_nbrs, verb=False):
         """
@@ -373,7 +408,7 @@ class EvaluationTools:
 
         :param label_nbrs: list of int, contain the label numbers
         :param verb: boolean, default False, if True addtional output is printed to the console
-        :return:
+        :return: list of labels which correspond to the label numbers
         """
         unique_label_nbrs = np.unique(label_nbrs)
         if not np.isin(unique_label_nbrs, list(self.labels.keys())).all():
@@ -384,6 +419,13 @@ class EvaluationTools:
         return np.array([self.labels[i] for i in label_nbrs])
 
     def convert_to_colors(self, label_nbrs, verb=False):
+        """
+        Converts given label numbers into colors for matplotlib.
+
+        :param label_nbrs: list of int, contain the label numbers
+        :param verb: boolean, default False, if True addtional output is printed to the console
+        :return: list of colors (same color for the same labels)
+        """
         unique_label_dict = dict(
             [(l, i) for i, l in enumerate(np.unique(label_nbrs))])
         if len(unique_label_dict) > len(self.color_order):
@@ -394,6 +436,14 @@ class EvaluationTools:
         return [self.color_order[unique_label_dict[l]] for l in label_nbrs]
 
     def convert_to_labels_colors(self, label_nbrs, return_legend=False, verb=False):
+        """
+        Converts given label numbers into colors for matplotlib.
+
+        :param label_nbrs: list of int, contain the label numbers
+        :param return_legend: boolean, default False, if True a legend in format for matplotlib is returned additionally
+        :param verb: boolean, default False, if True addtional output is printed to the console
+        :return: list of labels, list of colors, optional legend for matplotlib
+        """
         labels = self.convert_to_labels(label_nbrs, verb=verb)
         colors = self.convert_to_colors(label_nbrs, verb=verb)
 
