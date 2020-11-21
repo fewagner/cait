@@ -309,7 +309,7 @@ class EvaluationTools:
                              " number of events {}.".format(data.shape[0], self.events.shape[0]))
 
         self.data = data
-        self.features = self.scaler.transform(self.data)
+        self.gen_features()
 
     def set_scaler(self, scaler):
         """
