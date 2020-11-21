@@ -329,7 +329,7 @@ class EvaluationTools:
         """
         Normalizes the data and saves it into features.
         """
-        if self.scaler == StandardScaler():
+        if type(self.scaler) == type(StandardScaler()):
             self.scaler.fit(self.data)
             self.features = self.scaler.transform(self.data)
         else:
@@ -338,9 +338,10 @@ class EvaluationTools:
 
     def set_features(self, featuers):
         """
-        If a
+        If not the StandardScaler is used features have to be set manually,
+        e.g. by using this function.
 
-        :param scaler: scaler for normalizing the data
+        :param features: manual generated features
         """
         featuers = np.array(featuers)
         if self.data.shape != featuers.shape:
