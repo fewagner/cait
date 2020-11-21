@@ -53,7 +53,7 @@ class EvaluationTools:
 
     color_order = mpl_default_colors
 
-    scaler = None
+    scaler = StandardScaler()
 
     # ################### PRIVATE ###################
 
@@ -311,13 +311,13 @@ class EvaluationTools:
 
         self.features = self.scaler.transform(self.data)
 
-    def set_scalar(self,
-                   scalar):
+    def set_scaler(self,
+                   scaler):
         """
-        Sets the scalar for generating the featuers from the data set.
+        Sets the scaler for generating the featuers from the data set.
         Per default the sklearn.preprocessing.StandardScaler() is used.
 
-        :param scalar: scalar for normalizing the data
+        :param scaler: scaler for normalizing the data
         """
         if scaler is not None:
             self.scaler = scaler
@@ -330,7 +330,7 @@ class EvaluationTools:
         """
         Normalizes the data and saves it into features.
         """
-        self.features = self.scalar.transform(self.data)
+        self.features = self.scaler.transform(self.data)
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
         """

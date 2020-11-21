@@ -12,7 +12,7 @@ et = ai.EvaluationTools()
 np.random.seed(seed=1) # fixing random seed
 
 
-path = '../data/'
+path = './toy_data/'
 plot_dir = './plots/'
 fnames = ['bck_001-P_Ch26-L_Ch27-all-all',
           'bck_031-P_Ch26-L_Ch27-all-all',
