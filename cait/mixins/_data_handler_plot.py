@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 from ..fit._templates import pulse_template
+from ..fit._saturation import logistic_curve
 
 
 # -----------------------------------------------------------
@@ -71,18 +72,17 @@ class PlotMixin(object):
         """
 
         f = h5py.File(self.path_h5, 'r')
-        sev = f['stdevent_{}'.format(naming)]['event']
-        sev_fitpar = f['stdevent_{}'.format(naming)]['fitpar']
+        sev = np.array(f['stdevent_{}'.format(naming)]['event'])
+        sev_fitpar = np.array(f['stdevent_{}'.format(naming)]['fitpar'])
 
         t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
         # plot
         plt.close()
 
-        plt.subplot(1, 1, 1)
-        plt.plot(t, sev, color=self.colors[0])
+        plt.plot(t, sev)
         if show_fit:
-            plt.plot(t, pulse_template(t, *sev_fitpar), color='orange')
+            plt.plot(t, pulse_template(t, *sev_fitpar))
         plt.title('stdevent_{}'.format(naming))
 
         plt.show(block=block)
@@ -342,7 +342,7 @@ class PlotMixin(object):
                 block=False,
                 marker='.',
                 alpha=0.8,
-                s=0.1):
+                s=1):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
 
@@ -400,7 +400,7 @@ class PlotMixin(object):
         if which_labels is not None:
             for xp, yp, l in zip(x_pars, y_pars, which_labels):
                 plt.scatter(xp,
-                            yp/xp,
+                            yp / xp,
                             marker=marker,
                             label='Label ' + str(l),
                             alpha=alpha,
@@ -408,14 +408,14 @@ class PlotMixin(object):
         elif which_predictions is not None:
             for xp, yp, l in zip(x_pars, y_pars, which_predictions):
                 plt.scatter(xp,
-                            yp/xp,
+                            yp / xp,
                             marker=marker,
                             label='Prediction ' + str(l),
                             alpha=alpha,
                             s=s)
         else:
             plt.scatter(x_par,
-                        y_par/y_par,
+                        y_par / y_par,
                         marker=marker,
                         alpha=alpha,
                         s=s)
@@ -424,4 +424,40 @@ class PlotMixin(object):
         plt.show(block=block)
 
         print('LY Plot created.')
+        f_h5.close()
+
+    def show_saturation(self, show_fit=True, channel=0, marker='.', s=1, only_idx=None):
+        """
+        Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
+
+        :param show_fit: bool, if true show the fitted logistics curve
+        :param channel: int, the channel for that we want to plot the saturation curve
+        :param only_idx: only these indices are used in the fit of the saturation
+        :type only_idx: list of ints
+        :param s: float, radius of the markers in the scatter plot
+        :param marker: string, the matplotlib marker in the scatter plot
+        :return: -
+        :rtype: -
+        """
+
+        f_h5 = h5py.File(self.path_h5, 'r')
+
+        if only_idx is None:
+            only_idx = list(range(len(f_h5['testpulses']['testpulseamplitude'])))
+
+        tpa = f_h5['testpulses']['testpulseamplitude']
+        ph = f_h5['testpulses']['mainpar'][channel, only_idx, 0]
+
+        x = np.linspace(0, np.max(tpa))
+
+        plt.close()
+        plt.scatter(tpa, ph,
+                    marker=marker, s=s, label='TPA vs PH')
+        if show_fit:
+            fitpar = f_h5['saturation']['fitpar'][channel]
+            plt.plot(x, logistic_curve(x, *fitpar),
+                     label='Fitted Log Curve')
+        plt.title('Saturation Ch {}'.format(channel))
+        plt.show()
+
         f_h5.close()

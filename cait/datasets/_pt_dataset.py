@@ -8,12 +8,14 @@ class H5CryoData(Dataset):
     Pytorch Dataset for the processing of raw data from hdf5 files
     """
 
-    def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices,
-                 keys_one_hot=[], transform=None, nmbr_events=None):
+    def __init__(self, type, keys, channel_indices, feature_indices,
+                 keys_one_hot=[], hdf5_path = None, file_handle=None,
+                 transform=None, nmbr_events=None, load_to_memory=False):
         """
         Give instructions how to extract the data from the h5 set
 
-        :param hdf5_path: string, full path to the hdf5 data set
+        :param hdf5_path: string or None, full path to the hdf5 data set, need be provided if no file handle is set
+        :param file_handle: hdf5 file stream or None, the stream of the h5 file that holds the data
         :param type: string, either events or testpulses or noise - the group index of the hd5 data set
         :param keys: list of strings, the keys that are accessed in the hdf5 group
         :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
@@ -26,23 +28,78 @@ class H5CryoData(Dataset):
         :param transform: pytorch transforms class, get applied to every sample when getitem is called
         :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
             from the hdf5 file with len(self.f['events/event'][0])
+        :param load_to_memory: bool, if set the whole data gets loaded into memory when the dataset is created - causes
+            less problems with multiprocessing but might cause memory issues
         """
         self.hdf5_path = hdf5_path
         self.transform = transform
-        self.f = h5py.File(hdf5_path, 'r') # TODO this is what causes the trouble with multiple workers
         self.type = type
         self.keys = keys
         self.channel_indices = channel_indices
         self.feature_indices = feature_indices
         self.keys_one_hot = keys_one_hot
-        if nmbr_events == None:
-            self.nmbr_events = len(self.f['events/event'][0])
-        else:
-            self.nmbr_events = nmbr_events
         for chs in channel_indices:
             if chs is not None:
                 self.nmbr_channels = len(chs)
                 break
+        self.load_to_memory = load_to_memory
+        if load_to_memory:
+            if file_handle is None:
+                file_handle = h5py.File(hdf5_path, 'r')
+                self.data = self.load_data(file_handle)
+            else:
+                self.data = self.load_data(file_handle)
+        else:
+            if file_handle is None:
+                if hdf5_path is not None:
+                    self.f = h5py.File(hdf5_path, 'r')  # this causes trouble with multiple workers
+                else:
+                    raise KeyError('If you provide no file handle, you must provide a hdf5 path!')
+            else:
+                self.f = file_handle
+        if nmbr_events == None:
+            if load_to_memory:
+                self.nmbr_events = len(self.data[list(self.data.keys())[0]])
+            else:
+                self.nmbr_events = len(self.f['events/event'][0])
+        else:
+            self.nmbr_events = nmbr_events
+
+
+    def load_data(self, f):
+
+        data = {}
+
+        for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
+            ls = len(f[self.type][key].shape)
+            if ls == 1 and self.channel_indices[i] is None and self.feature_indices[i] is None:
+                if key not in self.keys_one_hot:
+                    data[key] = np.array(f[self.type][key]).reshape(-1, 1)  # e.g. true onset, ...
+                else:
+                    data[key] = np.array(f[self.type][key])
+            elif ls == 2 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
+                for c in self.channel_indices[i]:
+                    new_key = key + '_ch' + str(c)
+                    if new_key not in self.keys_one_hot:  # e.g. labels
+                        data[new_key] = np.array(f[self.type][key][c]).reshape(-1, 1)  # e.g. true ph, ...
+                    else:
+                        data[new_key] = np.array(f[self.type][key][c])
+            elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
+                for c in self.channel_indices[i]:
+                    new_key = key + '_ch' + str(c)
+                    data[new_key] = np.array(f[self.type][key][c])  # e.g. event, ...
+            elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is not None:
+                for c in self.channel_indices[i]:
+                    for fe in self.feature_indices[i]:
+                        new_key = key + '_ch' + str(c) + '_fe' + str(fe)
+                        if new_key not in self.keys_one_hot:
+                            data[new_key] = np.array(f[self.type][key][c, :, fe]).reshape(-1, 1)  # e.g. single mp, ...
+                        else:
+                            data[new_key] = np.array(f[self.type][key][c, :, fe])
+            else:
+                raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
+
+        return data
 
     def __len__(self):
         """
@@ -60,28 +117,38 @@ class H5CryoData(Dataset):
 
         sample = {}
 
-        for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
-            ls = len(self.f[self.type][key].shape)
-            if ls == 1 and self.channel_indices[i] is None and self.feature_indices[i] is None:
-                if key not in self.keys_one_hot:
-                    sample[key] = np.array(self.f[self.type][key][idx]).reshape(1)  # e.g. true onset, ...
-            elif ls == 2 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
-                for c in self.channel_indices[i]:
-                    new_key = key + '_ch' + str(c)
-                    if new_key not in self.keys_one_hot:  # e.g. labels
-                        sample[new_key] = np.array(self.f[self.type][key][c, idx]).reshape(1)  # e.g. true ph, ...
-            elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
-                for c in self.channel_indices[i]:
-                    new_key = key + '_ch' + str(c)
-                    sample[new_key] = np.array(self.f[self.type][key][c, idx])  # e.g. event, ...
-            elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is not None:
-                for c in self.channel_indices[i]:
-                    for fe in self.feature_indices[i]:
-                        new_key = key + '_ch' + str(c) + '_fe' + str(fe)
-                        if new_key not in self.keys_one_hot:
-                            sample[new_key] = np.array(self.f[self.type][key][c, idx, fe]).reshape(1)  # e.g. single mp, ...
-            else:
-                raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
+        if self.load_to_memory:
+            for key in self.data.keys():
+                sample[key] = self.data[key][idx]
+        else:
+            for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
+                ls = len(self.f[self.type][key].shape)
+                if ls == 1 and self.channel_indices[i] is None and self.feature_indices[i] is None:
+                    if key not in self.keys_one_hot:
+                        sample[key] = np.array(self.f[self.type][key][idx]).reshape(1)  # e.g. true onset, ...
+                    else:
+                        sample[key] = np.array(self.f[self.type][key][idx])
+                elif ls == 2 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
+                    for c in self.channel_indices[i]:
+                        new_key = key + '_ch' + str(c)
+                        if new_key not in self.keys_one_hot:  # e.g. labels
+                            sample[new_key] = np.array(self.f[self.type][key][c, idx]).reshape(1)  # e.g. true ph, ...
+                        else:
+                            sample[new_key] = np.array(self.f[self.type][key][c, idx])
+                elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
+                    for c in self.channel_indices[i]:
+                        new_key = key + '_ch' + str(c)
+                        sample[new_key] = np.array(self.f[self.type][key][c, idx])  # e.g. event, ...
+                elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is not None:
+                    for c in self.channel_indices[i]:
+                        for fe in self.feature_indices[i]:
+                            new_key = key + '_ch' + str(c) + '_fe' + str(fe)
+                            if new_key not in self.keys_one_hot:
+                                sample[new_key] = np.array(self.f[self.type][key][c, idx, fe]).reshape(1)  # e.g. single mp, ...
+                            else:
+                                sample[new_key] = np.array(self.f[self.type][key][c, idx, fe])
+                else:
+                    raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
 
         if self.transform:
             sample = self.transform(sample)

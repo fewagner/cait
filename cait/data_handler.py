@@ -10,7 +10,7 @@ from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_plot import PlotMixin
 from .mixins._data_handler_features import FeaturesMixin
 from .mixins._data_handler_analysis import AnalysisMixin
-
+from .mixins._data_handler_fit import FitMixin
 
 # -----------------------------------------------------------
 # CLASS
@@ -20,7 +20,9 @@ class DataHandler(SimulateMixin,
                   RdtMixin,
                   PlotMixin,
                   FeaturesMixin,
-                  AnalysisMixin):
+                  AnalysisMixin,
+                  FitMixin
+                  ):
     """
     A class for the processing of raw data set. Uses Mixins for most features.
     """
@@ -67,6 +69,7 @@ class DataHandler(SimulateMixin,
 
         :param path_h5: String to directory that contains the runXY_Module folders
         :param fname: String, usually something like bck_xxx
+        :param appendix: bool, if false the filename must not have an appendix like "-P_ChX-[...]"
         :return: -
         """
 

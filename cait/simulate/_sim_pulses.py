@@ -3,6 +3,7 @@ import numpy as np
 from ..fit._templates import pulse_template
 from ._sim_bl import simulate_baselines
 from scipy.stats import uniform
+from ..fit._saturation import scaled_logistic_curve, scale_factor
 
 
 def simulate_events(path_h5,
@@ -19,14 +20,15 @@ def simulate_events(path_h5,
                     use_bl_from_idx=0,
                     rms_thresholds=[1, 1],
                     lamb=0.01,
-                    sample_length=0.04):
+                    sample_length=0.04,
+                    saturation=False):
     """
     Simulates pulses on a noise baseline. Options are to take measured noise baselines
     or fake bl, sev of events or testpulses, pulse heights, onset intervals.
 
     :param path_h5: string, path of the dataset on which the sim is based on
     :param type: string, either events, testpulses or noise - what type
-        of event is simulated
+        of event is simulated; if testpulses the other channels than the first will beignored for the PHs
     :param size: integer > 0, size of the simulated dataset, if fake_noise is False it
         must be smaller than the number of noise baselines in the hdf5 file
     :param record_length: integer, length of the record window in the hdf5 datset
@@ -35,7 +37,7 @@ def simulate_events(path_h5,
         with c the nmbr_channels; the heights are samples uniformly from these intervals
     :param discrete_ph: c Lists of values for the pulse heights for the c channels
         or None for ph intervals; the heights are sampled uniformly for the list
-    :param exceptional_sev_naming: string or None, if set, this is the group name for the
+    :param exceptional_sev_naming: string or None, if set, this is full group name in the HDF5 set for the
         sev used for the simulation of events - by setting this, e.g. carrier events can be
         simulated
     :param channel_exceptional_sev: list of ints, the channels for that the exceptional sev is
@@ -49,6 +51,7 @@ def simulate_events(path_h5,
         fake ones but the ones from the h5 set are taken
     :param lamb: float, the parameter for the bl simulation method
     :param sample_length: float, the length in ms of one sample from an event
+    :param saturation: bool, if True the logistic curve is applied to the pulses
     :return: (3D array of size (nmbr channels, size, record_length), the simulated events,
                 2D array of size (nmbr channels, size), the true pulse heights,
                 1D array (size), the onsets of the events)
@@ -106,21 +109,43 @@ def simulate_events(path_h5,
             else:
                 if c in channels_exceptional_sev:
                     if len(channels_exceptional_sev) == 1:
-                        par = h5f[exceptional_sev_naming]['fitpar'] # has no channels
+                        par = h5f[exceptional_sev_naming]['fitpar']  # has no channels
                     else:
                         par = h5f[exceptional_sev_naming]['fitpar'][used_exept_sevs]
                         used_exept_sevs += 1
+                else:
+                    par = h5f['stdevent']['fitpar'][c]
             for e in range(size):
                 sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
+
     elif type == 'testpulses':
+        one_true_ph = phs[0]
+        if saturation:
+            one_true_ph /= scale_factor(*h5f['saturation']['fitpar'][0])
         for c in range(nmbr_channels):
-            par = h5f['stdevent_tp']['fitpar'][c]
+            phs[c] = one_true_ph
+            if saturation:
+                log_fitpar = h5f['saturation']['fitpar'][c]
+                phs[c] *= scale_factor(*log_fitpar)
             for e in range(size):
+                par = h5f['stdevent_tp']['fitpar'][c]
                 sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
+
     elif type == 'noise':
         pass
     else:
         raise KeyError('type must be events, testpulses or noise!')
+
+    # add saturation
+    if saturation:
+        for c in range(nmbr_channels):
+            log_fitpar = h5f['saturation']['fitpar'][c]
+            for e in range(size):
+                event = sim_events[c, e]
+                offset = np.mean(event[:int(record_length/8)])
+                ev_no_offset = event - offset
+                ev_sat = scaled_logistic_curve(ev_no_offset, *log_fitpar)
+                sim_events[c, e] = ev_sat + offset
 
     h5f.close()
 

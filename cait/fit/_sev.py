@@ -55,7 +55,7 @@ def generate_standard_event(events,
         use_indices[labels != correct_label] = 0
 
         if verb:
-            print('{} with Label Event Pulse.'.format(len(np.where(use_indices == 1)[0])))
+            print('{} with Labels: {}'.format(len(np.where(use_indices == 1)[0]), correct_label))
 
     # pulse height cut
     if not pulse_height_intervall is None:

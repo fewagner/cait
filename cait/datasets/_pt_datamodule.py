@@ -38,7 +38,8 @@ class CryoDataModule(pl.LightningDataModule):
         self.transform = transform
         self.nmbr_events = nmbr_events
 
-    def prepare_data(self, val_size, test_size, batch_size, nmbr_workers, dataset_size=None, only_idx=None,
+    def prepare_data(self, val_size, test_size, batch_size, nmbr_workers, load_to_memory=False,
+                     dataset_size=None, only_idx=None,
                      shuffle_dataset=True, random_seed=None,
                      feature_keys=[], label_keys=[], keys_one_hot=[]):
         """
@@ -50,8 +51,11 @@ class CryoDataModule(pl.LightningDataModule):
         :type test_size:  float between 0 and 1
         :param batch_size: the batch size in the training process
         :type batch_size: int
-        :param nmbr_workers: the number of processes to run, best choose the number of CPUs on the machine
+        :param nmbr_workers: the number of processes to run, best choose the number of CPUs on the machine - this might
+            cause issues if load_to_memory is not activated
         :type nmbr_workers: int
+        :param load_to_memory: if set, the whole data gets loaded into memory, if nmbr_workers > 0 this is recommended
+        :type load_to_memory: bool
         :param dataset_size: the size of the whole dataset, gets overwritten if only_idx is set
         :type dataset_size: int or None
         :param only_idx: only these indices are then used from the initial dataset/h5 file
@@ -81,14 +85,10 @@ class CryoDataModule(pl.LightningDataModule):
         self.feature_keys = feature_keys
         self.label_keys = label_keys
         self.keys_one_hot = keys_one_hot
+        self.load_to_memory = load_to_memory
 
-    def setup(self):
-        """
-        Called on every GPU before start of training, here creation of dataset and splits in samplers are done
-
-        :return: -
-        :rtype: -
-        """
+        if not load_to_memory and nmbr_workers > 0:
+            print('Attention: nmbr_workers > 0 and not load to memory might cause issues with the h5 file read!')
 
         self.dataset_full = H5CryoData(hdf5_path=self.hdf5_path,
                                        type=self.type,
@@ -97,7 +97,16 @@ class CryoDataModule(pl.LightningDataModule):
                                        feature_indices=self.feature_indices,
                                        keys_one_hot=self.keys_one_hot,
                                        transform=self.transform,
-                                       nmbr_events=self.nmbr_events)
+                                       nmbr_events=self.nmbr_events,
+                                       load_to_memory=self.load_to_memory)
+
+    def setup(self):
+        """
+        Called on every GPU before start of training, here creation of dataset and splits in samplers are done
+
+        :return: -
+        :rtype: -
+        """
 
         if self.dataset_size is None:
             self.dataset_size = len(self.dataset_full)
