@@ -56,6 +56,8 @@ class LSTMModule(LightningModule):
         """
 
         super().__init__()
+        self.save_hyperparameters()
+
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_layers = num_layers
