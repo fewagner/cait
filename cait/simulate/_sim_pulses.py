@@ -21,7 +21,8 @@ def simulate_events(path_h5,
                     rms_thresholds=[1, 1],
                     lamb=0.01,
                     sample_length=0.04,
-                    saturation=False):
+                    saturation=False,
+                    reuse_bl=False):
     """
     Simulates pulses on a noise baseline. Options are to take measured noise baselines
     or fake bl, sev of events or testpulses, pulse heights, onset intervals.
@@ -52,6 +53,8 @@ def simulate_events(path_h5,
     :param lamb: float, the parameter for the bl simulation method
     :param sample_length: float, the length in ms of one sample from an event
     :param saturation: bool, if True the logistic curve is applied to the pulses
+    :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
+        (use this with care to not have identical copies of events)
     :return: (3D array of size (nmbr channels, size, record_length), the simulated events,
                 2D array of size (nmbr channels, size), the true pulse heights,
                 1D array (size), the onsets of the events)
@@ -59,7 +62,6 @@ def simulate_events(path_h5,
     h5f = h5py.File(path_h5, 'r')
     t = (np.arange(0, record_length, dtype=float) - record_length / 4) * sample_length
     nmbr_thrown = 0
-    take_idx = []
 
     # get baselines
     if fake_noise:
@@ -69,10 +71,35 @@ def simulate_events(path_h5,
                                            lamb=lamb,
                                            verb=True)
     else:
-        if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
-            bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
+        take_idx = []
+        if not reuse_bl:
+            if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
+                bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
+                counter = 0
+                while len(take_idx) < size:  # clean the baselines
+                    take_it = True
+                    for c in range(nmbr_channels):
+                        if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
+                            take_it = False
+
+                    if take_it:
+                        take_idx.append(counter)
+                    else:
+                        nmbr_thrown += 1
+
+                    counter += 1
+
+                take_idx = np.array(take_idx) + use_bl_from_idx
+                sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
+            else:
+                raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
+        else:  # do reuse baselines
+            bl_rms = np.array(h5f['noise']['fit_rms'])
+            nmbr_bl_total = len(bl_rms[0])
             counter = 0
-            while len(take_idx) < size:  # clean the baselines
+            stop_condition = 0
+            idx_lists = []
+            while stop_condition < size:
                 take_it = True
                 for c in range(nmbr_channels):
                     if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
@@ -80,15 +107,15 @@ def simulate_events(path_h5,
 
                 if take_it:
                     take_idx.append(counter)
-                else:
-                    nmbr_thrown += 1
+                    stop_condition += 1
 
                 counter += 1
-
-            take_idx = np.array(take_idx) + use_bl_from_idx
-            sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
-        else:
-            raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
+                if counter >= nmbr_bl_total:
+                    counter = 0
+                    idx_lists.append(np.array(take_idx))
+                    take_idx = []
+            idx_lists.append(take_idx)
+            sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
 
     # get pulse heights
     phs = np.zeros((nmbr_channels, size))

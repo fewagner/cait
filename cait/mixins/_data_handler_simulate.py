@@ -9,6 +9,7 @@ from ..features._mp import calc_main_parameters
 from ..data._baselines import calculate_mean_nps
 from ..fit._saturation import scale_factor
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -38,7 +39,8 @@ class SimulateMixin(object):
                         lamb=0.01,
                         sample_length=0.04,
                         assign_labels=[1],
-                        saturation=False):
+                        saturation=False,
+                        reuse_bl=False):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
 
@@ -69,6 +71,8 @@ class SimulateMixin(object):
         :param assign_labels: list of ints, pre-assign a label to all the simulated events; tp and noise are
             automatically labeled, the length of the list must match the list channels_exceptional_sev
         :param saturation: bool, if true apply the logistics curve to the simulated pulses
+        :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
+            (use this with care to not have identical copies of events)
         :return: -
         """
 
@@ -97,7 +101,8 @@ class SimulateMixin(object):
                                                                    rms_thresholds=rms_thresholds,
                                                                    lamb=lamb,
                                                                    sample_length=sample_length,
-                                                                   saturation=saturation)
+                                                                   saturation=saturation,
+                                                                   reuse_bl=reuse_bl)
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='true_ph', data=phs)
             data.create_dataset(name='true_onset', data=t0s)
@@ -135,12 +140,13 @@ class SimulateMixin(object):
                                                                        rms_thresholds=rms_thresholds,
                                                                        lamb=lamb,
                                                                        sample_length=sample_length,
-                                                                       saturation=saturation)
+                                                                       saturation=saturation,
+                                                                       reuse_bl=reuse_bl)
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='true_ph', data=phs)
             if saturation:
                 fp = f_read['saturation']['fitpar'][0]
-                data.create_dataset(name='testpulseamplitude', data=phs[0]/scale_factor(*fp))
+                data.create_dataset(name='testpulseamplitude', data=phs[0] / scale_factor(*fp))
             data.create_dataset(name='true_onset', data=t0s)
             data.create_dataset(name='labels',
                                 data=2 * np.ones([self.nmbr_channels, size_tp]))  # 2 is the label for testpulses
@@ -179,7 +185,8 @@ class SimulateMixin(object):
                                                                   rms_thresholds=rms_thresholds,
                                                                   lamb=lamb,
                                                                   sample_length=sample_length,
-                                                                  saturation=saturation
+                                                                  saturation=saturation,
+                                                                  reuse_bl=reuse_bl
                                                                   )
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='labels',
