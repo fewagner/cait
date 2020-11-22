@@ -51,8 +51,8 @@ class ModelHandler:
         print('Added scaler for channel {}.'.format(channel))
 
 
-    def save(self, path):
+    def save(self, path, name_app=''):
         self.info = input('Write info about this instance: ')
-        path_model = '{}/{}_run{}_{}'.format(path, self.model_type, self.run, self.module)
+        path_model = '{}/{}_run{}_{}_{}'.format(path, self.model_type, self.run, self.module, name_app)
         pickle.dump(self, open(path_model, 'wb'), pickle.HIGHEST_PROTOCOL)
         print('Save Model to {}.'.format(path_model))

@@ -84,6 +84,7 @@ def simulate_events(path_h5,
                     nmbr_thrown += 1
 
                 counter += 1
+
             take_idx = np.array(take_idx) + use_bl_from_idx
             sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
         else:

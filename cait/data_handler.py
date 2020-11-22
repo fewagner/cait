@@ -164,7 +164,7 @@ class DataHandler(SimulateMixin,
         Include the *.csv file with the predictions of a model into the HDF5 File.
         :param model: string, the naming for the type of model, e.g. Random Forest --> "RF"
         :param path_predictions: string, path to the folder that contains the csv file
-            e.g. "data" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>"
+            e.g. "data/" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>"
             if the only_channel is not None, then additionally "_Ch<only_channel>" is append to the
             looked for file
         :param type: string, the type of labels, typically "events" or "testpulses"

@@ -191,11 +191,10 @@ class LSTMModule(LightningModule):
 
         # put features together
         x = torch.cat(tuple([sample[k] for k in self.feature_keys]), dim=1)
-        out = self(x)
+        out = self(x).detach()
 
         # put the decision rule
         if self.is_classifier:
-            print(out.shape)
             out = torch.argmax(out, dim=1)  # give back the label with highest value
 
         return out

@@ -261,7 +261,7 @@ class PlotMixin(object):
                   pred_model=None,
                   bins=100,
                   block=False,
-                  range=None):
+                  ran=None):
         """
         Show a histogram of main parameter values
 
@@ -309,19 +309,19 @@ class PlotMixin(object):
                          bins=bins,
                          # color=self.colors[which_channel],
                          label='Label ' + str(l), alpha=0.8,
-                         range=range)
+                         range=ran)
         elif which_predictions is not None:
             for p, l in zip(pars, which_predictions):
                 plt.hist(p,
                          bins=bins,
                          # color=self.colors[which_channel],
                          label='Prediction ' + str(l), alpha=0.8,
-                         range=range)
+                         range=ran)
         else:
             plt.hist(par,
                      bins=bins,
                      # color=self.colors[which_channel],
-                     range=range)
+                     range=ran)
         plt.title(type + ' ' + which_mp + ' Channel ' + str(which_channel))
         plt.legend()
         plt.show(block=block)

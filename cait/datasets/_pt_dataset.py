@@ -61,7 +61,7 @@ class H5CryoData(Dataset):
             if load_to_memory:
                 self.nmbr_events = len(self.data[list(self.data.keys())[0]])
             else:
-                self.nmbr_events = len(self.f['events/event'][0])
+                self.nmbr_events = len(self.f[type + '/event'][0])
         else:
             self.nmbr_events = nmbr_events
 
