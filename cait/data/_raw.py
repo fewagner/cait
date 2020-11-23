@@ -2,13 +2,14 @@
 # IMPORTS
 # ---------------------------------------------------------------
 
-import os
+# import os
 import numpy as np
-import numba as nb
+# import numba as nb
 import struct
-from ..fit._pm_fit import arrays_equal
+# from ..fit._pm_fit import arrays_equal
 from pathlib import Path
-import pathlib
+# import pathlib
+# import ipdb
 
 from ._progressBar import printProgressBar
 
@@ -16,8 +17,17 @@ from ._progressBar import printProgressBar
 # FUNCTIONS
 # ---------------------------------------------------------------
 
-@nb.njit
+# @nb.njit
 def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
+    """
+    Converts an event from int to volt
+    :param event: 1D array of the event
+    :param bits: int, number of bits in each sample
+    :param max: int, the max volt value
+    :param min: int, the min volt value
+    :param offset: int, the offset of the volt signal
+    :return: 1D array, the converted event array
+    """
     a = 2 ** (bits - 1)
     b = (max - min) / 2 ** bits
     c = min - offset
@@ -26,9 +36,9 @@ def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
 
     return converted
 
-
-def read_rdt_file(fname, path, phonon_channel, light_channel,
-                  tpa_list=[0.0], read_events=-1, comp_tstamp=True,
+def read_rdt_file(fname, path, channels,
+                  tpa_list=[0.0], read_events=-1,
+                  chunk_size=1000,
                   remove_offset=False):
     """
     Reads a given given hdf5 file and filters out a specific phonon and light
@@ -40,12 +50,16 @@ def read_rdt_file(fname, path, phonon_channel, light_channel,
     :param tpa_list: List of which testpulse amplitudes are filtered out.
                     (Default: [0.0]; if it contains '1.0' all events are taken)
     :param read_events: Number of events which are read. (default: -1 = read till end)
-    :param comp_tstamp:
+    :param chunk_size: int, the init size of the arrays, if array full another chunks gets
+        allocated
     :param remove_offset: Removes the offset of an event. (default: False)
     :return: returns two arrays of shape (2,n,13) and (2,n,m), where the first
             one contains the metainformation of the filtered events and the
             secound contain the pulses.
     """
+
+    nmbr_channels = len(channels) # this is fixed at the moment, change asap
+
     if fname[-4:] == '.rdt':
         fname = fname[:-4]
     # gather dataset information from .par file
@@ -73,146 +87,129 @@ def read_rdt_file(fname, path, phonon_channel, light_channel,
     if read_events == -1:
         read_events = nbr_rec_events
 
-    p_metainfo = []
-    l_metainfo = []
-
-    # dvm[0:dvm_channels]
-    p_dvms = []
-    l_dvms = []
-
-    # event[0:record_length-1]
-    p_pulse = []
-    l_pulse = []
+    # init arrays with length chunk_size and resize when reached
+    metainfo = np.empty([nmbr_channels, chunk_size, 14], dtype=float)
+    dvms = np.empty([nmbr_channels, chunk_size, dvm_channels], dtype=float)
+    pulse = np.empty([nmbr_channels, chunk_size, record_length], dtype=float)
 
     with open("{}{}.rdt".format(path, fname), "rb") as f:
         skip_bytes = 13 * 4 + dvm_channels * 4 + record_length * 2  # 13 nmbr of header bytes
 
-# printProgressBar(0, length, prefix = 'Progress:', suffix = 'Complete', length = 50)
-# for i in range(length):
-#       do something ...
-#       printProgressBar(i+1, length, prefix = 'Progress:', suffix = 'Complete', length = 50)
+        idx_counter = 0
+        hours_checker = 0
+        read_counter = 0
+        goods_counter = 0
+        buffer = {"dvm": np.empty([nmbr_channels, dvm_channels], dtype=float),
+                  "event": np.empty([nmbr_channels, record_length], dtype=np.short),
+                  "header": np.empty([nmbr_channels, 14], dtype=float)}
 
+        while (read_counter < read_events):
 
-        for enbr in range(read_events):
-            # if verb:
-            printProgressBar(enbr+1, read_events, prefix = 'Reading progress:', suffix = 'Complete', length = 50)
-            # if enbr % 5000 == 0:
-            #     print('Read {} events.'.format(enbr))
+            # print the progress bar
+            printProgressBar(read_counter+1, read_events, prefix = 'Progress:', suffix = 'found: {}'.format(goods_counter), length = 50)
 
-            detector_nbr = struct.unpack('i', f.read(4))[0]
+            while idx_counter < nmbr_channels:
 
-            if (detector_nbr == phonon_channel) or (detector_nbr == light_channel):
+                # read routine
+                buffer["header"][idx_counter, 0] = struct.unpack('i', f.read(4))[0]  # detector_nmb
+                read_counter += 1
 
-                # initialize dvm and event arrays
-                dvm = np.empty([dvm_channels], dtype=float)
-                event = np.empty([record_length], dtype=np.short)
+                if buffer["header"][idx_counter, 0] in channels:  # if the channel is in the channels
 
-                # read all header infos of the event
+                    # read all header infos of the event
 
-                coincide_pulses = struct.unpack('i', f.read(4))[0]
-                trig_count = struct.unpack('i', f.read(4))[0]
-                trig_delay = struct.unpack('i', f.read(4))[0]
-                abs_time_s = struct.unpack('i', f.read(4))[0]
-                abs_time_mus = struct.unpack('i', f.read(4))[0]
-                delay_ch_tp = struct.unpack('i', f.read(4))[0]
-                time_low = struct.unpack('i', f.read(4))[0]  # 'L'
-                time_high = struct.unpack('i', f.read(4))[0]  # 'L'
-                qcd_events = struct.unpack('i', f.read(4))[0]  # 'L'
-                hours = struct.unpack('f', f.read(4))[0]  # 'f'
-                dead_time = struct.unpack('f', f.read(4))[0]  # 'f'
-                test_pulse_amplitude = struct.unpack('f', f.read(4))[0]  # 'f'
-                dac_output = struct.unpack('f', f.read(4))[0]  # 'f'
+                    buffer["header"][idx_counter, 1] = struct.unpack('i', f.read(4))[0] # coincide_pulses
+                    buffer["header"][idx_counter, 2] = struct.unpack('i', f.read(4))[0] # trig_count
+                    buffer["header"][idx_counter, 3] = struct.unpack('i', f.read(4))[0] # trig_delay
+                    buffer["header"][idx_counter, 4] = struct.unpack('i', f.read(4))[0] # abs_time_s
+                    buffer["header"][idx_counter, 5] = struct.unpack('i', f.read(4))[0] # abs_time_mus
+                    buffer["header"][idx_counter, 6] = struct.unpack('i', f.read(4))[0] # delay_ch_tp
+                    buffer["header"][idx_counter, 7] = struct.unpack('i', f.read(4))[0]  # time_low
+                    buffer["header"][idx_counter, 8] = struct.unpack('i', f.read(4))[0]  # time_high
+                    buffer["header"][idx_counter, 9] = struct.unpack('i', f.read(4))[0]  # qcd_events
+                    buffer["header"][idx_counter, 10] = struct.unpack('f', f.read(4))[0]  # hours
+                    buffer["header"][idx_counter, 11] = struct.unpack('f', f.read(4))[0]  # dead_time
+                    buffer["header"][idx_counter, 12] = struct.unpack('f', f.read(4))[0]  # test_pulse_amplitude
+                    buffer["header"][idx_counter, 13] = struct.unpack('f', f.read(4))[0]  # dac_output
 
-                # read the dvm channels
-                for i in range(dvm_channels):
-                    dvm[i] = struct.unpack('f', f.read(4))[0]  # 'f'
+                    # read the dvm channels
+                    for i in range(dvm_channels):
+                        buffer["dvm"][idx_counter, i] = struct.unpack('f', f.read(4))[0]  # 'f'
 
-                # read the recorded event
-                for i in range(record_length):
-                    event[i] = struct.unpack('h', f.read(2))[0]  # 'h'
+                    # read the recorded event
+                    for i in range(record_length):
+                        buffer["event"][idx_counter, i] = struct.unpack('h', f.read(2))[0]  # 'h'
 
-                if (detector_nbr == phonon_channel) and \
-                        ((test_pulse_amplitude in tpa_list) or \
-                         ((test_pulse_amplitude > 0) and (1.0 in tpa_list))):
-                    # or-expression inlcudes every testpulse
-                    p_metainfo.append(np.array([detector_nbr,
-                                                coincide_pulses,
-                                                trig_count,
-                                                trig_delay,
-                                                abs_time_s,
-                                                abs_time_mus,
-                                                delay_ch_tp,
-                                                time_low,
-                                                time_high,
-                                                qcd_events,
-                                                hours,
-                                                dead_time,
-                                                test_pulse_amplitude,
-                                                dac_output]))
-                    p_dvms.append(np.array(dvm))
-                    p_pulse.append(np.array(event))
-                elif (detector_nbr == light_channel) and \
-                        ((test_pulse_amplitude in tpa_list) or \
-                         ((test_pulse_amplitude > 0) and (1.0 in tpa_list))):
-                    # or-expression inlcudes every testpulse
-                    l_metainfo.append(np.array([detector_nbr,
-                                                coincide_pulses,
-                                                trig_count,
-                                                trig_delay,
-                                                abs_time_s,
-                                                abs_time_mus,
-                                                delay_ch_tp,
-                                                time_low,
-                                                time_high,
-                                                qcd_events,
-                                                hours,
-                                                dead_time,
-                                                test_pulse_amplitude,
-                                                dac_output]))
-                    l_dvms.append(np.array(dvm))
-                    l_pulse.append(np.array(event))
+                    channel_ok = (buffer["header"][idx_counter, 0] == channels[idx_counter])
+                    hours_ok = ((buffer["header"][idx_counter, 10] == hours_checker) or (hours_checker == 0))
+                    tpa_ok = (buffer["header"][idx_counter, 12] in tpa_list) or (
+                                (buffer["header"][idx_counter, 12] > 0) and (1.0 in tpa_list))
 
-            else:
-                f.seek(skip_bytes, 1)
-        # print()
+                    # print(read_counter, channel_ok, hours_ok, tpa_ok)
 
-        p_metainfo = np.array(p_metainfo)
-        l_metainfo = np.array(l_metainfo)
+                    if channel_ok and hours_ok and tpa_ok:
+                        # print('GOT IN, IDX++ ')
+                        hours_checker = buffer["header"][idx_counter, 10]
+                        idx_counter += 1
+                    else:  # reset if the events do not match
+                        hours_checker = 0
+                        idx_counter = 0
 
-        p_pulse = np.array(p_pulse)
-        l_pulse = np.array(l_pulse)
+                else:
+                    f.seek(skip_bytes, 1)  # skips the number skip_bytes of bytes
 
-        # uncomment if needed
-        # p_dvms = np.array(p_dvms)
-        # l_dvms = np.array(l_dvms)
+                if read_counter >= read_events:  # check this condition additionally
+                    if idx_counter < nmbr_channels:
+                        throw_last_one = True
+                    break
 
-        # convert to volt
-        p_pulse = convert_to_V(p_pulse)
-        l_pulse = convert_to_V(l_pulse)
+            # here the idx_counter exceeded the nmbr_channels
+            # this means we got all channels of one event
+            metainfo[:, goods_counter, :] = buffer["header"]
+            dvms[:, goods_counter, :] = buffer["dvm"]
+            pulse[:, goods_counter, :] = convert_to_V(buffer["event"])
+            # print('GOT out, GOODS++ ')
+            goods_counter += 1
+            idx_counter = 0
+            hours_checker = 0
+
+            if goods_counter >= len(metainfo[0]): # make one chunk longer
+                metainfo = np.concatenate((metainfo, np.empty([nmbr_channels, chunk_size, 14], dtype=float)), axis=1)
+                dvms = np.concatenate((dvms, np.empty([nmbr_channels, chunk_size, dvm_channels], dtype=float)), axis=1)
+                pulse = np.concatenate((pulse, np.empty([nmbr_channels, chunk_size, record_length], dtype=float)), axis=1)
 
         # check same number of events read on the light and phonon channel
         # otherwise there will occure problems when using np.dstack
-        if p_metainfo.shape != l_metainfo.shape:
-            min_rd = np.min([p_metainfo.shape[0], l_metainfo.shape[0]])
-            p_metainfo = p_metainfo[0:min_rd]
-            l_metainfo = l_metainfo[0:min_rd]
-            p_pulse = p_pulse[0:min_rd]
-            l_pulse = l_pulse[0:min_rd]
+        # if p_metainfo.shape != l_metainfo.shape:
+        #     min_rd = np.min([p_metainfo.shape[0], l_metainfo.shape[0]])
+        #     p_metainfo = p_metainfo[0:min_rd]
+        #     l_metainfo = l_metainfo[0:min_rd]
+        #     p_pulse = p_pulse[0:min_rd]
+        #     l_pulse = l_pulse[0:min_rd]
 
-        # print(p_metainfo)
-        # print(l_metainfo)
+        # print(p_metainfo[:, 10])
+        # print(l_metainfo[:, 10])
 
-        # check wether the timestamps of the phonon and light events correspond
-        if comp_tstamp and not arrays_equal(p_metainfo[:, 10], l_metainfo[:, 10]):
-            print("p_metainfo.shape={}\tl_metainfo.shape={}".format(
-                p_metainfo.shape, l_metainfo.shape))
-            raise Exception("The number of phonon and light events differ.")
+        # check weather the timestamps of the phonon and light events correspond
+        # if comp_tstamp and not arrays_equal(p_metainfo[:, 10], l_metainfo[:, 10]):
+        #     print("p_metainfo.shape={}\tl_metainfo.shape={}".format(
+        #         p_metainfo.shape, l_metainfo.shape))
+        #     raise Exception("The number of phonon and light events differ.")
 
-        metainfo = np.array([p_metainfo, l_metainfo])
-        pulse = np.array([p_pulse, l_pulse])
+    # metainfo = np.array(metainfo)
+    # pulse = np.array(pulse)
 
-        if remove_offset:
-            pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :1000], axis=2).T).T
+    if throw_last_one:
+        goods_counter -= 1
+
+    metainfo = metainfo[:, :goods_counter, :] # last event is malicious
+    pulse = pulse[:, :goods_counter, :]
+    dvms = dvms[:, :goods_counter, :]
+
+    # ipdb.set_trace()
+
+    if remove_offset:
+        pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :int(record_length/8)], axis=2).T).T
 
         # uncomment if needed
         # dvms = np.dstack([p_dvms, l_dvms])

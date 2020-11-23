@@ -99,6 +99,6 @@ def get_amplitudes(events_array, stdevent, nps):
     # filter events
     events_filtered = np.array([filter_event(event, transition_function) for event in events_array])
     # get maximal heights of filtered events
-    amplitudes = np.max(events_filtered, axis=1)
+    amplitudes = np.max(events_filtered[:, int(length/8):-int(length/8)], axis=1)
 
     return amplitudes

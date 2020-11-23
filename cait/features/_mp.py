@@ -4,14 +4,19 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as sci
 from ..fit._bl_fit import fit_quadratic_baseline
 from ..filter._ma import box_car_smoothing
+from ..filter._of import filter_event
 
 # ------------------------------------------------------------
 # MAIN PARAMETERS CLASS
 # ------------------------------------------------------------
 
 class MainParameters():
+    """
+    Class to contain the main parameters
+    """
 
     def __init__(self,
                  pulse_height=0,
@@ -24,6 +29,20 @@ class MainParameters():
                  offset=0,
                  linear_drift=0,
                  quadratic_drift=0):
+        """
+        Provide the main parameters
+
+        :param pulse_height: float, the height of the event
+        :param t_zero: int, the sample index where the rise starts
+        :param t_rise: int, the sample index where the rise reaches 80%
+        :param t_max: int, the sample index of the max event
+        :param t_decaystart: int, the sample index where the peak falls down to 90%
+        :param t_half: int, the sample index where the peak falls down to 73%
+        :param t_end: int, the sample index where the peak falls down to 36%
+        :param offset: float, the mean of the first 1/8 of the record length
+        :param linear_drift: float, the linear slope of the event baseline
+        :param quadratic_drift: float, the quadratic slope of the event baseline
+        """
         self.pulse_height = pulse_height
         self.t_zero = t_zero
         self.t_rise = t_rise
@@ -36,6 +55,11 @@ class MainParameters():
         self.quadratic_drift = quadratic_drift
 
     def print_all(self):
+        """
+        Method to print all the stored main parameters
+
+        :return: -
+        """
         print('Pulse height: ', self.pulse_height)
         print('Index of Rise Start: ', self.t_zero)
         print('Index of Rise End: ', self.t_rise)
@@ -48,6 +72,12 @@ class MainParameters():
         print('Quadratic drift: ', self.quadratic_drift)
 
     def compare(self, other):
+        """
+        Method to compare the main parameters with those of another instance
+
+        :param other: the other instance of main parameters
+        :return: bool, states if the main parameters are the same
+        """
         if self.pulse_height != other.pulse_height:
             return False
         if self.t_zero != other.t_zero:
@@ -72,6 +102,11 @@ class MainParameters():
         return True
 
     def getArray(self):
+        """
+        Returns an array with the main parameters that are stored
+
+        :return: 1D array length 10, the main parameters
+        """
         return np.array([self.pulse_height,
                          self.t_zero,
                          self.t_rise,
@@ -86,7 +121,17 @@ class MainParameters():
     def plotParameters(self,
                        down=1,
                        offset_in_samples=0,
-                       color = 'r', zorder=0):
+                       color = 'r', zorder=10):
+        """
+        Plots the main parameters on overlaid to an event
+
+        :param down: int, the downsample rate of the event that should be overlaid
+        :param offset_in_samples: int, set if the x axis does not start at zero
+        :param color: string, the color of the main parameters in the scatter plot
+        :param zorder: int, the plot with the highest zorder is plot on top of the others
+            this should be choosen high, such that the main parameters are visible
+        :return: -
+        """
 
         # t = np.linspace(0, nmbr_samples-1, nmbr_samples) - nmbr_samples/4
         # start rise, top rise, max, start decay, half decay, end decay
@@ -112,6 +157,11 @@ class MainParameters():
 
 
     def get_differences(self):
+        """
+        Return the differences in the samples times
+
+        :return: 1D array with length 2: (length_rise, length_peak, length_decay)
+        """
         length_rise = self.t_rise - self.t_zero
         length_peak = self.t_decaystart - self.t_rise
         length_decay = self.t_end - self.t_decaystart
@@ -157,7 +207,7 @@ def calc_main_parameters(event, down=1):
 
     length_event = len(event)
 
-    offset = np.mean(event[:500])
+    offset = np.mean(event[:int(length_event/8)])
 
     # smoothing
     if down == 1:
@@ -238,8 +288,114 @@ def calc_main_parameters(event, down=1):
 
     return main_parameters
 
-def calc_additional_parameters(event, down=64):
+def expectation(x, dist):
+    """
+    Calculate the expectation value of a random value function
 
-    #TODO
+    :param x: 1D array, the function of the random vaiable, applied to the x value array
+    :param dist: 1D array of same length as the other array, the values of the distribution
+    """
+    return (1/len(dist))*np.dot(x,dist)
 
-    pass
+def distribution_skewness(density):
+    """
+    Calculate the skewness of a distribution, given the density as array
+
+    :param density: 1D array, the density of the distribution we want the skewness from
+    :return: float, the skewness of the given distribution
+    """
+
+    density = density/np.sum(density)
+
+    x = np.arange(len(density))
+
+    mu = expectation(x, density)
+    sigma = expectation((x-mu)**2, density)
+    std_scores = (x-mu)/sigma
+    skew = expectation(std_scores**3, density)
+
+    return skew
+
+
+def calc_additional_parameters(event,
+                               optimal_transfer_function,
+                               down=1):
+    """
+    Calculate parameters additionally to the main parameters
+
+    :param optimal_transfer_function:
+    :param down:
+    :return: List of float values parameters (maximum of array,
+                     minimum of array,
+                     variance of first 1/8 or array,
+                     mean of first 1/8 or array,
+                     variance of last 1/8 or array,
+                     mean of last 1/8 or array,
+                     variance of whole array,
+                     mean of whole array,
+                     skewness of whole array,
+                     maximum of the derivative of the array,
+                     index of maximum of the derivative of the array,
+                     minimum of the derivative of the array,
+                     index of minimum of the derivative of the array,
+                     maximum of the filtered array,
+                     index of the maximum of the filtered array,
+                     distribution skewness of the filtered samples around the max of filtered array)
+    """
+
+    length_event = len(event)
+    event = event - np.mean(event[:int(length_event/8)])
+
+    # smoothing
+    if down == 1:
+        event_smoothed = box_car_smoothing(event)
+    else:
+        event_smoothed = event.reshape(int(length_event / down), down)
+        event_smoothed = np.mean(event_smoothed, axis=1)
+
+    length_event_smoothed = len(event_smoothed)
+
+    # Max and Min
+    max = np.max(event_smoothed)
+    min = np.max(event_smoothed)
+
+    # Variance and Mean of first 1 / 8 and last 1 / 8
+    var_start = np.var(event_smoothed[:int(length_event_smoothed/8)])
+    mean_start = np.mean(event_smoothed[:int(length_event_smoothed/8)])
+    var_end = np.var(event_smoothed[-int(length_event_smoothed/ 8):])
+    mean_end = np.mean(event_smoothed[-int(length_event_smoothed/ 8):])
+
+    # Variance, Mean and Skewness of whole array
+    var = np.var(event_smoothed)
+    mean = np.mean(event_smoothed)
+    skew = sci.skew(event_smoothed)
+
+    # Max, Min Derivative and position
+    der = np.diff(event_smoothed)
+    der_max = np.max(der)
+    der_maxind = np.argmax(der)
+    der_min = np.min(der)
+    der_minind = np.argmin(der)
+
+    # Min Value OF: Position maximum and skewness of samples around
+    filtered = filter_event(event, transfer_function=optimal_transfer_function)
+    filtered_max = np.max(filtered[int(length_event/8):-int(length_event/8)])
+    filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
+    filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
+
+    return np.array([max,
+                     min,
+                     var_start,
+                     mean_start,
+                     var_end,
+                     mean_end,
+                     var,
+                     mean,
+                     skew,
+                     der_max,
+                     der_maxind,
+                     der_min,
+                     der_minind,
+                     filtered_max,
+                     filtered_maxind,
+                     filtered_skew])

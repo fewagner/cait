@@ -10,7 +10,7 @@ from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_plot import PlotMixin
 from .mixins._data_handler_features import FeaturesMixin
 from .mixins._data_handler_analysis import AnalysisMixin
-
+from .mixins._data_handler_fit import FitMixin
 
 # -----------------------------------------------------------
 # CLASS
@@ -20,12 +20,27 @@ class DataHandler(SimulateMixin,
                   RdtMixin,
                   PlotMixin,
                   FeaturesMixin,
-                  AnalysisMixin):
+                  AnalysisMixin,
+                  FitMixin
+                  ):
+    """
+    A class for the processing of raw data set. Uses Mixins for most features.
+    """
 
     def __init__(self, run, module, channels, record_length, sample_frequency=25000):
+        """
+        Give general information of the detector
+
+        :param run: int, the number of the run
+        :param module: string, the naming of the detector module
+        :param channels: list, the channels in the bck file that belong to the module
+        :param record_length: int, the number of samples in one record window
+        :param sample_frequency: int, the sample requency of the recording
+        """
         # ask user things like which detector working on etc
-        if len(channels) != 2:
-            raise NotImplementedError('Only for 2 channels implemented.')
+        if len(channels) > 3:
+            raise NotImplementedError(
+                'Only for 3 channels or less implemented.')
         self.run = run
         self.module = module
         self.record_length = record_length
@@ -33,7 +48,8 @@ class DataHandler(SimulateMixin,
         self.channels = channels
         self.sample_frequency = sample_frequency
         self.sample_length = 1000 / self.sample_frequency
-        self.t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * self.sample_length
+        self.t = (np.arange(0, self.record_length, dtype=float) -
+                  self.record_length / 4) * self.sample_length
 
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
@@ -53,6 +69,7 @@ class DataHandler(SimulateMixin,
 
         :param path_h5: String to directory that contains the runXY_Module folders
         :param fname: String, usually something like bck_xxx
+        :param appendix: bool, if false the filename must not have an appendix like "-P_ChX-[...]"
         :return: -
         """
 
@@ -66,15 +83,22 @@ class DataHandler(SimulateMixin,
 
         # check if the channel number matches the file, otherwise error
         self.path_h5 = "{}/run{}_{}/{}{}.h5".format(path_h5, self.run, self.module,
-                                                                fname, app)
+                                                    fname, app)
         self.fname = fname
 
-
-    # Import label CSV file in hdf5 file
     def import_labels(self,
                       path_labels,
                       type='events',
                       path_h5=None):
+        """
+        Include the *.csv file with the labels into the HDF5 File.
+        :param path_labels: string, path to the folder that contains the run_module folder
+            e.g. "data" --> look for labels in "data/runXY_moduleZ/labels_bck_0XX_<type>"
+        :param type: string, the type of labels, typically "events" or "testpulses"
+        :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
+            e.g. "data/hdf5s/bck_001[...].h5"
+        :return: -
+        """
 
         if not path_h5:
             path_h5 = self.path_h5
@@ -88,9 +112,8 @@ class DataHandler(SimulateMixin,
             labels = np.genfromtxt(path_labels)
             labels = labels.astype('int32')
             length = len(labels)
-            labels.resize((2, int(length / 2)))
-
-            print(h5f.keys())
+            labels.resize(
+                (self.nmbr_channels, int(length / self.nmbr_channels)))
 
             events = h5f[type]
 
@@ -119,7 +142,11 @@ class DataHandler(SimulateMixin,
                     name='Decaying_Baseline', data=11)
                 events['labels'].attrs.create(name='Temperature Rise', data=12)
                 events['labels'].attrs.create(name='Stick Event', data=13)
-                events['labels'].attrs.create(name='Sawtooth Cycle', data=14)
+                events['labels'].attrs.create(name='Square Waves', data=14)
+                events['labels'].attrs.create(
+                    name='Human Disturbance', data=15)
+                events['labels'].attrs.create(name='Large Sawtooth', data=16)
+                events['labels'].attrs.create(name='Cosinus Tail', data=17)
                 events['labels'].attrs.create(name='unknown/other', data=99)
 
                 print('Added Labels.')
@@ -127,7 +154,118 @@ class DataHandler(SimulateMixin,
         elif (path_labels != ''):
             print("File '{}' does not exist.".format(path_labels))
 
+    def import_predictions(self,
+                           model,
+                           path_predictions,
+                           type='events',
+                           only_channel=None,
+                           path_h5=None):
+        """
+        Include the *.csv file with the predictions of a model into the HDF5 File.
+        :param model: string, the naming for the type of model, e.g. Random Forest --> "RF"
+        :param path_predictions: string, path to the folder that contains the csv file
+            e.g. "data/" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>"
+            if the only_channel is not None, then additionally "_Ch<only_channel>" is append to the
+            looked for file
+        :param type: string, the type of labels, typically "events" or "testpulses"
+        :param only_channel: int, if the labels are only for a specific channel then define here which channel
+        :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
+            e.g. "data/hdf5s/bck_001[...].h5"
+        :return: -
+        """
+
+        if not path_h5:
+            path_h5 = self.path_h5
+
+        if only_channel is not None:
+            app = '_Ch{}'.format(only_channel)
+        else:
+            app = ''
+
+        path_predictions = '{}{}_predictions_{}_{}{}.csv'.format(
+            path_predictions, model, self.fname, type, app)
+
+        h5f = h5py.File(path_h5, 'r+')
+        events = h5f[type]
+
+        if path_predictions != '' and os.path.isfile(path_predictions):
+            labels = np.genfromtxt(path_predictions)
+            labels = labels.astype('int32')
+            length = len(labels)
+            if only_channel is None:
+                labels.resize(
+                    (self.nmbr_channels, int(length / self.nmbr_channels)))
+            # not overwrite the other channels
+            elif "{}_predictions".format(model) in events:
+                labels_full = np.array(
+                    events["{}_predictions".format(model)][...])
+                labels_full[only_channel, :] = labels[:]
+                labels = np.copy(labels_full)
+                del labels_full  # free the memory of the dummy array again
+            else:  # overwrite the other channels with zeros
+                labels_full = np.zeros([self.nmbr_channels, length])
+                labels_full[only_channel, :] = labels
+                labels = np.copy(labels_full)
+                del labels_full  # free the memory of the dummy array again
+
+            if "{}_predictions".format(model) in events:
+                events["{}_predictions".format(model)][...] = labels
+                print('Edited Predictions.')
+
+            else:
+                events.create_dataset(
+                    "{}_predictions".format(model), data=labels)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='unlabeled', data=0)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Event_Pulse', data=1)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Test/Control_Pulse', data=2)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Noise', data=3)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Squid_Jump', data=4)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Spike', data=5)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Early_or_late_Trigger', data=6)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Pile_Up', data=7)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Carrier_Event', data=8)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Strongly_Saturated_Event_Pulse', data=9)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Decaying_Baseline', data=11)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Temperature Rise', data=12)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Stick Event', data=13)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Sawtooth Cycle', data=14)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Human Disturbance', data=15)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Large Sawtooth', data=16)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Cosinus Tail', data=17)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='unknown/other', data=99)
+
+                print('Added {} Predictions.'.format(model))
+
+        else:
+            raise KeyError(
+                'No prediction file found at {}.'.format(path_predictions))
+
     def get_filehandle(self, path=None):
+        """
+        Returns the opened filestream to the hdf5 file
+        :param path: string, optional, give a path to the hdf5 file
+        :return: h5py file object
+        """
         if path is None:
             f = h5py.File(self.path_h5, 'r+')
         else:

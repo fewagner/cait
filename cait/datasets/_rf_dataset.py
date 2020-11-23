@@ -17,6 +17,9 @@ def get_rf_dataset(paths_h5,
                    random_seed,
                    test_size,
                    scalers = None):
+    """
+    DEPRICATED IN THE CURRENT VERSION
+    """
 
     if include_ts_features:
         f = h5py.File(paths_h5[0], 'r')

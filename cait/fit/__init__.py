@@ -3,6 +3,7 @@ from ._bl_fit import *
 from ._templates import *
 from ._pm_fit import *
 from ._sev import *
+from ._saturation import *
 
 __all__=['fit_quadratic_baseline',
          'fit_pulse_shape',
@@ -10,4 +11,5 @@ __all__=['fit_quadratic_baseline',
          'baseline_template_quad',
          'baseline_template_cubic',
          'pulse_template',
-         'sev_fit_template']
+         'sev_fit_template',
+         'logistic_curve']

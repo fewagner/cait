@@ -7,4 +7,7 @@ __all__ = ['get_elements',
            'plot_S1',
            'MainParameters',
            'calc_main_parameters',
-           'calc_ts_features']
+           'calc_ts_features',
+           'expectation',
+           'distribution_skewness',
+           'calc_additional_parameters']
