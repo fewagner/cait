@@ -58,6 +58,16 @@ class FeaturesMixin(object):
                                dtype='float')
         events['mainpar'][...] = mainpar_event
 
+        events['mainpar'].attrs.create(name='pulse_height', data=0)
+        events['mainpar'].attrs.create(name='t_zero', data=1)
+        events['mainpar'].attrs.create(name='t_rise', data=2)
+        events['mainpar'].attrs.create(name='t_max', data=3)
+        events['mainpar'].attrs.create(name='t_decaystart', data=4)
+        events['mainpar'].attrs.create(name='t_half', data=5)
+        events['mainpar'].attrs.create(name='t_end', data=6)
+        events['mainpar'].attrs.create(name='offset', data=7)
+        events['mainpar'].attrs.create(name='linear_drift', data=8)
+        events['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
     # calc stdevent testpulses
     def recalc_sev(self,
