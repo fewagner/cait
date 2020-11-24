@@ -1438,7 +1438,7 @@ class EvaluationTools:
         plt.gcf().subplots_adjust(left=0.5)
 
         for (i, j), z in np.ndenumerate(cm):
-            ax.text(j, i, '{:0.1f}'.format(z), ha='center', va='center')
+            ax.text(j, i, '{:d}'.format(z), ha='center', va='center')
 
         ax.yaxis.set_label_position('right')
         plt.xlabel('Predicted Labels')
