@@ -90,7 +90,7 @@ def gen_dataset_from_rdt(path_rdt,
         nmbr_events = len(metainfo_event[0])
 
         events = h5f.create_group('events')
-        events.create_dataset('event', data=np.array(pulse_event))
+        events.create_dataset('event', data=np.array(pulse_event, dtype='float16'))
         events.create_dataset('hours', data=np.array(metainfo_event[0, :, 10]))
         print('CREATE DATASET WITH EVENTS.')
 
@@ -174,7 +174,7 @@ def gen_dataset_from_rdt(path_rdt,
 
             stdevent = h5f.create_group('stdevent')
             stdevent.create_dataset('event',
-                                    data=np.array(sev_pulse_list))
+                                    data=np.array(sev_pulse_list, dtype='float16'))
             stdevent.create_dataset('fitpar',
                                     data=np.array(sev_fitpar_list))
             # description of the fitparameters (data=column_in_fitpar)
@@ -209,7 +209,7 @@ def gen_dataset_from_rdt(path_rdt,
 
         print('CREATE DATASET WITH NOISE.')
         noise = h5f.create_group('noise')
-        noise.create_dataset('event', data=np.array(pulse_noise))
+        noise.create_dataset('event', data=np.array(pulse_noise, dtype='float16'))
         noise.create_dataset('hours', data=np.array(metainfo_noise[0, :, 10]))
 
         if np.shape(pulse_noise)[1] != 0:
@@ -250,7 +250,7 @@ def gen_dataset_from_rdt(path_rdt,
 
         print('CREATE DATASET WITH TESTPULSES.')
         testpulses = h5f.create_group('testpulses')
-        testpulses.create_dataset('event', data=np.array(pulse_tp))
+        testpulses.create_dataset('event', data=np.array(pulse_tp, dtype='float16'))
         testpulses.create_dataset(
             'hours', data=np.array(metainfo_tp[0, :, 10]))
         testpulses.create_dataset(

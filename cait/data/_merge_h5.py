@@ -11,7 +11,8 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset', 'hours', 'labels'],
                   concatenate_axis=[1, 1, 1, 0, 0, 1],
                   groups_from_a=[],
-                  groups_from_b=[]):
+                  groups_from_b=[],
+                  continue_hours = False):
     """
     Merges two HDF5 files, groups to merge can be chosen
 
@@ -31,6 +32,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :type groups_from_a: list of strings
     :param groups_from_b:
     :type groups_from_b: list of strings
+    :param continue_hours: bool, if True, the value of the last hours in a is added to the hours in b
     :return: -
     :rtype: -
     """
@@ -57,8 +59,13 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
 
                     print('creating ...')
 
-                    data = np.concatenate((a[group][set],
-                                           b[group][set]), axis=concatenate_axis[i])
+                    if continue_hours and set == 'hours':
+                        last_hour = a[group][set][-1]
+                        data = np.concatenate((a[group][set],
+                                               b[group][set] + last_hour), axis=concatenate_axis[i])
+                    else:
+                        data = np.concatenate((a[group][set],
+                                               b[group][set]), axis=concatenate_axis[i])
 
                     # create set in hdf5
                     g.create_dataset(set, data=data)
