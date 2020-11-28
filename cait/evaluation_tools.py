@@ -14,6 +14,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
 from .evaluation._color import console_colors, mpl_default_colors
 from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
@@ -923,6 +924,264 @@ class EvaluationTools:
         # TSNE
         princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
             self.get_features(plt_what, verb=verb))
+
+        if self.save_pgf:
+            set_mpl_backend_pgf()
+
+        if type(figsize) is not tuple:
+            fig, ax = plt.subplots(
+                nrows=nrows, ncols=ncols, sharex=True, sharey=True)
+        else:
+            fig, ax = plt.subplots(
+                nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
+
+        annot = [None] * nrows * ncols
+        sc = [None] * nrows * ncols
+
+        if nrows * ncols == 1:
+            ax = [ax]
+
+        start_i = 0
+        if plt_labels:
+            start_i = 1
+            ax[0].set_title(subtitles[0])
+            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(plt_what, verb=verb), return_legend=True,
+                                                      verb=verb)
+
+            if self.save_pgf:
+                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=2, alpha=0.7)
+            else:
+                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=5, alpha=0.7)
+            pop = [None] * leg.shape[1]
+            for i in range(leg.shape[1]):
+                # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
+                pop[i] = mpl.patches.Patch(
+                    color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
+            ax[0].legend(handles=pop, framealpha=0.3)
+
+        # import ipdb; ipdb.set_trace()
+        for i in range(start_i, nrows * ncols):
+            ax[i].set_title(subtitles[i])
+
+            if self.save_pgf:
+                sc[i] = ax[i].scatter(princcomp[:, 0],
+                                      princcomp[:, 1],
+                                      c=self.get_pred_in_color(pred_methods[i - start_i],
+                                                               what=plt_what, verb=verb),
+                                      s=2,
+                                      alpha=0.7)
+            else:
+                sc[i] = ax[i].scatter(princcomp[:, 0],
+                                      princcomp[:, 1],
+                                      c=self.get_pred_in_color(pred_methods[i - start_i],
+                                                               what=plt_what, verb=verb),
+                                      s=5,
+                                      alpha=0.7)
+
+        for i in range(nrows * ncols):
+            annot[i] = ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+                                      bbox=dict(boxstyle="round", fc="w"),
+                                      arrowprops=dict(arrowstyle="->"))
+            annot[i].set_visible(False)
+
+        if self.save_pgf:
+            if plt_labels:
+                plt.gcf().subplots_adjust(top=0.95, right=0.5)
+                ax[0].legend(handles=pop, framealpha=0.3,
+                             loc='center left', bbox_to_anchor=(1.0, 0.5))
+
+            set_mpl_backend_fontsize(10)
+            if pred_methods == [] and plt_labels:
+                plt.savefig(
+                    '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
+            else:
+                plt.savefig(
+                    '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
+        else:
+            fig.canvas.mpl_connect('key_press_event', on_key)
+            fig.canvas.mpl_connect("motion_notify_event", hover)
+            fig.canvas.mpl_connect('button_press_event', onclick)
+
+            plt.show()
+        plt.close()
+
+
+    def plt_pred_with_pca(self, pred_methods, plt_what='all', plt_labels=True,
+                           figsize=None, as_cols=False, rdseed=None,
+                           verb=False):
+        """
+        Plots data with TSNE when given a one or a list of predictions method
+        to compare different labels.
+
+        :param pl_channel:      - Required  : Data to be plotted.
+        :param x_data:          - Required  : Data to be plotted.
+        :param y_pred:          - Required  : Lists of labels.
+        :param subtitles:       - Required  : Lists of subtitles.
+        :param filepathlist:    - Required  : Lists of paths.
+        :param true_labels:     - Optional  : The true labels.
+        :param perplexity:      - Optional  : Perplexity for the TSNE.
+        :param as_cols:         - Optional  : If true plots are in columns. (Default False)
+        :param rdseed:          - Optional  : Random seed for numpy random. (Default 1)
+        """
+        if type(rdseed) == int:
+            np.random.seed(seed=rdseed)  # fixing random seed
+
+        if type(pred_methods) is not list and type(pred_methods) is not str:
+            if verb:
+                print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                      "'pred_methods' has to of type list or string.")
+
+        if type(pred_methods) is str:
+            pred_methods = [pred_methods]
+
+        for m in pred_methods:
+            if m not in self.predictions.keys():
+                raise ValueError(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                                 "Prediction method {} is not in the predictions dictionary.\n".format(m) +
+                                 "Valid options are: {}".format(self.predictions.keys()))
+
+        nrows = len(pred_methods)
+        ncols = 1
+        subtitles = [''] * nrows
+
+        if plt_labels:
+            subtitles = ['Labels'] + pred_methods
+            nrows = nrows + 1  # take the true labels into account
+
+        # switch rows and cols
+        if as_cols:
+            temp = nrows
+            nrows = ncols
+            ncols = temp
+
+        if plt_what not in ['all', 'test', 'train']:
+            plt_what = 'all'
+            if verb:
+                print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                      "If the value of 'plt_what' is not 'train' or 'test' then all are shown.")
+
+        # -------- MATPLOTLIB event handler --------
+
+        def update_annot(ind):
+            for i in range(nrows * ncols):
+                pos = sc[i].get_offsets()[ind['ind'][0]]
+                annot[i].xy = pos
+                if ind['ind'].size == 1:
+                    id = ind['ind'][0]
+
+                    text = "{}, {}".format(self.files[self.get_file_nbrs(plt_what)[id]].split('/')[-1].split('-')[0],
+                                           self.get_event_nbrs(plt_what)[id])
+                    if plt_labels:
+                        text = text + \
+                            ", {}".format(
+                                self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
+                else:
+                    text = "{}".format(
+                        " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
+                annot[i].set_text(text)
+                annot[i].get_bbox_patch().set_alpha(0.7)
+
+        def hover(event):
+            for i in range(nrows * ncols):
+                vis = annot[i].get_visible()
+                if event.inaxes == ax[i]:
+                    # cont: bool, whether it contains something or not
+                    cont, ind = sc[i].contains(event)
+                    # print(ind)
+                    if cont:
+                        update_annot(ind)
+                        annot[i].set_visible(True)
+                        fig.canvas.draw_idle()
+                    else:
+                        if vis:
+                            annot[i].set_visible(False)
+                            fig.canvas.draw_idle()
+
+        def onclick(event):
+            for i in range(nrows * ncols):
+                if event.inaxes == ax[i]:
+                    cont, ind = sc[i].contains(event)
+                    if ind['ind'].size > 1:
+                        print('Select a single event.')
+                    elif ind['ind'].size == 1:
+                        id = ind['ind'][0]
+
+                        text = "{}, {}".format(
+                            self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                                id]].split('/')[-1].split('-')[0],
+                            self.get_event_nbrs(plt_what, verb=verb)[id])
+                        if plt_labels:
+                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]],
+                                                             self.get_label_nbrs(plt_what, verb=verb)[id])
+
+                        print("Plotting Event nbr. '{}' from file '{}'.".format(
+                            self.get_event_nbrs(plt_what, verb=verb)[id],
+                            self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
+                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
+                            plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
+                        print(instr)
+                        os.system(instr)
+
+        def on_key(event):
+            if event.key == 'm':
+                for i in range(nrows * ncols):
+                    if event.inaxes == ax[i]:
+                        cont, ind = sc[i].contains(event)
+                        if ind['ind'].size > 1:
+                            print('Select a single event.')
+                        elif ind['ind'].size == 1:
+                            id = ind['ind'][0]
+
+                            text = "{}, {}".format(
+                                self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                                    id]].split('/')[-1].split('-')[0],
+                                self.get_event_nbrs(plt_what, verb=verb)[id])
+                            if plt_labels:
+                                text = text + ", {} = {}".format(
+                                    self.labels[self.get_label_nbrs(
+                                        plt_what, verb=verb)[id]],
+                                    self.get_label_nbrs(plt_what, verb=verb)[id])
+
+                            print("Plotting Event nbr. '{}' from file '{}'.".format(
+                                self.get_event_nbrs(plt_what, verb=verb)[id],
+                                self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
+                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
+                                plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
+                            os.system(instr)
+            elif event.key == 'p':
+                for i in range(nrows * ncols):
+                    if event.inaxes == ax[i]:
+                        cont, ind = sc[i].contains(event)
+                        if ind['ind'].size > 1:
+                            print('Select a single event.')
+                        elif ind['ind'].size == 1:
+                            id = ind['ind'][0]
+                            import ipdb
+                            ipdb.set_trace()
+
+        if not self.save_pgf:
+            print(
+                "-------------------------------------------------------------------------")
+            print('Hovering over an event shows you the event number.')
+            print(
+                'When clicking on a single event a window with its timeseries is opened.')
+            print(
+                "Hovering over a a single event and pressing 'm' also opnes the timeseries")
+            print("of this event and adds the calculated mainparameters to the plot.")
+            print(
+                "-------------------------------------------------------------------------")
+
+        # -------- PLOT --------
+        # PCA
+        # pca = PCA(n_components=2)
+        # princcomp = pca.fit_transform(x_data)
+
+        # TSNE
+
+        pca = PCA(n_components=2)
+        princcomp = pca.fit_transform(self.get_features(plt_what, verb=verb))
 
         if self.save_pgf:
             set_mpl_backend_pgf()

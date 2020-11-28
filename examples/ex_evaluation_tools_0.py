@@ -21,7 +21,11 @@ if __name__ == '__main__':
 
     path = 'toy_data/run35_DetF/'
     plot_dir = 'plots/'
-    fnames = ['bck_001-P_Ch26-L_Ch27']
+    fnames = ['bck_001-P_Ch26-L_Ch27-all-all']
+    # fnames = ['bck_001-P_Ch26-L_Ch27-all-all',
+    #           'bck_031-P_Ch26-L_Ch27-all-all',
+    #           'bck_064-P_Ch26-L_Ch27-all-all']
+
     filepath = ['{}{}.h5'.format(path, f) for f in fnames]
 
     pl_channel = 0
@@ -68,3 +72,4 @@ if __name__ == '__main__':
     et.save_pgf = False
 
     et.plt_pred_with_tsne(['RFC'], plt_what='all', verb=True)
+    et.plt_pred_with_pca(['RFC'], plt_what='all', verb=True)
