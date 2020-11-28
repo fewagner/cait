@@ -347,11 +347,10 @@ class EvaluationTools:
         if self.data.shape != featuers.shape:
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
                              "The shape of featuers {}".format(featuers.shape) +
-                             " has to be the same as "+
+                             " has to be the same as " +
                              "shape of data {}".format(self.data.shape) +
                              ", since they should just be transformed.")
         self.features = featuers
-
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
         """
@@ -753,23 +752,23 @@ class EvaluationTools:
     # ################### PLOT ###################
 
     def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True,
-                           figsize=None, perplexity=30, as_cols=False, rdseed=1,
+                           figsize=None, perplexity=30, as_cols=False, rdseed=None,
                            verb=False):
         """
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pl_channel:      - Required  : Data to be plotted.
-        :param x_data:          - Required  : Data to be plotted.
-        :param y_pred:          - Required  : Lists of labels.
-        :param subtitles:       - Required  : Lists of subtitles.
-        :param filepathlist:    - Required  : Lists of paths.
-        :param true_labels:     - Optional  : The true labels.
-        :param perplexity:      - Optional  : Perplexity for the TSNE.
-        :param as_cols:         - Optional  : If true plots are in columns. (Default False)
-        :param rdseed:          - Optional  : Random seed for numpy random. (Default 1)
+        :param pred_methods:    - Required                  : prediction method should be used
+        :param plt_what:        - Required                  : which data is plotted
+        :param plt_labels:      - Optional, default True    : adds subplot with labels.
+        :param figsize:         - Optional, default None    : sets figure size of plot.
+        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          - Optional, default None    : Random seed for numpy random. (Default 1)
+        :param verb:            - Optional, default False   : additional output is printed
         """
-        np.random.seed(seed=rdseed)  # fixing random seed
+        if type(rdseed) == None:
+            np.random.seed(seed=rdseed)  # fixing random seed
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -1007,26 +1006,35 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
-    def plt_pred_with_pca(self, pred_methods, plt_what='all', plt_labels=True,
-                           figsize=None, as_cols=False, rdseed=None,
-                           verb=False):
+    def plt_pred_with_pca(self, pred_methods, xy_comp=(1, 2), plt_what='all', plt_labels=True,
+                          figsize=None, as_cols=False, rdseed=None,
+                          verb=False):
         """
-        Plots data with TSNE when given a one or a list of predictions method
+        Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pl_channel:      - Required  : Data to be plotted.
-        :param x_data:          - Required  : Data to be plotted.
-        :param y_pred:          - Required  : Lists of labels.
-        :param subtitles:       - Required  : Lists of subtitles.
-        :param filepathlist:    - Required  : Lists of paths.
-        :param true_labels:     - Optional  : The true labels.
-        :param perplexity:      - Optional  : Perplexity for the TSNE.
-        :param as_cols:         - Optional  : If true plots are in columns. (Default False)
-        :param rdseed:          - Optional  : Random seed for numpy random. (Default 1)
+        :param pred_methods:    - Required                  : prediction method should be used
+        :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
+        :param plt_what:        - Optional, default 'all'   : which data is plotted
+        :param plt_labels:      - Optional, default True    : adds subplot with labels.
+        :param figsize:         - Optional, default None    : sets figure size of plot.
+        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          - Optional, default None    : Random seed for numpy random. (Default 1)
+        :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
+
+        if type(xy_comp) != tuple and \
+                len(xy_comp) != 2 and \
+                type(xy_comp[0]) != int and \
+                type(xy_comp[1]) != int and \
+                xy_comp[0] > 0 and \
+                xy_comp[1] > 0:
+            raise ValueError(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                             "The parameter xy_comp has to be of shape '(<int>,<int>)'" +
+                             "with the integer being > 0.")
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -1180,8 +1188,9 @@ class EvaluationTools:
 
         # TSNE
 
-        pca = PCA(n_components=2)
+        pca = PCA(n_components=np.max(xy_comp))
         princcomp = pca.fit_transform(self.get_features(plt_what, verb=verb))
+        princcomp = princcomp[:,[xy_comp[0]-1,xy_comp[1]-1]]
 
         if self.save_pgf:
             set_mpl_backend_pgf()

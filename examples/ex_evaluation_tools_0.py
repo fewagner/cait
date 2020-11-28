@@ -72,4 +72,5 @@ if __name__ == '__main__':
     et.save_pgf = False
 
     et.plt_pred_with_tsne(['RFC'], plt_what='all', verb=True)
+    et.plt_pred_with_pca(['RFC'], xy_comp=(1,4), plt_what='all', verb=True)
     et.plt_pred_with_pca(['RFC'], plt_what='all', verb=True)
