@@ -92,7 +92,8 @@ class RdtMixin(object):
                         tpa_list=[0],
                         calc_mp=True, calc_fit=False,
                         calc_sev=False, processes=4,
-                        chunk_size=1000):
+                        chunk_size=1000,
+                        event_dtype='float64'):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file
         :param path_rdt: string, path to the rdt file e.g. "data/bcks/"
@@ -105,6 +106,7 @@ class RdtMixin(object):
         :param processes: int, the number of processes that is used for the code execution
         :param chunk_size: int, the init size of the arrays, should ideally
             be a bit more than we read events
+        :param event_dtype: string, datatype to save the events with
         :return: -
         """
 
@@ -119,7 +121,8 @@ class RdtMixin(object):
                              calc_fit=calc_fit,
                              calc_sev=calc_sev,
                              processes=processes,
-                             chunk_size=chunk_size
+                             chunk_size=chunk_size,
+                             event_dtype=event_dtype
                              )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))

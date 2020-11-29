@@ -48,7 +48,9 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04):
         par, _ = curve_fit(f=pulse_template,
                            xdata=t_dummy,
                            ydata=event,
-                           p0=x0)
+                           p0=x0,
+                           bounds=np.array([[-np.inf, -np.inf, -50, 1e-8, 1e-8, 1e-8],
+                                            [np.inf, np.inf, +50, 1e8, 1e8, 1e8]]))
         # , bounds=(-np.inf, np.inf),
         # maxfev=2000)
     except RuntimeError:

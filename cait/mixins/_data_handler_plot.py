@@ -23,7 +23,9 @@ class PlotMixin(object):
                  type='stdevent',
                  show_fit=True,
                  block=True,
-                 sample_length=0.04):
+                 sample_length=0.04,
+                 show=True,
+                 save_path=None):
         """
         Plot the standardevent of all channels
         :param type: string, either stdevent for events or stdevent_tp for testpulses
@@ -50,7 +52,10 @@ class PlotMixin(object):
                 plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='orange')
             plt.title(ch + ' ' + type)
 
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         f.close()
 
@@ -58,7 +63,9 @@ class PlotMixin(object):
                              naming,
                              show_fit=True,
                              block=True,
-                             sample_length=0.04):
+                             sample_length=0.04,
+                 show=True,
+                 save_path=None):
         """
         Plot an exceptional standardevent of one channel
 
@@ -85,12 +92,17 @@ class PlotMixin(object):
             plt.plot(t, pulse_template(t, *sev_fitpar))
         plt.title('stdevent_{}'.format(naming))
 
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         f.close()
 
     # Plot the NPS
-    def show_NPS(self, block=True):
+    def show_NPS(self, block=True,
+                 show=True,
+                 save_path=None):
         """
         Plot the Noise Power Spectrum of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -107,12 +119,17 @@ class PlotMixin(object):
             plt.loglog(f['noise']['nps'][i], color=self.colors[i])
             plt.title(ch + ' NPS')
 
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         f.close()
 
     # Plot the OF
-    def show_OF(self, block=True):
+    def show_OF(self, block=True,
+                 show=True,
+                 save_path=None):
         """
         Plot the Optimum Filter of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -133,9 +150,13 @@ class PlotMixin(object):
             plt.loglog(of[i], color=self.colors[i])
             plt.title(ch + ' OF')
 
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         f.close()
+
 
     # plot histogram of some value
     def show_values(self,
@@ -146,7 +167,9 @@ class PlotMixin(object):
                     idx2=None,
                     block=False,
                     bins=100,
-                    range=None):
+                    range=None,
+                 show=True,
+                 save_path=None):
         """
         Shows a histogram of some values from the HDF5 file
 
@@ -187,7 +210,12 @@ class PlotMixin(object):
                  bins=bins,
                  range=range)
         plt.title('{} {} {},{},{}'.format(group, key, str(idx0), str(idx1), str(idx2)))
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
+
+        hf5.close()
 
     # show scatter plot of some value
     def show_scatter(self,
@@ -197,7 +225,9 @@ class PlotMixin(object):
                      idx1s=[None, None],
                      idx2s=[None, None],
                      block=False,
-                     marker='.'):
+                     marker='.',
+                 show=True,
+                 save_path=None):
         """
         Shows a scatter plot of some values from the HDF5 file
 
@@ -248,7 +278,12 @@ class PlotMixin(object):
                                                                         groups[1], keys[1],
                                                                         str(idx0s[1]), str(idx1s[1]), str(idx2s[1])
                                                                         ))
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
+
+        hf5.close()
 
     # show histogram of main parameter
     def show_hist(self,
@@ -261,7 +296,9 @@ class PlotMixin(object):
                   pred_model=None,
                   bins=100,
                   block=False,
-                  ran=None):
+                  ran=None,
+                 show=True,
+                 save_path=None):
         """
         Show a histogram of main parameter values
 
@@ -324,7 +361,11 @@ class PlotMixin(object):
                      range=ran)
         plt.title(type + ' ' + which_mp + ' Channel ' + str(which_channel))
         plt.legend()
-        plt.show(block=block)
+
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         print('Histogram for {} created.'.format(which_mp))
         f_h5.close()
@@ -342,7 +383,9 @@ class PlotMixin(object):
                 block=False,
                 marker='.',
                 alpha=0.8,
-                s=1):
+                s=1,
+                 show=True,
+                 save_path=None):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
 
@@ -421,12 +464,19 @@ class PlotMixin(object):
                         s=s)
         plt.title(type + ' LY x_ch ' + str(x_channel) + ' y_ch ' + str(y_channel))
         plt.legend()
-        plt.show(block=block)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         print('LY Plot created.')
         f_h5.close()
 
-    def show_saturation(self, show_fit=True, channel=0, marker='.', s=1, only_idx=None):
+    def show_saturation(self, show_fit=True, channel=0, marker='.', s=1,
+                        only_idx=None,
+                        block=False,
+                 show=True,
+                 save_path=None):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
 
@@ -458,6 +508,9 @@ class PlotMixin(object):
             plt.plot(x, logistic_curve(x, *fitpar),
                      label='Fitted Log Curve')
         plt.title('Saturation Ch {}'.format(channel))
-        plt.show()
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
 
         f_h5.close()
