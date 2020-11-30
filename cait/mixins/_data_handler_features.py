@@ -445,8 +445,9 @@ class FeaturesMixin(object):
 
         # open file
         h5f = h5py.File(self.path_h5, 'r+')
-        baselines = np.array(h5f['noise']['events'])
-        labels = np.array(h5f['noise']['labels'])
+        baselines = np.array(h5f['noise']['event'])
+        if use_labels:
+            labels = np.array(h5f['noise']['labels'])
 
         mean_nps = []
         for c in range(self.nmbr_channels):
@@ -460,7 +461,7 @@ class FeaturesMixin(object):
         h5f['noise'].require_dataset('nps',
                                      shape=mean_nps.shape,
                                      dtype='float')
-        h5f['noise']['nps'] = mean_nps
+        h5f['noise']['nps'][...] = mean_nps
 
         h5f.close()
 
