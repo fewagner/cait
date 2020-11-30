@@ -8,8 +8,9 @@ import numpy as np
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   groups_to_merge=['events', 'testpulses', 'noise'],
-                  sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset', 'hours', 'labels'],
-                  concatenate_axis=[1, 1, 1, 0, 0, 1],
+                  sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset',
+                                 'hours', 'labels', 'testpulseamplitude', 'time_s', 'time_mus'],
+                  concatenate_axis=[1, 1, 1, 0, 0, 1, 0, 0, 0],
                   groups_from_a=[],
                   groups_from_b=[],
                   continue_hours = False):

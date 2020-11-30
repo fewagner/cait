@@ -94,6 +94,8 @@ def gen_dataset_from_rdt(path_rdt,
         events = h5f.create_group('events')
         events.create_dataset('event', data=np.array(pulse_event, dtype=event_dtype))
         events.create_dataset('hours', data=np.array(metainfo_event[0, :, 10]))
+        events.create_dataset('time_s', data=np.array(metainfo_event[0, :, 4]))
+        events.create_dataset('time_mus', data=np.array(metainfo_event[0, :, 5]))
         print('CREATE DATASET WITH EVENTS.')
 
         # for small numbers of events only additional overhead is introduced
@@ -213,6 +215,8 @@ def gen_dataset_from_rdt(path_rdt,
         noise = h5f.create_group('noise')
         noise.create_dataset('event', data=np.array(pulse_noise, dtype=event_dtype))
         noise.create_dataset('hours', data=np.array(metainfo_noise[0, :, 10]))
+        noise.create_dataset('time_s', data=np.array(metainfo_noise[0, :, 4]))
+        noise.create_dataset('time_mus', data=np.array(metainfo_noise[0, :, 5]))
 
         if np.shape(pulse_noise)[1] != 0:
             mean_nps_all = []
@@ -257,6 +261,8 @@ def gen_dataset_from_rdt(path_rdt,
             'hours', data=np.array(metainfo_tp[0, :, 10]))
         testpulses.create_dataset(
             'testpulseamplitude', data=np.array(metainfo_tp[0, :, 12]))
+        testpulses.create_dataset('time_s', data=np.array(metainfo_tp[0, :, 4]))
+        testpulses.create_dataset('time_mus', data=np.array(metainfo_tp[0, :, 5]))
 
         if calc_mp:
             print('CALCULATE MP.')

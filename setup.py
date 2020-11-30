@@ -21,7 +21,7 @@ setup(
                       'tsfel',
                       'pandas',
                       'scipy',
-                      #'numba',
+                      'numba',
                       'sklearn',
                       'uproot',
                       'awkward1',
