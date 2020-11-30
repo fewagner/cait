@@ -74,6 +74,7 @@ class FeaturesMixin(object):
                    type='events',
                    use_labels=True,
                    correct_label=None,
+                   use_idx=None,
                    pulse_height_intervall=[[0.5, 1.5], [0.5, 1.5]],
                    left_right_cutoff=None,
                    rise_time_intervall=None,
@@ -89,6 +90,8 @@ class FeaturesMixin(object):
         :param type: string, either "events" or "testpulses"
         :param use_labels: bool, if True a labels file must be included in the hdf5 file,
             then only the events labeled as events or testpulses are included in the calculation
+        :param correct_label: int, the label to be used for the sev generation
+        :param use_idx: list of ints, only these indices are included for the sev generation
         :param pulse_height_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
             and lower bound for the pulse heights to include into the creation of the SEV
         :param left_right_cutoff: list of NMBR_CHANNELS floats, the maximal abs value of the linear slope of events
@@ -140,9 +143,12 @@ class FeaturesMixin(object):
         else:
             sev = h5f.require_group('stdevent_{}'.format(correct_label))
 
+        if use_idx is None:
+            use_idx = list(range(len(events[0])))
+
         for c in range(self.nmbr_channels):
-            std_evs.append(generate_standard_event(events=events[c, :, :],
-                                                   main_parameters=mainpar[c, :, :],
+            std_evs.append(generate_standard_event(events=events[c, use_idx, :],
+                                                   main_parameters=mainpar[c, use_idx, :],
                                                    labels=labels[c],
                                                    correct_label=correct_label,
                                                    pulse_height_intervall=pulse_height_intervall[c],
