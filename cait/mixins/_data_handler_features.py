@@ -276,34 +276,39 @@ class FeaturesMixin(object):
         f.close()
 
     # apply the optimum filter
-    def apply_of(self, type='events'):
+    def apply_of(self, type='events', chunk_size=10000):
         """
         Calculates the height of events or testpulses after applying the optimum filter
 
         :param type: string, either events of testpulses
+        :param chunk_size: int, the size how many events are processes simultaneoursly to avoid memory error
         :return: -
         """
 
         print('Calculating OF Heights.')
 
         f = h5py.File(self.path_h5, 'r+')
-        events = np.array(f[type]['event'])
+        events = f[type]['event']
         sev = np.array(f['stdevent']['event'])
         nps = np.array(f['noise']['nps'])
         of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=complex)
         of.real = f['optimumfilter']['optimumfilter_real']
         of.imag = f['optimumfilter']['optimumfilter_imag']
 
-        of_ph = []
-        for c in range(self.nmbr_channels):
-            of_ph.append(get_amplitudes(events[c], sev[c], nps[c]))
-
-        of_ph = np.array([c for c in of_ph])
-
         f[type].require_dataset(name='of_ph',
                                 shape=(self.nmbr_channels, len(events[0])),
                                 dtype='float')
-        f[type]['of_ph'][...] = of_ph
+
+        nmbr_events = len(events[0])
+        counter = 0
+        while counter+chunk_size < nmbr_events:
+            for c in range(self.nmbr_channels):
+                of_ph = get_amplitudes(events[c, counter:counter+chunk_size], sev[c], nps[c])
+                f[type]['of_ph'][c, counter:counter+chunk_size] = of_ph
+                counter += chunk_size
+        for c in range(self.nmbr_channels):
+            of_ph = get_amplitudes(events[c, counter:], sev[c], nps[c])
+            f[type]['of_ph'][c, counter:] = of_ph
 
         f.close()
 
