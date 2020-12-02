@@ -193,6 +193,7 @@ class LSTMModule(LightningModule):
 
         # put features together
         x = torch.cat(tuple([sample[k] for k in self.feature_keys]), dim=1)
+        x = x.to(self.device_name)
         out = self(x).detach()
 
         # put the decision rule
