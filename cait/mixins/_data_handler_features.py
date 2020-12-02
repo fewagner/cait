@@ -301,14 +301,14 @@ class FeaturesMixin(object):
 
         nmbr_events = len(events[0])
         counter = 0
-        while counter+chunk_size < nmbr_events:
+        while counter + chunk_size < nmbr_events:
             for c in range(self.nmbr_channels):
                 of_ph = get_amplitudes(events[c, counter:counter+chunk_size], sev[c], nps[c])
                 f[type]['of_ph'][c, counter:counter+chunk_size] = of_ph
-                counter += chunk_size
+            counter += chunk_size
         for c in range(self.nmbr_channels):
-            of_ph = get_amplitudes(events[c, counter:], sev[c], nps[c])
-            f[type]['of_ph'][c, counter:] = of_ph
+            of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c])
+            f[type]['of_ph'][c, counter:nmbr_events] = of_ph
 
         f.close()
 
