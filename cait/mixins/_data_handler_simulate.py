@@ -39,6 +39,7 @@ class SimulateMixin(object):
                         lamb=0.01,
                         sample_length=0.04,
                         assign_labels=[1],
+                        start_from_bl_idx=0,
                         saturation=False,
                         reuse_bl=False):
         """
@@ -70,6 +71,7 @@ class SimulateMixin(object):
         :param sample_length: float, the length of one sample in milliseconds
         :param assign_labels: list of ints, pre-assign a label to all the simulated events; tp and noise are
             automatically labeled, the length of the list must match the list channels_exceptional_sev
+        :param start_from_bl_idx: int, the index of baselines that is as first taken for simulation
         :param saturation: bool, if true apply the logistics curve to the simulated pulses
         :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
             (use this with care to not have identical copies of events)
@@ -97,7 +99,7 @@ class SimulateMixin(object):
                                                                    channels_exceptional_sev=channels_exceptional_sev,
                                                                    t0_interval=t0_interval,  # in ms
                                                                    fake_noise=fake_noise,
-                                                                   use_bl_from_idx=0,
+                                                                   use_bl_from_idx=start_from_bl_idx,
                                                                    rms_thresholds=rms_thresholds,
                                                                    lamb=lamb,
                                                                    sample_length=sample_length,
@@ -136,7 +138,7 @@ class SimulateMixin(object):
                                                                        discrete_ph=tp_discrete_phs,
                                                                        t0_interval=[-20, 20],  # in ms
                                                                        fake_noise=fake_noise,
-                                                                       use_bl_from_idx=size_events + nmbr_thrown_events,
+                                                                       use_bl_from_idx=start_from_bl_idx + size_events + nmbr_thrown_events,
                                                                        rms_thresholds=rms_thresholds,
                                                                        lamb=lamb,
                                                                        sample_length=sample_length,
@@ -181,7 +183,7 @@ class SimulateMixin(object):
                                                                   record_length=self.record_length,
                                                                   nmbr_channels=self.nmbr_channels,
                                                                   fake_noise=fake_noise,
-                                                                  use_bl_from_idx=size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
+                                                                  use_bl_from_idx=start_from_bl_idx + size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
                                                                   rms_thresholds=rms_thresholds,
                                                                   lamb=lamb,
                                                                   sample_length=sample_length,
