@@ -113,7 +113,7 @@ class sev_fit_template:
         x = self.pm_par
         x[0] += t0
         return h * pulse_template(self.t, *x) + a0 + \
-               a1 * (self.t - t0)
+               a1 * self.t
 
     def seq(self, h, t0, a0, a1, a2):
         """
@@ -129,11 +129,11 @@ class sev_fit_template:
         x = self.pm_par
         x[0] += t0
         return h * pulse_template(self.t, *x) + a0 + \
-               a1 * (self.t - t0) + a2 * (self.t - t0)
+               a1 * self.t + a2 * self.t**2
 
     def sec(self, h, t0, a0, a1, a2, a3):
         """
-        Standard Event Model with Quadradtic Baseline
+        Standard Event Model with Cubic Baseline
 
         :param h: float, hight of pulse shape
         :param t0: float, onset of pulse shape
@@ -146,8 +146,8 @@ class sev_fit_template:
         x = self.pm_par
         x[0] += t0
         return h * pulse_template(self.t, *x) + a0 + \
-               a1 * self.t + a2 * self.t + \
-               a3 * self.t
+               a1 * self.t + a2 * self.t**2 + \
+               a3 * self.t**3
 
     def fit(self, event, order_polynomial=1):
         """

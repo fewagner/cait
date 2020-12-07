@@ -108,27 +108,29 @@ class FitMixin(object):
 
             # fit all
             for i in range(len(events[0])):
+                if verb and i%100 == 0:
+                    print('Fitting Event Nmbr: {}/{}'.format(i+1,len(events[0])))
                 par[c, i] = fit_model.fit(events[c, i], order_polynomial=order_bl_polynomial)
 
         # write sev fit results to file
-        f['events'].require_dataset(name='sev_fit_par',
+        f['events'].require_dataset(name='sev_fit_par_bl{}'.format(order_bl_polynomial),
                                     shape=par.shape,
                                     dtype='float')
-        f['events'].require_dataset(name='sev_fit_rms',
+        f['events'].require_dataset(name='sev_fit_rms_bl{}'.format(order_bl_polynomial),
                                     shape=(self.nmbr_channels, len(events[0])),
                                     dtype='float')
-        f['events']['sev_fit_par'][...] = par
+        f['events']['sev_fit_par_bl{}'.format(order_bl_polynomial)][...] = par
         for c in range(self.nmbr_channels):
             fit_model = sev_fit_template(pm_par=sev_par[c], t=t)
             for i in range(len(events[0])):
                 if order_bl_polynomial == 0:
-                    f['events']['sev_fit_rms'][c, i] = np.sum((events[c, i] - fit_model.sef(*par[c, i])) ** 2)
+                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sef(*par[c, i])) ** 2)
                 elif order_bl_polynomial == 1:
-                    f['events']['sev_fit_rms'][c, i] = np.sum((events[c, i] - fit_model.sel(*par[c, i])) ** 2)
+                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sel(*par[c, i])) ** 2)
                 elif order_bl_polynomial == 2:
-                    f['events']['sev_fit_rms'][c, i] = np.sum((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
+                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
                 elif order_bl_polynomial == 3:
-                    f['events']['sev_fit_rms'][c, i] = np.sum((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
+                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
                 else:
                     raise KeyError('Order Polynomial must be 0,1,2,3!')
 
