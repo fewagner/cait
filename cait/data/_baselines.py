@@ -60,19 +60,18 @@ def get_cc_noise(nmbr_noise,
 
     T = (len(nps) - 1)*2
 
-    alpha = lamb*T
+    # alpha is fixed by the function we use to 1
+    a = np.sqrt(1/lamb/T)
 
     noise = np.zeros((nmbr_noise, T))
 
     for i in range(nmbr_noise):
-        if verb and i%100==0:
+        if verb and i%10==0:
             print('Baselines simulated: ', i)
         t = 0
         while t < T:
-            noise[i] += norm.rvs() * np.roll(noise_function(nps), t)
+            noise[i] += norm.rvs(scale=a) * np.roll(noise_function(nps), t)
             t = int(t - np.log(1 - uniform.rvs())/lamb)
-
-    noise /= np.sqrt(alpha)  # normalization constant
 
     return noise
 

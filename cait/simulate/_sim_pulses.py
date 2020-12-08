@@ -64,6 +64,7 @@ def simulate_events(path_h5,
     nmbr_thrown = 0
 
     # get baselines
+    print('Get Baselines.')
     if fake_noise:
         sim_events, _ = simulate_baselines(path_h5=path_h5,
                                            size=size,
@@ -118,6 +119,7 @@ def simulate_events(path_h5,
             sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
 
     # get pulse heights
+    print('Get Pulse Heights.')
     phs = np.zeros((nmbr_channels, size))
     for c in range(nmbr_channels):
         if discrete_ph is None:
@@ -129,6 +131,7 @@ def simulate_events(path_h5,
     t0s = uniform.rvs(loc=t0_interval[0], scale=t0_interval[1] - t0_interval[0], size=size)
 
     # add pulses
+    print('Add Pulses to Baselines.')
     if type == 'events':
         used_exept_sevs = 0  # this counts to get the exceptional event at correct index
         for c in range(nmbr_channels):

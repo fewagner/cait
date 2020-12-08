@@ -68,7 +68,7 @@ class SimulateMixin(object):
         :param rms_thresholds: list of two floats, above which value noise baselines are excluded for the
             distribution of polynomial coefficients (i.e. a parameter for the fake noise simulation), also a
             cut parameter for the noise baselines from the h5 set if no fake ones are taken
-        :param lamb: float, a parameter for the fake baseline simulation, increase if calculation time is too long
+        :param lamb: float, a parameter for the fake baseline simulation, decrease if calculation time is too long
         :param sample_length: float, the length of one sample in milliseconds
         :param assign_labels: list of ints, pre-assign a label to all the simulated events; tp and noise are
             automatically labeled, the length of the list must match the list channels_exceptional_sev

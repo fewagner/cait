@@ -11,6 +11,8 @@ def simulate_baselines(path_h5,
                        size,
                        rms_thresholds,
                        lamb=0.01,
+                       kde=True,
+                       sim_poly=True,
                        verb=False):
     """
     Creates fake baselines with given nps and drift structure
@@ -36,29 +38,38 @@ def simulate_baselines(path_h5,
     t = np.linspace(0, record_length - 1, record_length)
 
     # simulate polynomials
-    if verb:
-        print('Simulating Polynomials.')
     polynomials = np.zeros((nmbr_channels, size, record_length))
-    for i in range(nmbr_channels):
-        p = fitpar[i]
-        p = p[rms[i] < rms_thresholds[i]]
-        kde = gaussian_kde(p.T)
-        simpar = kde.resample(size=size).T
-        for j in range(size):
-            polynomials[i, j, :] = baseline_template_cubic(t,
-                                                           c0=simpar[j, 0],
-                                                           c1=simpar[j, 1],
-                                                           c2=simpar[j, 2],
-                                                           c3=simpar[j, 3])
+    if sim_poly:
+        if verb:
+            print('Simulating Polynomials.')
+        for i in range(nmbr_channels):
+            p = fitpar[i]
+            p = p[rms[i] < rms_thresholds[i]]
+            if kde:
+                kde = gaussian_kde(p.T)
+                simpar = kde.resample(size=size).T
+            else:
+                mean = np.mean(p, axis=0)
+                cov = np.cov(p.T)
+                simpar = np.random.multivariate_normal(mean, cov, size=size)
+            for j in range(size):
+                polynomials[i, j, :] = baseline_template_cubic(t,
+                                                               c0=simpar[j, 0],
+                                                               c1=simpar[j, 1],
+                                                               c2=simpar[j, 2],
+                                                               c3=simpar[j, 3])
 
-    # calculate polynomial nps
-    if verb:
-        print('Calculating Polynomial NPS.')
-    mnps_poly = np.zeros((nmbr_channels, int(record_length / 2 + 1)))
-    for c in range(nmbr_channels):
-        for i, p in enumerate(polynomials[c]):
-            mnps_poly[c] += get_nps(p)
-    mnps_poly /= size
+        # calculate polynomial nps
+        if verb:
+            print('Calculating Polynomial NPS.')
+        mnps_poly = np.zeros((nmbr_channels, int(record_length / 2 + 1)))
+        for c in range(nmbr_channels):
+            for i, p in enumerate(polynomials[c]):
+                mnps_poly[c] += get_nps(p)
+        mnps_poly /= size
+
+        nps -= mnps_poly
+        nps[nps <= 0] = 0
 
     # simulate noise with difference nps
     if verb:
@@ -70,5 +81,7 @@ def simulate_baselines(path_h5,
                                                      lamb=lamb,
                                                      verb=True)
     h5f.close()
+    if verb:
+        print('Baseline Simulation done.')
 
     return baselines, polynomials
