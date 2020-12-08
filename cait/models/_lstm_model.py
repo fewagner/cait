@@ -21,7 +21,7 @@ class LSTMModule(LightningModule):
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
-                 norm_vals=None, offset_keys=None, dain=False):
+                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False):
         """
         Initial information for the neural network module
 
@@ -71,6 +71,7 @@ class LSTMModule(LightningModule):
         self.label_keys = label_keys
         self.feature_keys = feature_keys
         self.lr = lr
+        self.weight_decay = weight_decay
         self.is_classifier = is_classifier
         self.down = down  # just store as info for later
         self.down_keys = down_keys
@@ -149,10 +150,12 @@ class LSTMModule(LightningModule):
         loss = self.loss_function(logits, y)
         self.log('test_loss', loss)
 
-    def configure_optimizers(self, lr=None):
+    def configure_optimizers(self, lr=None, weight_decay=None):
         if lr is None:
             lr = self.lr
-        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        if weight_decay is None:
+            weight_decay = self.weight_decay
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
         return optimizer
 
     def predict(self, sample):
