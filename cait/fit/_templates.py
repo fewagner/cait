@@ -5,6 +5,7 @@
 import numpy as np
 from scipy.optimize import minimize
 
+
 # -----------------------------------------------------
 # FUNCTIONS
 # -----------------------------------------------------
@@ -37,6 +38,11 @@ def baseline_template_cubic(t, c0, c1, c2, c3):
     """
     return c0 + t * c1 + t ** 2 * c2 + t ** 3 * c3
 
+# def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
+#     return (np.heaviside(t - t0, 1) * \
+#             (An * (np.exp(-(t - t0) / tau_n) - np.exp(-(t - t0) / tau_in)) + \
+#              At * (np.exp(-(t - t0) / tau_t) - np.exp(-(t - t0) / tau_n))))
+#
 
 def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     """
@@ -58,6 +64,7 @@ def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
                        At * (np.exp(-(t_red - t0) / tau_t) - np.exp(-(t_red - t0) / tau_n)))
     return pulse
 
+
 # Define gauss function
 def gauss(x, *p):
     """
@@ -68,7 +75,8 @@ def gauss(x, *p):
     :return: 1D array of same length than x, evaluated gauss function
     """
     A, mu, sigma = p
-    return A*np.exp(-(x-mu)**2/(2.*sigma**2))
+    return A * np.exp(-(x - mu) ** 2 / (2. * sigma ** 2))
+
 
 # -----------------------------------------------------
 # CLASSES
@@ -97,7 +105,7 @@ class sev_fit_template:
         :return: 1D array, the pulse model evaluated on the time grid
         """
         x = self.pm_par
-        x[0] += t0
+        x[0] -= t0
         return h * pulse_template(self.t, *x) + a0
 
     def sel(self, h, t0, a0, a1):
@@ -111,9 +119,9 @@ class sev_fit_template:
         :return: 1D array, the pulse model evaluated on the time grid
         """
         x = self.pm_par
-        x[0] += t0
+        x[0] -= t0
         return h * pulse_template(self.t, *x) + a0 + \
-               a1 * self.t
+               a1 * (self.t - t0)
 
     def seq(self, h, t0, a0, a1, a2):
         """
@@ -127,9 +135,9 @@ class sev_fit_template:
         :return: 1D array, the pulse model evaluated on the time grid
         """
         x = self.pm_par
-        x[0] += t0
+        x[0] -= t0
         return h * pulse_template(self.t, *x) + a0 + \
-               a1 * self.t + a2 * self.t**2
+               a1 * (self.t - t0) + a2 * (self.t - t0) ** 2
 
     def sec(self, h, t0, a0, a1, a2, a3):
         """
@@ -143,53 +151,43 @@ class sev_fit_template:
         :param a3: float, cubic drift component of the baseline
         :return: 1D array, the pulse model evaluated on the time grid
         """
-        x = self.pm_par
-        x[0] += t0
-        return h * pulse_template(self.t, *x) + a0 + \
-               a1 * self.t + a2 * self.t**2 + \
-               a3 * self.t**3
+        x = np.copy(self.pm_par)
+        x[0] -= t0
+        pulse = pulse_template(self.t, *x)
+        return h * pulse + a0 + \
+               a1 * (self.t - t0) + a2 * (self.t - t0) ** 2 + \
+               a3 * (self.t - t0) ** 3
 
-    def fit(self, event, order_polynomial=1):
+    def fit_cubic(self, event):
         """
         Calculates the SEV Fit Parameter
 
         :param event: 1D array, the event to fit
-        :param order_polynomial: int, the order of the polynomial to fit
         :return: 1D array, the sev fit parameters
         """
 
-        event = event - np.mean(event[:int(len(event)/8)])
+        #event = event - np.mean(event[:int(len(event) / 8)])
 
-        # handle for fit template
-        if order_polynomial == 0:
-            template = self.sef
-        elif order_polynomial == 1:
-            template = self.sel
-        elif order_polynomial == 2:
-            template = self.seq
-        elif order_polynomial == 3:
-            template = self.sec
-        else:
-            raise KeyError('Order Polynomial must be 0,1,2 or 3!')
-
-        # find initial values
-        iv = np.zeros(int(2 + order_polynomial))
-        iv[1] = 0  # offset
-        iv[0] = np.max(event) # height
-        iv[2] = (event[-1] - template(iv[0], 0, *iv[1:])[-1] - event[0]) / (self.t[-1] - self.t[0]) # linear slope
+        # find d, height and k approx
+        a00 = np.mean(event[:1000])
+        h0 = np.max(event)
+        a10 = (event[-1] - self.sec(h0, 0, 0, 0, 0, 0)[-1] - event[0]) / (self.t[-1] - self.t[0])
+        a20 = 0
+        a30 = 0
 
         # fit t0
-        t0_minimizer = lambda par: np.sum((template(iv[0], par, *iv[1:]) - event) ** 2)
+        t0_minimizer = lambda par: np.sum((self.sec(h0, par, a00, a10, a20, a30) - event) ** 2)
         res = minimize(t0_minimizer,
-                       np.array([0]))
+                       np.array([0]),
+                       method='nelder-mead')
         t0 = res.x
-        # fit height and baseline
-        par_minimizer = lambda par: np.sum((template(par[0], t0, *par[1:]) - event) ** 2)
-        res = minimize(par_minimizer,
-                       np.array([iv]))
-        par = np.zeros(len(res.x)+1)
-        par[0] = res.x[0]
-        par[1] = t0
-        par[2:] = res.x[1:]
 
-        return par
+        # fit height, d and k with fixed t0
+        par_minimizer = lambda par: np.sum((self.sec(par[0], t0, par[1], par[2], par[3], par[4]) - event) ** 2)
+        res = minimize(par_minimizer,
+                       np.array([h0, a00, a10, a20, a30]),
+                       method='nelder-mead')#,
+                       #bounds=((-0.01, h0), None, None))
+        h, a0, a1, a2, a3 = res.x
+
+        return h, t0, a0, a1, a2, a3

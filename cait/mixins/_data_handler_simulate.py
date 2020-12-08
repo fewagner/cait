@@ -41,7 +41,8 @@ class SimulateMixin(object):
                         assign_labels=[1],
                         start_from_bl_idx=0,
                         saturation=False,
-                        reuse_bl=False):
+                        reuse_bl=False,
+                        pulses_per_bl=1):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
 
@@ -75,6 +76,7 @@ class SimulateMixin(object):
         :param saturation: bool, if true apply the logistics curve to the simulated pulses
         :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
             (use this with care to not have identical copies of events)
+        :param pulses_per_bl: int, number of pulses to simulate per one baseline --> gets multiplied to size!!
         :return: -
         """
 
@@ -88,26 +90,37 @@ class SimulateMixin(object):
         if size_events > 0:
             print('Simulating Events.')
             data = f.create_group('events')
-            events, phs, t0s, nmbr_thrown_events = simulate_events(path_h5=self.path_h5,
-                                                                   type='events',
-                                                                   size=size_events,
-                                                                   record_length=self.record_length,
-                                                                   nmbr_channels=self.nmbr_channels,
-                                                                   ph_intervals=ev_ph_intervals,
-                                                                   discrete_ph=ev_discrete_phs,
-                                                                   exceptional_sev_naming=exceptional_sev_naming,
-                                                                   channels_exceptional_sev=channels_exceptional_sev,
-                                                                   t0_interval=t0_interval,  # in ms
-                                                                   fake_noise=fake_noise,
-                                                                   use_bl_from_idx=start_from_bl_idx,
-                                                                   rms_thresholds=rms_thresholds,
-                                                                   lamb=lamb,
-                                                                   sample_length=sample_length,
-                                                                   saturation=saturation,
-                                                                   reuse_bl=reuse_bl)
-            data.create_dataset(name='event', data=events)
-            data.create_dataset(name='true_ph', data=phs)
-            data.create_dataset(name='true_onset', data=t0s)
+            data.create_dataset(name='event',
+                                shape=(self.nmbr_channels, size_events*pulses_per_bl, self.record_length),
+                                dtype=float)
+            data.create_dataset(name='true_ph',
+                                shape=(self.nmbr_channels, size_events*pulses_per_bl),
+                                dtype=float)
+            data.create_dataset(name='true_onset',
+                                shape=(size_events*pulses_per_bl),
+                                dtype=float)
+
+            for i in range(pulses_per_bl):
+                events, phs, t0s, nmbr_thrown_events = simulate_events(path_h5=self.path_h5,
+                                                                       type='events',
+                                                                       size=size_events,
+                                                                       record_length=self.record_length,
+                                                                       nmbr_channels=self.nmbr_channels,
+                                                                       ph_intervals=ev_ph_intervals,
+                                                                       discrete_ph=ev_discrete_phs,
+                                                                       exceptional_sev_naming=exceptional_sev_naming,
+                                                                       channels_exceptional_sev=channels_exceptional_sev,
+                                                                       t0_interval=t0_interval,  # in ms
+                                                                       fake_noise=fake_noise,
+                                                                       use_bl_from_idx=start_from_bl_idx,
+                                                                       rms_thresholds=rms_thresholds,
+                                                                       lamb=lamb,
+                                                                       sample_length=sample_length,
+                                                                       saturation=saturation,
+                                                                       reuse_bl=reuse_bl)
+                data['event'][:, i*pulses_per_bl:(i+1)*pulses_per_bl, :] = events
+                data['true_ph'][:, i*pulses_per_bl:(i+1)*pulses_per_bl] = phs
+                data['true_onset'][i*pulses_per_bl:(i+1)*pulses_per_bl] = t0s
 
             labels = np.ones([self.nmbr_channels, size_events])
             for c in channels_exceptional_sev:

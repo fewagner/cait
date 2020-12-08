@@ -76,7 +76,7 @@ class FitMixin(object):
 
 
     # apply sev fit
-    def apply_sev_fit(self, type, order_bl_polynomial, sample_length=0.04, verb=False):
+    def apply_sev_fit(self, type, order_bl_polynomial=3, sample_length=0.04, verb=False):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -89,8 +89,8 @@ class FitMixin(object):
 
         print('Calculating SEV Fit.')
 
-        if order_bl_polynomial not in [0, 1, 2, 3]:
-            raise KeyError('Order Polynomial must be in 0,1,2,3!')
+        if order_bl_polynomial not in [3]:
+            raise KeyError('Order Polynomial must be 3! (Other Versions Depricated.)')
 
         # open the dataset
         f = h5py.File(self.path_h5, 'r+')
@@ -109,30 +109,30 @@ class FitMixin(object):
             # fit all
             for i in range(len(events[0])):
                 if verb and i%100 == 0:
-                    print('Fitting Event Nmbr: {}/{}'.format(i+1,len(events[0])))
-                par[c, i] = fit_model.fit(events[c, i], order_polynomial=order_bl_polynomial)
+                    print('Fitting Event Nmbr: {}/{}'.format(i,len(events[0])))
+                par[c, i] = fit_model.fit_cubic(events[c, i])
 
         # write sev fit results to file
-        f['events'].require_dataset(name='sev_fit_par_bl{}'.format(order_bl_polynomial),
+        f['events'].require_dataset(name='sev_fit_par'.format(order_bl_polynomial),
                                     shape=par.shape,
                                     dtype='float')
-        f['events'].require_dataset(name='sev_fit_rms_bl{}'.format(order_bl_polynomial),
+        f['events'].require_dataset(name='sev_fit_rms'.format(order_bl_polynomial),
                                     shape=(self.nmbr_channels, len(events[0])),
                                     dtype='float')
-        f['events']['sev_fit_par_bl{}'.format(order_bl_polynomial)][...] = par
+        f['events']['sev_fit_par'][...] = par
         for c in range(self.nmbr_channels):
             fit_model = sev_fit_template(pm_par=sev_par[c], t=t)
             for i in range(len(events[0])):
-                if order_bl_polynomial == 0:
-                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sef(*par[c, i])) ** 2)
-                elif order_bl_polynomial == 1:
-                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sel(*par[c, i])) ** 2)
-                elif order_bl_polynomial == 2:
-                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
-                elif order_bl_polynomial == 3:
-                    f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
-                else:
-                    raise KeyError('Order Polynomial must be 0,1,2,3!')
+                # if order_bl_polynomial == 0:
+                #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sef(*par[c, i])) ** 2)
+                # elif order_bl_polynomial == 1:
+                #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sel(*par[c, i])) ** 2)
+                # elif order_bl_polynomial == 2:
+                #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
+                # elif order_bl_polynomial == 3:
+                f['events']['sev_fit_rms'][c, i] = np.mean((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
+                # else:
+                #     raise KeyError('Order Polynomial must be 0,1,2,3!')
 
 
     def calc_bl_coefficients(self, verb=False):

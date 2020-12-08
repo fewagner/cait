@@ -39,14 +39,18 @@ class Normalize(object):
     Normalize Features to given mean and std
     """
 
-    def __init__(self, norm_vals):
+    def __init__(self, norm_vals, type='z'):
         """
         Hand the values for the normalizations
 
-        :param norm_vals: each key corresponds to a key in the sample and is a list of length two: [mean, std]
+        :param norm_vals: each key corresponds to a key in the sample and is a list of length two: [mean, std],
+            or if type = 'minmax' then [min, max]
         :type norm_vals: dictionary
+        :param type: 'z' for calculating Z-scores or 'minmax' of scaling from 0 to 1
+        :type type: string
         """
         self.norm_vals = norm_vals
+        self.type = type
 
     def __call__(self, sample):
         """
@@ -58,9 +62,14 @@ class Normalize(object):
         :rtype: dictionary
         """
 
-        for k in self.norm_vals.keys():
-            mean, std = self.norm_vals[k]
-            sample[k] = (sample[k] - mean) / std
+        if self.type == 'z':
+            for k in self.norm_vals.keys():
+                mean, std = self.norm_vals[k]
+                sample[k] = (sample[k] - mean) / std
+        elif self.type == 'minmax':
+            for k in self.norm_vals.keys():
+                min, max = self.norm_vals[k]
+                sample[k] = (sample[k] - min) / (max - min)
 
         return sample
 
