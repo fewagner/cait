@@ -166,10 +166,11 @@ class sev_fit_template:
         :return: 1D array, the sev fit parameters
         """
 
-        #event = event - np.mean(event[:int(len(event) / 8)])
+        offset = np.mean(event[:int(len(event) / 8)])
+        event = event - offset
 
         # find d, height and k approx
-        a00 = np.mean(event[:1000])
+        a00 = 0  # np.mean(event[:1000])
         h0 = np.max(event)
         a10 = (event[-1] - self.sec(h0, 0, 0, 0, 0, 0)[-1] - event[0]) / (self.t[-1] - self.t[0])
         a20 = 0
@@ -178,16 +179,20 @@ class sev_fit_template:
         # fit t0
         t0_minimizer = lambda par: np.sum((self.sec(h0, par, a00, a10, a20, a30) - event) ** 2)
         res = minimize(t0_minimizer,
-                       np.array([0]),
-                       method='nelder-mead')
+                       x0=np.array([0]),
+                       method='nelder-mead',
+                       #bounds=((-30, 30),)
+                       )
         t0 = res.x
 
         # fit height, d and k with fixed t0
         par_minimizer = lambda par: np.sum((self.sec(par[0], t0, par[1], par[2], par[3], par[4]) - event) ** 2)
         res = minimize(par_minimizer,
-                       np.array([h0, a00, a10, a20, a30]),
-                       method='nelder-mead')#,
-                       #bounds=((-0.01, h0), None, None))
+                       x0=np.array([h0, a00, a10, a20, a30]),
+                       method='nelder-mead',
+                       #bounds=((-0.05, 20), (None, None), (None, None), (None, None), (None, None))
+                       )
         h, a0, a1, a2, a3 = res.x
+        a0 += offset
 
         return h, t0, a0, a1, a2, a3
