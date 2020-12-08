@@ -118,9 +118,9 @@ class SimulateMixin(object):
                                                                        sample_length=sample_length,
                                                                        saturation=saturation,
                                                                        reuse_bl=reuse_bl)
-                data['event'][:, i*size_events*pulses_per_bl:(i+1)*size_events*pulses_per_bl, :] = events
-                data['true_ph'][:, i*size_events*pulses_per_bl:(i+1)*size_events*pulses_per_bl] = phs
-                data['true_onset'][i*size_events*pulses_per_bl:(i+1)*size_events*pulses_per_bl] = t0s
+                data['event'][:, i*size_events:(i+1)*size_events, :] = events
+                data['true_ph'][:, i*size_events:(i+1)*size_events] = phs
+                data['true_onset'][i*size_events:(i+1)*size_events] = t0s
 
             labels = np.ones([self.nmbr_channels, size_events])
             for c in channels_exceptional_sev:
