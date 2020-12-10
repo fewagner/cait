@@ -21,7 +21,7 @@ class LSTMModule(LightningModule):
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
-                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False):
+                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False, bidirectional=False):
         """
         Initial information for the neural network module
 
@@ -64,7 +64,11 @@ class LSTMModule(LightningModule):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.seq_steps = seq_steps
-        self.lstm = nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
+        self.lstm = nn.LSTM(self.input_size,
+                            self.hidden_size,
+                            self.num_layers,
+                            batch_first=True,
+                            bidirectional=bidirectional)
         self.fc1 = nn.Linear(self.hidden_size * self.seq_steps, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
