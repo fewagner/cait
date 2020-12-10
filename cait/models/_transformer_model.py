@@ -14,9 +14,9 @@ import numpy as np
 # MODEL
 # ------------------------------------------------------
 
-class LSTMModule(LightningModule):
+class TransformerModule(LightningModule):
     """
-    Lightning module for the training of an LSTM model for classification or regression
+    Lightning module for the training of an Transformer model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
