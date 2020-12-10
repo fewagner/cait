@@ -25,17 +25,17 @@ class RNNModule(LightningModule):
         """
         Initial information for the neural network module
 
-        :param input_size: the number of features that get passed to the LSTM in one time step
+        :param input_size: the number of features that get passed to the RNN in one time step
         :type input_size: int
-        :param hidden_size: the number of nodes in the hidden layer of the lstm
+        :param hidden_size: the number of nodes in the hidden layer of the RNN
         :type hidden_size: int
-        :param num_layers: the number of LSTM layers
+        :param num_layers: the number of RNN layers
         :type num_layers: int
         :param seq_steps: the number of time steps
         :type seq_steps: int
         :param device_name: the device on that the NN is trained
         :type device_name: string, either 'cpu' or 'cude'
-        :param nmbr_out: the number of output nodes the last linear layer after the lstm has
+        :param nmbr_out: the number of output nodes the last linear layer after the RNN has
         :type nmbr_out: int
         :param label_keys: the keys of the dataset that are used as labels
         :type label_keys: list of strings
@@ -64,8 +64,7 @@ class RNNModule(LightningModule):
         self.hidden_size = hidden_size
         self.num_layers = num_layers
         self.seq_steps = seq_steps
-        #self.lstm = nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
-        self.rnn = nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
+        self.rnn = nn.RNN(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
         self.fc1 = nn.Linear(self.hidden_size * self.seq_steps, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
@@ -96,8 +95,8 @@ class RNNModule(LightningModule):
         h0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
         #c0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
 
-        # Forward propagate LSTM
-        self.lstm.flatten_parameters()
+        # Forward propagate RNN
+        self.rnn.flatten_parameters()
         out, _ = self.rnn(x, h0)  # out: tensor of shape (batch_size, seq_length, hidden_size)
         out = out.reshape(batchsize, self.seq_steps * self.hidden_size)
 
