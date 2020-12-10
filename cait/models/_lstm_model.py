@@ -81,6 +81,7 @@ class LSTMModule(LightningModule):
         self.down_keys = down_keys
         self.offset_keys = offset_keys
         self.norm_vals = norm_vals  # just store as info for later
+        self.bidirectional = bidirectional
 
     def forward(self, x):
         """
@@ -96,8 +97,12 @@ class LSTMModule(LightningModule):
         x = x.view(batchsize, self.seq_steps, self.input_size)
 
         # Set initial hidden and cell states
-        h0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
-        c0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+        if self.bidirectional:
+            h0 = torch.zeros(2*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+            c0 = torch.zeros(2*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+        else:
+            h0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+            c0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
 
         # Forward propagate LSTM
         self.lstm.flatten_parameters()
