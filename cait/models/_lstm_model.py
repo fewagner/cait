@@ -110,7 +110,10 @@ class LSTMModule(LightningModule):
         # Forward propagate LSTM
         self.lstm.flatten_parameters()
         out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
-        out = out.reshape(batchsize, self.seq_steps * self.hidden_size)
+        if self.bidirectional:
+            out = out.reshape(batchsize, 2 * self.seq_steps * self.hidden_size)
+        else:
+            out = out.reshape(batchsize, self.seq_steps * self.hidden_size)
 
         out = self.fc1(out)
 
