@@ -159,6 +159,7 @@ class H5CryoData(Dataset):
         for k in sample.keys():
             if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
                 raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k, len(sample[k].shape)))
-            sample[k].to(torch.DoubleTensor)
+            if self.double:
+                sample[k].double()
 
         return sample
