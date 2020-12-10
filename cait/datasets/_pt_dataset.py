@@ -160,6 +160,6 @@ class H5CryoData(Dataset):
             if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
                 raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k, len(sample[k].shape)))
             if self.double:
-                sample[k].double()
+                sample[k] = sample[k].double()
 
         return sample
