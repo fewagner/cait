@@ -11,7 +11,7 @@ class CryoDataModule(pl.LightningDataModule):
     """
 
     def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices,
-                 transform=None, nmbr_events=None):
+                 transform=None, nmbr_events=None, double=False):
         super().__init__()
         """
         Give instructions how to extract the data from the h5 set
@@ -37,6 +37,7 @@ class CryoDataModule(pl.LightningDataModule):
         self.feature_indices = feature_indices
         self.transform = transform
         self.nmbr_events = nmbr_events
+        self.double = double
 
     def prepare_data(self, val_size, test_size, batch_size, nmbr_workers, load_to_memory=False,
                      dataset_size=None, only_idx=None,
@@ -98,7 +99,8 @@ class CryoDataModule(pl.LightningDataModule):
                                        keys_one_hot=self.keys_one_hot,
                                        transform=self.transform,
                                        nmbr_events=self.nmbr_events,
-                                       load_to_memory=self.load_to_memory)
+                                       load_to_memory=self.load_to_memory,
+                                       double=self.double)
 
     def setup(self):
         """
