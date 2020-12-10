@@ -69,7 +69,10 @@ class LSTMModule(LightningModule):
                             self.num_layers,
                             batch_first=True,
                             bidirectional=bidirectional)
-        self.fc1 = nn.Linear(self.hidden_size * self.seq_steps, nmbr_out)
+        if bidirectional:
+            self.fc1 = nn.Linear(2 * self.hidden_size * self.seq_steps, nmbr_out)
+        else:
+            self.fc1 = nn.Linear(self.hidden_size * self.seq_steps, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
         self.label_keys = label_keys
