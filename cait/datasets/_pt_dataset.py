@@ -2,6 +2,7 @@
 from torch.utils.data import Dataset
 import h5py
 import numpy as np
+import torch
 
 class H5CryoData(Dataset):
     """
@@ -10,7 +11,7 @@ class H5CryoData(Dataset):
 
     def __init__(self, type, keys, channel_indices, feature_indices,
                  keys_one_hot=[], hdf5_path = None, file_handle=None,
-                 transform=None, nmbr_events=None, load_to_memory=False):
+                 transform=None, nmbr_events=None, load_to_memory=False, double=False):
         """
         Give instructions how to extract the data from the h5 set
 
@@ -64,6 +65,7 @@ class H5CryoData(Dataset):
                 self.nmbr_events = len(self.f[type + '/event'][0])
         else:
             self.nmbr_events = nmbr_events
+        self.double = double
 
 
     def load_data(self, f):
@@ -157,5 +159,6 @@ class H5CryoData(Dataset):
         for k in sample.keys():
             if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
                 raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k, len(sample[k].shape)))
+            sample[k].to(torch.DoubleTensor)
 
         return sample

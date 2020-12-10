@@ -22,6 +22,8 @@ def simulate_baselines(path_h5,
     :param rms_thresholds: list of two ints, threshold for the bl rms fit
         error above which they get not included in the nps and drifts
     :param lamb: float, parameter for the noise simulation method
+    :param kde: bool, if True we sample the coefficients of the bl fit with a kernel density estimation
+    :param sim_poly: pool, if True we simulate the polynomials for the baselines
     :param verb: bool, if true feedback about progress in code
     :return: tuple (3D array - (ch_nmbr, size bl, rec_len) of the simulated baselines,
                     3D array - (ch_nmbr, size bl, rec_len) of the simulated polynomials)
