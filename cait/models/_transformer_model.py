@@ -41,7 +41,7 @@ class TransformerModule(LightningModule):
     def __init__(self, input_size, d_model, number_heads, dim_feedforward, num_layers, nmbr_out,
                  seq_steps, device_name, label_keys, feature_keys, lr, is_classifier,
                  down, down_keys, offset_keys, norm_vals, weight_decay=1e-5, dropout=0.5,
-                 norm_type='minmax'):
+                 norm_type='minmax', pos_enc=True):
         """
         Initial information for the neural network module
 
@@ -82,7 +82,10 @@ class TransformerModule(LightningModule):
         from torch.nn import TransformerEncoder, TransformerEncoderLayer
 
         self.model_type = 'Transformer'
-        self.pos_encoding = PositionalEncoding(d_model, dropout)
+        if pos_enc:
+            self.pos_encoding = PositionalEncoding(d_model, dropout)
+        else:
+            self.pos_encoding = nn.Identity()
         encoder_layers = TransformerEncoderLayer(d_model, number_heads, dim_feedforward, dropout)
         self.transformer_encoder = TransformerEncoder(encoder_layers, num_layers)
         self.input_embedding = nn.Linear(input_size, d_model)
