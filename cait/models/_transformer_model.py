@@ -8,24 +8,44 @@ import torch.nn.functional as F
 import torch.utils.data
 from pytorch_lightning.core.lightning import LightningModule
 import numpy as np
+import math
 
 
 # ------------------------------------------------------
 # MODEL
 # ------------------------------------------------------
 
+class PositionalEncoding(nn.Module):
+
+    def __init__(self, d_model, dropout=0.1, max_len=5000):
+        super(PositionalEncoding, self).__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0).transpose(0, 1)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        x = x + self.pe[:x.size(0), :]
+        return self.dropout(x)
+
 class TransformerModule(LightningModule):
     """
-    Lightning module for the training of an Transformer model for classification or regression
+    Lightning module for the training of an Transformer Encoder model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
     """
-    def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
-                 feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
-                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False):
+    def __init__(self, input_size, d_model, number_heads, dim_feedforward, num_layers, nmbr_out,
+                 seq_steps, device_name, label_keys, feature_keys, lr, is_classifier,
+                 down, down_keys, offset_keys, norm_vals, weight_decay=1e-5, dropout=0.5,
+                 norm_type='minmax'):
         """
         Initial information for the neural network module
 
-        :param input_size: the number of features that get passed to the LSTM in one time step
+        :param input_size: the number of features that get passed to the Model in one time step
         :type input_size: int
         :param hidden_size: the number of nodes in the hidden layer of the lstm
         :type hidden_size: int
@@ -59,16 +79,23 @@ class TransformerModule(LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
+        from torch.nn import TransformerEncoder, TransformerEncoderLayer
 
+        self.model_type = 'Transformer'
+        self.pos_encoding = PositionalEncoding(d_model, dropout)
+        encoder_layers = TransformerEncoderLayer(d_model, number_heads, dim_feedforward, dropout)
+        self.transformer_encoder = TransformerEncoder(encoder_layers, num_layers)
+        self.input_embedding = nn.Linear(input_size, d_model)
         self.input_size = input_size
-        self.hidden_size = hidden_size
+        self.dim_feedforward = dim_feedforward
         self.num_layers = num_layers
         self.seq_steps = seq_steps
-        #self.lstm = nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
-        self.rnn = nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
-        self.fc1 = nn.Linear(self.hidden_size * self.seq_steps, nmbr_out)
+        self.d_model = d_model
+        self.number_heads = number_heads
         self.nmbr_out = nmbr_out
         self.device_name = device_name
+        self.decoder = nn.Linear(seq_steps*d_model, nmbr_out)
+
         self.label_keys = label_keys
         self.feature_keys = feature_keys
         self.lr = lr
@@ -78,8 +105,14 @@ class TransformerModule(LightningModule):
         self.down_keys = down_keys
         self.offset_keys = offset_keys
         self.norm_vals = norm_vals  # just store as info for later
+        self.norm_type = norm_type
 
-    def forward(self, x):
+    def generate_square_subsequent_mask(self, sz):
+        mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+        mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+        return mask
+
+    def forward(self, src, src_mask=None):
         """
         The forward pass in the neural network
 
@@ -88,23 +121,24 @@ class TransformerModule(LightningModule):
         :return: the ouput of the neural network
         :rtype: torch tensor of size (batchsize, nmbr_outputs)
         """
-        batchsize = x.size(0)
+        batchsize = src.size(0)
 
-        x = x.view(batchsize, self.seq_steps, self.input_size)
+        src = src.view(batchsize, self.seq_steps, self.input_size)
+        src = src.permute(1, 0, 2)  # now (seq_len, batch, features)
 
-        # Set initial hidden and cell states
-        h0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
-        #c0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+        src = self.input_embedding(src) * math.sqrt(self.d_model)
+        src = self.pos_encoding(src)
+        out = self.transformer_encoder(src, src_mask)
 
-        # Forward propagate LSTM
-        self.lstm.flatten_parameters()
-        out, _ = self.rnn(x, h0)  # out: tensor of shape (batch_size, seq_length, hidden_size)
-        out = out.reshape(batchsize, self.seq_steps * self.hidden_size)
+        out = out.permute(1, 0, 2)  # now (batch, seq_len, features)
+        out = out.reshape(batchsize, self.seq_steps * self.d_model)
 
-        out = self.fc1(out)
+        out = self.decoder(out)
 
         if self.is_classifier:
             out = F.log_softmax(out, dim=-1)
+
+        #out = out.permute(1, 0)  # now (batch, outs)
 
         return out
 
@@ -182,9 +216,15 @@ class TransformerModule(LightningModule):
 
         # normalize
         if self.norm_vals is not None:
-            for key in self.norm_vals.keys():
-                mean, std = self.norm_vals[key]
-                sample[key] = (sample[key] - mean) / std
+            if self.norm_type == 'z':
+                for key in self.norm_vals.keys():
+                    mean, std = self.norm_vals[key]
+                    sample[key] = (sample[key] - mean) / std
+            elif self.norm_type == 'minmax':
+                for key in self.norm_vals.keys():
+                    min, max = self.norm_vals[key]
+                    sample[key] = (sample[key] - min) / (max - min)
+
 
         # downsample
         if self.down_keys is not None:

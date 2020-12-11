@@ -21,7 +21,8 @@ class LSTMModule(LightningModule):
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
-                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False, bidirectional=False):
+                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False, bidirectional=False,
+                 norm_type='minmax'):
         """
         Initial information for the neural network module
 
@@ -85,6 +86,7 @@ class LSTMModule(LightningModule):
         self.offset_keys = offset_keys
         self.norm_vals = norm_vals  # just store as info for later
         self.bidirectional = bidirectional
+        self.norm_type = norm_type
 
     def forward(self, x):
         """
@@ -196,9 +198,14 @@ class LSTMModule(LightningModule):
 
         # normalize
         if self.norm_vals is not None:
-            for key in self.norm_vals.keys():
-                mean, std = self.norm_vals[key]
-                sample[key] = (sample[key] - mean) / std
+            if self.norm_type == 'z':
+                for key in self.norm_vals.keys():
+                    mean, std = self.norm_vals[key]
+                    sample[key] = (sample[key] - mean) / std
+            elif self.norm_type == 'minmax':
+                for key in self.norm_vals.keys():
+                    min, max = self.norm_vals[key]
+                    sample[key] = (sample[key] - min) / (max - min)
 
         # downsample
         if self.down_keys is not None:
