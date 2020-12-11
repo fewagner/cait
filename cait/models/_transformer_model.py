@@ -41,7 +41,7 @@ class TransformerModule(LightningModule):
     def __init__(self, input_size, d_model, number_heads, dim_feedforward, num_layers, nmbr_out,
                  seq_steps, device_name, label_keys, feature_keys, lr, is_classifier,
                  down, down_keys, offset_keys, norm_vals, weight_decay=1e-5, dropout=0.5,
-                 norm_type='minmax', pos_enc=True):
+                 norm_type='minmax', pos_enc=True, lr_scheduler=True):
         """
         Initial information for the neural network module
 
@@ -109,6 +109,7 @@ class TransformerModule(LightningModule):
         self.offset_keys = offset_keys
         self.norm_vals = norm_vals  # just store as info for later
         self.norm_type = norm_type
+        self.lr_scheduler = lr_scheduler
 
     def generate_square_subsequent_mask(self, sz):
         mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
@@ -194,7 +195,12 @@ class TransformerModule(LightningModule):
         if weight_decay is None:
             weight_decay = self.weight_decay
         optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
-        return optimizer
+        if self.lr_scheduler:
+            lambda1 = lambda epoch: 0.9**epoch
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda1)
+            return [optimizer], [scheduler]
+        else:
+            return optimizer
 
     def predict(self, sample):
         """
