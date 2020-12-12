@@ -110,9 +110,10 @@ class LSTMModule(LightningModule):
 
         # attention
         if self.attention:
-            x = x.permute(1, 0, 2)
-            x, _ = self.attention(x, x, x)
-            x = x.permute(1, 0, 2)
+            att = x.permute(1, 0, 2)
+            att, _ = self.attention(att, att, att)
+            att = att.permute(1, 0, 2)
+            x = (x + att)/2
 
         # Set initial hidden and cell states
         if self.bidirectional:
