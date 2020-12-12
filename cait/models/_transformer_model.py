@@ -196,7 +196,8 @@ class TransformerModule(LightningModule):
             weight_decay = self.weight_decay
         optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
         if self.lr_scheduler:
-            lambda1 = lambda epoch: 0.9**epoch
+            w = 2
+            lambda1 = lambda epoch: min(epoch**(-0.5), epoch*w**(-1.5))
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda1)
             return [optimizer], [scheduler]
         else:
