@@ -114,8 +114,8 @@ class LSTMModule(LightningModule):
         if self.attention is not None:
             att = x.permute(1, 0, 2)
             att, _ = self.attention(att, att, att)
-            att = att.permute(1, 0, 2)
-            x = (x + att)/2
+            x = att.permute(1, 0, 2)
+            #x = (x + att)/2
 
         # Set initial hidden and cell states
         h0 = torch.zeros((1 + int(self.bidirectional))*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
