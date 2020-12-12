@@ -198,7 +198,7 @@ class TransformerModule(LightningModule):
         if self.lr_scheduler:
             w = 2
             def lambdarate(epoch):
-                if epoch > 0:
+                if epoch == 0:
                     rate = 1/w
                 else:
                     rate = min(1/math.sqrt(epoch), epoch / math.sqrt(w ** 3))
