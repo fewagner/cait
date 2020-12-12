@@ -70,10 +70,8 @@ class LSTMModule(LightningModule):
                             self.num_layers,
                             batch_first=True,
                             bidirectional=bidirectional)
-        if bidirectional:
-            self.fc1 = nn.Linear(2 * self.hidden_size * self.seq_steps, nmbr_out)
-        else:
-            self.fc1 = nn.Linear(self.hidden_size * self.seq_steps, nmbr_out)
+        inp = (1 + int(bidirectional)) * self.hidden_size * self.seq_steps + int(indiv_norm)
+        self.fc1 = nn.Linear(inp, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
         self.label_keys = label_keys
@@ -103,7 +101,7 @@ class LSTMModule(LightningModule):
 
         if self.indiv_norm:
             max_vals = torch.max(x, dim=1).values.view(batchsize, 1)
-            x = x/max_vals
+            x = x/(max_vals + 1e-6)
 
         x = x.view(batchsize, self.seq_steps, self.input_size)
 
@@ -118,17 +116,15 @@ class LSTMModule(LightningModule):
         # Forward propagate LSTM
         self.lstm.flatten_parameters()
         out, _ = self.lstm(x, (h0, c0))  # out: tensor of shape (batch_size, seq_length, hidden_size)
-        if self.bidirectional:
-            out = out.reshape(batchsize, 2 * self.seq_steps * self.hidden_size)
-        else:
-            out = out.reshape(batchsize, self.seq_steps * self.hidden_size)
+        out = out.reshape(batchsize, (1 + int(self.bidirectional)) * self.seq_steps * self.hidden_size)
+
+        if self.indiv_norm:
+            out = torch.cat((out, max_vals), dim=1)
 
         out = self.fc1(out)
 
         if self.is_classifier:
             out = F.log_softmax(out, dim=-1)
-        elif self.indiv_norm:
-            out = out*max_vals
 
         return out
 
