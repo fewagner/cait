@@ -22,7 +22,7 @@ class LSTMModule(LightningModule):
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
                  norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False, bidirectional=False,
-                 norm_type='minmax'):
+                 norm_type='minmax', lr_scheduler=True, indiv_norm=False):
         """
         Initial information for the neural network module
 
@@ -87,6 +87,8 @@ class LSTMModule(LightningModule):
         self.norm_vals = norm_vals  # just store as info for later
         self.bidirectional = bidirectional
         self.norm_type = norm_type
+        self.lr_scheduler = lr_scheduler
+        self.indiv_norm = indiv_norm
 
     def forward(self, x):
         """
@@ -98,6 +100,10 @@ class LSTMModule(LightningModule):
         :rtype: torch tensor of size (batchsize, nmbr_outputs)
         """
         batchsize = x.size(0)
+
+        if self.indiv_norm:
+            max_vals = torch.max(x, dim=1).values.view(batchsize, 1)
+            x = x/max_vals
 
         x = x.view(batchsize, self.seq_steps, self.input_size)
 
@@ -121,6 +127,8 @@ class LSTMModule(LightningModule):
 
         if self.is_classifier:
             out = F.log_softmax(out, dim=-1)
+        elif self.indiv_norm:
+            out = out*max_vals
 
         return out
 
@@ -173,7 +181,12 @@ class LSTMModule(LightningModule):
         if weight_decay is None:
             weight_decay = self.weight_decay
         optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
-        return optimizer
+        if self.lr_scheduler:
+            lambda1 = lambda epoch: 0.9**epoch
+            scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda1)
+            return [optimizer], [scheduler]
+        else:
+            return optimizer
 
     def predict(self, sample):
         """
