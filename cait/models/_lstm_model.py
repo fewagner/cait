@@ -71,6 +71,7 @@ class LSTMModule(LightningModule):
                             batch_first=True,
                             bidirectional=bidirectional)
         inp = (1 + int(bidirectional)) * self.hidden_size * self.seq_steps + int(indiv_norm)
+        print('Dim Input: ', inp.shape)
         self.fc1 = nn.Linear(inp, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
@@ -117,12 +118,8 @@ class LSTMModule(LightningModule):
             x = (x + att)/2
 
         # Set initial hidden and cell states
-        if self.bidirectional:
-            h0 = torch.zeros(2*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
-            c0 = torch.zeros(2*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
-        else:
-            h0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
-            c0 = torch.zeros(self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+        h0 = torch.zeros((1 + int(self.bidirectional))*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
+        c0 = torch.zeros((1 + int(self.bidirectional))*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
 
         # Forward propagate LSTM
         self.lstm.flatten_parameters()
@@ -132,10 +129,14 @@ class LSTMModule(LightningModule):
         if self.indiv_norm:
             out = torch.cat((out, max_vals), dim=1)
 
+        print('Dim Out: ', out.shape)
+
         self.fc1(out)
 
         if self.is_classifier:
             out = F.log_softmax(out, dim=-1)
+
+        print('Dim Out: ', out.shape)
 
         return out
 
