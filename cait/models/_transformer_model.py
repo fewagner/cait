@@ -201,7 +201,7 @@ class TransformerModule(LightningModule):
                 if epoch > 0:
                     rate = 1/w
                 else:
-                    rate = lambda epoch: min(epoch ** (-0.5), epoch * w ** (-1.5))
+                    rate = min(epoch ** (-0.5), epoch * w ** (-1.5))
                 return rate
 
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambdarate)
