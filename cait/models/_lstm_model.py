@@ -71,7 +71,8 @@ class LSTMModule(LightningModule):
                             batch_first=True,
                             bidirectional=bidirectional)
         inp = (1 + int(bidirectional)) * self.hidden_size * self.seq_steps + int(indiv_norm)
-        self.fc1 = nn.Linear(inp, nmbr_out)
+        self.fc1 = nn.Linear(inp, 100)
+        self.fc2 = nn.Linear(100, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
         self.label_keys = label_keys
@@ -121,7 +122,8 @@ class LSTMModule(LightningModule):
         if self.indiv_norm:
             out = torch.cat((out, max_vals), dim=1)
 
-        out = self.fc1(out)
+        out = F.selu(self.fc1(out))
+        out = self.fc2(out)
 
         if self.is_classifier:
             out = F.log_softmax(out, dim=-1)
