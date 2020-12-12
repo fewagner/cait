@@ -71,7 +71,7 @@ class LSTMModule(LightningModule):
                             batch_first=True,
                             bidirectional=bidirectional)
         inp = (1 + int(bidirectional)) * self.hidden_size * self.seq_steps + int(indiv_norm)
-        print('Dim Input: ', inp.shape)
+        print('Dim Input: ', inp)
         self.fc1 = nn.Linear(inp, nmbr_out)
         self.nmbr_out = nmbr_out
         self.device_name = device_name
