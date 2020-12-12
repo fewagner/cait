@@ -22,7 +22,7 @@ class LSTMModule(LightningModule):
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
                  norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False, bidirectional=False,
-                 norm_type='minmax', lr_scheduler=True, indiv_norm=False):
+                 norm_type='minmax', lr_scheduler=True, indiv_norm=False, attention=False):
         """
         Initial information for the neural network module
 
@@ -88,6 +88,8 @@ class LSTMModule(LightningModule):
         self.norm_type = norm_type
         self.lr_scheduler = lr_scheduler
         self.indiv_norm = indiv_norm
+        if attention:
+            self.attention = nn.MultiheadAttention(embed_dim=input_size, num_heads=1)
 
     def forward(self, x):
         """
@@ -106,6 +108,12 @@ class LSTMModule(LightningModule):
 
         x = x.view(batchsize, self.seq_steps, self.input_size)
 
+        # attention
+        if self.attention:
+            x = x.permute(1, 0, 2)
+            x, _ = self.attention(x, x, x)
+            x = x.permute(1, 0, 2)
+
         # Set initial hidden and cell states
         if self.bidirectional:
             h0 = torch.zeros(2*self.num_layers, batchsize, self.hidden_size).to(self.device_name)
@@ -122,8 +130,7 @@ class LSTMModule(LightningModule):
         if self.indiv_norm:
             out = torch.cat((out, max_vals), dim=1)
 
-        out = F.selu(self.fc1(out))
-        out = self.fc2(out)
+        self.fc1(out)
 
         if self.is_classifier:
             out = F.log_softmax(out, dim=-1)
