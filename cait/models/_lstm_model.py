@@ -90,6 +90,8 @@ class LSTMModule(LightningModule):
         self.indiv_norm = indiv_norm
         if attention:
             self.attention = nn.MultiheadAttention(embed_dim=input_size, num_heads=1)
+        else:
+            self.attention = None
 
     def forward(self, x):
         """
@@ -109,7 +111,7 @@ class LSTMModule(LightningModule):
         x = x.view(batchsize, self.seq_steps, self.input_size)
 
         # attention
-        if self.attention:
+        if self.attention is not None:
             att = x.permute(1, 0, 2)
             att, _ = self.attention(att, att, att)
             att = att.permute(1, 0, 2)
