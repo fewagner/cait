@@ -190,7 +190,7 @@ class LSTMModule(LightningModule):
             weight_decay = self.weight_decay
         optimizer = torch.optim.Adam(self.parameters(), lr=lr, weight_decay=weight_decay)
         if self.lr_scheduler:
-            lambda1 = lambda epoch: 0.9**epoch
+            lambda1 = lambda epoch: 0.95**epoch
             scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda1)
             return [optimizer], [scheduler]
         else:
