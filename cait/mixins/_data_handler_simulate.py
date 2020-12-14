@@ -42,7 +42,8 @@ class SimulateMixin(object):
                         start_from_bl_idx=0,
                         saturation=False,
                         reuse_bl=False,
-                        pulses_per_bl=1):
+                        pulses_per_bl=1,
+                        ps_dev=False):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
 
@@ -91,13 +92,13 @@ class SimulateMixin(object):
             print('Simulating Events.')
             data = f.create_group('events')
             data.create_dataset(name='event',
-                                shape=(self.nmbr_channels, size_events*pulses_per_bl, self.record_length),
+                                shape=(self.nmbr_channels, size_events * pulses_per_bl, self.record_length),
                                 dtype=float)
             data.create_dataset(name='true_ph',
-                                shape=(self.nmbr_channels, size_events*pulses_per_bl),
+                                shape=(self.nmbr_channels, size_events * pulses_per_bl),
                                 dtype=float)
             data.create_dataset(name='true_onset',
-                                shape=(size_events*pulses_per_bl),
+                                shape=(size_events * pulses_per_bl),
                                 dtype=float)
 
             for i in range(pulses_per_bl):
@@ -117,10 +118,11 @@ class SimulateMixin(object):
                                                                        lamb=lamb,
                                                                        sample_length=sample_length,
                                                                        saturation=saturation,
-                                                                       reuse_bl=reuse_bl)
-                data['event'][:, i*size_events:(i+1)*size_events, :] = events
-                data['true_ph'][:, i*size_events:(i+1)*size_events] = phs
-                data['true_onset'][i*size_events:(i+1)*size_events] = t0s
+                                                                       reuse_bl=reuse_bl,
+                                                                       ps_dev=ps_dev)
+                data['event'][:, i * size_events:(i + 1) * size_events, :] = events
+                data['true_ph'][:, i * size_events:(i + 1) * size_events] = phs
+                data['true_onset'][i * size_events:(i + 1) * size_events] = t0s
 
             labels = np.ones([self.nmbr_channels, size_events])
             for c in channels_exceptional_sev:
@@ -156,7 +158,8 @@ class SimulateMixin(object):
                                                                        lamb=lamb,
                                                                        sample_length=sample_length,
                                                                        saturation=saturation,
-                                                                       reuse_bl=reuse_bl)
+                                                                       reuse_bl=reuse_bl,
+                                                                       ps_dev=ps_dev)
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='true_ph', data=phs)
             if saturation:
@@ -201,7 +204,8 @@ class SimulateMixin(object):
                                                                   lamb=lamb,
                                                                   sample_length=sample_length,
                                                                   saturation=saturation,
-                                                                  reuse_bl=reuse_bl
+                                                                  reuse_bl=reuse_bl,
+                                                                  ps_dev=ps_dev
                                                                   )
             data.create_dataset(name='event', data=events)
             data.create_dataset(name='labels',

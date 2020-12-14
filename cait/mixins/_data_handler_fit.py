@@ -46,6 +46,10 @@ class FitMixin(object):
         h5f = h5py.File(path_h5, 'r+')
         events = h5f[type]['event']
 
+        # take away offset
+        idx=[i for i in range(len(events[0]))]
+        events = events - np.mean(events[:, :, :int(self.record_length/8)], axis=2, keepdims=True)
+
         print('CALCULATE FIT.')
 
         # get start values from SEV fit if exists
@@ -62,17 +66,17 @@ class FitMixin(object):
 
         with Pool(processes) as p:
             p_fitpar_event = np.array(
-                p.map(p_fit_pm, events[0, :, :]))
+                p.map(p_fit_pm, events[0, idx, :]))
             l_fitpar_event = np.array(
-                p.map(l_fit_pm, events[1, :, :]))
+                p.map(l_fit_pm, events[1, idx, :]))
 
         fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
 
-        events.require_dataset('fitpar',
-                               shape=fitpar_event.shape,
+        h5f[type].require_dataset('fitpar',
+                               shape=(self.nmbr_channels, len(events[0]), 6),
                                dtype='f')
 
-        events['fitpar'][...] = fitpar_event
+        h5f[type]['fitpar'][:, idx, :] = fitpar_event
 
 
     # apply sev fit

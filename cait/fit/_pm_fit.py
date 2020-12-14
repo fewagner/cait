@@ -56,4 +56,5 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04):
     except RuntimeError:
         print("Error - curve_fit failed")
         return np.zeros(x0.shape)
+    print("Fit Successful.")
     return par

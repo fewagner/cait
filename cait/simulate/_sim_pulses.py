@@ -4,7 +4,7 @@ from ..fit._templates import pulse_template
 from ._sim_bl import simulate_baselines
 from scipy.stats import uniform
 from ..fit._saturation import scaled_logistic_curve, scale_factor
-
+from ._generate_pm_par import generate_ps_par
 
 def simulate_events(path_h5,
                     type,
@@ -22,7 +22,8 @@ def simulate_events(path_h5,
                     lamb=0.01,
                     sample_length=0.04,
                     saturation=False,
-                    reuse_bl=False):
+                    reuse_bl=False,
+                    ps_dev=False):
     """
     Simulates pulses on a noise baseline. Options are to take measured noise baselines
     or fake bl, sev of events or testpulses, pulse heights, onset intervals.
@@ -55,6 +56,7 @@ def simulate_events(path_h5,
     :param saturation: bool, if True the logistic curve is applied to the pulses
     :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
         (use this with care to not have identical copies of events)
+    :param ps_dev: bool, if True the pulse shape parameters are modelled with deviations
     :return: (3D array of size (nmbr channels, size, record_length), the simulated events,
                 2D array of size (nmbr channels, size), the true pulse heights,
                 1D array (size), the onsets of the events)
@@ -147,7 +149,11 @@ def simulate_events(path_h5,
                 else:
                     par = h5f['stdevent']['fitpar'][c]
             for e in range(size):
-                sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
+                if ps_dev and c == 0:  # so far this only works for the phonon channel
+                    par = generate_ps_par(phs[c, e].reshape([-1]))
+                    sim_events[c, e] += phs[c, e] * pulse_template(t - t0s[e], *par)
+                else:
+                    sim_events[c, e] += phs[c, e] * pulse_template(t - t0s[e], *par)
 
     elif type == 'testpulses':
         one_true_ph = phs[0]
