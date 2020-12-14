@@ -28,10 +28,10 @@ def generate_ps_par(h):
     tau_n_std = 38.04
     t0_mean = -1.36
     t0_std = 0.29
-    An_mean = 1.27
-    An_std = 0.81
-    At_mean = 1.03
-    At_std = 0.66
+    # An_mean = 1.27
+    # An_std = 0.81
+    # At_mean = 1.03
+    # At_std = 0.66
     sigma_tn_mean = 0.718
     sigma_tn_std = 0.709
     tau_in_mean = 2.52
@@ -51,8 +51,8 @@ def generate_ps_par(h):
                                                            sigma_tn_std))  # underscore means the normed variable
 
     # dependent vars
-    An_ = np.copy(h_)
-    At_ = np.copy(h_)
+    # An_ = np.copy(h_)
+    # At_ = np.copy(h_)
     t0_ = (h_ - 0.455) / (0.504 * h_ + 1.103) + sci.norm.rvs(size=SAMPLE_SIZE, loc=0,
                                                              scale=0.644)
     tau_in_ = 0.23 * tau_n_ ** 2 - tau_n_ - 0.331 + sci.norm.rvs(size=SAMPLE_SIZE, loc=0, scale=0.5454978 / 2)
@@ -60,8 +60,8 @@ def generate_ps_par(h):
 
     # transform back
     t0 = denorm(t0_, t0_mean, t0_std)
-    An = denorm(An_, An_mean, An_std)
-    At = denorm(At_, At_mean, At_std)
+    An = h / 0.705  # denorm(denorm(An_,h_mean,h_std), An_mean, An_std)
+    At = h / 0.858  # denorm(denorm(At_,h_mean,h_std), At_mean, At_std)
     tau_n = denorm(tau_n_, tau_n_mean, tau_n_std)
     tau_in = denorm(tau_in_, tau_in_mean, tau_in_std)
     tau_t = denorm(tau_t_, tau_t_mean, tau_t_std)

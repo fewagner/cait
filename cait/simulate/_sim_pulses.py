@@ -6,6 +6,7 @@ from scipy.stats import uniform
 from ..fit._saturation import scaled_logistic_curve, scale_factor
 from ._generate_pm_par import generate_ps_par
 
+
 def simulate_events(path_h5,
                     type,
                     size,
@@ -150,9 +151,12 @@ def simulate_events(path_h5,
                     par = h5f['stdevent']['fitpar'][c]
             for e in range(size):
                 if ps_dev and c == 0:  # so far this only works for the phonon channel
-                    par = generate_ps_par(phs[c, e].reshape([-1]))
-                    par[0] += t0s[e]
-                    sim_events[c, e] += phs[c, e] * pulse_template(t, *par)
+                    if phs[c, e] != 0:
+                        par = generate_ps_par(phs[c, e].reshape([-1]))
+                        par[0] += t0s[e]
+                        pulse = pulse_template(t, *par)
+                        pulse = pulse/np.max(pulse)
+                        sim_events[c, e] += phs[c, e] * pulse
                 else:
                     use_par = np.copy(par)
                     use_par[0] += t0s[e]
@@ -182,7 +186,7 @@ def simulate_events(path_h5,
             log_fitpar = h5f['saturation']['fitpar'][c]
             for e in range(size):
                 event = sim_events[c, e]
-                offset = np.mean(event[:int(record_length/8)])
+                offset = np.mean(event[:int(record_length / 8)])
                 ev_no_offset = event - offset
                 ev_sat = scaled_logistic_curve(ev_no_offset, *log_fitpar)
                 sim_events[c, e] = ev_sat + offset
