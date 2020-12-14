@@ -66,4 +66,4 @@ def generate_ps_par(h):
     tau_in = denorm(tau_in_, tau_in_mean, tau_in_std)
     tau_t = denorm(tau_t_, tau_t_mean, tau_t_std)
 
-    return t0, An, At, tau_n, tau_in, tau_t
+    return np.array([t0, An, At, tau_n, tau_in, tau_t])

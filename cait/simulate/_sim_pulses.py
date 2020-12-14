@@ -151,9 +151,12 @@ def simulate_events(path_h5,
             for e in range(size):
                 if ps_dev and c == 0:  # so far this only works for the phonon channel
                     par = generate_ps_par(phs[c, e].reshape([-1]))
-                    sim_events[c, e] += phs[c, e] * pulse_template(t - t0s[e], *par)
+                    par[0] += t0s[e]
+                    sim_events[c, e] += phs[c, e] * pulse_template(t, *par)
                 else:
-                    sim_events[c, e] += phs[c, e] * pulse_template(t - t0s[e], *par)
+                    use_par = np.copy(par)
+                    use_par[0] += t0s[e]
+                    sim_events[c, e] += phs[c, e] * pulse_template(t, *use_par)
 
     elif type == 'testpulses':
         one_true_ph = phs[0]
