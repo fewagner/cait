@@ -16,7 +16,7 @@ class ModelHandler:
     def __init__(self, run, module, model_type, record_length, nmbr_channels,
                  sample_frequency=25000, down=1,
                  model1=None, model2=None, model3=None,
-                 classes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]):
+                 classes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18]):
         self.run = run
         self.module = module
         self.model_type = model_type
