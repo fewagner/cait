@@ -62,6 +62,8 @@ class EventInterface:
             self.channel_names = ['Phonon', 'Light']
         elif self.nmbr_channels == 3:
             self.channel_names = ['Channel 1', 'Channel 2', 'Channel 3']
+        self.xlim = None
+        self.ylim = None
 
         print('Event Interface Instance created.')
 
@@ -362,6 +364,8 @@ class EventInterface:
         print('triang ... show triangulation')
         print('of ... show filtered event')
         print('sev ... show fitted standardevent')
+        print('xlim ... set the x limit')
+        print('ylim ... set the y limit')
         print('q ... quit options menu')
 
         while True:
@@ -407,6 +411,22 @@ class EventInterface:
             elif user_input == 'sev':
                 self.sev = not self.sev
                 print('Show SEV fit set to: ', self.sev)
+
+            # xlim
+            elif user_input == 'xlim':
+                user_input2 = input('Set x lower limit: ')
+                lb = float(user_input2)
+                user_input2 = input('Set x upper limit: ')
+                ub = float(user_input2)
+                self.xlim = (lb, ub)
+
+            # ylim
+            elif user_input == 'ylim':
+                user_input2 = input('Set y lower limit: ')
+                lb = float(user_input2)
+                user_input2 = input('Set y upper limit: ')
+                ub = float(user_input2)
+                self.ylim = (lb, ub)
 
             # quit
             elif user_input == 'q':
@@ -503,6 +523,8 @@ class EventInterface:
             if self.sev:
                 plt.plot(sev_fit[i], color='orange')
 
+            plt.xlim(self.xlim)
+            plt.ylim(self.ylim)
 
         plt.show(block=False)
         # -------- END PLOTTING --------
