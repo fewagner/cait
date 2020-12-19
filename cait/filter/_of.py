@@ -81,7 +81,7 @@ def filter_event(event, transfer_function):
     return event_filtered
 
 
-def get_amplitudes(events_array, stdevent, nps):
+def get_amplitudes(events_array, stdevent, nps, hard_restrict = False):
     """
     this function determines the amplitudes of several events with optimal sig-noise-ratio
 
@@ -99,6 +99,9 @@ def get_amplitudes(events_array, stdevent, nps):
     # filter events
     events_filtered = np.array([filter_event(event, transition_function) for event in events_array])
     # get maximal heights of filtered events
-    amplitudes = np.max(events_filtered[:, int(length/8):-int(length/8)], axis=1)
+    if not hard_restrict:
+        amplitudes = np.max(events_filtered[:, int(length/8):-int(length/8)], axis=1)
+    if hard_restrict:
+        amplitudes = np.max(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
 
     return amplitudes

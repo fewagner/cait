@@ -276,7 +276,7 @@ class FeaturesMixin(object):
         f.close()
 
     # apply the optimum filter
-    def apply_of(self, type='events', chunk_size=10000):
+    def apply_of(self, type='events', chunk_size=10000, hard_restrict = False):
         """
         Calculates the height of events or testpulses after applying the optimum filter
 
@@ -303,11 +303,11 @@ class FeaturesMixin(object):
         counter = 0
         while counter + chunk_size < nmbr_events:
             for c in range(self.nmbr_channels):
-                of_ph = get_amplitudes(events[c, counter:counter+chunk_size], sev[c], nps[c])
+                of_ph = get_amplitudes(events[c, counter:counter+chunk_size], sev[c], nps[c], hard_restrict=hard_restrict)
                 f[type]['of_ph'][c, counter:counter+chunk_size] = of_ph
             counter += chunk_size
         for c in range(self.nmbr_channels):
-            of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c])
+            of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c], hard_restrict=hard_restrict)
             f[type]['of_ph'][c, counter:nmbr_events] = of_ph
 
         f.close()
