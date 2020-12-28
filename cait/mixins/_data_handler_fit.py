@@ -166,7 +166,7 @@ class FitMixin(object):
         for c in range(self.nmbr_channels):
             for i in range(nmbr_bl):
                 if verb and i % 100 == 0:
-                    print('Calculating Baseline: ', i)
+                    print('Calculating Baseline for Channel {}: {:4.2f} %'.format(c, i*100/nmbr_bl))
                 # fit template to every bl
                 coeff, _ = curve_fit(bl_temp, t, baselines['event'][c, i])
                 rms = get_rms(bl_temp(t, *coeff), baselines['event'][c, i])
