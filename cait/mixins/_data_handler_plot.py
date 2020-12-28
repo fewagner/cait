@@ -168,8 +168,8 @@ class PlotMixin(object):
                     block=False,
                     bins=100,
                     range=None,
-                 show=True,
-                 save_path=None):
+                    show=True,
+                    save_path=None):
         """
         Shows a histogram of some values from the HDF5 file
 
@@ -177,8 +177,8 @@ class PlotMixin(object):
             typically either events, testpulses or noise
         :param key: string, the key index of the hdf5 file, typically mainpar, fit_rms, ...
         :param idx0: int, the first index of the array
-        :param idx0: int or None, the second index of the array
-        :param idx0: int or None, the third index of the array
+        :param idx1: int or None, the second index of the array
+        :param idx2: int or None, the third index of the array
         :param block: bool, if the plot blocks the code when executed in cmd
         :param bins: int, the number of bins for the histogram
         :param range: 2D tuple of floats, the interval that is shown in the histogram
