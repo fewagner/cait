@@ -163,7 +163,8 @@ class EventInterface:
                 self.labels[type] = np.zeros(
                     [self.nmbr_channels, self.nmbrs[type]])
                 np.savetxt(self.path_csv_labels + type + '.csv',
-                           self.labels[type], delimiter='\n')
+                           self.labels[type], 
+                           fmt='%i', delimiter='\n')
 
         except NameError:
             print('Error! Load a bck file first.')
@@ -216,7 +217,8 @@ class EventInterface:
             print('Load HDF5 File with labels first!')
         else:
             np.savetxt(self.path_csv_labels + type + '.csv',
-                       np.array(self.f[type]['labels']), delimiter='\n')
+                       np.array(self.f[type]['labels']), 
+                       fmt='%i', delimiter='\n')
             print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
 
     # ------------------------------------------------------------
@@ -281,7 +283,8 @@ class EventInterface:
             print('Load HDF5 File with labels first!')
         else:
             np.savetxt(self.path_csv_predictions + type + '.csv',
-                       np.array(self.f[type]['{}_predictions'.format(model)]), delimiter='\n')
+                       np.array(self.f[type]['{}_predictions'.format(model)]), 
+                       fmt='%i', delimiter='\n')
             print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
 
     # ------------------------------------------------------------
@@ -718,6 +721,7 @@ class EventInterface:
                         else:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
-                                       self.labels[type], delimiter='\n')
+                                       self.labels[type], 
+                                       fmt='%i', delimiter='\n')
 
                 idx += 1

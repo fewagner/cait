@@ -392,7 +392,8 @@ class EvaluationTools:
             raise AttributeError('Add predictions first!')
 
         np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
-                   np.array(self.predictions[pred_method][1]), delimiter='\n')  # the index 1 should access the pred
+                   np.array(self.predictions[pred_method][1]), 
+                   fmt='%i', delimiter='\n')  # the index 1 should access the pred
 
         print('Saved Predictions as CSV file.')
 
