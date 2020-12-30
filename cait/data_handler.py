@@ -125,28 +125,23 @@ class DataHandler(SimulateMixin,
                 events.create_dataset('labels', data=labels)
                 events['labels'].attrs.create(name='unlabeled', data=0)
                 events['labels'].attrs.create(name='Event_Pulse', data=1)
-                events['labels'].attrs.create(
-                    name='Test/Control_Pulse', data=2)
+                events['labels'].attrs.create(name='Test/Control_Pulse', data=2)
                 events['labels'].attrs.create(name='Noise', data=3)
                 events['labels'].attrs.create(name='Squid_Jump', data=4)
                 events['labels'].attrs.create(name='Spike', data=5)
-                events['labels'].attrs.create(
-                    name='Early_or_late_Trigger', data=6)
+                events['labels'].attrs.create(name='Early_or_late_Trigger', data=6)
                 events['labels'].attrs.create(name='Pile_Up', data=7)
                 events['labels'].attrs.create(name='Carrier_Event', data=8)
-                events['labels'].attrs.create(
-                    name='Strongly_Saturated_Event_Pulse', data=9)
-                events['labels'].attrs.create(
-                    name='Strongly_Saturated_Test/Control_Pulse', data=10)
-                events['labels'].attrs.create(
-                    name='Decaying_Baseline', data=11)
-                events['labels'].attrs.create(name='Temperature Rise', data=12)
-                events['labels'].attrs.create(name='Stick Event', data=13)
-                events['labels'].attrs.create(name='Square Waves', data=14)
-                events['labels'].attrs.create(
-                    name='Human Disturbance', data=15)
-                events['labels'].attrs.create(name='Large Sawtooth', data=16)
-                events['labels'].attrs.create(name='Cosinus Tail', data=17)
+                events['labels'].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+                events['labels'].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                events['labels'].attrs.create(name='Decaying_Baseline', data=11)
+                events['labels'].attrs.create(name='Temperature_Rise', data=12)
+                events['labels'].attrs.create(name='Stick_Event', data=13)
+                events['labels'].attrs.create(name='Square_Waves', data=14)
+                events['labels'].attrs.create(name='Human_Disturbance', data=15)
+                events['labels'].attrs.create(name='Large_Sawtooth', data=16)
+                events['labels'].attrs.create(name='Cosinus_Tail', data=17)
+                events['labels'].attrs.create(name='Light_only_Event', data=18)
                 events['labels'].attrs.create(name='unknown/other', data=99)
 
                 print('Added Labels.')
@@ -240,17 +235,19 @@ class DataHandler(SimulateMixin,
                 events["{}_predictions".format(model)].attrs.create(
                     name='Decaying_Baseline', data=11)
                 events["{}_predictions".format(model)].attrs.create(
-                    name='Temperature Rise', data=12)
+                    name='Temperature_Rise', data=12)
                 events["{}_predictions".format(model)].attrs.create(
-                    name='Stick Event', data=13)
+                    name='Stick_Event', data=13)
                 events["{}_predictions".format(model)].attrs.create(
-                    name='Sawtooth Cycle', data=14)
+                    name='Sawtooth_Cycle', data=14)
                 events["{}_predictions".format(model)].attrs.create(
-                    name='Human Disturbance', data=15)
+                    name='Human_Disturbance', data=15)
                 events["{}_predictions".format(model)].attrs.create(
-                    name='Large Sawtooth', data=16)
+                    name='Large_Sawtooth', data=16)
                 events["{}_predictions".format(model)].attrs.create(
-                    name='Cosinus Tail', data=17)
+                    name='Cosinus_Tail', data=17)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Light_only_Event', data=18)
                 events["{}_predictions".format(model)].attrs.create(
                     name='unknown/other', data=99)
 
