@@ -182,7 +182,7 @@ class EvaluationTools:
         # check if the file input has type string
         if type(file) is not str:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                             "The variabel must be of type string and not '{}'.".format(type(file)))
+                             "The variable must be of type string and not '{}'.".format(type(file)))
 
         # check if the file is accessable
         if not os.path.isfile(file):
@@ -196,12 +196,13 @@ class EvaluationTools:
 
         # check if we look at a correct channel
         if type(channel) is int:
-            if channel == 0 or channel == 1:
+            if channel <= 2:
                 self.pl_channel = channel
             else:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                                 "Parameter 'pl_channel = {}' has no valid value.\n" +
-                                 "(Use '0' for the phonon and '1' for the light)".format(channel))
+                                "Parameter 'pl_channel = {}' has no valid value.\n".format(channel) +
+                                "(Use '0' for the phonon and '1' for the light in a 2-channel detector setup)\n" + 
+                                "(Use '0,1' for the phonon and '2' for the light in a 3-channel detector setup)")
         else:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "Parameter 'pl_channel' has to be of type int.")
