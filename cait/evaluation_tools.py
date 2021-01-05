@@ -339,7 +339,7 @@ class EvaluationTools:
 
     def set_features(self, featuers):
         """
-        If not the StandardScaler is used features have to be set manually,
+        If the StandardScaler is not used features have to be set manually,
         e.g. by using this function.
 
         :param features: manual generated features
@@ -347,9 +347,9 @@ class EvaluationTools:
         featuers = np.array(featuers)
         if self.data.shape != featuers.shape:
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "The shape of featuers {}".format(featuers.shape) +
-                             " has to be the same as " +
-                             "shape of data {}".format(self.data.shape) +
+                             "The shape of features {}".format(featuers.shape) +
+                             " has to be the same as" +
+                             " shape of data {}".format(self.data.shape) +
                              ", since they should just be transformed.")
         self.features = featuers
 
@@ -381,7 +381,7 @@ class EvaluationTools:
 
     def save_prediction(self, pred_method, path, fname, channel):
         """
-        Saves the predictions as a CDV file
+        Saves the predictions as a CSV file
 
         :param pred_method: string, the name of the model that made the predictions
         :param path: string, path to the folder that should contain the predictions
@@ -401,7 +401,7 @@ class EvaluationTools:
     def split_test_train(self, test_size, verb=False):
         """
         Seperates the dataset into a training set and a test set with the
-        size is determined by the input test_size in percent.
+        size determined by the input test_size in percent.
 
         :param test_size: float in (0,1), size of the test set
         :param verb: boolean, default False, if True additional output is printed
@@ -915,7 +915,7 @@ class EvaluationTools:
                 "Hovering over a a single event and pressing 'm' also opnes the timeseries")
             print("of this event and adds the calculated mainparameters to the plot.")
             print(
-                "-------------------------------------------------------------------------")
+                '-------------------------------------------------------------------------')
 
         # -------- PLOT --------
         # PCA
@@ -1179,9 +1179,9 @@ class EvaluationTools:
                 'When clicking on a single event a window with its timeseries is opened.')
             print(
                 "Hovering over a a single event and pressing 'm' also opnes the timeseries")
-            print("of this event and adds the calculated mainparameters to the plot.")
+            print('of this event and adds the calculated mainparameters to the plot.')
             print(
-                "-------------------------------------------------------------------------")
+                '-------------------------------------------------------------------------')
 
         # -------- PLOT --------
         # PCA
