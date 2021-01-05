@@ -315,7 +315,7 @@ class EvaluationTools:
 
     def set_scaler(self, scaler):
         """
-        Sets the scaler for generating the featuers from the data set.
+        Sets the scaler for generating the features from the data set.
         Per default the sklearn.preprocessing.StandardScaler() is used.
 
         :param scaler: scaler for normalizing the data
@@ -337,21 +337,21 @@ class EvaluationTools:
             print("If the StandardScaler is not used the features have to " +
                   "be transformed manually using 'set_features()'.")
 
-    def set_features(self, featuers):
+    def set_features(self, features):
         """
         If the StandardScaler is not used features have to be set manually,
         e.g. by using this function.
 
         :param features: manual generated features
         """
-        featuers = np.array(featuers)
-        if self.data.shape != featuers.shape:
+        features = np.array(features)
+        if self.data.shape != features.shape:
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "The shape of features {}".format(featuers.shape) +
+                             "The shape of features {}".format(features.shape) +
                              " has to be the same as" +
                              " shape of data {}".format(self.data.shape) +
                              ", since they should just be transformed.")
-        self.features = featuers
+        self.features = features
 
     def add_prediction(self, pred_method, pred, true_labels=False, verb=False):
         """
