@@ -78,7 +78,9 @@ def get_cc_noise(nmbr_noise,
 def calculate_mean_nps(baselines,
                        order_polynom=3,
                        clean=True,
-                       percentile=50):
+                       percentile=50,
+                       down=1,
+                       sample_length = 0.00004):
     """
     Calculates the mean Noise Power Spectrum (mNPS) of a set of baselines,
     after cleaning them from artifacts with a polynomial fit
@@ -89,9 +91,17 @@ def calculate_mean_nps(baselines,
     :param clean: boolean, if True the baselines are cleaned from artifacts with a poly fit
     :param percentile: float between 0 and 1, the percentile of the Fit RMS that is still used
         for the calculation of the mNPS
+    :param down: downsample the baselines befor the calculation of the NPS - must be 2^x
+    :param sample_length: float, the length of one sample from the time series in seconds
     :return: (1D array of size (record_length/2 + 1) - the mNPS,
             2D array of size (percentile*nmbr_baselines, record_length) - the cleaned baselines)
     """
+
+    # dpwnsample the baselines
+    if down > 1:
+        baselines = np.mean(baselines.reshape(len(baselines),
+                                              len(baselines[0])/down,
+                                              down), axis=2)
 
     record_length = len(baselines[0])
 
@@ -107,23 +117,21 @@ def calculate_mean_nps(baselines,
             bl_temp = None
             print('PLEASE USE POLYNOMIAL ORDER 2 OR 3!!')
 
-        for bl in baselines:
-            bl = bl - np.mean(bl)
+        # substract mean
+        baselines -= np.mean(baselines[:, :int(record_length/8)], axis=1, keepdims=True)
 
         # fit polynomial coefficients
         coefficients = np.zeros([len(baselines), order_polynom + 1])
-        t = np.linspace(0, record_length * 0.00004, record_length)
+        t = np.linspace(0, record_length * sample_length, record_length)
 
         for i in range(len(baselines)):
             coefficients[i], _ = curve_fit(bl_temp, t, baselines[i])
 
         # throw high rms
-        baselines_polynomials = []
         rms_baselines = []
         for bl, coeff in zip(baselines, coefficients):
             baseline_fit = bl_temp(t, *coeff)
             baseline_fit = np.array(baseline_fit)
-            # baselines_polynomials.append(baseline_fit)
             rms_baselines.append(np.sum((bl - baseline_fit) ** 2))
 
         # baselines_polynomials = np.array(baselines_polynomials)
@@ -143,7 +151,6 @@ def calculate_mean_nps(baselines,
     mean_nps = np.zeros(int(record_length/2) + 1)
 
     for i, bl in enumerate(baselines):
-        bl = bl - np.mean(bl[:500])
         nps = get_nps(bl)
 
         counter_baselines += 1

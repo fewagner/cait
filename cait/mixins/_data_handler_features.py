@@ -282,6 +282,7 @@ class FeaturesMixin(object):
 
         :param type: string, either events of testpulses
         :param chunk_size: int, the size how many events are processes simultaneoursly to avoid memory error
+        :param hard_restrict: bool, if True, the maximum search is restricted to 20-30% of the record window.
         :return: -
         """
 
@@ -446,11 +447,12 @@ class FeaturesMixin(object):
         h5f.close()
 
 
-    def recalc_NPS(self, use_labels=False):
+    def recalc_NPS(self, use_labels=False, down=1):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3)
         :param use_labels: bool, if True only baselines that are labeled as noise are included
+        :param down: int, a factor by that the baselines are downsampled before the calculation - must be 2^x
         :return: -
         """
 
@@ -465,14 +467,18 @@ class FeaturesMixin(object):
             bl = baselines[c]
             if use_labels:
                 bl = bl[labels[c] == 3]  # 3 is noise label
-            mean_nps.append(calculate_mean_nps(bl)[0])
+            mean_nps.append(calculate_mean_nps(bl, down=down)[0])
 
         mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
 
-        h5f['noise'].require_dataset('nps',
+        naming = 'nps'
+        if down > 1:
+            naming += '_down' + str(down)
+
+        h5f['noise'].require_dataset(naming,
                                      shape=mean_nps.shape,
                                      dtype='float')
-        h5f['noise']['nps'][...] = mean_nps
+        h5f['noise'][naming][...] = mean_nps
 
         h5f.close()
 
