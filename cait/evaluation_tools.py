@@ -1363,34 +1363,37 @@ class EvaluationTools:
         max_height_per_label = dict(
             [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
-        for i, l in self.labels.items():
-            if l == 'Event_Pulse':
-                events_nbr = i
-            if l == 'Strongly_Saturated_Event_Pulse':
-                saturated_nbr = i
+        events_nbr = list(self.labels.keys())[list(
+            self.labels.values()).index('Event_Pulse')]
+        saturated_nbr = list(self.labels.keys())[list(
+            self.labels.values()).index('Strongly_Saturated_Event_Pulse')]
 
-        fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
+        if 1 and 9 in max_height_per_label:
+            fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
-        ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
-                label=['{}'.format(self.labels[events_nbr]),
-                       '{}'.format(self.labels[saturated_nbr])],
-                bins=bins)
+            ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
+                    label=['{}'.format(self.labels[events_nbr]),
+                        '{}'.format(self.labels[saturated_nbr])],
+                    bins=bins)
 
-        ax.set_xlabel('pulse height [V]')
-        ax.set_ylabel('number of events')
+            ax.set_xlabel('pulse height [V]')
+            ax.set_ylabel('number of events')
 
-        plt.legend()
-        if ylog:
-            ax.set_yscale('log')
-        if self.save_pgf:
+            plt.legend()
             if ylog:
-                plt.savefig(
-                    '{}evt_sat_hist-ylog.pdf'.format(self.save_plot_dir))
+                ax.set_yscale('log')
+            if self.save_pgf:
+                if ylog:
+                    plt.savefig(
+                        '{}evt_sat_hist-ylog.pdf'.format(self.save_plot_dir))
+                else:
+                    plt.savefig('{}evt_sat_hist.pdf'.format(self.save_plot_dir))
             else:
-                plt.savefig('{}evt_sat_hist.pdf'.format(self.save_plot_dir))
+                plt.show()
+            plt.close()
         else:
-            plt.show()
-        plt.close()
+            raise KeyError(
+                'No Labels for Event Pulses or Strongly Saturated Event Pulses')
 
     def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, extend_plot=False, verb=False):
         """
