@@ -581,6 +581,8 @@ class EventInterface:
         print('16 ... Large Sawtooth')
         print('17 ... Cosinus Tail')
         print('18 ... Light only Event')
+        print('19 ... Ring & Light Event')
+        print('20 ... Sharp Light Event')
         print('99 ... unknown/other')
 
     def _ask_for_label(self, idx, which='phonon'):

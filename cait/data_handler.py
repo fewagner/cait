@@ -142,6 +142,9 @@ class DataHandler(SimulateMixin,
                 events['labels'].attrs.create(name='Large_Sawtooth', data=16)
                 events['labels'].attrs.create(name='Cosinus_Tail', data=17)
                 events['labels'].attrs.create(name='Light_only_Event', data=18)
+                events['labels'].attrs.create(name='Ring_Light_Event', data=19)
+                events['labels'].attrs.create(
+                    name='Sharp_Light_Event', data=20)
                 events['labels'].attrs.create(name='unknown/other', data=99)
 
                 print('Added Labels.')
@@ -248,6 +251,10 @@ class DataHandler(SimulateMixin,
                     name='Cosinus_Tail', data=17)
                 events["{}_predictions".format(model)].attrs.create(
                     name='Light_only_Event', data=18)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Ring_Light_Event', data=19)
+                events["{}_predictions".format(model)].attrs.create(
+                    name='Sharp_Light_Event', data=20)
                 events["{}_predictions".format(model)].attrs.create(
                     name='unknown/other', data=99)
 
