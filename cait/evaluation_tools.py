@@ -168,7 +168,7 @@ class EvaluationTools:
 
         :param file: hd5 file, file from which the data should be read
         :param channel: int, the number of the channel (e.g. phonon channel)
-        :param which_data: string, default 'mainpar',select which data should be used as data (e.g. mainparameters, timeseries)
+        :param which_data: string, default 'mainpar',select which data should be used as data (e.g. mainparameters, timeseries) if set to none then data is keept empty. It is also possible to set this paramater to an array of the length of the labels which are then stored in data
         :param all_labeled: boolean, default False, flag is set, include exactly the events that are labeled
         :param only_idx: list of int, indices only include in the dataset then only use these
         :param force_add: boolean, default False, lets you add a file twice when set to True
@@ -190,9 +190,11 @@ class EvaluationTools:
                              "The given hdf5 file '{}' does not exist.".format(file))
 
         # check if the data key is correct
-        if which_data != 'mainpar' and which_data != 'timeseries':
+        if not (type(which_data) == list or type(which_data) == np.ndarray or
+                which_data == 'mainpar' or which_data == 'timeseries' or
+                which_data == None):
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "Only 'mainpar' or 'timeseries' are valid options to read from file.")
+                             "Only 'mainpar', 'timeseries', list of data or None are valid options to read from file.")
 
         # check if we look at a correct channel
         if type(channel) is int:
@@ -201,7 +203,7 @@ class EvaluationTools:
             else:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                 "Parameter 'pl_channel = {}' has no valid value.\n".format(channel) +
-                                "(Use '0' for the phonon and '1' for the light in a 2-channel detector setup)\n" + 
+                                "(Use '0' for the phonon and '1' for the light in a 2-channel detector setup)\n" +
                                 "(Use '0,1' for the phonon and '2' for the light in a 3-channel detector setup)")
         else:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
@@ -249,13 +251,22 @@ class EvaluationTools:
 
             # find the index of the current file in the list of files
             file_index = self.files.index(file)
-
-            if which_data == 'mainpar':
+            # import ipdb; ipdb.set_trace()
+            if (type(which_data) is str) and (which_data == 'mainpar'):
                 self.__add_data(
                     np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
-            elif which_data == 'timeseries':
+            elif (type(which_data) is str) and (which_data == 'timeseries'):
                 self.__add_data(
                     np.copy(ds['events/event'][channel, use_idx, :]))
+            # elif which_data is None:
+                # self.__add_data(np.array([]))
+                # do nothing
+            elif type(which_data) == list or type(which_data) == np.ndarray:
+                tmp_which_data = np.array(which_data)
+                if not (tmp_which_data.shape[0] == np.array(ds['events/labels'][channel, use_idx]).shape[0]):
+                    raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
+                                     "Given 'which_data' must be of size {} but is of size {}".format(np.array(ds['events/labels'][channel, use_idx]).shape[0], tmp_which_data.shape[0]))
+                self.__add_data(tmp_which_data)
 
             # add also the events and the mainpar seperately
             self.__add_events(ds['events/event'][channel, use_idx, :])
@@ -307,8 +318,8 @@ class EvaluationTools:
 
         if data.shape[0] != self.events.shape[0]:
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "The the length of data {} does not correspond to the" +
-                             " number of events {}.".format(data.shape[0], self.events.shape[0]))
+                             "The the length of data {} does not ".format(data.shape[0]) +
+                             "correspond to the number of events {}.".format(self.events.shape[0]))
 
         self.data = data
         self.gen_features()
@@ -393,7 +404,7 @@ class EvaluationTools:
             raise AttributeError('Add predictions first!')
 
         np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
-                   np.array(self.predictions[pred_method][1]), 
+                   np.array(self.predictions[pred_method][1]),
                    fmt='%i', delimiter='\n')  # the index 1 should access the pred
 
         print('Saved Predictions as CSV file.')
