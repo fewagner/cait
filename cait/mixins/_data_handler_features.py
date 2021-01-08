@@ -75,7 +75,7 @@ class FeaturesMixin(object):
                    use_labels=True,
                    correct_label=None,
                    use_idx=None,
-                   pulse_height_intervall=[[0.5, 1.5], [0.5, 1.5]],
+                   pulse_height_intervall=[[0.5, 1.5], [0.5, 1.5], [0.5, 1.5]],
                    left_right_cutoff=None,
                    rise_time_intervall=None,
                    decay_time_intervall=None,
@@ -210,15 +210,14 @@ class FeaturesMixin(object):
         """
 
         h5f = h5py.File(self.path_h5, 'r+')
-        p_stdevent_pulse = h5f['stdevent']['event'][0]
-        p_mean_nps = h5f['noise']['nps'][0]
-        l_stdevent_pulse = h5f['stdevent']['event'][1]
-        l_mean_nps = h5f['noise']['nps'][1]
+        stdevent_pulse = [h5f['stdevent']['event'][i]
+                          for i in range(self.nmbr_channels)]
+        mean_nps = [h5f['noise']['nps'][i] for i in range(self.nmbr_channels)]
 
         print('CREATE OPTIMUM FILTER.')
 
-        of = np.array([optimal_transfer_function(p_stdevent_pulse, p_mean_nps),
-                       optimal_transfer_function(l_stdevent_pulse, l_mean_nps)])
+        of = np.array([optimal_transfer_function(
+            stdevent_pulse[i], mean_nps[i]) for i in range(self.nmbr_channels)])
 
         optimumfilter = h5f.require_group('optimumfilter')
         optimumfilter.require_dataset('optimumfilter_real',
