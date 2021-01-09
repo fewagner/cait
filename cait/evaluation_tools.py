@@ -168,7 +168,7 @@ class EvaluationTools:
 
         :param file: hd5 file, file from which the data should be read
         :param channel: int, the number of the channel (e.g. phonon channel)
-        :param which_data: string, default 'mainpar',select which data should be used as data (e.g. mainparameters, timeseries) if set to none then data is keept empty. It is also possible to set this paramater to an array of the length of the labels which are then stored in data
+        :param which_data: string, default 'mainpar',select which data should be used as data (e.g. mainparameters, additional mainparameters, timeseries) if set to none then data is keept empty. It is also possible to set this paramater to an array of the length of the labels which are then stored in data
         :param all_labeled: boolean, default False, flag is set, include exactly the events that are labeled
         :param only_idx: list of int, indices only include in the dataset then only use these
         :param force_add: boolean, default False, lets you add a file twice when set to True
@@ -191,10 +191,10 @@ class EvaluationTools:
 
         # check if the data key is correct
         if not (type(which_data) == list or type(which_data) == np.ndarray or
-                which_data == 'mainpar' or which_data == 'timeseries' or
+                which_data == 'mainpar' or which_data == 'add_mainpar' or which_data == 'timeseries' or
                 which_data == None):
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "Only 'mainpar', 'timeseries', list of data or None are valid options to read from file.")
+                             "Only 'mainpar', 'add_mainpar', 'timeseries', list of data or None are valid options to read from file.")
 
         # check if we look at a correct channel
         if type(channel) is int:
@@ -255,6 +255,9 @@ class EvaluationTools:
             if (type(which_data) is str) and (which_data == 'mainpar'):
                 self.__add_data(
                     np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
+            if (type(which_data) is str) and (which_data == 'add_mainpar'):
+                self.__add_data(
+                    np.copy(ds['events/add_mainpar'][channel, use_idx, :]))
             elif (type(which_data) is str) and (which_data == 'timeseries'):
                 self.__add_data(
                     np.copy(ds['events/event'][channel, use_idx, :]))
