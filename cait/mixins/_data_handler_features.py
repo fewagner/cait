@@ -75,7 +75,7 @@ class FeaturesMixin(object):
                    use_labels=True,
                    correct_label=None,
                    use_idx=None,
-                   pulse_height_intervall=[[0.5, 1.5], [0.5, 1.5], [0.5, 1.5]],
+                   pulse_height_intervall=None,
                    left_right_cutoff=None,
                    rise_time_intervall=None,
                    decay_time_intervall=None,
@@ -119,6 +119,11 @@ class FeaturesMixin(object):
         mainpar = h5f[type]['mainpar']
 
         std_evs = []
+
+        # if no pulse_height_intervall is specified set it to average values for all channels
+        if pulse_height_intervall == None:
+            pulse_height_intervall = [[0.5, 1.5]
+                                      for c in range(self.nmbr_channels)]
 
         # fix the issue with different arguments for different channels
         inp = [left_right_cutoff, rise_time_intervall, decay_time_intervall, onset_intervall]
