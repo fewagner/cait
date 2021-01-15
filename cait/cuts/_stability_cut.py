@@ -4,9 +4,10 @@ import numpy as np
 
 # functions
 
-def stability_cut(f, channel, idx_startwith=None):
+def stability_cut(tpas, tphs, hours_tp, hours_ev, significance=3, noise_level=0.005):
     """
     Return all event indices, that are between two stable testpulses
+    TODO
 
     :param f: handle of the h5 file
     :type f: hdf5 filestream
@@ -18,36 +19,30 @@ def stability_cut(f, channel, idx_startwith=None):
     :rtype: list of ints
     """
 
-    tpas = f['testpulses']['testpulseamplitude']
-    tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
-    hours_tp = f['testpulses']['hours']
-    hours_ev = f['events']['hours']
-    idx = np.array(range(len(tpas)))
-
     unique_tpas = np.unique(tpas)
 
     # cleaning
-    cond = tphs > 0
+    cond = tphs > noise_level
 
     for val in unique_tpas:
-        # get all hours that are not within 2 standard deviations
-        mu = np.mean(tphs[tpas == val])
-        sigma = np.std(tphs[tpas == val])
+        # get all hours that are not within significance standard deviations
+        mu = np.mean(tphs[cond][tpas == val])
+        sigma = np.std(tphs[cond][tpas == val])
 
-        cond = np.logical_and(cond, np.abs(tphs - mu) < 2*sigma)
+        cond = np.logical_and(cond, np.abs(tphs - mu) < significance * sigma)
+
+    cond[0] = True  # such that we do not excees boundaries below
+    cond[-1] = True
 
     # make the exclusion intervalls
     exclusion = []
     for i, bool in enumerate(cond):
-        if bool:
+        if not bool:
             exclusion.append([hours_tp[i-1], hours_tp[i+1]])
 
     # both testpulses before and after must have condition true
-    ev_cond = [True for i in idx]
+    flag = np.ones(hours_ev, dtype=bool)
     for lb, up in exclusion:
-        ev_cond =  np.logical_and(ev_cond, np.logical_and((hours_ev > lb), (hours_ev < up)))
+        flag = np.logical_and(flag, np.logical_and((hours_ev >= lb), (hours_ev <= up)))
 
-    if idx_startwith is not None:
-        ev_cond = np.logical_and(ev_cond, np.in1d(idx, idx_startwith))
-
-    return idx[ev_cond]
+    return flag

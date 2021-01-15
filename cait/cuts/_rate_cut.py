@@ -4,38 +4,39 @@ import numpy as np
 
 # functions
 
-def rate_cut(f, type, max_rate, min_rate, idx = None):
+def rate_cut(timestamps, interval=10, significance=3, min=0, max=60):
     """
-    Return all index of events that are in hours with regular rate
+    Return a bool array for all timestamps, with true for events that are in intervals with sigma rate
 
-    :param f: the file with the events to consider
-    :type f: h5 filestream
-    :param type: choose events, testpulses or noise
-    :type type: string
-    :param max_rate: hours that have more events than that get thrown
-    :type max_rate: int
-    :param min_rate: hours that have less events than that get thrown
-    :type min_rate: int
-    :param idx: an initial list of indices from that we only cut some away
-    :type idx: list or array of integers
-    :return: indices that have stable rate
-    :rtype: list of ints
+    :param timestamps: the array of the time stamps in minutes
+    :type timestamps: 1D array
+    :param interval: in minutes, the interval we compare
+    :type interval: float
+    :param significance: all intervals, that have an event rate not within significance-sigma of mean event rate, are cut
+    :type significance: float
+    :param min: intervals with lower rate than this are excluded from the calculation
+    :type min: float
+    :param max: intervals with higher rate than this are excluded from the calculation
+    :param max: float
+    :return: true if event survives rate cut, false if not
+    :rtype: boolean array of same size as timestamps
     """
 
-    hours = f[type]['events']
-    all_idx = list(range(len(hours)))
+    bins = np.arange(0, timestamps[-1], interval)
+    hist, _ = np.histogram(timestamps, bins=bins)
 
-    hours_hist, bins = np.histogram(hours,
-                                    bins=np.arange(int(hours[-1]+1)))
-    bins = bins[:-1]  # bins array is one longer than hours array
+    intervals = np.empty(shape=(bins-1, 2), dtype=float)
 
-    # get the hours we want to throw
-    cond = np.logical_or(hours_hist > max_rate, hours_hist < min_rate)
-    bad_hours = bins[cond]
+    hist_cut = hist[np.logical_and(hist >= min, hist <= max)]
+    mean = np.mean(hist_cut)
+    sigma = np.std(hist_cut)
+    intervals[:, 0] = bins[:-1]
+    intervals[:, 1] = bins[1:]
+    intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
+    intervals = intervals[np.logical(hist_cut > mean - significance*sigma, hist_cut < mean + significance*sigma), :]
 
-    # throw them from the index list
-    cond = np.in1d(np.floor(hours), bad_hours)
-    if idx is not None:
-        cond = np.logical_and(cond, np.in1d(np.floor(all_idx), idx))
+    flag = np.zeros(timestamps)
+    for iv in intervals:
+        flag[np.logical_and(timestamps >= iv[0],timestamps <= iv[0])] = 1
 
-    return all_idx[cond]
+    return flag

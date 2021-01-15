@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 from collections import Counter
 from scipy.stats import norm
+from ..cuts import rate_cut, stability_cut
 
 # -----------------------------------------------------------
 # CLASS
@@ -93,3 +94,34 @@ class AnalysisMixin(object):
 
             print('Resolution channel {}: {} eV (mean {} keV, calculated with {})'.format(c, resolutions[c]*1000, mus[c], naming))
         return np.array(resolutions), np.array(mus)
+
+    def calc_rate_cut(self, interval=10, significance=3, min=0, max=60):
+        # TODO
+
+        h5 = h5py.File(self.path_h5, 'r+')
+        hours = h5['events']['hours']
+
+        flag = rate_cut(hours*60, interval, significance, min, max)
+
+        h5['events'].require_dataset(name='rate_cut',
+                                     shape=(flag.shape),
+                                     dtype=bool)
+        h5['events']['rate_cut'] = flag
+
+    def calc_stability_cut(self, channel, significance=3, noise_level=0.005):
+        # TODO
+
+        f = h5py.File(self.path_h5, 'r+')
+
+        tpas = f['testpulses']['testpulseamplitude']
+        tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
+        hours_tp = f['testpulses']['hours']
+        hours_ev = f['events']['hours']
+
+        flag = stability_cut(tpas, tphs, hours_tp, hours_ev,
+                             significance=significance, noise_level=noise_level)
+
+        f['events'].require_dataset(name='stability_cut',
+                                     shape=(flag.shape),
+                                     dtype=bool)
+        f['events']['stability_cut'] = flag

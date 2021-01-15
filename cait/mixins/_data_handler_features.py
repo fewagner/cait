@@ -8,8 +8,8 @@ from multiprocessing import Pool
 from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
-from ..features._ts_feat import calc_ts_features
 from ..filter._of import get_amplitudes
+from sklearn.decomposition import PCA
 
 from ..data._baselines import calculate_mean_nps
 
@@ -238,46 +238,6 @@ class FeaturesMixin(object):
         print('OF updated.')
 
         h5f.close()
-
-    # calculate TS Features
-    def calc_features(self, type='events', downsample=None):
-        """
-        Calcuate the TimeSeries features from the library tsfel and store in the HDF5 dataset
-
-        :param type: string, either events, testpulses or noise
-        :param downsample: int, the factor to downsample the events before the calculation;
-            in experiments, a downsampling to a total event length of 256 provided the same
-            results as working with the high sample frequency, but saved large amounts of runtime
-        :return: -
-        """
-
-        f = h5py.File(self.path_h5, 'r+')
-        events = np.array(f[type]['event'])
-        features = []
-
-        if downsample is None:
-            downsample = self.down
-
-        for c in range(self.nmbr_channels):
-            features.append(calc_ts_features(events=events[c],
-                                             nmbr_channels=self.nmbr_channels,
-                                             nmbr_events=len(events[0]),
-                                             record_length=self.record_length,
-                                             down=downsample,
-                                             sample_frequency=self.sample_frequency,
-                                             scaler=None))
-
-        features = np.array(features)
-
-        print('Features calculated.')
-
-        f[type].require_dataset('ts_features',
-                                shape=features.shape,
-                                dtype='f')
-
-        f[type]['ts_features'][...] = features
-
-        f.close()
 
     # apply the optimum filter
     def apply_of(self, type='events', chunk_size=10000, hard_restrict = False):
@@ -518,3 +478,32 @@ class FeaturesMixin(object):
                                shape=(add_par_event.shape),
                                dtype='float')
         events['add_mainpar'][...] = add_par_event
+
+    def apply_pca(self, nmbr_components, type='events'):
+
+        f = h5py.File(self.path_h5, 'r+')
+        if 'pca_projection' in f[type]:
+            print('Overwrite old pca projections')
+            del f[type]['pca_projection']
+        pca_projection = f[type].create_dataset(name='pca_projection',
+                                                 shape=(self.nmbr_channels, len(f['events']['hours']), nmbr_components),
+                                                 dtype=float)
+        pca_error = f[type].require_dataset(name='pca_error',
+                                                 shape=(self.nmbr_channels, len(f['events']['hours'])),
+                                                 dtype=float)
+
+        for c in range(self.nmbr_channels):
+            print('Channel ', c)
+            X = f[type]['event'][c]
+            X -= np.mean(X[:, :int(self.record_length/8)], keepdims=True)
+            pca = PCA(n_components=nmbr_components)
+            X_transformed = pca.fit_transform(X)
+
+            print('Explained Variance: ', pca.explained_variance_ratio_)
+            print('Singular Values: ', pca.singular_values_)
+
+            #print('X_transformed: ', X_transformed)
+            #print('PCA error: ', np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1))
+
+            pca_projection[c, ...] = X_transformed
+            pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1)

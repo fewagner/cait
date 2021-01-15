@@ -4,6 +4,7 @@
 
 import numpy as np
 from numpy.fft import rfft, irfft
+import numba as nb
 
 """
 >>>Remarks on the Standardevent and the Noise Power Spectrum:
@@ -42,7 +43,7 @@ def normalization_constant(stdevent, nps):
     return h
 
 
-def optimal_transfer_function(stdevent, nps):
+def optimal_transfer_function(stdevent, nps, sample_ms = 0.04):
     """
     this function calculates the transition function for an optimal filter
 
@@ -51,7 +52,7 @@ def optimal_transfer_function(stdevent, nps):
     :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
     """
 
-    tau_m = (np.argmax(stdevent) * 0.04) / (52.16 * len(stdevent) / 8192)  # index of maximal value
+    tau_m = (np.argmax(stdevent) * sample_ms) / (52.16 * len(stdevent) / 8192)  # index of maximal value
     stdevent_fft = rfft(stdevent)  # do fft of stdevent
     H = np.zeros([len(stdevent_fft)], dtype=complex)  # init transfer func
 
@@ -63,7 +64,6 @@ def optimal_transfer_function(stdevent, nps):
     filtered_standardevent = filter_event(stdevent, H)
 
     return H / np.max(filtered_standardevent)
-
 
 def filter_event(event, transfer_function):
     """

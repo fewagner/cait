@@ -111,7 +111,7 @@ def differential_mean_electron_band(E, L0, L1, L2, L3):
 
 def differential_mean_gamma_band(E, L0, L1, L2, L3, Q1, Q2):
     """
-
+    TODO
 
     :param E:
     :type E:
@@ -136,7 +136,7 @@ def differential_mean_gamma_band(E, L0, L1, L2, L3, Q1, Q2):
 
 def total_resolution_electron_band(E, sigma_L0, S1, S2, L0, L1, L2, L3, sigma_P0, sigma_P1):
     """
-
+    TODO
 
     :param E:
     :type E:
@@ -168,7 +168,7 @@ def total_resolution_electron_band(E, sigma_L0, S1, S2, L0, L1, L2, L3, sigma_P0
 
 def total_resolution_gamma_band(E, sigma_L0, S1, S2, L0, L1, L2, L3, Q1, Q2, sigma_P0, sigma_P1):
     """
-
+    TODO
 
     :param E:
     :type E:
@@ -204,7 +204,7 @@ def total_resolution_gamma_band(E, sigma_L0, S1, S2, L0, L1, L2, L3, Q1, Q2, sig
 
 def excess_light(E, L, Elamp, Elwidth, Eldec, L0, L1, L2, L3, sigma_L0, S1, S2):
     """
-
+    TODO
 
     :param E:
     :type E:
@@ -241,7 +241,7 @@ def excess_light(E, L, Elamp, Elwidth, Eldec, L0, L1, L2, L3, sigma_L0, S1, S2):
 
 def mean_nuclear_band(E, L0, L1, eps, QFx, fx, lambx):
     """
-
+    TODO
 
     :param E:
     :type E:
@@ -263,7 +263,7 @@ def mean_nuclear_band(E, L0, L1, eps, QFx, fx, lambx):
 
 def get_quench(which):
     """
-
+    TODO
 
     :param which:
     :type which:

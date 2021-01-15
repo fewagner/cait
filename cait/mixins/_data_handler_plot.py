@@ -458,7 +458,7 @@ class PlotMixin(object):
                             s=s)
         else:
             plt.scatter(x_par,
-                        y_par / y_par,
+                        y_par / x_par,
                         marker=marker,
                         alpha=alpha,
                         s=s)

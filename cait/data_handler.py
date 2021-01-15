@@ -11,6 +11,7 @@ from .mixins._data_handler_plot import PlotMixin
 from .mixins._data_handler_features import FeaturesMixin
 from .mixins._data_handler_analysis import AnalysisMixin
 from .mixins._data_handler_fit import FitMixin
+from .mixins._data_handler_csmpl import CsmplMixin
 
 # -----------------------------------------------------------
 # CLASS
@@ -21,7 +22,8 @@ class DataHandler(SimulateMixin,
                   PlotMixin,
                   FeaturesMixin,
                   AnalysisMixin,
-                  FitMixin
+                  FitMixin,
+                  CsmplMixin,
                   ):
     """
     A class for the processing of raw data set. Uses Mixins for most features.
@@ -84,6 +86,7 @@ class DataHandler(SimulateMixin,
         # check if the channel number matches the file, otherwise error
         self.path_h5 = "{}/run{}_{}/{}{}.h5".format(path_h5, self.run, self.module,
                                                     fname, app)
+        self.path_directory = path_h5
         self.fname = fname
 
     def import_labels(self,

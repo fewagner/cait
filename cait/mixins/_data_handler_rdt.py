@@ -127,6 +127,8 @@ class RdtMixin(object):
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
 
+        self.path_directory = path_h5
+
         if self.nmbr_channels == 2:
             self.path_h5 = "{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname, self.channels[0],
                                                           self.channels[1])
