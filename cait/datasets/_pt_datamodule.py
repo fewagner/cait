@@ -91,14 +91,6 @@ class CryoDataModule(pl.LightningDataModule):
         if not load_to_memory and nmbr_workers > 0:
             print('Attention: nmbr_workers > 0 and not load to memory might cause issues with the h5 file read!')
 
-    def setup(self):
-        """
-        Called on every GPU before start of training, here creation of dataset and splits in samplers are done
-
-        :return: -
-        :rtype: -
-        """
-
         self.dataset_full = H5CryoData(hdf5_path=self.hdf5_path,
                                        type=self.type,
                                        keys=self.keys,
@@ -109,6 +101,14 @@ class CryoDataModule(pl.LightningDataModule):
                                        nmbr_events=self.nmbr_events,
                                        load_to_memory=self.load_to_memory,
                                        double=self.double)
+
+    def setup(self):
+        """
+        Called on every GPU before start of training, here creation of dataset and splits in samplers are done
+
+        :return: -
+        :rtype: -
+        """
 
         if self.dataset_size is None:
             self.dataset_size = len(self.dataset_full)

@@ -46,27 +46,22 @@ class H5CryoData(Dataset):
         self.load_to_memory = load_to_memory
         if load_to_memory:
             if file_handle is None:
-                file_handle = h5py.File(hdf5_path, 'r')
-                self.data = self.load_data(file_handle)
+                with h5py.File(hdf5_path, 'r') as file_handle:
+                    self.data = self.load_data(file_handle)
             else:
                 self.data = self.load_data(file_handle)
         else:
-            if file_handle is None:
-                if hdf5_path is not None:
-                    self.f = h5py.File(hdf5_path, 'r')  # this causes trouble with multiple workers
-                else:
-                    raise KeyError('If you provide no file handle, you must provide a hdf5 path!')
-            else:
-                self.f = file_handle
+            pass  # h5 file is only opened in the __getitem__ method!
         if nmbr_events == None:
             if load_to_memory:
                 self.nmbr_events = len(self.data[list(self.data.keys())[0]])
             else:
-                self.nmbr_events = len(self.f[type + '/event'][0])
+                with h5py.File(hdf5_path, 'r') as f:
+                    self.nmbr_events = len(f[type + '/event'][0])
         else:
             self.nmbr_events = nmbr_events
         self.double = double
-
+        self.file_handle = file_handle
 
     def load_data(self, f):
 
@@ -123,6 +118,11 @@ class H5CryoData(Dataset):
             for key in self.data.keys():
                 sample[key] = self.data[key][idx]
         else:
+            if self.file_handle is None:
+                if self.hdf5_path is not None:
+                    self.f = h5py.File(self.hdf5_path, 'r')  # this causes trouble with multiple workers
+                else:
+                    raise KeyError('If you provide no file handle, you must provide a hdf5 path!')
             for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
                 ls = len(self.f[self.type][key].shape)
                 if ls == 1 and self.channel_indices[i] is None and self.feature_indices[i] is None:
