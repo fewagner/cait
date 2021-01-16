@@ -91,7 +91,8 @@ class RdtMixin(object):
                         fname, path_h5,
                         tpa_list=[0],
                         calc_mp=True, calc_fit=False,
-                        calc_sev=False, processes=4,
+                        calc_sev=False, calc_nps=True,
+                        processes=4,
                         chunk_size=1000,
                         event_dtype='float64'):
         """
@@ -120,6 +121,7 @@ class RdtMixin(object):
                              calc_mp=calc_mp,
                              calc_fit=calc_fit,
                              calc_sev=calc_sev,
+                             calc_nps=calc_nps,
                              processes=processes,
                              chunk_size=chunk_size,
                              event_dtype=event_dtype

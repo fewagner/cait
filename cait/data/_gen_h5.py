@@ -12,6 +12,8 @@ from ..fit._pm_fit import fit_pulse_shape
 from ._baselines import calculate_mean_nps
 from ..fit._sev import generate_standard_event
 from ..filter._of import optimal_transfer_function
+
+
 # import ipdb
 
 # ------------------------------------------------------------
@@ -27,6 +29,7 @@ def gen_dataset_from_rdt(path_rdt,
                          calc_mp=True,
                          calc_fit=False,
                          calc_sev=False,
+                         calc_nps=True,
                          processes=4,
                          chunk_size=1000,
                          event_dtype='float64'):
@@ -70,7 +73,7 @@ def gen_dataset_from_rdt(path_rdt,
     elif nmbr_channels > 2:
         path = "{}{}".format(path_h5, fname)
         for i, c in enumerate(channels):
-            path += '-{}_Ch{}'.format(i+1, c)
+            path += '-{}_Ch{}'.format(i + 1, c)
         path += ".h5"
         h5f = h5py.File(path, 'w')
 
@@ -78,7 +81,7 @@ def gen_dataset_from_rdt(path_rdt,
     # h5py.get_config().track_order = True # attrs don't get sorted
 
     for i, c in enumerate(channels):
-        h5f.attrs.create('Ch_{}'.format(i+1), data=c)
+        h5f.attrs.create('Ch_{}'.format(i + 1), data=c)
 
     # ################# PROCESS EVENTS #################
     # if we filtered for events
@@ -152,7 +155,7 @@ def gen_dataset_from_rdt(path_rdt,
             events['fitpar'].attrs.create(name='tau_in', data=4)
             events['fitpar'].attrs.create(name='tau_t', data=5)
 
-        if calc_sev:
+        if calc_sev and calc_nps:
 
             # ################# STD EVENT #################
             # [pulse_height, t_zero, t_rise, t_max, t_decaystart, t_half, t_end, offset, linear_drift, quadratic_drift]
@@ -162,17 +165,17 @@ def gen_dataset_from_rdt(path_rdt,
             for c in range(nmbr_channels):
                 stdevent_pulse, stdevent_fitpar = generate_standard_event(pulse_event[c, :, :],
                                                                           mainpar_event[c,
-                                                                                        :, :],
-                                                                          pulse_height_intervall=[
-                    0.05, 1.5],
-                    left_right_cutoff=0.1,
-                    rise_time_intervall=[
-                    5, 100],
-                    decay_time_intervall=[
-                    50, 2500],
-                    onset_intervall=[
-                    1500, 3000],
-                    verb=True)
+                                                                          :, :],
+                                                                          pulse_height_interval=[
+                                                                              0.05, 1.5],
+                                                                          left_right_cutoff=0.1,
+                                                                          rise_time_interval=[
+                                                                              5, 100],
+                                                                          decay_time_interval=[
+                                                                              50, 2500],
+                                                                          onset_interval=[
+                                                                              1500, 3000],
+                                                                          verb=True)
                 sev_pulse_list.append(stdevent_pulse)
                 sev_fitpar_list.append(stdevent_fitpar)
 
@@ -218,17 +221,18 @@ def gen_dataset_from_rdt(path_rdt,
         noise.create_dataset('time_s', data=np.array(metainfo_noise[0, :, 4]))
         noise.create_dataset('time_mus', data=np.array(metainfo_noise[0, :, 5]))
 
-        if np.shape(pulse_noise)[1] != 0:
-            mean_nps_all = []
-            for c in range(nmbr_channels):
-                mean_nps, _ = calculate_mean_nps(pulse_noise[c, :, :])
-                mean_nps_all.append(mean_nps)
-            noise.create_dataset('nps', data=np.array(mean_nps_all))
+        if calc_nps:
+            if np.shape(pulse_noise)[1] != 0:
+                mean_nps_all = []
+                for c in range(nmbr_channels):
+                    mean_nps, _ = calculate_mean_nps(pulse_noise[c, :, :])
+                    mean_nps_all.append(mean_nps)
+                noise.create_dataset('nps', data=np.array(mean_nps_all))
 
-        else:
-            print("DataError: No existing noise data for this channel")
+            else:
+                print("DataError: No existing noise data for this channel")
 
-    if (-1.0 in tpa_list) and (0 in tpa_list) and calc_sev:
+    if (-1.0 in tpa_list) and (0 in tpa_list) and calc_sev and calc_nps:
         # ################# OPTIMUMFILTER #################
         # H = optimal_transfer_function(standardevent, mean_nps)
         print('CREATE OPTIMUM FILTER.')
@@ -309,6 +313,7 @@ def gen_dataset_from_rdt(path_rdt,
             testpulses['fitpar'].attrs.create(name='tau_t', data=5)
 
     h5f.close()
+
 
 # ------------------------------------------------------------
 # MAIN ROUTINE

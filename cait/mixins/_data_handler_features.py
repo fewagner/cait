@@ -75,11 +75,11 @@ class FeaturesMixin(object):
                    use_labels=True,
                    correct_label=None,
                    use_idx=None,
-                   pulse_height_intervall=None,
+                   pulse_height_interval=None,
                    left_right_cutoff=None,
-                   rise_time_intervall=None,
-                   decay_time_intervall=None,
-                   onset_intervall=None,
+                   rise_time_interval=None,
+                   decay_time_interval=None,
+                   onset_interval=None,
                    remove_offset=True,
                    verb=True,
                    scale_fit_height=True,
@@ -92,17 +92,17 @@ class FeaturesMixin(object):
             then only the events labeled as events or testpulses are included in the calculation
         :param correct_label: int, the label to be used for the sev generation
         :param use_idx: list of ints, only these indices are included for the sev generation
-        :param pulse_height_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+        :param pulse_height_interval: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
             and lower bound for the pulse heights to include into the creation of the SEV
         :param left_right_cutoff: list of NMBR_CHANNELS floats, the maximal abs value of the linear slope of events
             to be included in the Sev calculation; based on the sample index as x-values
-        :param rise_time_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+        :param rise_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
             and lower bound for the rise time to include into the creation of the SEV;
             based on the sample index as x-values
-        :param decay_time_intervall: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+        :param decay_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
             and lower bound for the decay time to include into the creation of the SEV;
             based on the sample index as x-values
-        :param onset_intervall:  list of NMBR_CHANNELS lists of length 2 (intervals), the upper
+        :param onset_interval:  list of NMBR_CHANNELS lists of length 2 (intervals), the upper
             and lower bound for the onset time to include into the creation of the SEV;
             based on the sample index as x-values
         :param remove_offset: bool, if True the offset is removed before the events are superposed for the
@@ -120,13 +120,13 @@ class FeaturesMixin(object):
 
         std_evs = []
 
-        # if no pulse_height_intervall is specified set it to average values for all channels
-        if pulse_height_intervall == None:
-            pulse_height_intervall = [[0.5, 1.5]
+        # if no pulse_height_interval is specified set it to average values for all channels
+        if pulse_height_interval == None:
+            pulse_height_interval = [[0.5, 1.5]
                                       for c in range(self.nmbr_channels)]
 
         # fix the issue with different arguments for different channels
-        inp = [left_right_cutoff, rise_time_intervall, decay_time_intervall, onset_intervall]
+        inp = [left_right_cutoff, rise_time_interval, decay_time_interval, onset_interval]
         for i, var in enumerate(inp):
             if var is None:
                 inp[i] = [None for c in range(self.nmbr_channels)]
@@ -156,11 +156,11 @@ class FeaturesMixin(object):
                                                    main_parameters=mainpar[c, use_idx, :],
                                                    labels=labels[c],
                                                    correct_label=correct_label,
-                                                   pulse_height_intervall=pulse_height_intervall[c],
+                                                   pulse_height_interval=pulse_height_interval[c],
                                                    left_right_cutoff=inp[0][c],
-                                                   rise_time_intervall=inp[1][c],
-                                                   decay_time_intervall=inp[2][c],
-                                                   onset_intervall=inp[3][c],
+                                                   rise_time_interval=inp[1][c],
+                                                   decay_time_interval=inp[2][c],
+                                                   onset_interval=inp[3][c],
                                                    remove_offset=remove_offset,
                                                    verb=verb,
                                                    scale_fit_height=scale_fit_height,
@@ -287,11 +287,11 @@ class FeaturesMixin(object):
                              model=None,
                              correct_label=None,
                              idx_list=None,
-                             pulse_height_intervall=[0.5, 1.5],
+                             pulse_height_interval=[0.5, 1.5],
                              left_right_cutoff=None,
-                             rise_time_intervall=None,
-                             decay_time_intervall=None,
-                             onset_intervall=None,
+                             rise_time_interval=None,
+                             decay_time_interval=None,
+                             onset_interval=None,
                              remove_offset=True,
                              verb=True,
                              scale_fit_height=True,
@@ -307,17 +307,17 @@ class FeaturesMixin(object):
             h5 file, e.g. "RF" --> look for "RF_predictions"
         :param correct_label: int or None, if not None use only events with this label
         :param idx_list: list of ints or None, if set then only these indices are used for the sev creation
-        :param pulse_height_intervall: list of length 2 (interval), the upper
+        :param pulse_height_interval: list of length 2 (interval), the upper
             and lower bound for the pulse heights to include into the creation of the SEV
         :param left_right_cutoff: float, the maximal abs value of the linear slope of events
             to be included in the Sev calculation; based on the sample index as x-values
-        :param rise_time_intervall: lists of length 2 (interval), the upper
+        :param rise_time_interval: lists of length 2 (interval), the upper
             and lower bound for the rise time to include into the creation of the SEV;
             based on the sample index as x-values
-        :param decay_time_intervall: list of length 2 (interval), the upper
+        :param decay_time_interval: list of length 2 (interval), the upper
             and lower bound for the decay time to include into the creation of the SEV;
             based on the sample index as x-values
-        :param onset_intervall:  list of length 2 (interval), the upper
+        :param onset_interval:  list of length 2 (interval), the upper
             and lower bound for the onset time to include into the creation of the SEV;
             based on the sample index as x-values
         :param remove_offset: bool, if True the offset is removed before the events are superposed for the
@@ -359,11 +359,11 @@ class FeaturesMixin(object):
                                                  main_parameters=mainpar,
                                                  labels=labels,
                                                  correct_label=correct_label,
-                                                 pulse_height_intervall=pulse_height_intervall,
+                                                 pulse_height_interval=pulse_height_interval,
                                                  left_right_cutoff=left_right_cutoff,
-                                                 rise_time_intervall=rise_time_intervall,
-                                                 decay_time_intervall=decay_time_intervall,
-                                                 onset_intervall=onset_intervall,
+                                                 rise_time_interval=rise_time_interval,
+                                                 decay_time_interval=decay_time_interval,
+                                                 onset_interval=onset_interval,
                                                  remove_offset=remove_offset,
                                                  verb=verb,
                                                  scale_fit_height=scale_fit_height,

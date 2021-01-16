@@ -1,7 +1,9 @@
 from ._lstm_model import *
 from ._rnn_model import *
 from ._transformer_model import *
+from ._predict import *
 
 __all__ = ['LSTMModule',
            'RNNModule',
-           'TransformerModule']
+           'TransformerModule',
+           'nn_predict']
