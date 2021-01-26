@@ -463,7 +463,7 @@ class FeaturesMixin(object):
         events = h5f[type]
 
         of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
-        of_imag = np.array(h5f['optimumfilter']['optimumfilter_real'])
+        of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
         of = of_real + 1j * of_imag
 
         print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
