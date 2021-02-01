@@ -112,8 +112,9 @@ class FitMixin(object):
 
             # fit all
             for i in range(len(events[0])):
-                if verb and i%100 == 0:
-                    print('Fitting Event Nmbr: {}/{}'.format(i,len(events[0])))
+                if verb and i % 50 == 0:
+                    print('Fitting Event Nmbr: {:4.2f} % finished'.format(
+                        100 * i / len(events[0])))
                 par[c, i] = fit_model.fit_cubic(events[c, i])
 
         # write sev fit results to file
