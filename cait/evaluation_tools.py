@@ -1379,7 +1379,7 @@ class EvaluationTools:
                         '{}'.format(self.labels[saturated_nbr])],
                     bins=bins)
 
-            ax.set_xlabel('pulse height [V]')
+            ax.set_xlabel('pulse height (V)')
             ax.set_ylabel('number of events')
 
             plt.legend()
@@ -1490,7 +1490,7 @@ class EvaluationTools:
                 ax[k][j].plot(bin_boundries[l][0],
                               bin_boundries[l][1])
 
-        plt.xlable('pulse height [V]')
+        plt.xlable('pulse height (V)')
         plt.ylable('accuray')
         plt.show()
 
@@ -1585,7 +1585,7 @@ class EvaluationTools:
         ax.plot(bin_boundries[l][0],
                 bin_boundries[l][1])
 
-        ax.set_xlabel('pulse height [V]')
+        ax.set_xlabel('pulse height (V)')
         ax.set_ylabel('accuray')
         ax.set_xlim(0, 0.2)
         # plt.gcf().subplots_adjust(bottom=-0.1)
