@@ -46,7 +46,7 @@ class PlotMixin(object):
         plt.close()
 
         for i, ch in enumerate(self.channel_names):
-            plt.subplot(2, 1, i + 1)
+            plt.subplot(self.nmbr_channels, 1, i + 1)
             plt.plot(t, sev[i], color=self.colors[i])
             if show_fit:
                 plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='orange')
