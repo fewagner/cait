@@ -39,10 +39,7 @@ class DataHandler(SimulateMixin,
         :param record_length: int, the number of samples in one record window
         :param sample_frequency: int, the sample requency of the recording
         """
-        # ask user things like which detector working on etc
-        if len(channels) > 3:
-            raise NotImplementedError(
-                'Only for 3 channels or less implemented.')
+
         self.run = run
         self.module = module
         self.record_length = record_length
@@ -56,9 +53,15 @@ class DataHandler(SimulateMixin,
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
             self.colors = ['red', 'blue']
-        elif self.nmbr_channels == 3:
-            self.channel_names = ['Channel 1', 'Channel 2', 'Channel 3']
-            self.colors = ['red', 'red', 'blue']
+        else:
+            self.channel_names = []
+            self.colors = []
+            for c in range(len(channels)):
+                self.channel_names.append('Channel ' + str(c))
+                if c == len(channels) - 1 and c > 0:
+                    self.colors.append('blue')
+                else:
+                    self.colors.append('red')
 
         print('DataHandler Instance created.')
 

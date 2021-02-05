@@ -6,7 +6,7 @@ import numpy as np
 # import numba as nb
 from scipy.optimize import curve_fit
 from ..fit._templates import pulse_template
-
+import warnings
 
 # -------------------------------------------------------
 # FUNCTIONS
@@ -49,10 +49,9 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04):
                            xdata=t_dummy,
                            ydata=event,
                            p0=x0,
-                           bounds=np.array([[-np.inf, -np.inf, -50, 1e-8, 1e-8, 1e-8],
-                                            [np.inf, np.inf, +50, 1e8, 1e8, 1e8]]))
-        # , bounds=(-np.inf, np.inf),
-        # maxfev=2000)
+                           bounds=np.array([[-50, -np.inf, -np.inf, 1e-8, 1e-8, 1e-8],
+                                            [50, np.inf, np.inf, 1e8, 1e8, 1e8]]))
+
     except RuntimeError:
         print("Error - curve_fit failed")
         return np.zeros(x0.shape)

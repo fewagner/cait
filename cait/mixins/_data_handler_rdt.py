@@ -5,6 +5,7 @@
 import numpy as np
 import struct
 from ..data._gen_h5 import gen_dataset_from_rdt
+import h5py
 
 # -----------------------------------------------------------
 # CLASS
@@ -93,8 +94,8 @@ class RdtMixin(object):
                         calc_mp=True, calc_fit=False,
                         calc_sev=False, calc_nps=True,
                         processes=4,
-                        chunk_size=1000,
-                        event_dtype='float64'):
+                        event_dtype='float64',
+                        ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file
         :param path_rdt: string, path to the rdt file e.g. "data/bcks/"
@@ -123,8 +124,7 @@ class RdtMixin(object):
                              calc_sev=calc_sev,
                              calc_nps=calc_nps,
                              processes=processes,
-                             chunk_size=chunk_size,
-                             event_dtype=event_dtype
+                             event_dtype=event_dtype,
                              )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -134,15 +134,53 @@ class RdtMixin(object):
         if self.nmbr_channels == 2:
             self.path_h5 = "{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname, self.channels[0],
                                                           self.channels[1])
-            self.fname = fname
 
-        elif self.nmbr_channels > 2:
+        else:
             path = "{}{}".format(path_h5, fname)
             for i, c in enumerate(self.channels):
                 path += '-{}_Ch{}'.format(i + 1, c)
             path += ".h5"
-        else:
-            raise NotImplementedError(
-                'Only for two and more channels implemented!')
+            self.path_h5 = path
+        self.fname = fname
+
 
         print('Filepath and -name saved.')
+
+
+    def include_con_file(self, path_con_file):
+
+        print('Accessing CON File...')
+
+        # define data type for file read
+        record = np.dtype([('detector_nmbr', 'int32'),
+                           ('pulse_height', 'float32'),
+                           ('time_stamp_low', 'uint32'),
+                           ('time_stamp_high', 'uint32'),
+                           ('dead_time', 'float32'),
+                           ('mus_since_last_tp', 'int32'),
+                           ])
+
+        # get data from con file
+        data = np.fromfile(path_con_file, dtype=record, offset=12)
+
+        nmbr_cp = np.sum(data['detector_nmbr'] == self.channels[0])
+
+        cond = data['detector_nmbr'] == self.channels[0]
+        hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) * 1e-7 / 3600
+
+        # create file handles
+        f = h5py.File(self.path_h5, 'r+')
+        f.require_group('controlpulses')
+        cp_hours = f['controlpulses'].require_dataset(name='hours',
+                                                      data=hours)
+        cp_ph = f['controlpulses'].require_dataset(name='pulse_height',
+                                                      shape=(self.nmbr_channels, nmbr_cp),
+                                                      dtype=float)
+
+        for i, c in enumerate(self.channels):
+            cond = data['detector_nmbr'] == c
+
+            # write data to file
+            cp_ph[i, ...] = data['pulse_height'][cond]
+
+        print('CON File included.')

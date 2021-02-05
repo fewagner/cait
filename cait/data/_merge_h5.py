@@ -1,8 +1,8 @@
-
 # imports
 
 import h5py
 import numpy as np
+
 
 # function
 
@@ -13,7 +13,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   concatenate_axis=[1, 1, 1, 0, 0, 1, 0, 0, 0],
                   groups_from_a=[],
                   groups_from_b=[],
-                  continue_hours = False):
+                  continue_hours=False):
     """
     Merges two HDF5 files, groups to merge can be chosen
 
@@ -61,7 +61,9 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                     print('creating ...')
 
                     if continue_hours and set == 'hours':
-                        last_hour = a[group][set][-1]
+                        last_hour = a[group][set][-1] + (b[group]['time_s'][0] + 10e-6 * b[group]['time_mus'][0] -
+                                                         a[group]['time_s'][-1] - 10e-6 * a[group]['time_mus'][
+                                                             -1]) / 3600
                         data = np.concatenate((a[group][set],
                                                b[group][set] + last_hour), axis=concatenate_axis[i])
                     else:

@@ -383,19 +383,20 @@ def calc_additional_parameters(event,
     filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
     filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
 
-    return np.array([max,
-                     min,
-                     var_start,
-                     mean_start,
-                     var_end,
-                     mean_end,
-                     var,
-                     mean,
-                     skew,
-                     der_max,
-                     der_maxind,
-                     der_min,
-                     der_minind,
-                     filtered_max,
-                     filtered_maxind,
-                     filtered_skew])
+    return np.array([max, # 0
+                     min, # 1
+                     var_start, # 2
+                     mean_start,  # 3
+                     var_end,  # 4
+                     mean_end,  # 5
+                     var,  # 6
+                     mean,  # 7
+                     skew,  # 8
+                     der_max,  # 9
+                     der_maxind,  # 10
+                     der_min,  # 11
+                     der_minind,  # 12
+                     filtered_max,  # 13
+                     filtered_maxind,  # 14
+                     filtered_skew], # 15
+                    )

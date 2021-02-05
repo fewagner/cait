@@ -46,7 +46,7 @@ def simulate_events(path_h5,
     :param channel_exceptional_sev: list of ints, the channels for that the exceptional sev is
         used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1]
     :param t0_interval: Interval (l,u) with l lower bound for onset and u upper bound;
-        the onsets are sampled uniformly from the interval
+        the onsets are sampled uniformly from the interval; in ms;
     :param fake_noise: bool, if true use simulated noise baselines, otherwise measured ones
     :param use_bl_from_idx: the start index of the baselines that are used
     :param rms_threshold: float, above which value noise baselines are excluded for the

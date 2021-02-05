@@ -419,6 +419,7 @@ class FeaturesMixin(object):
         :param down: int, a factor by that the baselines are downsampled before the calculation - must be 2^x
         :return: -
         """
+        print('Calculate NPS.')
 
         # open file
         h5f = h5py.File(self.path_h5, 'r+')
@@ -479,7 +480,34 @@ class FeaturesMixin(object):
                                dtype='float')
         events['add_mainpar'][...] = add_par_event
 
+        events['add_mainpar'].attrs.create(name='array_max', data=0)
+        events['add_mainpar'].attrs.create(name='array_min', data=1)
+        events['add_mainpar'].attrs.create(name='var_first_eight', data=2)
+        events['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
+        events['add_mainpar'].attrs.create(name='var_last_eight', data=4)
+        events['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
+        events['add_mainpar'].attrs.create(name='var', data=6)
+        events['add_mainpar'].attrs.create(name='mean', data=7)
+        events['add_mainpar'].attrs.create(name='skewness', data=8)
+        events['add_mainpar'].attrs.create(name='max_derivative', data=9)
+        events['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
+        events['add_mainpar'].attrs.create(name='min_derivative', data=11)
+        events['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
+        events['add_mainpar'].attrs.create(name='max_filtered', data=13)
+        events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
+        events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
+
     def apply_pca(self, nmbr_components, type='events'):
+        """
+        TODO
+
+        :param nmbr_components:
+        :type nmbr_components:
+        :param type:
+        :type type:
+        :return:
+        :rtype:
+        """
 
         f = h5py.File(self.path_h5, 'r+')
         if 'pca_projection' in f[type]:

@@ -18,5 +18,6 @@ __all__ = ['EventInterface',
            'fit',
            'models',
            'simulate',
-           'trigger'
+           'trigger',
+           'limit',
            ]

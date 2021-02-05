@@ -2,47 +2,156 @@
 
 import numpy as np
 
+
 # functions
 
-def stability_cut(tpas, tphs, hours_tp, hours_ev, significance=3, noise_level=0.005):
+def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, lb=0, ub=100):
+    """
+    Return all event indices, that are between two stable control pulses
+    TODO
+
+    """
+
+    print('Do Testpulse Stability Cut')
+
+    cphs = np.array(cphs)
+    hours_cp = np.array(hours_cp)
+    hours_ev = np.array(hours_ev)
+
+    nmbr_cps = len(cphs)
+
+    cond = np.logical_and(cphs > lb, cphs < ub)
+
+    # get all hours that are not within significance standard deviations
+    mu = np.mean(cphs[cond])
+    sigma = np.std(cphs[cond])
+
+    cond = np.logical_and(cond, np.abs(cphs - mu) < significance * sigma)
+    print('Control Pulse PH {:.3f} +- {:.3f}, within {} sigma: {:.3f} %'.format(mu, sigma, significance,
+                                                                                  100 * np.sum(
+                                                                                      cond) / len(
+                                                                                      cond)))
+
+    print('Good Control Pulses: {}/{} ({:.3f}%)'.format(np.sum(cond), nmbr_cps, 100 * np.sum(cond) / nmbr_cps))
+
+    flag_cp = cond
+
+    cond[0] = True  # such that we do not exceed boundaries below
+    cond[-1] = True
+
+    # make the exclusion intervalls
+    # both control pulses before and after must have condition true
+    # also, gap between control pulses must not exceed the max_gap duration!
+    exclusion = []
+    i = 1
+    while i < len(cond):
+        if not cond[i]:
+            lb = hours_cp[i]
+            while cond[i] == False:
+                i += 1
+            ub = hours_cp[i]
+            exclusion.append([lb, ub])
+        else:
+            if hours_cp[i] - hours_cp[i - 1] > max_gap:
+                exclusion.append([hours_cp[i - 1], hours_cp[i]])
+        i += 1
+
+    # exclude the events in instable intervals
+    flag_ev = np.ones(len(hours_ev), dtype=bool)
+    excluded_hours = 0
+    for lb, ub in exclusion:
+        flag_ev[np.logical_and((hours_ev > lb), (hours_ev < ub))] = False
+        excluded_hours += ub - lb
+
+    # exclude also the events before first and after last tp!
+    flag_ev[hours_ev < hours_cp[0]] = False
+    flag_ev[hours_ev > hours_cp[-1]] = False
+    if cond[1] == True:
+        excluded_hours += hours_cp[0]
+        excluded_hours += np.max([0, hours_ev[-1] - hours_cp[-1]])
+
+    print('Good Events: {}/{} ({:.3f}%)'.format(np.sum(flag_ev), len(flag_ev), 100 * np.sum(flag_ev) / len(flag_ev)))
+    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_cp[-1] - excluded_hours, hours_cp[-1],
+                                                        100 * (hours_cp[-1] - excluded_hours) / hours_cp[-1]))
+
+    return flag_ev, flag_cp
+
+def testpulse_stability(tpas, tphs, hours_tp, hours_ev, significance=3, noise_level=0.005, max_gap=1):
     """
     Return all event indices, that are between two stable testpulses
     TODO
 
-    :param f: handle of the h5 file
-    :type f: hdf5 filestream
-    :param channel: the channel of which the cut should be done
-    :type channel: int
-    :param idx: only indices that are in this list can be in the output list
-    :type idx: List of ints or None
-    :return: the indices of events that are between two stable test pulses
-    :rtype: list of ints
     """
 
+    print('Do Control Pulse Stability Cut')
+
     unique_tpas = np.unique(tpas)
+    tpas = np.array(tpas)
+    tphs = np.array(tphs)
+    hours_tp = np.array(hours_tp)
+    hours_ev = np.array(hours_ev)
+
+    nmbr_tps = len(tphs)
 
     # cleaning
-    cond = tphs > noise_level
+    cond_noise = tphs > noise_level
+    print('Testpulses after Noise Cut: {}/{} ({:.3f}%)'.format(np.sum(cond_noise), len(cond_noise), 100 * np.sum(cond_noise) / len(cond_noise)))
+
+    tpas = tpas[cond_noise]
+    tphs = tphs[cond_noise]
+    cond = np.ones(len(tpas), dtype=bool)
 
     for val in unique_tpas:
         # get all hours that are not within significance standard deviations
-        mu = np.mean(tphs[cond][tpas == val])
-        sigma = np.std(tphs[cond][tpas == val])
+        mu = np.mean(tphs[tpas == val])
+        sigma = np.std(tphs[tpas == val])
 
-        cond = np.logical_and(cond, np.abs(tphs - mu) < significance * sigma)
+        cond[tpas == val] = np.abs(tphs[tpas == val] - mu) < significance * sigma
+        print('TPA {:.3f} with PH {:.3f} +- {:.3f}, within {} sigma: {:.3f} %'.format(val, mu, sigma, significance,
+                                                                              100 * np.sum(cond[tpas == val]) / len(
+                                                                                  cond[tpas == val])))
+
+    print('Good Testpulses: {}/{} ({:.3f}%)'.format(np.sum(cond), nmbr_tps, 100 * np.sum(cond) / nmbr_tps))
+
+    cond_noise[cond_noise] = cond
+    flag_tp = cond_noise
 
     cond[0] = True  # such that we do not excees boundaries below
     cond[-1] = True
 
     # make the exclusion intervalls
-    exclusion = []
-    for i, bool in enumerate(cond):
-        if not bool:
-            exclusion.append([hours_tp[i-1], hours_tp[i+1]])
-
     # both testpulses before and after must have condition true
-    flag = np.ones(hours_ev, dtype=bool)
-    for lb, up in exclusion:
-        flag = np.logical_and(flag, np.logical_and((hours_ev >= lb), (hours_ev <= up)))
+    # also, gap between test pulses must not exceed the max_gap duration!
+    exclusion = []
+    i = 1
+    while i < len(cond):
+        if not cond[i]:
+            lb = hours_tp[i]
+            while cond[i] == False:
+                i += 1
+            ub = hours_tp[i]
+            exclusion.append([lb, ub])
+        else:
+            if hours_tp[i] - hours_tp[i - 1] > max_gap:
+                exclusion.append([hours_tp[i - 1], hours_tp[i]])
+        i += 1
 
-    return flag
+    # exclude the events in instable intervals
+    flag_ev = np.ones(len(hours_ev), dtype=bool)
+    excluded_hours = 0
+    for lb, ub in exclusion:
+        flag_ev[np.logical_and((hours_ev > lb), (hours_ev < ub))] = False
+        excluded_hours += ub - lb
+
+    # exclude also the events before first and after last tp!
+    flag_ev[hours_ev < hours_tp[0]] = False
+    flag_ev[hours_ev > hours_tp[-1]] = False
+    if cond[1] == True:
+        excluded_hours += hours_tp[0]
+        excluded_hours += np.max([0, hours_ev[-1] - hours_tp[-1]])
+
+
+    print('Good Events: {}/{} ({:.3f}%)'.format(np.sum(flag_ev), len(flag_ev), 100 * np.sum(flag_ev) / len(flag_ev)))
+    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_tp[-1] - excluded_hours, hours_tp[-1], 100*(hours_tp[-1] - excluded_hours)/hours_tp[-1]))
+
+    return flag_ev, flag_tp

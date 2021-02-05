@@ -43,6 +43,7 @@ class real_time_peak_detection():
         want it to (some trial-and-error might be needed here to get to a good
         threshold for your purpose).
 
+        This class is from:
         https://stackoverflow.com/questions/22583391/peak-signal-detection-in-realtime-timeseries-data/56451135#56451135
         """
         self.y = list(array)

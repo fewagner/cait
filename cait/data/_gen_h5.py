@@ -6,7 +6,7 @@ import os
 from multiprocessing import get_context  # Pool
 import h5py
 import numpy as np
-from ..data._raw import read_rdt_file
+from ..data._raw import read_rdt_file, convert_to_V
 from ..features._mp import calc_main_parameters
 from ..fit._pm_fit import fit_pulse_shape
 from ._baselines import calculate_mean_nps
@@ -31,8 +31,8 @@ def gen_dataset_from_rdt(path_rdt,
                          calc_sev=False,
                          calc_nps=True,
                          processes=4,
-                         chunk_size=1000,
-                         event_dtype='float64'):
+                         event_dtype='float64'
+                         ):
     """
     Generates a HDF5 File from an RDT File, optionally MP, Fit, SEV Calculation
     :param path_rdt: string, the full path to the RDT File, e.g. "data/bcks/"
@@ -52,6 +52,10 @@ def gen_dataset_from_rdt(path_rdt,
 
     nmbr_channels = len(channels)
 
+    # if store_as_int:
+    #     print('Changing event data type to int16.')
+    #     event_dtype = 'int16'
+
     if not os.path.exists(path_h5):
         os.makedirs(path_h5)
 
@@ -61,16 +65,15 @@ def gen_dataset_from_rdt(path_rdt,
         read_rdt_file(fname=fname,
                       path=path_rdt,
                       channels=channels,
-                      tpa_list=tpa_list,
-                      read_events=-1,
-                      chunk_size=chunk_size)
+                      store_as_int=False,
+                      )
 
     # ipdb.set_trace()
 
     if nmbr_channels == 2:
         h5f = h5py.File("{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname,
                                                        channels[0], channels[1]), 'w')
-    elif nmbr_channels > 2:
+    else:
         path = "{}{}".format(path_h5, fname)
         for i, c in enumerate(channels):
             path += '-{}_Ch{}'.format(i + 1, c)
@@ -97,8 +100,8 @@ def gen_dataset_from_rdt(path_rdt,
         events = h5f.create_group('events')
         events.create_dataset('event', data=np.array(pulse_event, dtype=event_dtype))
         events.create_dataset('hours', data=np.array(metainfo_event[0, :, 10]))
-        events.create_dataset('time_s', data=np.array(metainfo_event[0, :, 4]))
-        events.create_dataset('time_mus', data=np.array(metainfo_event[0, :, 5]))
+        events.create_dataset('time_s', data=np.array(metainfo_event[0, :, 4]), dtype='int32')
+        events.create_dataset('time_mus', data=np.array(metainfo_event[0, :, 5]), dtype='int32')
         print('CREATE DATASET WITH EVENTS.')
 
         # for small numbers of events only additional overhead is introduced
@@ -218,8 +221,8 @@ def gen_dataset_from_rdt(path_rdt,
         noise = h5f.create_group('noise')
         noise.create_dataset('event', data=np.array(pulse_noise, dtype=event_dtype))
         noise.create_dataset('hours', data=np.array(metainfo_noise[0, :, 10]))
-        noise.create_dataset('time_s', data=np.array(metainfo_noise[0, :, 4]))
-        noise.create_dataset('time_mus', data=np.array(metainfo_noise[0, :, 5]))
+        noise.create_dataset('time_s', data=np.array(metainfo_noise[0, :, 4]), dtype='int32')
+        noise.create_dataset('time_mus', data=np.array(metainfo_noise[0, :, 5]), dtype='int32')
 
         if calc_nps:
             if np.shape(pulse_noise)[1] != 0:
@@ -265,8 +268,8 @@ def gen_dataset_from_rdt(path_rdt,
             'hours', data=np.array(metainfo_tp[0, :, 10]))
         testpulses.create_dataset(
             'testpulseamplitude', data=np.array(metainfo_tp[0, :, 12]))
-        testpulses.create_dataset('time_s', data=np.array(metainfo_tp[0, :, 4]))
-        testpulses.create_dataset('time_mus', data=np.array(metainfo_tp[0, :, 5]))
+        testpulses.create_dataset('time_s', data=np.array(metainfo_tp[0, :, 4]), dtype='int32')
+        testpulses.create_dataset('time_mus', data=np.array(metainfo_tp[0, :, 5]), dtype='int32')
 
         if calc_mp:
             print('CALCULATE MP.')

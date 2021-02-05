@@ -21,22 +21,36 @@ def rate_cut(timestamps, interval=10, significance=3, min=0, max=60):
     :return: true if event survives rate cut, false if not
     :rtype: boolean array of same size as timestamps
     """
+    print('Do Rate Cut.')
 
     bins = np.arange(0, timestamps[-1], interval)
     hist, _ = np.histogram(timestamps, bins=bins)
 
-    intervals = np.empty(shape=(bins-1, 2), dtype=float)
+    intervals = np.empty(shape=(len(bins)-1, 2), dtype=float)
 
     hist_cut = hist[np.logical_and(hist >= min, hist <= max)]
     mean = np.mean(hist_cut)
     sigma = np.std(hist_cut)
+
+    print('Rate: ({:.3f} +- {:.3f})/{}m'.format(mean, sigma, interval))
+    print('Good Rate per {}m ({} sigma): {:.3f} - {:.3f}'.format(interval,
+                                                         significance,
+                                                         np.max([mean - significance * sigma, 0]),
+                                                         mean + significance * sigma,
+                                                         ))
+
     intervals[:, 0] = bins[:-1]
     intervals[:, 1] = bins[1:]
     intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
-    intervals = intervals[np.logical(hist_cut > mean - significance*sigma, hist_cut < mean + significance*sigma), :]
+    intervals = intervals[np.logical_and(hist_cut > mean - significance*sigma, hist_cut < mean + significance*sigma), :]
 
-    flag = np.zeros(timestamps)
+    flag = np.zeros(len(timestamps), dtype=bool)
     for iv in intervals:
-        flag[np.logical_and(timestamps >= iv[0],timestamps <= iv[0])] = 1
+        flag[np.logical_and(timestamps >= iv[0],timestamps <= iv[1])] = 1
+
+    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(len(intervals)*interval/60,
+                                            (len(bins)-1)*interval/60,
+                                            100*len(intervals)/(len(bins)-1)))
+    print('Good Events: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag), len(flag), 100*np.sum(flag)/len(flag)))
 
     return flag
