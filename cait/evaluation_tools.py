@@ -26,7 +26,7 @@ from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsiz
 
 class EvaluationTools:
     save_plot_dir = './'
-    save_pgf = False
+    save_as = False
 
     event_nbrs = None  # numeration of all events
 
@@ -765,6 +765,11 @@ class EvaluationTools:
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
             return [self.files[f] for f in self.file_nbrs]
 
+
+
+
+
+
     # ################### PLOT ###################
 
     def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True,
@@ -822,6 +827,8 @@ class EvaluationTools:
 
         # -------- MATPLOTLIB event handler --------
 
+
+
         def update_annot(ind):
             for i in range(nrows * ncols):
                 pos = sc[i].get_offsets()[ind['ind'][0]]
@@ -841,6 +848,8 @@ class EvaluationTools:
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
+
+
         def hover(event):
             for i in range(nrows * ncols):
                 vis = annot[i].get_visible()
@@ -856,6 +865,8 @@ class EvaluationTools:
                         if vis:
                             annot[i].set_visible(False)
                             fig.canvas.draw_idle()
+
+
 
         def onclick(event):
             for i in range(nrows * ncols):
@@ -881,6 +892,8 @@ class EvaluationTools:
                             plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
                         print(instr)
                         os.system(instr)
+
+
 
         def on_key(event):
             if event.key == 'm':
@@ -919,7 +932,7 @@ class EvaluationTools:
                             import ipdb
                             ipdb.set_trace()
 
-        if not self.save_pgf:
+        if self.save_as == False:
             print(
                 "-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
@@ -932,15 +945,11 @@ class EvaluationTools:
                 '-------------------------------------------------------------------------')
 
         # -------- PLOT --------
-        # PCA
-        # pca = PCA(n_components=2)
-        # princcomp = pca.fit_transform(x_data)
-
         # TSNE
         princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
             self.get_features(plt_what, verb=verb))
 
-        if self.save_pgf:
+        if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
@@ -963,7 +972,7 @@ class EvaluationTools:
             _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(plt_what, verb=verb), return_legend=True,
                                                       verb=verb)
 
-            if self.save_pgf:
+            if self.save_as != False:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=plt_what, verb=verb), s=2, alpha=0.7)
             else:
@@ -976,11 +985,10 @@ class EvaluationTools:
                     color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
-        # import ipdb; ipdb.set_trace()
         for i in range(start_i, nrows * ncols):
             ax[i].set_title(subtitles[i])
 
-            if self.save_pgf:
+            if self.save_as != False:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
@@ -1001,19 +1009,25 @@ class EvaluationTools:
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
 
-        if self.save_pgf:
+        fig.tight_layout()
+        plt.tight_layout()
+        if self.save_as != False:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
                 ax[0].legend(handles=pop, framealpha=0.3,
                              loc='center left', bbox_to_anchor=(1.0, 0.5))
 
-            set_mpl_backend_fontsize(10)
+            # set_mpl_backend_fontsize(10)
             if pred_methods == [] and plt_labels:
+                # plt.savefig(
+                #     '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
                 plt.savefig(
-                    '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
+                    '{}tsne-{}.{}'.format(self.save_plot_dir, 'labels', self.save_as))
             else:
+                # plt.savefig(
+                #     '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
                 plt.savefig(
-                    '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
+                    '{}tsne-{}.{}'.format(self.save_plot_dir, '_'.join(pred_methods), self.save_as))
         else:
             fig.canvas.mpl_connect('key_press_event', on_key)
             fig.canvas.mpl_connect("motion_notify_event", hover)
@@ -1021,6 +1035,8 @@ class EvaluationTools:
 
             plt.show()
         plt.close()
+
+
 
     def plt_pred_with_pca(self, pred_methods, xy_comp=(1, 2), plt_what='all', plt_labels=True,
                           figsize=None, as_cols=False, rdseed=None,
@@ -1088,6 +1104,8 @@ class EvaluationTools:
 
         # -------- MATPLOTLIB event handler --------
 
+
+
         def update_annot(ind):
             for i in range(nrows * ncols):
                 pos = sc[i].get_offsets()[ind['ind'][0]]
@@ -1106,6 +1124,8 @@ class EvaluationTools:
                         " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
+
+
 
         def hover(event):
             for i in range(nrows * ncols):
@@ -1148,6 +1168,8 @@ class EvaluationTools:
                         print(instr)
                         os.system(instr)
 
+
+
         def on_key(event):
             if event.key == 'm':
                 for i in range(nrows * ncols):
@@ -1185,7 +1207,7 @@ class EvaluationTools:
                             import ipdb
                             ipdb.set_trace()
 
-        if not self.save_pgf:
+        if self.save_as == False :
             print(
                 "-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
@@ -1199,16 +1221,11 @@ class EvaluationTools:
 
         # -------- PLOT --------
         # PCA
-        # pca = PCA(n_components=2)
-        # princcomp = pca.fit_transform(x_data)
-
-        # TSNE
-
         pca = PCA(n_components=np.max(xy_comp))
         princcomp = pca.fit_transform(self.get_features(plt_what, verb=verb))
         princcomp = princcomp[:,[xy_comp[0]-1,xy_comp[1]-1]]
 
-        if self.save_pgf:
+        if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
@@ -1231,7 +1248,7 @@ class EvaluationTools:
             _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(plt_what, verb=verb), return_legend=True,
                                                       verb=verb)
 
-            if self.save_pgf:
+            if self.save_as != False:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=plt_what, verb=verb), s=2, alpha=0.7)
             else:
@@ -1244,11 +1261,10 @@ class EvaluationTools:
                     color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
-        # import ipdb; ipdb.set_trace()
         for i in range(start_i, nrows * ncols):
             ax[i].set_title(subtitles[i])
 
-            if self.save_pgf:
+            if self.save_as != False:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
@@ -1269,7 +1285,7 @@ class EvaluationTools:
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
 
-        if self.save_pgf:
+        if self.save_as != False:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
                 ax[0].legend(handles=pop, framealpha=0.3,
@@ -1277,11 +1293,15 @@ class EvaluationTools:
 
             set_mpl_backend_fontsize(10)
             if pred_methods == [] and plt_labels:
+                # plt.savefig(
+                #     '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
                 plt.savefig(
-                    '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
+                    '{}tsne-{}.{}'.format(self.save_plot_dir, 'labels', self.save_as))
             else:
+                # plt.savefig(
+                #     '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
                 plt.savefig(
-                    '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
+                    '{}tsne-{}.{}'.format(self.save_plot_dir, '_'.join(pred_methods), self.save_as))
         else:
             fig.canvas.mpl_connect('key_press_event', on_key)
             fig.canvas.mpl_connect("motion_notify_event", hover)
@@ -1289,6 +1309,7 @@ class EvaluationTools:
 
             plt.show()
         plt.close()
+
 
     def pulse_height_histogram(self,
                                ncols=2,
@@ -1300,11 +1321,11 @@ class EvaluationTools:
         Plots a histogram for all labels of the pulse hights in different
         subplots.
 
-        :param ncols:           - optional, default 2 : number of plots side by side.
-        :param extend_plot:     - optional, default False : sets the x axis of all histograms to the same limits.
-        :param figsize:         - optional, default None : changes the overall figure size.
-        :param bins:            - optional, default auto : bins for the histograms.
-        :param verb:            - optional, default False : ouputs additional information.
+        :param ncols:       - optional, default 2 : number of plots side by side.
+        :param extend_plot: - optional, default False : sets the x axis of all histograms to the same limits.
+        :param figsize:     - optional, default None : changes the overall figure size.
+        :param bins:        - optional, default auto : bins for the histograms.
+        :param verb:        - optional, default False : ouputs additional information.
         """
         max_height = self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
@@ -1330,6 +1351,7 @@ class EvaluationTools:
             ax[k][j].hist(max_height_per_label[l], bins=bins)
 
         fig.tight_layout()
+        plt.tight_layout()
         if extend_plot:
             for i, l in enumerate(unique_label_nbrs):
                 j = i % ncols
@@ -1339,12 +1361,13 @@ class EvaluationTools:
                     break
                 ax[k][j].set_xlim(min_max_height, max_max_height)
 
-        if self.save_pgf:
-
-            plt.savefig('{}labels_dist.pgf'.format(self.save_plot_dir))
+        if self.save_as != False:
+            # plt.savefig('{}labels_dist.pgf'.format(self.save_plot_dir))
+            plt.savefig('{}labels_dist.{}'.format(self.save_plot_dir, self.save_as))
         else:
             plt.show()
         plt.close()
+
 
     def events_saturated_histogram(self, figsize=None, bins='auto', verb=False, ylog=False):
         """
@@ -1355,8 +1378,8 @@ class EvaluationTools:
         :param bins:            - optional, default auto : bins for the histograms.
         :param ylog:            - optional, default False : if True the y axis is in log scale.
         """
-        if self.save_pgf:
-            # set_mpl_backend_pgf()
+        if self.save_as == 'pgf':
+            set_mpl_backend_pgf()
             mpl.use('pdf')
 
         max_height = self.get_mainpar(
@@ -1385,18 +1408,19 @@ class EvaluationTools:
             plt.legend()
             if ylog:
                 ax.set_yscale('log')
-            if self.save_pgf:
+            if self.save_as != False:
                 if ylog:
                     plt.savefig(
-                        '{}evt_sat_hist-ylog.pdf'.format(self.save_plot_dir))
+                        '{}evt_sat_hist-ylog.{}'.format(self.save_plot_dir, self.save_as))
                 else:
-                    plt.savefig('{}evt_sat_hist.pdf'.format(self.save_plot_dir))
+                    plt.savefig('{}evt_sat_hist.{}'.format(self.save_plot_dir, self.save_as))
             else:
                 plt.show()
             plt.close()
         else:
             raise KeyError(
                 'No Labels for Event Pulses or Strongly Saturated Event Pulses')
+
 
     def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, extend_plot=False, verb=False):
         """
@@ -1410,7 +1434,7 @@ class EvaluationTools:
         :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
         :param verb:            - Optional, default False : if True additional information is printed on the console.
         """
-        if self.save_pgf:
+        if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
         if type(pred_method) is not str:
@@ -1493,6 +1517,11 @@ class EvaluationTools:
         plt.xlable('pulse height (V)')
         plt.ylable('accuray')
         plt.show()
+        if self.save_as != False:
+            plt.savefig('{}correctly_labeled_per_v.{}'.format(self.save_plot_dir, self.save_as))
+        else:
+            plt.show()
+        plt.close()
 
     def correctly_labeled_events_per_pulse_height(self, pred_method, what='all',
                                                   bin_size=4, ncols=2, extend_plot=False,
@@ -1509,7 +1538,7 @@ class EvaluationTools:
         :param figsize:         - optional, default None : changes the overall figure size.
         :param verb:            - Optional, default False : if True additional information is printed on the console.
         """
-        if self.save_pgf:
+        if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
         if type(pred_method) is not str:
@@ -1589,15 +1618,19 @@ class EvaluationTools:
         ax.set_ylabel('accuray')
         ax.set_xlim(0, 0.2)
         # plt.gcf().subplots_adjust(bottom=-0.1)
-        if self.save_pgf:
+        if self.save_as != False:
+            # plt.savefig(
+            #     '{}correctly_labeled_events-{}.pgf'.format(self.save_plot_dir, pred_method))
             plt.savefig(
-                '{}correctly_labeled_events-{}.pgf'.format(self.save_plot_dir, pred_method))
+                '{}correctly_labeled_events-{}.{}'.format(self.save_plot_dir, pred_method, self.save_as))
         else:
             plt.show()
         plt.close()
 
+
+
     def confusion_matrix_pred(self, pred_method, what='all', rotation_xticklabels=0,
-                              force_xlabelnbr=False, figsize=None, verb=False):
+                              force_xlabelnbr=False, figsize=None, fig_title=False, verb=False):
         """
         Plots a confusion matrix to better visualize which labels are better
         predicted by a certain prediction method.
@@ -1614,7 +1647,7 @@ class EvaluationTools:
         :param verb:                - Optional, default False : if True additional information is printed on the console.
         """
 
-        if self.save_pgf:
+        if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
         if type(pred_method) is not str:
@@ -1622,6 +1655,10 @@ class EvaluationTools:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "'pred_methods' has to of type string.")
             return None
+
+        if type(fig_title) != bool:
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
+                             "The parameter 'fig_title' must be True or False.\n")
 
         if pred_method not in self.predictions.keys():
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
@@ -1634,8 +1671,7 @@ class EvaluationTools:
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
         else:
-            xlabels_order = np.unique(
-                self.get_pred(pred_method, what, verb=verb))
+            xlabels_order = np.unique(self.get_pred(pred_method, what, verb=verb))
 
         diff = len(ylabels_order) - len(xlabels_order)
         for i in range(abs(diff)):
@@ -1658,13 +1694,18 @@ class EvaluationTools:
             xlabels_order = xlabels_order.tolist()
         if type(ylabels_order) is np.ndarray:
             ylabels_order = ylabels_order.tolist()
-        cm = confusion_matrix(self.get_label_nbrs(what, verb=verb),
+
+        if self.get_pred_true_labels(pred_method):
+            true_label_nbrs = self.get_label_nbrs(what, verb=verb)
+        else:
+            cm_conv_labels = dict([(n,i) for i, n in enumerate(np.unique(self.get_label_nbrs(what, verb=verb)))])
+            true_label_nbrs = [cm_conv_labels[l] for l in self.get_label_nbrs(what, verb=verb)]
+        
+
+        cm = confusion_matrix(true_label_nbrs,
                               self.get_pred(pred_method, what, verb=verb))
         if verb:
             print(cm)
-
-        if self.save_pgf:
-            set_mpl_backend_pgf()
 
         def onclick(event):
             if event.inaxes == ax:
@@ -1675,14 +1716,11 @@ class EvaluationTools:
                 i = int(y + 0.5)
                 j = int(x + 0.5)
 
-                selected_label_nbr = np.unique(
-                    self.get_label_nbrs(verb=verb))[i]
+                selected_label_nbr = np.unique(self.get_label_nbrs(verb=verb))[i]
                 if self.get_pred_true_labels(pred_method):
-                    selected_pred_nbr = np.unique(
-                        self.get_label_nbrs(verb=verb))[j]
+                    selected_pred_nbr = np.unique(self.get_label_nbrs(verb=verb))[j]
                 else:
-                    selected_pred_nbr = np.unique(
-                        self.get_pred(pred_method, verb=verb))[j]
+                    selected_pred_nbr = np.unique(self.get_pred(pred_method, verb=verb))[j]
 
                 selection = np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
                                            self.get_pred(pred_method, what, verb) == selected_pred_nbr)
@@ -1710,10 +1748,10 @@ class EvaluationTools:
         ax = fig.add_subplot(111)
 
         cax = ax.matshow(cm, cmap='plasma', alpha=0.7)
-        # plt.title('Confusion matrix of the classifier')
         fig.colorbar(cax)
 
         if ylabels_order != []:
+            # import ipdb; ipdb.set_trace()
             ax.set_yticks(np.arange(len(ylabels_order)))
             ax.set_yticklabels(ylabels_order)
 
@@ -1730,24 +1768,31 @@ class EvaluationTools:
         ax.yaxis.set_label_position('right')
         plt.xlabel('Predicted Labels')
         plt.ylabel('Labels')
+        if (fig_title):
+            plt.title('{} - Confutionmatrix'.format(pred_method))
         fig.tight_layout()
-        if not self.save_pgf:
+        plt.tight_layout()
+        if self.save_as == False:
             fig.canvas.mpl_connect('button_press_event', onclick)
             plt.show()
         else:
+            # plt.savefig(
+            #     '{}confMat-{}.pgf'.format(self.save_plot_dir, pred_method))
             plt.savefig(
-                '{}confMat-{}.pgf'.format(self.save_plot_dir, pred_method))
+                '{}confMat-{}.{}'.format(self.save_plot_dir, pred_method, self.save_as))
 
         plt.close()
+
+
 
     def plot_labels_distribution(self, figsize=None):
         """
         Uses a bar graph to visualize how often a label occures in the
         dataset
 
-        :param figsize:             - optional, default None : changes the overall figure size.
+        :param figsize: - optional, default None : changes the overall figure size.
         """
-        if self.save_pgf:
+        if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
         lnbr, lcnt = np.unique(self.label_nbrs, return_counts=True)
@@ -1782,8 +1827,8 @@ class EvaluationTools:
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
 
         plt.gcf().subplots_adjust(right=0.5)
-        if self.save_pgf:
-            plt.savefig('{}labels_dist.pgf'.format(self.save_plot_dir))
+        if self.save_as != False:
+            plt.savefig('{}labels_dist.{}'.format(self.save_plot_dir, self.save_as))
         else:
             plt.show()
         plt.close()
