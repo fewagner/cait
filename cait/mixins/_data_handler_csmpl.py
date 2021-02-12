@@ -26,7 +26,8 @@ class CsmplMixin(object):
                                of=None,
                                path_sql=None,
                                csmpl_channels=None,
-                               filenames=None
+                               filenames=None,
+                               down=1
                                ):
         # TODO
 
@@ -103,8 +104,8 @@ class CsmplMixin(object):
                                        csmpl_channel=csmpl_channels[0],
                                        filename=filenames[0])
 
-            stream['trigger_time_stamp_high'][...] = np.floor(aligned_triggers[c] + file_start)
-            stream['trigger_time_stamp_low'][...] = 1e6 * (
+            stream['trigger_time_s'][...] = np.floor(aligned_triggers[c] + file_start)
+            stream['trigger_time_mus'][...] = 1e6 * (
                     aligned_triggers[c] + file_start - np.floor(aligned_triggers[c] + file_start))
 
         print('DONE')
@@ -139,17 +140,15 @@ class CsmplMixin(object):
         optimumfilter.create_dataset(name='optimumfilter_imag',
                                      data=of_imag)
 
-    def include_triggered_events_h5(self,
-                                    csmpl_paths,
-                                    max_time_diff=0.03,
-                                    exclude_tp=True,
-                                    sample_duration=0.00004,
-                                    datatype='float32',
-                                    min_tpa=0.001,
-                                    min_cpa=10.1):
-
-        # TODO
-        csmpl_paths = ["{}/run{}_{}/{}".format(self.path_directory, self.run, self.module, c) for c in csmpl_paths]
+    def include_triggered_events(self,
+                                 csmpl_paths,
+                                 max_time_diff=0.03,
+                                 exclude_tp=True,
+                                 sample_duration=0.00004,
+                                 datatype='float32',
+                                 min_tpa=0.001,
+                                 min_cpa=10.1,
+                                 down=1):
 
         # write to new file: triggered events, time trig events, timestamps tpa and mainpar tp, nps, of, stdeven inkl fit and main par,
         # open read file
@@ -163,15 +162,15 @@ class CsmplMixin(object):
 
         stream = h5f['stream']
         trigger_hours = np.array(stream['trigger_hours'])
-        if "trigger_time_stamp_high" in stream:
-            trigger_s = np.array(stream['trigger_time_stamp_high'])
-            trigger_mus = np.array(stream['trigger_time_stamp_low'])
+        if "trigger_time_s" in stream:
+            trigger_s = np.array(stream['trigger_time_s'])
+            trigger_mus = np.array(stream['trigger_time_mus'])
         if exclude_tp:
             tp_hours = np.array(h5f['stream']['tp_hours'])
             tpas = np.array(h5f['stream']['tpa'])
-            if "tp_time_stamp_high" in stream:
-                tp_s = np.array(stream['tp_time_stamp_high'])
-                tp_mus = np.array(stream['tp_time_stamp_low'])
+            if "tp_time_s" in stream:
+                tp_s = np.array(stream['tp_time_s'])
+                tp_mus = np.array(stream['tp_time_mus'])
 
         # open write file
         write_events = h5f.create_group('events')
@@ -184,7 +183,7 @@ class CsmplMixin(object):
                                             data=tpas[np.logical_and(tpas > min_tpa, tpas < min_cpa)])
             write_controlpulses.create_dataset(name="hours",
                                                data=tp_hours[tpas > min_cpa])
-            if "tp_time_stamp_high" in stream:
+            if "tp_time_s" in stream:
                 write_testpulses.create_dataset(name="time_s",
                                                 data=tp_s[np.logical_and(tpas > min_tpa, tpas < min_cpa)])
                 write_testpulses.create_dataset(name="time_mus",
@@ -199,7 +198,7 @@ class CsmplMixin(object):
                                       tp_hours=tp_hours[tpas > min_tpa],
                                       max_time_diff=max_time_diff)
             trigger_hours = trigger_hours[flag]
-            if "trigger_time_stamp_high" in stream:
+            if "trigger_time_s" in stream:
                 trigger_s = trigger_s[flag]
                 trigger_mus = trigger_mus[flag]
 
@@ -212,7 +211,7 @@ class CsmplMixin(object):
                                         data=trigger_mus)
 
         write_events.create_dataset(name='event',
-                                    shape=(self.nmbr_channels, len(trigger_hours), self.record_length),
+                                    shape=(self.nmbr_channels, len(trigger_hours), self.record_length / down),
                                     dtype=datatype)
 
         print('Include the triggered events.')
@@ -228,7 +227,8 @@ class CsmplMixin(object):
                                                                           self.record_length / 4,
                                                                           sample_duration=sample_duration),
                                                                       record_length=self.record_length,
-                                                                      sample_duration=sample_duration)
+                                                                      sample_duration=sample_duration,
+                                                                      down=down)
 
         if exclude_tp:
 
@@ -237,7 +237,8 @@ class CsmplMixin(object):
 
             tp_ev = write_testpulses.create_dataset(name='events',
                                                     shape=(self.nmbr_channels, len(
-                                                        tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)])),
+                                                        tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)]),
+                                                           self.record_length / down),
                                                     dtype=datatype)
 
             for c in range(self.nmbr_channels):
@@ -252,7 +253,8 @@ class CsmplMixin(object):
                                                              self.record_length / 4,
                                                              sample_duration=sample_duration),
                                                          record_length=self.record_length,
-                                                         sample_duration=sample_duration)
+                                                         sample_duration=sample_duration,
+                                                         down=down)
 
             # ------------
             print('Calculate Control Pulse Heights.')
@@ -319,8 +321,8 @@ class CsmplMixin(object):
 
         # calc the time stamp low and high
 
-        time_high = np.floor(file_start + hours*3600)
-        time_low = 1e6*(hours*3600 - np.floor(hours*3600))
+        time_s = np.floor(file_start + hours * 3600)
+        time_mus = 1e6 * (hours * 3600 - np.floor(hours * 3600))
 
         # write to file
 
@@ -330,17 +332,16 @@ class CsmplMixin(object):
         h5f['stream'].require_dataset(name='tpa',
                                       shape=tpas.shape,
                                       dtype=float)
-        h5f['stream'].require_dataset(name='tp_time_stamp_high',
+        h5f['stream'].require_dataset(name='tp_time_s',
                                       shape=hours.shape,
                                       dtype=int)
-        h5f['stream'].require_dataset(name='tp_time_stamp_low',
+        h5f['stream'].require_dataset(name='tp_time_mus',
                                       shape=hours.shape,
                                       dtype=int)
 
         h5f['stream']['tp_hours'][...] = hours - offset_hours
         h5f['stream']['tpa'][...] = tpas
-        h5f['stream']['tp_time_stamp_high'][...] = time_high
-        h5f['stream']['tp_time_stamp_low'][...] = time_low
+        h5f['stream']['tp_time_s'][...] = time_high
+        h5f['stream']['tp_time_mus'][...] = time_low
 
         print('Test Stamps included.')
-

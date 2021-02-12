@@ -110,12 +110,12 @@ def get_max_index(stream,  # memmap array
     record = convert_to_V(stream[counter:counter + record_length])
     # downsample
     if down > 1:
-        record = np.mean(record.reshape((len(record)/down, down)), axis=1)
-        overlap = int(overlap/down)
+        record = np.mean(record.reshape((len(record) / down, down)), axis=1)
+        overlap = int(overlap / down)
         block = int(block / down)
 
     # remove offset
-    record -= np.mean(record[:overlap])
+    record -= np.mean(record[:int(overlap / 2)])
     # filter record window
     if transfer_function is None:
         filtered_record = signal.medfilt(record, 51)
@@ -147,7 +147,8 @@ def trigger_csmpl(paths,
                   take_samples=-1,  # for all: -1
                   start_hours=0,
                   trigger_block=16384,
-                  return_info=False
+                  return_info=False,
+                  down=1,
                   ):
     """
     TODO
@@ -172,6 +173,8 @@ def trigger_csmpl(paths,
     :type start_hours:
     :param trigger_block:
     :type trigger_block:
+    :param down:
+    :type down:
     :param return_info:
     :type return_info:
     :return:
@@ -220,6 +223,7 @@ def trigger_csmpl(paths,
                                              overlap=overlap,  # in samples
                                              block=block,  # in samples
                                              transfer_function=transfer_function,
+                                             down=down
                                              )
                 if height > trigger_tres:
                     # resample in case higher trigger is in record window
@@ -262,6 +266,8 @@ def get_record_window(path,
                       start_time,  # in s
                       record_length,
                       sample_duration=0.00004,
+                      down=1,
+                      bytes_per_sample=2  # short integer values
                       ):
     """
     TODO
@@ -278,7 +284,6 @@ def get_record_window(path,
     :rtype:
     """
 
-    bytes_per_sample = 2  # short integer values
     offset = bytes_per_sample * time_to_sample(start_time, sample_duration=0.00004)
 
     event = np.fromfile(path,
@@ -287,13 +292,15 @@ def get_record_window(path,
                         dtype=np.short)
 
     event = convert_to_V(event)
-    time = start_time + np.arange(0, record_length) * sample_duration
+    if down > 1:
+        event = np.mean(event.reshape(len(event) / down, down), axis=1)
+    time = start_time + np.arange(0, record_length / down) * sample_duration * down
 
     return event, time
 
 
 def plot_csmpl(path,
-               start_time,
+               start_time=0,
                record_length=None,
                end_time=None,
                sample_duration=0.00004,
@@ -328,7 +335,7 @@ def plot_csmpl(path,
     if hours:
         if end_time is not None:
             record_length = int((end_time - start_time) / sample_duration * 3600)
-        offset = bytes_per_sample * time_to_sample(start_time*3600, sample_duration=0.00004)
+        offset = bytes_per_sample * time_to_sample(start_time * 3600, sample_duration=0.00004)
 
     else:
         if end_time is not None:
@@ -343,9 +350,9 @@ def plot_csmpl(path,
 
     event = convert_to_V(event)
 
-    time = np.arange(offset/bytes_per_sample, offset/bytes_per_sample+record_length,1)
+    time = np.arange(offset / bytes_per_sample, offset / bytes_per_sample + record_length, 1)
     if hours:
-        time = time * sample_duration/3600
+        time = time * sample_duration / 3600
         print('Create time array from {} to {} hours.'.format(time[0], time[-1]))
     else:
         time = time * sample_duration
@@ -454,11 +461,12 @@ def exclude_testpulses(trigger_hours,
 
     return flag
 
+
 def get_test_stamps(path,
                     channels=None,
                     control_pulses=None,
                     event_rate=int(2.5e4),
-                    min_cpa = 10.1):
+                    min_cpa=10.1):
     """
     TODO
 
@@ -482,7 +490,7 @@ def get_test_stamps(path,
 
     stamps = np.fromfile(path, dtype=teststamp)
 
-    hours = stamps['stamp']/400/event_rate/3600
+    hours = stamps['stamp'] / 400 / event_rate / 3600
     tpas = stamps['tpa']
     testpulse_channels = stamps['tpch']
 
@@ -504,6 +512,7 @@ def get_test_stamps(path,
         testpulse_channels = testpulse_channels[cond]
 
     return hours, tpas, testpulse_channels
+
 
 def get_starttime(path_sql, csmpl_channel, filename):
     """

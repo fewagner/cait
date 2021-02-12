@@ -72,7 +72,7 @@ class FeaturesMixin(object):
     # calc stdevent testpulses
     def recalc_sev(self,
                    type='events',
-                   use_labels=True,
+                   use_labels=False,
                    correct_label=None,
                    use_idx=None,
                    pulse_height_interval=None,
@@ -123,7 +123,7 @@ class FeaturesMixin(object):
         # if no pulse_height_interval is specified set it to average values for all channels
         if pulse_height_interval == None:
             pulse_height_interval = [[0.5, 1.5]
-                                      for c in range(self.nmbr_channels)]
+                                     for c in range(self.nmbr_channels)]
 
         # fix the issue with different arguments for different channels
         inp = [left_right_cutoff, rise_time_interval, decay_time_interval, onset_interval]
@@ -207,7 +207,7 @@ class FeaturesMixin(object):
 
         h5f.close()
 
-    def recalc_of(self):
+    def recalc_of(self, down=1):
         """
         Calculate the Optimum Filer from the NPS and the SEV
 
@@ -225,22 +225,33 @@ class FeaturesMixin(object):
             stdevent_pulse[i], mean_nps[i]) for i in range(self.nmbr_channels)])
 
         optimumfilter = h5f.require_group('optimumfilter')
-        optimumfilter.require_dataset('optimumfilter_real',
-                                      dtype='f',
-                                      shape=of.real.shape)
-        optimumfilter.require_dataset('optimumfilter_imag',
-                                      dtype='f',
-                                      shape=of.real.shape)
+        if down > 1:
+            optimumfilter.require_dataset('optimumfilter_real_down{}'.format(down),
+                                          dtype='f',
+                                          shape=of.real.shape)
+            optimumfilter.require_dataset('optimumfilter_imag_down{}'.format(down),
+                                          dtype='f',
+                                          shape=of.real.shape)
 
-        optimumfilter['optimumfilter_real'][...] = of.real
-        optimumfilter['optimumfilter_imag'][...] = of.imag
+            optimumfilter['optimumfilter_real_down{}'.format(down)][...] = of.real
+            optimumfilter['optimumfilter_imag_down{}'.format(down)][...] = of.imag
+        else:
+            optimumfilter.require_dataset('optimumfilter_real',
+                                          dtype='f',
+                                          shape=of.real.shape)
+            optimumfilter.require_dataset('optimumfilter_imag',
+                                          dtype='f',
+                                          shape=of.real.shape)
+
+            optimumfilter['optimumfilter_real'][...] = of.real
+            optimumfilter['optimumfilter_imag'][...] = of.imag
 
         print('OF updated.')
 
         h5f.close()
 
     # apply the optimum filter
-    def apply_of(self, type='events', chunk_size=10000, hard_restrict = False):
+    def apply_of(self, type='events', chunk_size=10000, hard_restrict=False):
         """
         Calculates the height of events or testpulses after applying the optimum filter
 
@@ -268,15 +279,15 @@ class FeaturesMixin(object):
         counter = 0
         while counter + chunk_size < nmbr_events:
             for c in range(self.nmbr_channels):
-                of_ph = get_amplitudes(events[c, counter:counter+chunk_size], sev[c], nps[c], hard_restrict=hard_restrict)
-                f[type]['of_ph'][c, counter:counter+chunk_size] = of_ph
+                of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                                       hard_restrict=hard_restrict)
+                f[type]['of_ph'][c, counter:counter + chunk_size] = of_ph
             counter += chunk_size
         for c in range(self.nmbr_channels):
             of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c], hard_restrict=hard_restrict)
             f[type]['of_ph'][c, counter:nmbr_events] = of_ph
 
         f.close()
-
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
@@ -410,7 +421,6 @@ class FeaturesMixin(object):
 
         h5f.close()
 
-
     def recalc_NPS(self, use_labels=False, down=1):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
@@ -513,25 +523,38 @@ class FeaturesMixin(object):
         if 'pca_projection' in f[type]:
             print('Overwrite old pca projections')
             del f[type]['pca_projection']
+        if 'pca_components' in f[type]:
+            print('Overwrite old pca components')
+            del f[type]['pca_components']
         pca_projection = f[type].create_dataset(name='pca_projection',
-                                                 shape=(self.nmbr_channels, len(f['events']['hours']), nmbr_components),
-                                                 dtype=float)
+                                                shape=(self.nmbr_channels, len(f['events']['hours']), nmbr_components),
+                                                dtype=float)
         pca_error = f[type].require_dataset(name='pca_error',
-                                                 shape=(self.nmbr_channels, len(f['events']['hours'])),
-                                                 dtype=float)
+                                            shape=(self.nmbr_channels, len(f['events']['hours'])),
+                                            dtype=float)
+        pca_components = f[type].create_dataset(name='pca_components',
+                                                shape=(
+                                                self.nmbr_channels, nmbr_components, len(f[type]['event'][0, 0])),
+                                                dtype=float)
 
         for c in range(self.nmbr_channels):
             print('Channel ', c)
             X = f[type]['event'][c]
-            X -= np.mean(X[:, :int(self.record_length/8)], keepdims=True)
+            X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
             pca = PCA(n_components=nmbr_components)
             X_transformed = pca.fit_transform(X)
 
             print('Explained Variance: ', pca.explained_variance_ratio_)
             print('Singular Values: ', pca.singular_values_)
 
-            #print('X_transformed: ', X_transformed)
-            #print('PCA error: ', np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1))
+            # print('X_transformed: ', X_transformed)
+            # print('PCA error: ', np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1))
 
             pca_projection[c, ...] = X_transformed
-            pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1)
+            pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X) ** 2, axis=1)
+
+            for i in range(nmbr_components):
+                transformed = np.zeros(nmbr_components)
+                transformed[i] = 1
+                comp = pca.inverse_transform(transformed.reshape(1, -1))
+                pca_components[c, i, :] = comp.reshape(-1)

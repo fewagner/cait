@@ -36,6 +36,25 @@ def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
 
     return event
 
+@nb.njit
+def convert_to_int(event, bits=16, max=10, min=-10, offset=0):
+    """
+    Converts an event from volt to int
+    :param event: 1D array of the event
+    :param bits: int, number of bits in each sample
+    :param max: int, the max volt value
+    :param min: int, the min volt value
+    :param offset: int, the offset of the volt signal
+    :return: 1D array, the converted event array
+    """
+    a = 2 ** (bits - 1)
+    b = (max - min) / 2 ** bits
+    c = min - offset
+
+    event = (event - c) / b - a
+
+    return event
+
 
 def read_rdt_file(fname, path, channels,
                   remove_offset=False, store_as_int=False):

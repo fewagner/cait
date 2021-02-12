@@ -13,6 +13,7 @@ from .mixins._data_handler_analysis import AnalysisMixin
 from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -29,7 +30,7 @@ class DataHandler(SimulateMixin,
     A class for the processing of raw data set. Uses Mixins for most features.
     """
 
-    def __init__(self, run, module, channels, record_length, sample_frequency=25000):
+    def __init__(self, run='01', module='Test', channels=[0, 1], record_length=16384, sample_frequency=25000):
         """
         Give general information of the detector
 
@@ -87,8 +88,8 @@ class DataHandler(SimulateMixin,
             app = ''
 
         # check if the channel number matches the file, otherwise error
-        self.path_h5 = "{}/run{}_{}/{}{}.h5".format(path_h5, self.run, self.module,
-                                                    fname, app)
+        self.path_h5 = "{}/{}{}.h5".format(path_h5,
+                                           fname, app)
         self.path_directory = path_h5
         self.fname = fname
 

@@ -28,8 +28,8 @@ In applications those requirements will never be perfectly fulfilled, so we will
 
 def normalization_constant(stdevent, nps):
     """
-    this function is needed as utility for the function optimal_transition_function and calculates the normalization constant s.t. the amplitude of a peak is preserved
-    Remark: This function does not seem to wokr corretly. Either mistake in the paper or in the code.
+    this function is needed as utility for the function optimal_transition_function and calculates the normalization constant s.t. the Variance of an event is preserved
+    Remark: We do not use this function, as we want to preserve the height of a peak and not the RMS.
 
     :param stdevent:  1D array of the standardevent with length N
     :param nps: 1D array of the noise power spectrum with length N/2 + 1
@@ -43,7 +43,7 @@ def normalization_constant(stdevent, nps):
     return h
 
 
-def optimal_transfer_function(stdevent, nps, sample_ms = 0.04):
+def optimal_transfer_function(stdevent, nps):
     """
     this function calculates the transition function for an optimal filter
 
@@ -52,7 +52,8 @@ def optimal_transfer_function(stdevent, nps, sample_ms = 0.04):
     :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
     """
 
-    tau_m = (np.argmax(stdevent) * sample_ms) / (52.16 * len(stdevent) / 8192)  # index of maximal value
+    tau_m = (np.argmax(stdevent)) / (1304 * len(
+        stdevent) / 8192)  # index of maximal value, the number 1304 is experimentally evaluated on an event of length 8192
     stdevent_fft = rfft(stdevent)  # do fft of stdevent
     H = np.zeros([len(stdevent_fft)], dtype=complex)  # init transfer func
 
@@ -64,6 +65,7 @@ def optimal_transfer_function(stdevent, nps, sample_ms = 0.04):
     filtered_standardevent = filter_event(stdevent, H)
 
     return H / np.max(filtered_standardevent)
+
 
 def filter_event(event, transfer_function):
     """
@@ -81,7 +83,7 @@ def filter_event(event, transfer_function):
     return event_filtered
 
 
-def get_amplitudes(events_array, stdevent, nps, hard_restrict = False):
+def get_amplitudes(events_array, stdevent, nps, hard_restrict=False):
     """
     this function determines the amplitudes of several events with optimal sig-noise-ratio
 
@@ -92,7 +94,7 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict = False):
     """
 
     length = len(events_array[0])
-    events_array = events_array - np.mean(events_array[:, :int(length/8), np.newaxis], axis=1)
+    events_array = events_array - np.mean(events_array[:, :int(length / 8), np.newaxis], axis=1)
 
     # calc transition function
     transition_function = optimal_transfer_function(stdevent, nps)
@@ -100,7 +102,7 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict = False):
     events_filtered = np.array([filter_event(event, transition_function) for event in events_array])
     # get maximal heights of filtered events
     if not hard_restrict:
-        amplitudes = np.max(events_filtered[:, int(length/8):-int(length/8)], axis=1)
+        amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
     if hard_restrict:
         amplitudes = np.max(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
 

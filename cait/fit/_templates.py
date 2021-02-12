@@ -70,7 +70,7 @@ def gauss(x, *p):
     :return: 1D array of same length than x, evaluated gauss function
     """
     A, mu, sigma = p
-    return A * np.exp(-(x - mu) ** 2 / (2. * sigma ** 2))
+    return A / sigma / np.sqrt(2 * np.pi) * np.exp(-(x - mu) ** 2 / (2. * sigma ** 2))
 
 
 # -----------------------------------------------------
@@ -84,10 +84,14 @@ class sev_fit_template:
     :param par: 1D array with size 6, the fit parameter of the sev
         (t0, An, At, tau_n, tau_in, tau_t)
     :param t: 1D array, the time grid on which the pulse shape model is evaluated
+    :param down: int, power of 2, the downsample rate of the event for fitting
     """
 
-    def __init__(self, pm_par, t):
+    def __init__(self, pm_par, t, down=1):
         self.pm_par = pm_par
+        self.down = down
+        if down > 1:
+            t = np.mean(t.reshape(len(t/down), down), axis=1)  # only first of the grouped time values
         self.t = t
 
     def sef(self, h, t0, a0):
@@ -160,6 +164,9 @@ class sev_fit_template:
         :param event: 1D array, the event to fit
         :return: 1D array, the sev fit parameters
         """
+
+        if self.down > 1:
+            event = np.mean(event.reshape(len(event/self.down), self.down), axis=1)
 
         offset = np.mean(event[:int(len(event) / 8)])
         event = event - offset

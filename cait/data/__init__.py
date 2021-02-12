@@ -6,6 +6,7 @@ from ._raw import *
 from ._converter import *
 from ._merge_h5 import *
 from ._xy_file import *
+from ._test_data import *
 
 __all__=['get_nps',
          'edit_h5_dataset',
@@ -16,4 +17,5 @@ __all__=['get_nps',
          'convert_h5_to_root',
          'merge_h5_sets',
          'read_xy_file',
-         'write_xy_file']
+         'write_xy_file',
+         'TestData']
