@@ -79,7 +79,7 @@ class EventInterface:
         """
         Load a hdf5 dataset to the instance
 
-        :param path: string, path to the file folder; e.g. "data/" --> filepath "data/runXY_MODULE/bck_nmbr-[appendix].h5"
+        :param path: string, path to the file folder; e.g. "data/" --> filepath "data/bck_nmbr-[appendix].h5"
         :param bck_nmbr: string, the appended number of the file; e.g. "bck_001" --> "001"
         :param channels: list of strings, the numbers of the channels that are included in the bck file
         :param bck_naming: string, the file naming, e.g. bck, cal, blue, ....
@@ -109,11 +109,7 @@ class EventInterface:
             raise ValueError(
                 'List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        path_h5 = path + 'run{}_{}/{}_{}{}.h5'.format(self.run,
-                                                                  self.module,
-                                                                  bck_naming,
-                                                                  bck_nmbr,
-                                                                  app)
+        path_h5 = path + '{}_{}{}.h5'.format(bck_naming, bck_nmbr, app)
 
         self.f = h5py.File(path_h5, 'r')
         self.channels = channels
@@ -150,20 +146,19 @@ class EventInterface:
         Create a new CSV file to store the labels
 
         :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/runXY_MODULE/labels_bck_001_type.csv"
+            e.g. "data/" --> file name "data/labels_bck_001_type.csv"
         :return: -
         """
 
         self.path_csv_labels = path + \
-            'run{}_{}/labels_{}_{}_'.format(self.run,
-                                            self.module, self.bck_naming, self.bck_nmbr)
+            'labels_{}_{}_'.format(self.bck_naming, self.bck_nmbr)
 
         try:
             for type in self.which_to_label:
                 self.labels[type] = np.zeros(
                     [self.nmbr_channels, self.nmbrs[type]])
                 np.savetxt(self.path_csv_labels + type + '.csv',
-                           self.labels[type], 
+                           self.labels[type],
                            fmt='%i', delimiter='\n')
 
         except NameError:
@@ -175,7 +170,7 @@ class EventInterface:
         Load a csv file with labels
 
         :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/runXY_MODULE/labels_bck_001_type.csv"
+            e.g. "data/" --> file name "data/labels_bck_001_type.csv"
         :param type: string, either events, testpulses or noise
         :return: -
         """
@@ -184,8 +179,7 @@ class EventInterface:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_labels = path + \
-            'run{}_{}/labels_{}_{}_'.format(self.run,
-                                            self.module, self.bck_naming, self.bck_nmbr)
+            'labels_{}_{}_'.format(self.bck_naming, self.bck_nmbr)
 
         filename = self.path_csv_labels + type + '.csv'
         print('Loading Labels from {}.'.format(filename))
@@ -200,7 +194,7 @@ class EventInterface:
         Save the labels included in the HDF5 file as CSV file
 
         :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/runXY_MODULE/labels_bck_001_type.csv"
+            e.g. "data/" --> file name "data/labels_bck_001_type.csv"
         :param type: string, either events or testpulses or noise
         :return: -
         """
@@ -209,15 +203,14 @@ class EventInterface:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_labels = path + \
-            'run{}_{}/labels_{}_{}_'.format(self.run,
-                                            self.module, self.bck_naming, self.bck_nmbr)
+            'labels_{}_{}_'.format(self.bck_naming, self.bck_nmbr)
 
         # check if hdf5 file has labels
         if not self.f[type]['labels']:
             print('Load HDF5 File with labels first!')
         else:
             np.savetxt(self.path_csv_labels + type + '.csv',
-                       np.array(self.f[type]['labels']), 
+                       np.array(self.f[type]['labels']),
                        fmt='%i', delimiter='\n')
             print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
 
@@ -230,7 +223,7 @@ class EventInterface:
         Load a csv file with predictions
 
         :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/runXY_MODULE/<model>_predictions_bck_001_type.csv"
+            e.g. "data/" --> file name "data/<model>_predictions_bck_001_type.csv"
         :param type: string, either events, testpulses or noise
         :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
         :return: -
@@ -240,8 +233,7 @@ class EventInterface:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_predictions = path + \
-            'run{}_{}/{}_predictions_{}_{}_'.format(self.run,
-                                            self.module, model, self.bck_naming, self.bck_nmbr)
+            '{}_predictions_{}_{}_'.format(model, self.bck_naming, self.bck_nmbr)
 
         filename = self.path_csv_predictions + type + '.csv'
         print('Loading Predictions from {}.'.format(filename))
@@ -265,7 +257,7 @@ class EventInterface:
         Save the predictions included in the HDF5 file as CSV file
 
         :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/runXY_MODULE/<model>_predictions_bck_001_type.csv"
+            e.g. "data/" --> file name "data/<model>_predictions_bck_001_type.csv"
         :param type: string, either events or testpulses or noise
         :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
         :return: -
@@ -275,15 +267,14 @@ class EventInterface:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_predictions = path + \
-            'run{}_{}/{}_predictions_{}_{}_'.format(self.run,
-                                            self.module, model, self.bck_naming, self.bck_nmbr)
+            '{}_predictions_{}_{}_'.format(model, self.bck_naming, self.bck_nmbr)
 
         # check if hdf5 file has labels
         if not self.f[type]['{}_predictions'.format(model)]:
             print('Load HDF5 File with labels first!')
         else:
             np.savetxt(self.path_csv_predictions + type + '.csv',
-                       np.array(self.f[type]['{}_predictions'.format(model)]), 
+                       np.array(self.f[type]['{}_predictions'.format(model)]),
                        fmt='%i', delimiter='\n')
             print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
 
@@ -723,7 +714,7 @@ class EventInterface:
                         else:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
-                                       self.labels[type], 
+                                       self.labels[type],
                                        fmt='%i', delimiter='\n')
 
                 idx += 1
