@@ -110,6 +110,7 @@ class CsmplMixin(object):
                     aligned_triggers[c] + file_start - np.floor(aligned_triggers[c] + file_start))
 
         print('DONE')
+        h5f.close()
 
     def include_nps(self, nps):
         # TODO
@@ -120,6 +121,7 @@ class CsmplMixin(object):
             del noise['nps']
         noise.create_dataset(name='nps',
                              data=nps)
+        f.close()
 
     def include_sev(self, sev, fitpar, mainpar):
         # TODO
@@ -127,17 +129,18 @@ class CsmplMixin(object):
         f = h5py.File(self.path_h5, 'r+')
         stdevent = f.require_group(name='stdevent')
         if 'event' in stdevent:
-            del noise['event']
+            del stdevent['event']
         if 'fitpar' in stdevent:
-            del noise['fitpar']
+            del stdevent['fitpar']
         if 'mainpar' in stdevent:
-            del noise['mainpar']
+            del stdevent['mainpar']
         stdevent.create_dataset(name='event',
                                 data=sev)
         stdevent.create_dataset(name='fitpar',
                                 data=fitpar)
         stdevent.create_dataset(name='mainpar',
                                 data=mainpar)
+        f.close()
 
     def include_of(self, of_real, of_imag, down=1):
         # TODO
@@ -162,6 +165,7 @@ class CsmplMixin(object):
                                          data=of_real)
             optimumfilter.create_dataset(name='optimumfilter_imag',
                                          data=of_imag)
+        f.close()
 
     def include_triggered_events(self,
                                  csmpl_paths,
@@ -334,6 +338,7 @@ class CsmplMixin(object):
                     cphs[c, ...] = np.max(cp_array)
 
         print('DONE')
+        h5f.close()
 
     def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, csmpl_file_identity,
                             triggerdelay=2081024,
@@ -396,4 +401,5 @@ class CsmplMixin(object):
         h5f['stream']['tp_time_s'][...] = time_s
         h5f['stream']['tp_time_mus'][...] = time_mus
 
+        h5f.close()
         print('Test Stamps included.')

@@ -262,4 +262,6 @@ class RdtMixin(object):
             # write data to file
             cp_ph[i, ...] = data['pulse_height'][cond]
 
+        f.close()
+
         print('CON File included.')

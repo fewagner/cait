@@ -97,6 +97,7 @@ class AnalysisMixin(object):
 
             print('Resolution channel {}: {} eV (mean {} keV, calculated with {})'.format(c, resolutions[c] * 1000,
                                                                                           mus[c], naming))
+        h5.close()
         return np.array(resolutions), np.array(mus)
 
     def calc_rate_cut(self, interval=10, significance=3, min=0, max=60):
@@ -111,6 +112,7 @@ class AnalysisMixin(object):
                                      shape=(flag.shape),
                                      dtype=bool)
         h5['events']['rate_cut'][...] = flag
+        h5.close()
 
     def calc_controlpulse_stability(self, channel, significance=3, max_gap=0.5):
         # TODO
@@ -134,6 +136,7 @@ class AnalysisMixin(object):
                                         shape=(self.nmbr_channels, len(flag_cp)),
                                         dtype=bool)
         f['controlpulses']['controlpuls_stability'][channel, ...] = flag_cp
+        f.close()
 
     def calc_testpulse_stability(self, channel, significance=3, noise_level=0.005, max_gap=0.5):
         # TODO
@@ -157,6 +160,7 @@ class AnalysisMixin(object):
                                         shape=(self.nmbr_channels, len(flag_tp)),
                                         dtype=bool)
         f['testpulses']['testpulse_stability'][channel, ...] = flag_tp
+        f.close()
 
     def calc_calibration(self,
                          starts_saturation,  #
@@ -246,6 +250,7 @@ class AnalysisMixin(object):
                                                                                 exclude_tpas=exclude_tpas,
                                                                                 plot=plot,
                                                                                 )
+        f.close()
 
 
     def calc_light_correction(self,
@@ -265,3 +270,5 @@ class AnalysisMixin(object):
             f['events']['recoil_energy'][channel, ...] = light_yield_correction(phonon_energy=recoil_energy[channel],
                                                                                 light_energy=recoil_energy[light_channel],
                                                                                 scintillation_efficiency=scintillation_efficiency)
+
+        f.close()

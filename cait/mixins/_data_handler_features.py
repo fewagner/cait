@@ -69,6 +69,8 @@ class FeaturesMixin(object):
         events['mainpar'].attrs.create(name='linear_drift', data=8)
         events['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
+        h5f.close()
+
     # calc stdevent testpulses
     def calc_sev(self,
                    type='events',
@@ -514,6 +516,8 @@ class FeaturesMixin(object):
         events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
         events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
+        h5f.close()
+
     def apply_pca(self, nmbr_components, type='events'):
         """
         TODO
@@ -565,3 +569,5 @@ class FeaturesMixin(object):
                 transformed[i] = 1
                 comp = pca.inverse_transform(transformed.reshape(1, -1))
                 pca_components[c, i, :] = comp.reshape(-1)
+
+        f.close()
