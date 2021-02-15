@@ -7,7 +7,7 @@ from ..filter._of import filter_event
 from scipy import signal
 import matplotlib.pyplot as plt
 import sqlite3
-import time
+from time import time, strptime, mktime
 
 
 # functions
@@ -38,7 +38,7 @@ def time_to_sample(t, sample_duration=0.00004):
     :return:
     :rtype:
     """
-    s = int(t / sample_duration)
+    s = np.floor(t / sample_duration)
     return s
 
 
@@ -110,7 +110,7 @@ def get_max_index(stream,  # memmap array
     record = convert_to_V(stream[counter:counter + record_length])
     # downsample
     if down > 1:
-        record = np.mean(record.reshape((len(record) / down, down)), axis=1)
+        record = np.mean(record.reshape((int(len(record) / down), down)), axis=1)
         overlap = int(overlap / down)
         block = int(block / down)
 
@@ -223,7 +223,7 @@ def trigger_csmpl(paths,
                                              overlap=overlap,  # in samples
                                              block=block,  # in samples
                                              transfer_function=transfer_function,
-                                             down=down
+                                             down=down,
                                              )
                 if height > trigger_tres:
                     # resample in case higher trigger is in record window
@@ -234,6 +234,7 @@ def trigger_csmpl(paths,
                                                  overlap=overlap,  # in samples
                                                  block=block,  # in samples
                                                  transfer_function=transfer_function,
+                                                 down=down,
                                                  )
 
                     triggers.append(start_hours + sample_to_time(counter + trig))
@@ -287,13 +288,13 @@ def get_record_window(path,
     offset = bytes_per_sample * time_to_sample(start_time, sample_duration=0.00004)
 
     event = np.fromfile(path,
-                        offset=offset,
+                        offset=int(offset),
                         count=record_length,
                         dtype=np.short)
 
     event = convert_to_V(event)
     if down > 1:
-        event = np.mean(event.reshape(len(event) / down, down), axis=1)
+        event = np.mean(event.reshape(int(len(event) / down), down), axis=1)
     time = start_time + np.arange(0, record_length / down) * sample_duration * down
 
     return event, time
@@ -344,7 +345,7 @@ def plot_csmpl(path,
 
     print('Get {} samples from sample {}.'.format(record_length, offset))
     event = np.fromfile(path,
-                        offset=offset,
+                        offset=int(offset),
                         count=record_length,
                         dtype=np.short)
 
@@ -455,6 +456,7 @@ def exclude_testpulses(trigger_hours,
     max_hours_diff = max_time_diff / 3600
 
     for val in tp_hours:
+        # TODO something is wroong here
         idx = find_nearest(array=trigger_hours, value=val)
         if np.abs(trigger_hours[idx] - val) < max_hours_diff:
             flag[idx] = False
@@ -514,7 +516,7 @@ def get_test_stamps(path,
     return hours, tpas, testpulse_channels
 
 
-def get_starttime(path_sql, csmpl_channel, filename):
+def get_starttime(path_sql, csmpl_channel, csmpl_file_identity):
     """
     TODO
 
@@ -530,10 +532,10 @@ def get_starttime(path_sql, csmpl_channel, filename):
     connection = sqlite3.connect(path_sql)
     cursor = connection.cursor()
     sql = "SELECT CREATED FROM FILELIST WHERE ch=? AND LABEL=? AND TYPE=? LIMIT 1"
-    adr = (csmpl_channel, filename, "0",)
+    adr = (csmpl_channel, csmpl_file_identity, "0",)
     cursor.execute(sql, adr)
     query_results = cursor.fetchone()
 
-    time_created = time.strptime(query_results[0], '%Y-%m-%d %H:%M:%S')
+    time_created = strptime(query_results[0], '%Y-%m-%d %H:%M:%S')
 
-    return time.mktime(time_created)
+    return mktime(time_created)

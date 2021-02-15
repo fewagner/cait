@@ -6,6 +6,15 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress, t, norm
 from scipy import odr
 from scipy.interpolate import interp1d
+import os
+from pathlib import Path
+
+package_directory = os.path.dirname(os.path.abspath(__file__))
+package_directory = Path(package_directory)
+plt.style.use('seaborn-paper')
+path_styles = os.path.join(package_directory.parent, 'mixins', 'plt_styles', 'PaperDoubleFig_75.mplstyle')
+
+plt.style.use(path_styles)
 
 # functions
 
@@ -171,7 +180,14 @@ def energy_calibration_linear(evhs,
                 lower, y, upper = all_regs[i][m].y_sigma(t)
                 plt.plot(t, y, color='red', linewidth=2, zorder=9)
                 plt.fill_between(t, lower, upper, color='black', alpha=0.3)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
         #plt.ylim([0, y[-1]])
+        plt.xlabel('Hours (h)')
+        plt.ylabel('Pulse Height (V)')
         plt.show()
 
         # plot the polynomials
@@ -192,6 +208,11 @@ def energy_calibration_linear(evhs,
             plt.fill_between(h, yl, yu, color='black', alpha=0.3)
             plt.plot(x_data, y_data, 'b.', markersize=3.5)
             plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
         plt.ylim([0, y[-1]])
         plt.ylabel('Testpulse Amplitude (V)')
         plt.xlabel('Pulse Height (V)')

@@ -31,7 +31,8 @@ def gen_dataset_from_rdt(path_rdt,
                          calc_sev=False,
                          calc_nps=True,
                          processes=4,
-                         event_dtype='float64'
+                         event_dtype='float32',
+                         ints_in_header=7,
                          ):
     """
     Generates a HDF5 File from an RDT File, optionally MP, Fit, SEV Calculation
@@ -52,10 +53,6 @@ def gen_dataset_from_rdt(path_rdt,
 
     nmbr_channels = len(channels)
 
-    # if store_as_int:
-    #     print('Changing event data type to int16.')
-    #     event_dtype = 'int16'
-
     if not os.path.exists(path_h5):
         os.makedirs(path_h5)
 
@@ -66,6 +63,7 @@ def gen_dataset_from_rdt(path_rdt,
                       path=path_rdt,
                       channels=channels,
                       store_as_int=False,
+                      ints_in_header=ints_in_header,
                       )
 
     # ipdb.set_trace()
@@ -79,9 +77,6 @@ def gen_dataset_from_rdt(path_rdt,
             path += '-{}_Ch{}'.format(i + 1, c)
         path += ".h5"
         h5f = h5py.File(path, 'w')
-
-    # line below causes an error message (bug: https://github.com/h5py/h5py/issues/1180)
-    # h5py.get_config().track_order = True # attrs don't get sorted
 
     for i, c in enumerate(channels):
         h5f.attrs.create('Ch_{}'.format(i + 1), data=c)
@@ -214,8 +209,8 @@ def gen_dataset_from_rdt(path_rdt,
     if -1.0 in tpa_list:
         print('WORKING ON EVENTS WITH TPA = -1.')
 
-        metainfo_noise = metainfo[:, metainfo[1, :, 12] == -1.0, :]
-        pulse_noise = pulse[:, metainfo[1, :, 12] == -1.0, :]
+        metainfo_noise = metainfo[:, metainfo[0, :, 12] == -1.0, :]
+        pulse_noise = pulse[:, metainfo[0, :, 12] == -1.0, :]
 
         print('CREATE DATASET WITH NOISE.')
         noise = h5f.create_group('noise')
@@ -254,7 +249,7 @@ def gen_dataset_from_rdt(path_rdt,
     if any(el > 0 for el in tpa_list):
         print('WORKING ON EVENTS WITH TPA > 0.')
         tp_list = np.logical_and(
-            metainfo[1, :, 12] != -1.0, metainfo[1, :, 12] != 0.0)
+            metainfo[0, :, 12] != -1.0, metainfo[0, :, 12] != 0.0)
 
         metainfo_tp = metainfo[:, tp_list, :]
         pulse_tp = pulse[:, tp_list, :]

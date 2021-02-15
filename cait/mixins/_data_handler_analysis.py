@@ -159,13 +159,14 @@ class AnalysisMixin(object):
         f['testpulses']['testpulse_stability'][channel, ...] = flag_tp
 
     def calc_calibration(self,
-                         starts_saturation,
+                         starts_saturation,  #
                          cpe_factor,
                          max_dist=1,  # in hours
                          smoothing_factor=0.95,
                          exclude_tpas=[],
                          plot=False,
                          only_stable=False,
+                         cut_flag=None,
                          linear_with_uncertainty=False,
                          tree=False
                          ):
@@ -183,9 +184,11 @@ class AnalysisMixin(object):
         tp_hours = np.array(f['testpulses']['hours'])
 
         if only_stable:
-            stable = np.array(f['testpulses']['stability_cut'], dtype=bool)
+            stable = np.array(f['testpulses']['testpulse_stability'], dtype=bool)
         else:
             stable = np.ones([self.nmbr_channels, len(tpas)], dtype=bool)
+        if cut_flag is not None:
+            stable = np.logical_and(stable, cut_flag)
 
         f['events'].require_dataset(name='recoil_energy',
                                     shape=(self.nmbr_channels, len(ev_hours)),

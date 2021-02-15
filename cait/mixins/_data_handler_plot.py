@@ -7,11 +7,23 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ..fit._templates import pulse_template
 from ..fit._saturation import logistic_curve
+import os
 
+package_directory = os.path.dirname(os.path.abspath(__file__))
+plt.style.use('seaborn-paper')
+path_styles = os.path.join(package_directory, 'plt_styles', 'PaperDoubleFig_75.mplstyle')
+
+plt.style.use(path_styles)
 
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
+
+def _str_empty(value):
+    if value is None:
+        return ''
+    else:
+        return str(value)
 
 class PlotMixin(object):
     """
@@ -19,8 +31,9 @@ class PlotMixin(object):
     """
 
     # Plot the SEV
-    def show_SEV(self,
+    def show_sev(self,
                  type='stdevent',
+                 title=None,
                  show_fit=True,
                  block=True,
                  sample_length=0.04,
@@ -47,10 +60,23 @@ class PlotMixin(object):
 
         for i, ch in enumerate(self.channel_names):
             plt.subplot(self.nmbr_channels, 1, i + 1)
-            plt.plot(t, sev[i], color=self.colors[i])
-            if show_fit:
-                plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='orange')
-            plt.title(ch + ' ' + type)
+            if not show_fit:
+                plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, label='Standardevent')
+            else:
+                plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
+                plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2, label='Parametric Fit')
+            # major grid lines
+            plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+            # minor grid lines
+            plt.minorticks_on()
+            plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+            plt.xlabel('Time (ms)')
+            plt.ylabel('Amplitude (V)')
+            plt.legend()
+            if title is None:
+                plt.title(ch + ' ' + type)
+            else:
+                plt.title(title)
 
         if save_path is not None:
             plt.savefig(save_path)
@@ -59,8 +85,9 @@ class PlotMixin(object):
 
         f.close()
 
-    def show_exceptional_SEV(self,
+    def show_exceptional_sev(self,
                              naming,
+                             title=None,
                              show_fit=True,
                              block=True,
                              sample_length=0.04,
@@ -87,10 +114,23 @@ class PlotMixin(object):
         # plot
         plt.close()
 
-        plt.plot(t, sev)
-        if show_fit:
-            plt.plot(t, pulse_template(t, *sev_fitpar))
-        plt.title('stdevent_{}'.format(naming))
+        if not show_fit:
+            plt.plot(t, sev, zorder=10, linewidth=3, label='Standardevent')
+        else:
+            plt.plot(t, sev, zorder=10, linewidth=1, alpha=0.5, label='Standardevent')
+            plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, label='Parametric Fit')
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        plt.legend()
+        plt.xlabel('Time (ms)')
+        plt.ylabel('Amplitude (V)')
+        if title is None:
+            plt.title('stdevent_{}'.format(naming))
+        else:
+            plt.title(title)
 
         if save_path is not None:
             plt.savefig(save_path)
@@ -100,7 +140,9 @@ class PlotMixin(object):
         f.close()
 
     # Plot the NPS
-    def show_NPS(self, block=True,
+    def show_nps(self,
+                 title=None,
+                 block=True,
                  show=True,
                  save_path=None):
         """
@@ -115,9 +157,19 @@ class PlotMixin(object):
         plt.close()
 
         for i, ch in enumerate(self.channel_names):
-            plt.subplot(2, 1, i + 1)
-            plt.loglog(f['noise']['nps'][i], color=self.colors[i])
-            plt.title(ch + ' NPS')
+            plt.subplot(self.nmbr_channels, 1, i + 1)
+            plt.loglog(f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
+            # major grid lines
+            plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+            # minor grid lines
+            plt.minorticks_on()
+            plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+            if title is None:
+                plt.title(ch + ' NPS')
+            else:
+                plt.title(title)
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Frequency Amplitude (a.u.)')
 
         if save_path is not None:
             plt.savefig(save_path)
@@ -127,9 +179,12 @@ class PlotMixin(object):
         f.close()
 
     # Plot the OF
-    def show_OF(self, block=True,
+    def show_of(self,
+                title=None,
+                block=True,
                  show=True,
-                 save_path=None):
+                 save_path=None,
+                down=None):
         """
         Plot the Optimum Filter of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -138,17 +193,31 @@ class PlotMixin(object):
         """
         f = h5py.File(self.path_h5, 'r')
 
-        of = np.array(f['optimumfilter']['optimumfilter_real']) + \
-             1j * np.array(f['optimumfilter']['optimumfilter_imag'])
+        if down is None:
+            of = np.array(f['optimumfilter']['optimumfilter_real']) + \
+                 1j * np.array(f['optimumfilter']['optimumfilter_imag'])
+        else:
+            of = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)]) + \
+                 1j * np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
         of = np.abs(of) ** 2
 
         # plot
         plt.close()
 
         for i, ch in enumerate(self.channel_names):
-            plt.subplot(2, 1, i + 1)
-            plt.loglog(of[i], color=self.colors[i])
-            plt.title(ch + ' OF')
+            plt.subplot(self.nmbr_channels, 1, i + 1)
+            plt.loglog(of[i], color=self.colors[i], zorder=10, linewidth=3)
+            # major grid lines
+            plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+            # minor grid lines
+            plt.minorticks_on()
+            plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+            plt.xlabel('Frequency (Hz)')
+            plt.ylabel('Frequency Amplitude (a.u.)')
+            if title is None:
+                plt.title(ch + ' OF')
+            else:
+                plt.title(title)
 
         if save_path is not None:
             plt.savefig(save_path)
@@ -162,6 +231,10 @@ class PlotMixin(object):
     def show_values(self,
                     group,
                     key,
+                    title=None,
+                    xlabel=None,
+                    ylabel=None,
+                    cut_flag=None,
                     idx0=None,
                     idx1=None,
                     idx2=None,
@@ -169,6 +242,8 @@ class PlotMixin(object):
                     bins=100,
                     range=None,
                     show=True,
+                    xran=None,
+                    yran=None,
                     save_path=None):
         """
         Shows a histogram of some values from the HDF5 file
@@ -204,12 +279,30 @@ class PlotMixin(object):
         elif idx0 is not None and idx1 is not None and idx2 is not None:
             vals = hf5[group][key][idx0, idx1, idx2]
 
-        plt.close()
+        if cut_flag is not None:
+            vals=vals[cut_flag]
 
+        plt.close()
         plt.hist(vals,
                  bins=bins,
-                 range=range)
-        plt.title('{} {} {},{},{}'.format(group, key, str(idx0), str(idx1), str(idx2)))
+                 range=range, zorder=10)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        if xlabel is None:
+            plt.xlabel('{} {} [{},{},{}]'.format(group, key, _str_empty(idx0), _str_empty(idx1), _str_empty(idx2)))
+        else:
+            plt.xlabel(xlabel)
+        if ylabel is None:
+            plt.ylabel('Counts')
+        else:
+            plt.ylabel(ylabel)
+        if title is not None:
+            plt.title(title)
+        plt.xlim(xran)
+        plt.ylim(yran)
         if save_path is not None:
             plt.savefig(save_path)
         if show:
@@ -221,11 +314,17 @@ class PlotMixin(object):
     def show_scatter(self,
                      groups,
                      keys,
+                     title=None,
+                     xlabel=None,
+                     ylabel=None,
+                     cut_flag=None,
                      idx0s=[None, None],
                      idx1s=[None, None],
                      idx2s=[None, None],
                      block=False,
                      marker='.',
+                     xran=None,
+                     yran=None,
                  show=True,
                  save_path=None):
         """
@@ -268,16 +367,30 @@ class PlotMixin(object):
             elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is not None:
                 vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i], idx2s[i]])
 
-        plt.close()
+            if cut_flag is not None:
+                vals[i] = vals[cut_flag]
 
+        plt.close()
         plt.scatter(vals[0],
                     vals[1],
-                    marker=marker)
-        plt.title('(x): {} {} [{},{},{}]; (y): {} {} [{},{},{}]'.format(groups[0], keys[0],
-                                                                        str(idx0s[0]), str(idx1s[0]), str(idx2s[0]),
-                                                                        groups[1], keys[1],
-                                                                        str(idx0s[1]), str(idx1s[1]), str(idx2s[1])
-                                                                        ))
+                    marker=marker, zorder=10)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        if xlabel is None:
+            plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]), _str_empty(idx2s[0])))
+        else:
+            plt.xlabel(xlabel)
+        if ylabel is None:
+            plt.ylabel('{} {} [{},{},{}]'.format(groups[1], keys[1], _str_empty(idx0s[1]), _str_empty(idx1s[1]), _str_empty(idx2s[1])))
+        else:
+            plt.ylabel(ylabel)
+        if title is not None:
+            plt.title(title)
+        plt.xlim(xran)
+        plt.ylim(yran)
         if save_path is not None:
             plt.savefig(save_path)
         if show:
@@ -287,6 +400,7 @@ class PlotMixin(object):
 
     # show histogram of main parameter
     def show_hist(self,
+                  title=None,
                   which_mp='pulse_height',
                   only_idx=None,
                   which_channel=0,
@@ -346,20 +460,28 @@ class PlotMixin(object):
                          bins=bins,
                          # color=self.colors[which_channel],
                          label='Label ' + str(l), alpha=0.8,
-                         range=ran)
+                         range=ran, zorder=10)
         elif which_predictions is not None:
             for p, l in zip(pars, which_predictions):
                 plt.hist(p,
                          bins=bins,
                          # color=self.colors[which_channel],
                          label='Prediction ' + str(l), alpha=0.8,
-                         range=ran)
+                         range=ran, zorder=10)
         else:
             plt.hist(par,
                      bins=bins,
                      # color=self.colors[which_channel],
-                     range=ran)
-        plt.title(type + ' ' + which_mp + ' Channel ' + str(which_channel))
+                     range=ran, zorder=10)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        plt.ylabel('Counts')
+        plt.xlabel(type + ' ' + which_mp + ' Channel ' + str(which_channel))
+        if title is not None:
+            plt.title(title)
         plt.legend()
 
         if save_path is not None:
@@ -372,6 +494,9 @@ class PlotMixin(object):
 
     # show light yield plot
     def show_LY(self,
+                title=None,
+                xlabel=None,
+                ylabel=None,
                 x_channel=0,
                 y_channel=1,
                 only_idx=None,
@@ -447,7 +572,7 @@ class PlotMixin(object):
                             marker=marker,
                             label='Label ' + str(l),
                             alpha=alpha,
-                            s=s)
+                            s=s, zorder=10)
         elif which_predictions is not None:
             for xp, yp, l in zip(x_pars, y_pars, which_predictions):
                 plt.scatter(xp,
@@ -455,15 +580,27 @@ class PlotMixin(object):
                             marker=marker,
                             label='Prediction ' + str(l),
                             alpha=alpha,
-                            s=s)
+                            s=s, zorder=10)
         else:
             plt.scatter(x_par,
                         y_par / x_par,
                         marker=marker,
                         alpha=alpha,
-                        s=s)
-        plt.title(type + ' LY x_ch ' + str(x_channel) + ' y_ch ' + str(y_channel))
-        plt.legend()
+                        s=s, zorder=10)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        if xlabel is None:
+            plt.xlabel('Amplitude Ch ' + str(x_channel) + ' (V)')
+        else:
+            plt.xlabel(xlabel)
+        if ylabel is None:
+            plt.ylabel('Amplitude Ch ' + str(y_channel) + ' / Amplitude Ch ' + str(x_channel))
+        else:
+            plt.ylabel(ylabel)
+        plt.title('Light Yield ' + type)
         if save_path is not None:
             plt.savefig(save_path)
         if show:
@@ -473,7 +610,7 @@ class PlotMixin(object):
         f_h5.close()
 
     def show_saturation(self, show_fit=True, channel=0, marker='.', s=1,
-                        only_idx=None,
+                        only_idx=None, title=None,
                         block=False,
                  show=True,
                  save_path=None):
@@ -502,12 +639,22 @@ class PlotMixin(object):
 
         plt.close()
         plt.scatter(tpa, ph,
-                    marker=marker, s=s, label='TPA vs PH')
+                    marker=marker, s=s, label='TPA vs PH', zorder=10)
         if show_fit:
             fitpar = f_h5['saturation']['fitpar'][channel]
             plt.plot(x, logistic_curve(x, *fitpar),
-                     label='Fitted Log Curve')
-        plt.title('Saturation Ch {}'.format(channel))
+                     label='Fitted Log Curve', zorder=10)
+        # major grid lines
+        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        # minor grid lines
+        plt.minorticks_on()
+        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        plt.xlabel('Test Pulse Amplitude (V)')
+        plt.ylabel('Pulse Height (V)')
+        if title is None:
+            plt.title('Saturation Ch {}'.format(channel))
+        else:
+            plt.title(title)
         if save_path is not None:
             plt.savefig(save_path)
         if show:

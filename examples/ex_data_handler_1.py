@@ -26,17 +26,17 @@ if __name__ == '__main__':
     dh.import_labels(path_labels='toy_data')
 
     # recalculate SEV and OF and plot them all
-    dh.recalc_sev(use_labels=False,
+    dh.calc_sev(use_labels=False,
                   onset_intervall=[[1500, 3000], [1500, 3000]],
                   left_right_cutoff=[0.0001, 0.0001],
                   scale_fit_height=True)
-    dh.recalc_of()
+    dh.calc_of()
 
     # plot SEV
-    dh.show_SEV()
+    dh.show_sev()
 
     # plot NPS
-    dh.show_NPS()
+    dh.show_nps()
 
     # plot OF
-    dh.show_OF()
+    dh.show_of()

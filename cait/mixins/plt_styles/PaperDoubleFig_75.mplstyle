@@ -1,0 +1,15 @@
+xtick.labelsize: 18
+ytick.labelsize: 18
+font.size: 18
+figure.autolayout: True
+figure.figsize: 7.2,4.45
+figure.dpi: 300
+axes.titlesize : 18
+axes.labelsize : 18
+lines.linewidth : 2
+lines.markersize : 6
+legend.fontsize: 18
+mathtext.fontset: stix
+font.family: STIXGeneral
+savefig.dpi: 300
+#axes.prop_cycle: cycler(color=['r', 'b', 'g', 'y'])

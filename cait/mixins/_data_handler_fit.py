@@ -27,7 +27,7 @@ class FitMixin(object):
 
 
     # Recalculate Fit
-    def recalc_fit(self, path_h5=None, type='events', processes=4):
+    def calc_parametric_fit(self, path_h5=None, type='events', processes=4):
         """
         Calculate the Parameteric Fit for the Events in an HDF5 File.
         :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
@@ -78,9 +78,11 @@ class FitMixin(object):
 
         h5f[type]['fitpar'][:, idx, :] = fitpar_event
 
+        h5f.close()
+
 
     # apply sev fit
-    def apply_sev_fit(self, type, order_bl_polynomial=3, sample_length=0.04, down=1, verb=False):
+    def apply_sev_fit(self, type='events', order_bl_polynomial=3, sample_length=0.04, down=1, verb=False):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -114,7 +116,7 @@ class FitMixin(object):
             # fit all
             for i in range(len(events[0])):
                 if verb and i % 50 == 0:
-                    print('Fitting Event Nmbr: {:4.2f} % finished'.format(
+                    print('Fitting Events, {:4.2f} % finished'.format(
                         100 * i / len(events[0])))
                 par[c, i] = fit_model.fit_cubic(events[c, i])
 
@@ -140,8 +142,11 @@ class FitMixin(object):
                 # else:
                 #     raise KeyError('Order Polynomial must be 0,1,2,3!')
 
+        print('Done.')
+        f.close()
 
-    def calc_bl_coefficients(self, verb=False):
+
+    def calc_bl_coefficients(self, type='noise', down=1, verb=False):
         """
         Calcualted the fit coefficients with a cubic polynomial on the noise baselines.
 
@@ -153,29 +158,34 @@ class FitMixin(object):
 
         # open file
         h5f = h5py.File(self.path_h5, 'r+')
-        baselines = h5f['noise']
-        nmbr_bl = len(baselines['event'][0])
-        baselines.require_dataset('fit_coefficients',
+        events = h5f[type]
+        nmbr_bl = len(events['event'][0])
+        events.require_dataset('fit_coefficients',
                                   shape=(self.nmbr_channels, nmbr_bl, 4),
                                   dtype='f')
-        baselines.require_dataset('fit_rms',
+        events.require_dataset('fit_rms',
                                   shape=(self.nmbr_channels, nmbr_bl),
                                   dtype='f')
         bl_temp = baseline_template_cubic
 
         t = np.linspace(0, self.record_length - 1, self.record_length)
+        if down > 1:
+            t = np.mean(t.reshape(int(len(t) / down), down), axis=1)
 
         for c in range(self.nmbr_channels):
             for i in range(nmbr_bl):
                 if verb and i % 100 == 0:
                     print('Calculating Baseline for Channel {}: {:4.2f} %'.format(c, i*100/nmbr_bl))
                 # fit template to every bl
-                coeff, _ = curve_fit(bl_temp, t, baselines['event'][c, i])
-                rms = get_rms(bl_temp(t, *coeff), baselines['event'][c, i])
+                ev = events['event'][c, i]
+                if down > 1:
+                    ev = np.mean(ev.reshape(int(len(ev)/down), down), axis=1)
+                coeff, _ = curve_fit(bl_temp, t, ev)
+                rms = get_rms(bl_temp(t, *coeff), ev)
 
                 # save fit coefficients in hdf5
-                baselines['fit_coefficients'][c, i, ...] = coeff
-                baselines['fit_rms'][c, i] = rms
+                events['fit_coefficients'][c, i, ...] = coeff
+                events['fit_rms'][c, i] = rms
 
         print('Fit Coeff and Rms calculated.')
         h5f.close()

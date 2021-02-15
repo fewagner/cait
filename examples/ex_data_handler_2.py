@@ -35,7 +35,7 @@ if __name__ == '__main__':
                    scale_fit_height=True)
 
     # show the TP SEV
-    dh.show_SEV(type='stdevent_tp')
+    dh.show_sev(type='stdevent_tp')
 
     # show the particle SEV
-    dh.show_SEV(type='stdevent')
+    dh.show_sev(type='stdevent')

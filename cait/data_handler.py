@@ -76,16 +76,14 @@ class DataHandler(SimulateMixin,
         :param path_h5: String to directory that contains the runXY_Module folders
         :param fname: String, usually something like bck_xxx
         :param appendix: bool, if false the filename must not have an appendix like "-P_ChX-[...]"
-        :return: -
         """
-
+        app = ''
         if appendix:
             if self.nmbr_channels == 2:
                 app = '-P_Ch{}-L_Ch{}'.format(*self.channels)
-            elif self.nmbr_channels == 3:
-                app = '-1_Ch{}-2_Ch{}-3_Ch{}'.format(*self.channels)
-        else:
-            app = ''
+            else:
+                for i, c in enumerate(self.channels):
+                    app += '-{}_Ch{}'.format(i + 1, c)
 
         # check if the channel number matches the file, otherwise error
         self.path_h5 = "{}/{}{}.h5".format(path_h5,
@@ -99,8 +97,8 @@ class DataHandler(SimulateMixin,
                       path_h5=None):
         """
         Include the *.csv file with the labels into the HDF5 File.
-        :param path_labels: string, path to the folder that contains the run_module folder
-            e.g. "data" --> look for labels in "data/runXY_moduleZ/labels_bck_0XX_<type>"
+        :param path_labels: string, path to the folder that contains the csv file
+            e.g. "data" --> look for labels in "data/labels_bck_0XX_<type>"
         :param type: string, the type of labels, typically "events" or "testpulses"
         :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
             e.g. "data/hdf5s/bck_001[...].h5"
@@ -110,8 +108,8 @@ class DataHandler(SimulateMixin,
         if not path_h5:
             path_h5 = self.path_h5
 
-        path_labels = '{}/run{}_{}/labels_{}_{}.csv'.format(
-            path_labels, self.run, self.module, self.fname, type)
+        path_labels = '{}/labels_{}_{}.csv'.format(
+            path_labels, self.fname, type)
 
         h5f = h5py.File(path_h5, 'r+')
 
@@ -158,6 +156,8 @@ class DataHandler(SimulateMixin,
 
         elif (path_labels != ''):
             print("File '{}' does not exist.".format(path_labels))
+
+        h5f.close()
 
     def import_predictions(self,
                            model,
@@ -270,6 +270,8 @@ class DataHandler(SimulateMixin,
         else:
             raise KeyError(
                 'No prediction file found at {}.'.format(path_predictions))
+
+        h5f.close()
 
     def get_filehandle(self, path=None):
         """

@@ -20,11 +20,11 @@ if __name__ == '__main__':
                         down=1)
 
     # load a bck file
-    ei.load_bck(path='toy_data/',
-                bck_nmbr='013',
-                channels=['36', '37'],
-                bck_naming='bck',
-                which_to_label=['events'])
+    ei.load_h5(path='toy_data/',
+               bck_nmbr='013',
+               channels=['36', '37'],
+               fname='bck',
+               which_to_label=['events'])
 
     # create a csv file with labels
     # alternatively you could load a labels file

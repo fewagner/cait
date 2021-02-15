@@ -33,7 +33,7 @@ class SimulateMixin(object):
                         tp_ph_intervals=[[0, 1], [0, 1]],
                         tp_discrete_phs=None,
                         t0_interval=[-20, 20],  # in ms
-                        fake_noise=True,
+                        fake_noise=False,
                         store_of=False,
                         rms_thresholds=[1, 0.5],
                         lamb=0.01,
@@ -43,7 +43,8 @@ class SimulateMixin(object):
                         saturation=False,
                         reuse_bl=False,
                         pulses_per_bl=1,
-                        ps_dev=False):
+                        ps_dev=False,
+                        dtype='float32'):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
 
@@ -93,12 +94,12 @@ class SimulateMixin(object):
             data = f.create_group('events')
             data.create_dataset(name='event',
                                 shape=(self.nmbr_channels, size_events * pulses_per_bl, self.record_length),
-                                dtype=float)
+                                dtype=dtype)
             data.create_dataset(name='true_ph',
                                 shape=(self.nmbr_channels, size_events * pulses_per_bl),
                                 dtype=float)
             data.create_dataset(name='true_onset',
-                                shape=(size_events * pulses_per_bl),
+                                shape=(size_events * pulses_per_bl,),
                                 dtype=float)
 
             for i in range(pulses_per_bl):
@@ -160,7 +161,7 @@ class SimulateMixin(object):
                                                                        saturation=saturation,
                                                                        reuse_bl=reuse_bl,
                                                                        ps_dev=ps_dev)
-            data.create_dataset(name='event', data=events)
+            data.create_dataset(name='event', data=events, dtype=dtype)
             data.create_dataset(name='true_ph', data=phs)
             if saturation:
                 fp = f_read['saturation']['fitpar'][0]
@@ -175,7 +176,7 @@ class SimulateMixin(object):
             mp = np.array([calc_main_parameters(x).getArray() for x in sev])
 
             data = f.create_group('stdevent_tp')
-            data.create_dataset(name='event', data=sev)
+            data.create_dataset(name='event', data=sev, dtype=dtype)
             data.create_dataset(name='mainpar', data=mp)
 
         data = f.create_group('noise')
@@ -207,7 +208,7 @@ class SimulateMixin(object):
                                                                   reuse_bl=reuse_bl,
                                                                   ps_dev=ps_dev
                                                                   )
-            data.create_dataset(name='event', data=events)
+            data.create_dataset(name='event', data=events, dtype=dtype)
             data.create_dataset(name='labels',
                                 data=3 * np.ones([self.nmbr_channels, size_noise]))  # 3 is the noise label
 
@@ -221,3 +222,4 @@ class SimulateMixin(object):
 
         print('Simulation done.')
         f.close()
+        f_read.close()

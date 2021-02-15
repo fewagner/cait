@@ -27,8 +27,8 @@ class FeaturesMixin(object):
     # FEATURE CALCULATION
     # -----------------------------------------------------------
 
-    # Recalculate MP
-    def recalc_mp(self, type, path_h5=None, processes=4):
+    # Calculate MP
+    def calc_mp(self, type='events', path_h5=None, processes=4):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
@@ -70,7 +70,7 @@ class FeaturesMixin(object):
         events['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
     # calc stdevent testpulses
-    def recalc_sev(self,
+    def calc_sev(self,
                    type='events',
                    use_labels=False,
                    correct_label=None,
@@ -207,7 +207,7 @@ class FeaturesMixin(object):
 
         h5f.close()
 
-    def recalc_of(self, down=1):
+    def calc_of(self, down=1):
         """
         Calculate the Optimum Filer from the NPS and the SEV
 
@@ -215,9 +215,16 @@ class FeaturesMixin(object):
         """
 
         h5f = h5py.File(self.path_h5, 'r+')
-        stdevent_pulse = [h5f['stdevent']['event'][i]
-                          for i in range(self.nmbr_channels)]
-        mean_nps = [h5f['noise']['nps'][i] for i in range(self.nmbr_channels)]
+        stdevent_pulse = np.array([h5f['stdevent']['event'][i]
+                          for i in range(self.nmbr_channels)])
+        mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
+
+        if down > 1:
+            stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(len(stdevent_pulse[1])/down), down), axis=2)
+            first_nps_val = mean_nps[:, 0]
+            mean_nps = mean_nps[:, 1:]
+            mean_nps = np.mean(mean_nps.reshape(-1, int(len(mean_nps[1]) / down), down), axis=2)
+            mean_nps = np.concatenate((first_nps_val.reshape(-1,1), mean_nps), axis=1)
 
         print('CREATE OPTIMUM FILTER.')
 
@@ -421,7 +428,7 @@ class FeaturesMixin(object):
 
         h5f.close()
 
-    def recalc_NPS(self, use_labels=False, down=1):
+    def calc_nps(self, use_labels=False, down=1):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3)
@@ -457,7 +464,7 @@ class FeaturesMixin(object):
 
         h5f.close()
 
-    def recalc_additional_mp(self, type, path_h5=None, down=1):
+    def calc_additional_mp(self, type, path_h5=None, down=1):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 

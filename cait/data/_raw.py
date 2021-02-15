@@ -57,7 +57,7 @@ def convert_to_int(event, bits=16, max=10, min=-10, offset=0):
 
 
 def read_rdt_file(fname, path, channels,
-                  remove_offset=False, store_as_int=False):
+                  remove_offset=False, store_as_int=False, ints_in_header=7):
     """
     Reads a given given hdf5 file and filters out a specific phonon and light
     channel as well as chosen testpulse amplitudes.
@@ -111,7 +111,7 @@ def read_rdt_file(fname, path, channels,
                        ('delay_ch_tp', 'i4'),
                        ('time_low', 'i4'),
                        ('time_high', 'i4'),
-                       ('qcd_events', 'i4'),
+                       ('qcd_events', 'i4', int(ints_in_header==7)),
                        ('hours', 'f4'),
                        ('dead_time', 'f4'),
                        ('test_pulse_amplitude', 'f4'),
@@ -128,16 +128,22 @@ def read_rdt_file(fname, path, channels,
         good_recs = [[] for i in range(nmbr_channels)]
 
         length_recs = len(recs)
+        print('Total Records in File: ', length_recs)
 
-        for i in range(length_recs):
-            if i >= length_recs - nmbr_channels:
-                break
-            cond = recs[i]['detector_nmbr'] == channels[0]
-            for j, c in enumerate(channels[1:]):
-                cond = np.logical_and(cond, recs[i+j+1]['detector_nmbr'] == c)
-            if cond:
-                for j in range(nmbr_channels):
-                    good_recs[j].append(i+j)
+        if nmbr_channels > 1:
+            for i in range(length_recs):
+                if i >= length_recs - nmbr_channels:
+                    break
+                cond = recs[i]['detector_nmbr'] == channels[0]
+                for j, c in enumerate(channels[1:]):
+                    cond = np.logical_and(cond, recs[i+j+1]['detector_nmbr'] == c)
+                if cond:
+                    for j in range(nmbr_channels):
+                        good_recs[j].append(i+j)
+        else:  # exceptional handling for case of just one channel
+            for i in range(length_recs):
+                if recs[i]['detector_nmbr'] == channels[0]:
+                    good_recs[0].append(i)
 
         nmbr_good_recs = len(good_recs[0])
         print('Event Counts: ', nmbr_good_recs)
@@ -153,6 +159,8 @@ def read_rdt_file(fname, path, channels,
         for c in range(nmbr_channels):
             for i, d in enumerate(record.descr):
                 name = d[0]
+                if name == 'qcd_events' and ints_in_header != 7:
+                    continue
                 metainfo[c, :, i] = recs[good_recs[c]][name]
                 if i >= 13:
                     break

@@ -18,7 +18,8 @@ class RdtMixin(object):
     """
 
     # Checkout RDT File if Channel exists etc
-    def checkout_rdt(self, path_rdt, read_events=100, tpa_list=[0, 1, -1], dvm_channels=0, verb=False):
+    def checkout_rdt(self, path_rdt, read_events=100, tpa_list=[0, 1, -1], dvm_channels=0, verb=False,
+                     ints_in_header=7):
         """
         Prints the channel numbers of a number of events in the rdt File, from the beginning
         :param path_rdt: string, full path to the rdt file e.g. "data/bcks/bck_001.rdt"
@@ -31,10 +32,10 @@ class RdtMixin(object):
         dvm = np.zeros(dvm_channels, dtype=float)
         event = np.zeros(self.record_length, dtype=np.short)
 
-        detectornumbers = np.empty([read_events])
-
         with open(path_rdt, "rb") as f:
             for nmbr_event in range(read_events):
+
+                dummies = []
 
                 try:
                     # read all header infos of the event
@@ -44,10 +45,13 @@ class RdtMixin(object):
                     trig_delay = struct.unpack('i', f.read(4))[0]
                     abs_time_s = struct.unpack('i', f.read(4))[0]
                     abs_time_mus = struct.unpack('i', f.read(4))[0]
-                    delay_ch_tp = struct.unpack('i', f.read(4))[0]
-                    time_low = struct.unpack('I', f.read(4))[0]  # 'L'
-                    time_high = struct.unpack('I', f.read(4))[0]  # 'L'
-                    qcd_events = struct.unpack('I', f.read(4))[0]  # 'L'
+                    if ints_in_header == 7:
+                        delay_ch_tp = struct.unpack('i', f.read(4))[0]
+                        time_low = struct.unpack('I', f.read(4))[0]  # 'L'
+                        time_high = struct.unpack('I', f.read(4))[0]  # 'L'
+                        qcd_events = struct.unpack('I', f.read(4))[0]  # 'L'
+                    else:
+                        dummies.append(f.read(12))
                     hours = struct.unpack('f', f.read(4))[0]  # 'f'
                     dead_time = struct.unpack('f', f.read(4))[0]  # 'f'
                     test_pulse_amplitude = struct.unpack('f', f.read(4))[0]  # 'f'
@@ -81,10 +85,11 @@ class RdtMixin(object):
                         print('channel trigger delay relative to time stamp [µs]: ', trig_delay)
                         print('absolute time [s] (computer time timeval.tv_sec): ', abs_time_s)
                         print('absolute time [us] (computer time timeval.tv_us): ', abs_time_mus)
-                        print('Delay of channel trigger to testpulse [us]: ', delay_ch_tp)
-                        print('time stamp of module trigger low word (10 MHz clock, 0 @ START WRITE ): ', time_low)
-                        print('time stamp of module trigger high word (10 MHz clock, 0 @ START WRITE ): ', time_high)
-                        print('number of qdc events accumulated until digitizer trigger: ', qcd_events)
+                        if ints_in_header == 7:
+                            print('Delay of channel trigger to testpulse [us]: ', delay_ch_tp)
+                            print('time stamp of module trigger low word (10 MHz clock, 0 @ START WRITE ): ', time_low)
+                            print('time stamp of module trigger high word (10 MHz clock, 0 @ START WRITE ): ', time_high)
+                            print('number of qdc events accumulated until digitizer trigger: ', qcd_events)
                     print('measuring hours (0 @ START WRITE): ', hours)
                     if verb:
                         print('accumulated dead time of channel [s] (0 @ START WRITE): ', dead_time)
@@ -96,11 +101,11 @@ class RdtMixin(object):
                         print('DVM channel {} : {}'.format(i, dvm[i]))
 
     # checkout con file
-    def checkout_con(self, path_con, read_events=100):
+    def checkout_con(self, path_con, read_events=100, ints_in_header=7):
         record = np.dtype([('detector_nmbr', 'int32'),
                            ('pulse_height', 'float32'),
                            ('time_stamp_low', 'uint32'),
-                           ('time_stamp_high', 'uint32'),
+                           ('time_stamp_high', 'uint32', int(ints_in_header == 7)),
                            ('dead_time', 'float32'),
                            ('mus_since_last_tp', 'int32'),
                            ])
@@ -110,9 +115,14 @@ class RdtMixin(object):
         if read_events > len(cons):
             read_events = len(cons)
 
-        print("detector_nmbr, pulse_height, time_stamp_low, time_stamp_high, dead_time, mus_since_last_tp")
-        for i in range(read_events):
-            print(cons[i])
+        if ints_in_header == 7:
+            print("detector_nmbr, pulse_height, time_stamp_low, time_stamp_high, dead_time, mus_since_last_tp")
+            for i in range(read_events):
+                print(cons[i])
+        else:
+            print("detector_nmbr, pulse_height, time_stamp(?), dead_time, mus_since_last_tp")
+            for i in range(read_events):
+                print(cons[i])
 
     # checkout dig file
     def checkout_dig(self, path_dig, read_events=100):
@@ -157,6 +167,7 @@ class RdtMixin(object):
                         calc_sev=False, calc_nps=True,
                         processes=4,
                         event_dtype='float32',
+                        ints_in_header=7,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file
@@ -187,6 +198,7 @@ class RdtMixin(object):
                              calc_nps=calc_nps,
                              processes=processes,
                              event_dtype=event_dtype,
+                             ints_in_header=ints_in_header,
                              )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -209,7 +221,7 @@ class RdtMixin(object):
         print('Filepath and -name saved.')
 
 
-    def include_con_file(self, path_con_file):
+    def include_con_file(self, path_con_file, ints_in_header=7):
 
         print('Accessing CON File...')
 
@@ -217,7 +229,7 @@ class RdtMixin(object):
         record = np.dtype([('detector_nmbr', 'int32'),
                            ('pulse_height', 'float32'),
                            ('time_stamp_low', 'uint32'),
-                           ('time_stamp_high', 'uint32'),
+                           ('time_stamp_high', 'uint32', int(ints_in_header == 7)),
                            ('dead_time', 'float32'),
                            ('mus_since_last_tp', 'int32'),
                            ])
@@ -228,7 +240,10 @@ class RdtMixin(object):
         nmbr_cp = np.sum(data['detector_nmbr'] == self.channels[0])
 
         cond = data['detector_nmbr'] == self.channels[0]
-        hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) * 1e-7 / 3600
+        if ints_in_header == 7:
+            hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) * 1e-7 / 3600
+        else:
+            raise NotImplementedError('For other cases than 7 Ints in Header this is not implemented yet.')
 
         # create file handles
         f = h5py.File(self.path_h5, 'r+')

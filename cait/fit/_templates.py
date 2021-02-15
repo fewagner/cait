@@ -91,7 +91,7 @@ class sev_fit_template:
         self.pm_par = pm_par
         self.down = down
         if down > 1:
-            t = np.mean(t.reshape(len(t/down), down), axis=1)  # only first of the grouped time values
+            t = np.mean(t.reshape(int(len(t)/down), down), axis=1)  # only first of the grouped time values
         self.t = t
 
     def sef(self, h, t0, a0):
@@ -166,7 +166,7 @@ class sev_fit_template:
         """
 
         if self.down > 1:
-            event = np.mean(event.reshape(len(event/self.down), self.down), axis=1)
+            event = np.mean(event.reshape(int(len(event)/self.down), self.down), axis=1)
 
         offset = np.mean(event[:int(len(event) / 8)])
         event = event - offset

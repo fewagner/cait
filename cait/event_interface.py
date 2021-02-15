@@ -33,11 +33,7 @@ class EventInterface:
         :param down: int, the downsample rate for viewing the events
         """
 
-        if nmbr_channels not in [2, 3]:
-            raise ValueError("Channel Number must be 2 or 3!")
-        else:
-            self.nmbr_channels = nmbr_channels
-
+        self.nmbr_channels = nmbr_channels
         self.module = module
         self.run = run
         self.nmbr_channels = nmbr_channels
@@ -60,8 +56,8 @@ class EventInterface:
         self.valid_types = ['events', 'testpulses', 'noise']
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
-        elif self.nmbr_channels == 3:
-            self.channel_names = ['Channel 1', 'Channel 2', 'Channel 3']
+        else:
+            self.channel_names = ['Channel {}'.format(i) for i in range(nmbr_channels)]
         self.xlim = None
         self.ylim = None
 
@@ -72,17 +68,17 @@ class EventInterface:
     # ------------------------------------------------------------
 
     # Load in the hdf5 dataset
-    def load_bck(self, path, bck_nmbr, channels,
-                 bck_naming='bck',
-                 appendix=True,
-                 which_to_label=['events']):
+    def load_h5(self, path,
+                fname,
+                channels,
+                appendix=True,
+                which_to_label=['events']):
         """
         Load a hdf5 dataset to the instance
 
-        :param path: string, path to the file folder; e.g. "data/" --> filepath "data/bck_nmbr-[appendix].h5"
-        :param bck_nmbr: string, the appended number of the file; e.g. "bck_001" --> "001"
+        :param path: string, path to the file folder; e.g. "data/" --> filepath "data/fname-[appendix].h5"
         :param channels: list of strings, the numbers of the channels that are included in the bck file
-        :param bck_naming: string, the file naming, e.g. bck, cal, blue, ....
+        :param fname: string, the file naming, e.g. bck, cal, blue, ....
         :param appendix: bool, if True the appendix generated from the gen_h5_from_rdt function is appended to the name
         :param which_to_label: list of strings, possible members are events, testpulses, noise
         :return: -
@@ -91,8 +87,10 @@ class EventInterface:
         if appendix:
             if self.nmbr_channels == 2:
                 app = '-P_Ch{}-L_Ch{}'.format(*channels)
-            elif self.nmbr_channels == 3:
-                app = '-1_Ch{}-2_Ch{}-3_Ch{}'.format(*channels)
+            else:
+                app = ''
+                for i, c in enumerate(channels):
+                    app += '-{}_Ch{}'.format(i + 1, c)
         else:
             app = ''
 
@@ -102,16 +100,16 @@ class EventInterface:
             raise ValueError(
                 'which_to_label must be a list and contain at least one of events, testpulses, noise.')
 
-        self.bck_naming = bck_naming
-        self.bck_nmbr = bck_nmbr
+        self.fname = fname
 
         if not len(channels) == self.nmbr_channels:
             raise ValueError(
                 'List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        path_h5 = path + '{}_{}{}.h5'.format(bck_naming, bck_nmbr, app)
+        path_h5 = path + '{}{}.h5'.format(fname, app)
+        self.path_h5 = path_h5
 
-        self.f = h5py.File(path_h5, 'r')
+        self.f = h5py.File(path_h5, 'r+')
         self.channels = channels
 
         self.nmbrs = {}
@@ -134,6 +132,8 @@ class EventInterface:
         except KeyError:
             print('No noise in h5 file.')
 
+        self.f.close()
+
         print('Bck File loaded.')
 
     # ------------------------------------------------------------
@@ -151,7 +151,7 @@ class EventInterface:
         """
 
         self.path_csv_labels = path + \
-            'labels_{}_{}_'.format(self.bck_naming, self.bck_nmbr)
+            'labels_{}_'.format(self.fname)
 
         try:
             for type in self.which_to_label:
@@ -179,7 +179,7 @@ class EventInterface:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_labels = path + \
-            'labels_{}_{}_'.format(self.bck_naming, self.bck_nmbr)
+            'labels_{}_'.format(self.fname)
 
         filename = self.path_csv_labels + type + '.csv'
         print('Loading Labels from {}.'.format(filename))
@@ -199,11 +199,13 @@ class EventInterface:
         :return: -
         """
 
+        self.f = h5py.File(self.path_h5, 'r+')
+
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_labels = path + \
-            'labels_{}_{}_'.format(self.bck_naming, self.bck_nmbr)
+            'labels_{}_'.format(self.fname)
 
         # check if hdf5 file has labels
         if not self.f[type]['labels']:
@@ -213,6 +215,8 @@ class EventInterface:
                        np.array(self.f[type]['labels']),
                        fmt='%i', delimiter='\n')
             print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
+
+        self.f.close()
 
     # ------------------------------------------------------------
     # PREDICTIONS HANDLING
@@ -233,7 +237,7 @@ class EventInterface:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_predictions = path + \
-            '{}_predictions_{}_{}_'.format(model, self.bck_naming, self.bck_nmbr)
+            '{}_predictions_{}_'.format(model, self.fname)
 
         filename = self.path_csv_predictions + type + '.csv'
         print('Loading Predictions from {}.'.format(filename))
@@ -262,12 +266,13 @@ class EventInterface:
         :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
         :return: -
         """
+        self.f = h5py.File(self.path_h5, 'r+')
 
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_predictions = path + \
-            '{}_predictions_{}_{}_'.format(model, self.bck_naming, self.bck_nmbr)
+            '{}_predictions_{}_'.format(model, self.fname)
 
         # check if hdf5 file has labels
         if not self.f[type]['{}_predictions'.format(model)]:
@@ -277,6 +282,7 @@ class EventInterface:
                        np.array(self.f[type]['{}_predictions'.format(model)]),
                        fmt='%i', delimiter='\n')
             print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
+        self.f.close()
 
     # ------------------------------------------------------------
     # FEATURE HANDLING
@@ -287,15 +293,18 @@ class EventInterface:
         """
         Add the optimal transfer function from the HDF5 file
         """
+        self.f = h5py.File(self.path_h5, 'r+')
         of_real = np.array(self.f['optimumfilter']['optimumfilter_real'])
         of_imag = np.array(self.f['optimumfilter']['optimumfilter_imag'])
         self.of = of_real + 1j*of_imag
         print('Added the optimal transfer function.')
+        self.f.close()
 
     def load_sev_par(self, sample_length=0.04):
         """
         Add the sev fit parameters from the HDF5 file
         """
+        self.f = h5py.File(self.path_h5, 'r+')
         sev_par = np.array(self.f['stdevent']['fitpar'])
         t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
         self.fit_models = []
@@ -303,6 +312,7 @@ class EventInterface:
             self.fit_models.append(sev_fit_template(pm_par=sev_par[c], t=t))
 
         print('Added the sev fit parameters.')
+        self.f.close()
 
 
     # ------------------------------------------------------------
@@ -439,6 +449,7 @@ class EventInterface:
         :param type: string, either events, testpulses or noise
         :return: -
         """
+        self.f = h5py.File(self.path_h5, 'r+')
 
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
@@ -486,12 +497,14 @@ class EventInterface:
                 sev_fit.append(self.fit_models[c].sec(*fp[c]) + offset)
 
         # def colors
-        if self.nmbr_channels == 2:
-            colors = ['blue', 'red']
-            anti_colors = ['red', 'blue']
-        elif self.nmbr_channels == 3:
-            colors = ['red', 'red', 'blue']
-            anti_colors = ['blue', 'blue', 'red']
+        if self.nmbr_channels == 1:
+            colors = ['blue']
+            anti_colors = ['red']
+        else:
+            colors = ['red' for i in range(self.nmbr_channels - 1)]
+            colors.append('blue')
+            anti_colors = ['blue' for i in range(self.nmbr_channels - 1)]
+            colors.append('red')
 
         # -------- START PLOTTING --------
         plt.close()
@@ -501,7 +514,7 @@ class EventInterface:
             plt.subplot(self.nmbr_channels, 1, i + 1)
             plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
             plt.plot(event[i], label=self.channel_names[i], color=colors[i])
-            plt.title('{} {} + {} {}'.format(type, idx,
+            plt.title('Index {}, {} {}'.format(idx,
                                              self.channel_names[i], appendix))
 
             # triangulation
@@ -544,6 +557,8 @@ class EventInterface:
         if type == 'testpulses':
             tpa = self.f['testpulses']['testpulseamplitude'][idx]
             print('TPA: {}'.format(tpa))
+
+        self.f.close()
 
 
     def _print_labels(self):
@@ -633,7 +648,8 @@ class EventInterface:
 
 
     def start_labeling(self,
-                       start_from_idx,
+                       start_from_idx=0,
+                       print_label_list=True,
                        label_only_class=None,
                        label_only_prediction=None,
                        model=None):
@@ -687,7 +703,8 @@ class EventInterface:
 
                 if class_condition and prediction_condition: # or label_all_classes:
 
-                    self._print_labels()
+                    if print_label_list:
+                        self._print_labels()
                     self.show(idx, type)
 
                     for i, channel in enumerate(self.channel_names):

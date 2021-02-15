@@ -70,7 +70,7 @@ class TestData():
         self.duration = duration
         self.nmbr_samples = int(duration * sample_frequency)
         self.pulser_interval = pulser_interval
-        self.pulser_interval_samples = int(pulser_interval * 25000)
+        self.pulser_interval_samples = int(pulser_interval * sample_frequency)
         self.channels = channels
         self.nmbr_channels = len(channels)
         self.nmbr_events = int(self.duration / pulser_interval)
@@ -104,12 +104,12 @@ class TestData():
         :type start_offset: float >= 0
         """
         self._generate_rdt_file(start_offset=start_offset)
-        self._generate_con_file(start_offset=start_offset)
+        self._generate_con_file()
         self._generate_par_file(start_offset=start_offset)
         self._generate_csmpl_files()
         self._generate_sql_file(start_offset=start_offset)
-        self._generate_dig_stamps(start_offset=start_offset)
-        self._generate_test_stamps(start_offset=start_offset)
+        self._generate_dig_stamps()
+        self._generate_test_stamps()
 
     def update_duration(self, new_duration):
         """
@@ -178,13 +178,14 @@ class TestData():
                 recs['coincide_pulses'][idx] = 0
                 recs['trig_count'][idx] = e
                 recs['trig_delay'][idx] = 0
-                recs['abs_time_s'][idx] = int(self.start_s + start_offset + e * self.pulser_interval)
-                recs['abs_time_mus'][idx] = int(((self.start_s + start_offset + e * self.pulser_interval) % 1) * 1e6)
+                recs['abs_time_s'][idx] = int(self.start_s + start_offset + (e + 1) * self.pulser_interval)
+                recs['abs_time_mus'][idx] = int(
+                    ((self.start_s + start_offset + (e + 1) * self.pulser_interval) % 1) * 1e6)
                 recs['delay_ch_tp'][idx] = 0
-                recs['time_low'][idx] = int((self.start_s + e * self.pulser_interval) / (2 ** 32))
-                recs['time_high'][idx] = int((self.start_s + e * self.pulser_interval) % (2 ** 32))
+                recs['time_low'][idx] = int(((e + 1) * self.pulser_interval) / (2 ** 32))
+                recs['time_high'][idx] = int(((e + 1) * self.pulser_interval) % (2 ** 32))
                 recs['qcd_events'][idx] = 0
-                recs['hours'][idx] = e * self.pulser_interval / 3600
+                recs['hours'][idx] = (e + 1) * self.pulser_interval / 3600
                 recs['dead_time'][idx] = 0
                 recs['test_pulse_amplitude'][idx] = self.tpas[int(e % len(self.tpas))]
                 recs['dac_output'][idx] = 0
@@ -208,7 +209,7 @@ class TestData():
 
         print('Rdt file written.')
 
-    def _generate_con_file(self, start_offset=0):
+    def _generate_con_file(self):
         """
         Generate a con file from the measurement.
 
@@ -235,8 +236,8 @@ class TestData():
                                                                           scale=self.baseline_resolution[c], size=1),
                     self.l[c],
                     self.k[c])
-                recs['time_stamp_low'][idx] = int(((start_offset + e * self.pulser_interval)*1e7) % (2 ** 32))
-                recs['time_stamp_high'][idx] = int((start_offset + e * self.pulser_interval)*1e7 / (2 ** 32))
+                recs['time_stamp_low'][idx] = int((((e + 1) * self.pulser_interval) * 1e7) % (2 ** 32))
+                recs['time_stamp_high'][idx] = int(((e + 1) * self.pulser_interval) * 1e7 / (2 ** 32))
                 recs['dead_time'][idx] = 0
                 recs['mus_since_last_tp'][idx] = 0
                 tpas[idx] = self.tpas[int(e % len(self.tpas))]
@@ -353,7 +354,7 @@ class TestData():
         cursor.execute(sql)
         sql = """ CREATE TABLE IF NOT EXISTS FILELIST (
                                                             CH integer,
-                                                            FILENAME text,
+                                                            FILENAME text PRIMARY KEY,
                                                             TYPE integer,
                                                             LABEL text,
                                                             CREATED text
@@ -376,7 +377,7 @@ class TestData():
 
         print('Sql file written.')
 
-    def _generate_dig_stamps(self, start_offset=0):  # start_offset in seconds
+    def _generate_dig_stamps(self):  # start_offset in seconds
         """
         Generate a dig_stamps file of the measurement.
 
@@ -391,7 +392,8 @@ class TestData():
 
         stamps = np.empty(self.nmbr_bankswitches, dtype=dig)
         for b in range(self.nmbr_bankswitches):
-            st = b * self.bankswitch_samples + start_offset * self.sample_frequency + self.cdaq_offset  # the dig stamps are in 10MHz samples
+            st = b * self.bankswitch_samples + np.abs(
+                self.bankswitch_samples - self.cdaq_offset)  # the dig stamps are in 10MHz samples
             st = np.floor(st * self.clock / self.sample_frequency)
             stamps['stamp'][b] = st
             stamps['bank'][b] = 0
@@ -403,7 +405,7 @@ class TestData():
 
         print('Dig_stamps file written.')
 
-    def _generate_test_stamps(self, start_offset=0):  # start_offset in seconds
+    def _generate_test_stamps(self):  # start_offset in seconds
         """
         Generate a test_stamps file of the measurement.
 
@@ -418,8 +420,7 @@ class TestData():
 
         stamps = np.empty(self.nmbr_events, dtype=teststamp)
         for e in range(self.nmbr_events):
-            stamps['stamp'][
-                e] = e * self.pulser_interval_samples + start_offset * self.sample_frequency + self.cdaq_offset  # the dig stamps are in 10MHz samples
+            stamps['stamp'][e] = (e + 1) * self.pulser_interval_samples + self.cdaq_offset  # the dig stamps are in 10MHz samples
             stamps['stamp'][e] = np.floor(stamps['stamp'][e] * self.clock / self.sample_frequency)
             stamps['tpa'][e] = self.tpas[int(e % len(self.tpas))]
             stamps['tpch'][e] = 0
