@@ -942,16 +942,12 @@ class EvaluationTools:
                             ipdb.set_trace()
 
         if self.save_as == False:
-            print(
-                "-------------------------------------------------------------------------")
+            print("-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
-            print(
-                'When clicking on a single event a window with its timeseries is opened.')
-            print(
-                "Hovering over a a single event and pressing 'm' also opnes the timeseries")
+            print('When clicking on a single event a window with its timeseries is opened.')
+            print("Hovering over a a single event and pressing 'm' also opnes the timeseries")
             print("of this event and adds the calculated mainparameters to the plot.")
-            print(
-                '-------------------------------------------------------------------------')
+            print('-------------------------------------------------------------------------')
 
         # -------- PLOT --------
         # TSNE
@@ -959,10 +955,11 @@ class EvaluationTools:
             self.get_features(plt_what, verb=verb))
 
         plt.close()
-        # plt.use_cait_stype(x_size=figsize[0],y_size=figsize[1])
-        use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=8)
-        mpl.rcParams['font.family'] = 'STIXGeneral'
-
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
 
 
         if self.save_as == 'pgf':
@@ -973,7 +970,8 @@ class EvaluationTools:
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
         else:
             fig, ax = plt.subplots(
-                nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
+                # nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
+                nrows=nrows, ncols=ncols, sharex=True, sharey=True)
 
         annot = [None] * nrows * ncols
         sc = [None] * nrows * ncols
@@ -1247,6 +1245,13 @@ class EvaluationTools:
         princcomp = pca.fit_transform(self.get_features(plt_what, verb=verb))
         princcomp = princcomp[:,[xy_comp[0]-1,xy_comp[1]-1]]
 
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
+
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
@@ -1361,6 +1366,13 @@ class EvaluationTools:
 
         nrows = math.ceil(len(unique_label_nbrs) / ncols)
 
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
+
         fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
 
         for i, l in enumerate(unique_label_nbrs):
@@ -1400,6 +1412,14 @@ class EvaluationTools:
         :param bins:            - optional, default auto : bins for the histograms.
         :param ylog:            - optional, default False : if True the y axis is in log scale.
         """
+
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
+
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
             mpl.use('pdf')
@@ -1416,15 +1436,13 @@ class EvaluationTools:
         saturated_nbr = list(self.labels.keys())[list(
             self.labels.values()).index('Strongly_Saturated_Event_Pulse')]
 
-        if 1 and 9 in max_height_per_label:
+        if events_nbr and saturated_nbr in max_height_per_label:
             fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
-            ax.hist(max_height_per_label[events_nbr],
-                    label='{}'.format(self.labels[events_nbr]),
-                    bins=bins)
-            ax.hist(max_height_per_label[saturated_nbr],
-                    label='{}'.format(self.labels[saturated_nbr]),
-                    bins=bins)
+            ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
+                    label=['{}'.format(self.labels[events_nbr]),'{}'.format(self.labels[saturated_nbr])],
+                    bins=bins,
+                    histtype='barstacked')
 
             ax.set_xlabel('pulse height (V)')
             ax.set_ylabel('number of events')
@@ -1448,7 +1466,7 @@ class EvaluationTools:
                 'No Labels for Event Pulses or Strongly Saturated Event Pulses')
 
 
-    def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, extend_plot=False, verb=False):
+    def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, figsize=None, extend_plot=False, verb=False):
         """
         Plots the number of correctly predicted labels over volts (pulse height)
         for every label.
@@ -1457,9 +1475,18 @@ class EvaluationTools:
         :param what:            - Optional, default all : test or train data or all.
         :param bin_size:        - Optional, default 4 : bin size for calculating the average.
         :param ncols:           - Optional, default 2 : number of plots side by side.
+        :param figsize:         - Optional, default None : Size of the figure for matplotlib.
         :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
         :param verb:            - Optional, default False : if True additional information is printed on the console.
         """
+
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
+
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
@@ -1569,6 +1596,14 @@ class EvaluationTools:
         :param figsize:         - optional, default None : changes the overall figure size.
         :param verb:            - Optional, default False : if True additional information is printed on the console.
         """
+
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                            dpi=None)
+
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
@@ -1647,7 +1682,9 @@ class EvaluationTools:
 
         ax.set_xlabel('pulse height (V)')
         ax.set_ylabel('accuray')
-        ax.set_xlim(0, 0.2)
+        ax.set_xlim(0, 0.12)
+        fig.tight_layout()
+        plt.tight_layout()
         # plt.gcf().subplots_adjust(bottom=-0.1)
         if self.save_as != False:
             # plt.savefig(
@@ -1677,6 +1714,13 @@ class EvaluationTools:
         :param figsize:             - optional, default None : changes the overall figure size.
         :param verb:                - Optional, default False : if True additional information is printed on the console.
         """
+
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
 
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
@@ -1823,6 +1867,14 @@ class EvaluationTools:
 
         :param figsize: - optional, default None : changes the overall figure size.
         """
+
+        plt.close()
+        if figsize is None:
+            use_cait_style(fontsize=14, autolayout=False, dpi=None)
+        else:
+            use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
+                           autolayout=False, dpi=None)
+
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
