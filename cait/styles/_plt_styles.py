@@ -17,10 +17,10 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=30
     mpl.rcParams['xtick.labelsize'] = fontsize
     mpl.rcParams['ytick.labelsize'] = fontsize
     mpl.rcParams['font.size'] = fontsize
-    if autolayout != None:
+    if autolayout is not None:
         mpl.rcParams['figure.autolayout'] = autolayout
     mpl.rcParams['figure.figsize'] = (x_size, y_size)
-    if dpi != None:
+    if dpi is not None:
         mpl.rcParams['figure.dpi'] = dpi
     mpl.rcParams['axes.titlesize'] = fontsize
     mpl.rcParams['axes.labelsize'] = fontsize
@@ -29,7 +29,7 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=30
     mpl.rcParams['legend.fontsize'] = fontsize
     mpl.rcParams['mathtext.fontset'] = 'stix'
     mpl.rcParams['font.family'] = 'STIXGeneral'
-    if dpi != None:
+    if dpi is not None:
         mpl.rcParams['savefig.dpi'] = dpi
 
 def make_grid():
