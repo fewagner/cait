@@ -18,6 +18,7 @@ from sklearn.decomposition import PCA
 
 from .evaluation._color import console_colors, mpl_default_colors
 from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
+from .styles._plt_styles import use_cait_style, make_grid
 
 # -----------------------------------------------------------
 # CLASS
@@ -957,6 +958,13 @@ class EvaluationTools:
         princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
             self.get_features(plt_what, verb=verb))
 
+        plt.close()
+        # plt.use_cait_stype(x_size=figsize[0],y_size=figsize[1])
+        use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=8)
+        mpl.rcParams['font.family'] = 'STIXGeneral'
+
+
+
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
@@ -1017,8 +1025,8 @@ class EvaluationTools:
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
 
-        # fig.tight_layout()
-        # plt.tight_layout()
+        fig.tight_layout()
+        plt.tight_layout()
         if self.save_as != False:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
@@ -1040,7 +1048,6 @@ class EvaluationTools:
             fig.canvas.mpl_connect('key_press_event', on_key)
             fig.canvas.mpl_connect("motion_notify_event", hover)
             fig.canvas.mpl_connect('button_press_event', onclick)
-
             plt.show()
         plt.close()
 
