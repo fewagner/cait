@@ -509,6 +509,7 @@ class PlotMixin(object):
                 title=None,
                 xlabel=None,
                 ylabel=None,
+                which_method='ph',
                 x_channel=0,
                 y_channel=1,
                 xlim=None,
@@ -522,7 +523,7 @@ class PlotMixin(object):
                 block=False,
                 marker='.',
                 alpha=0.8,
-                s=1,
+                s=10,
                  show=True,
                  save_path=None):
         """
@@ -541,8 +542,16 @@ class PlotMixin(object):
         """
 
         with h5py.File(self.path_h5, 'r') as f_h5:
-            x_par = f_h5[type]['mainpar'][x_channel, :, 0]
-            y_par = f_h5[type]['mainpar'][y_channel, :, 0]
+            if which_method == 'ph':
+                x_par = f_h5[type]['mainpar'][x_channel, :, 0]
+                y_par = f_h5[type]['mainpar'][y_channel, :, 0]
+            elif which_method == 'sef':
+                x_par = f_h5[type]['sev_fit_par'][x_channel, :, 0]
+                y_par = f_h5[type]['sev_fit_par'][y_channel, :, 0]
+            elif which_method == 'of':
+                x_par = f_h5[type]['of_ph'][x_channel]
+                y_par = f_h5[type]['of_ph'][y_channel]
+
             nmbr_events = len(x_par)
 
             if only_idx is None:
