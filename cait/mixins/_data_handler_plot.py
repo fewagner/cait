@@ -27,6 +27,7 @@ class PlotMixin(object):
     # Plot the SEV
     def show_sev(self,
                  type='stdevent',
+                 channel=None,
                  title=None,
                  show_fit=True,
                  block=True,
@@ -53,19 +54,38 @@ class PlotMixin(object):
             use_cait_style()
             plt.close()
 
-            for i, ch in enumerate(self.channel_names):
-                plt.subplot(self.nmbr_channels, 1, i + 1)
+            if channel is None:
+
+                for i, ch in enumerate(self.channel_names):
+                    plt.subplot(self.nmbr_channels, 1, i + 1)
+                    if not show_fit:
+                        plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, label='Standardevent')
+                    else:
+                        plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
+                        plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2, label='Parametric Fit')
+                    make_grid()
+                    plt.xlabel('Time (ms)')
+                    plt.ylabel('Amplitude (V)')
+                    plt.legend()
+                    if title is None:
+                        plt.title(ch + ' ' + type)
+                    else:
+                        plt.title(title)
+
+            else:
+
                 if not show_fit:
-                    plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, label='Standardevent')
+                    plt.plot(t, sev[channel], color=self.colors[channel], zorder=10, linewidth=3, label='Standardevent')
                 else:
-                    plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
-                    plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2, label='Parametric Fit')
+                    plt.plot(t, sev[channel], color=self.colors[channel], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
+                    plt.plot(t, pulse_template(t, *sev_fitpar[channel]), color='black', alpha=0.7, zorder=10, linewidth=2,
+                             label='Parametric Fit')
                 make_grid()
                 plt.xlabel('Time (ms)')
                 plt.ylabel('Amplitude (V)')
                 plt.legend()
                 if title is None:
-                    plt.title(ch + ' ' + type)
+                    plt.title(channel + ' ' + type)
                 else:
                     plt.title(title)
 
@@ -127,6 +147,7 @@ class PlotMixin(object):
 
     # Plot the NPS
     def show_nps(self,
+                 channel=None,
                  title=None,
                  block=True,
                  show=True,
@@ -143,16 +164,29 @@ class PlotMixin(object):
             use_cait_style()
             plt.close()
 
-            for i, ch in enumerate(self.channel_names):
-                plt.subplot(self.nmbr_channels, 1, i + 1)
-                plt.loglog(f['noise']['freq'], f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
+            if channel is None:
+
+                for i, ch in enumerate(self.channel_names):
+                    plt.subplot(self.nmbr_channels, 1, i + 1)
+                    plt.loglog(f['noise']['freq'], f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
+                    make_grid()
+                    if title is None:
+                        plt.title(ch + ' NPS')
+                    else:
+                        plt.title(title)
+                    plt.ylabel('Frequency Amplitude (a.u.)')
+                plt.xlabel('Frequency (Hz)')
+
+            else:
+                plt.loglog(f['noise']['freq'], f['noise']['nps'][channel], color=self.colors[channel], zorder=10, linewidth=3)
                 make_grid()
                 if title is None:
-                    plt.title(ch + ' NPS')
+                    plt.title(channel + ' NPS')
                 else:
                     plt.title(title)
-                plt.xlabel('Frequency (Hz)')
                 plt.ylabel('Frequency Amplitude (a.u.)')
+                plt.xlabel('Frequency (Hz)')
+
 
             if save_path is not None:
                 plt.savefig(save_path)
@@ -162,6 +196,7 @@ class PlotMixin(object):
 
     # Plot the OF
     def show_of(self,
+                channel=None,
                 title=None,
                 block=True,
                  show=True,
@@ -187,14 +222,25 @@ class PlotMixin(object):
             use_cait_style()
             plt.close()
 
-            for i, ch in enumerate(self.channel_names):
-                plt.subplot(self.nmbr_channels, 1, i + 1)
-                plt.loglog(f['noise']['freq'], of[i], color=self.colors[i], zorder=10, linewidth=3)
+            if channel is None:
+
+                for i, ch in enumerate(self.channel_names):
+                    plt.subplot(self.nmbr_channels, 1, i + 1)
+                    plt.loglog(f['noise']['freq'], of[i], color=self.colors[i], zorder=10, linewidth=3)
+                    make_grid()
+                    plt.ylabel('Frequency Amplitude (a.u.)')
+                    if title is None:
+                        plt.title(ch + ' OF')
+                    else:
+                        plt.title(title)
+                plt.xlabel('Frequency (Hz)')
+            else:
+                plt.loglog(f['noise']['freq'], of[channel], color=self.colors[channel], zorder=10, linewidth=3)
                 make_grid()
                 plt.xlabel('Frequency (Hz)')
                 plt.ylabel('Frequency Amplitude (a.u.)')
                 if title is None:
-                    plt.title(ch + ' OF')
+                    plt.title(channel + ' OF')
                 else:
                     plt.title(title)
 
@@ -341,7 +387,7 @@ class PlotMixin(object):
                     vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i], idx2s[i]])
 
                 if cut_flag is not None:
-                    vals[i] = vals[cut_flag]
+                    vals[i] = vals[i][cut_flag]
 
             use_cait_style()
             plt.close()
