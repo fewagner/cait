@@ -6,15 +6,8 @@ import matplotlib.pyplot as plt
 from scipy.stats import linregress, t, norm
 from scipy import odr
 from scipy.interpolate import interp1d
-import os
-from pathlib import Path
+from ..styles._plt_styles import use_cait_style, make_grid
 
-package_directory = os.path.dirname(os.path.abspath(__file__))
-package_directory = Path(package_directory)
-plt.style.use('seaborn-paper')
-path_styles = os.path.join(package_directory.parent, 'mixins', 'plt_styles', 'PaperDoubleFig_75.mplstyle')
-
-plt.style.use(path_styles)
 
 # functions
 
@@ -48,8 +41,8 @@ class PolyModel:
         d = np.diag(d)
 
         lower, upper = y - np.sqrt(
-            self.dydx(x) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d), \
-                       y + np.sqrt(self.dydx(x) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d)
+            np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d), \
+                       y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d)
         return lower, y, upper
 
 
@@ -106,7 +99,8 @@ def energy_calibration_linear(evhs,
                               max_dist,
                               cpe_factor,
                               exclude_tpas=[],
-                              plot=False
+                              plot=False,
+                              poly_order=5,
                               ):
     """
     TODO
@@ -171,48 +165,44 @@ def energy_calibration_linear(evhs,
         all_regs.append(regs)  # all_regs[n][m] gives now the lin reg parameters in the n'th interval for the m'th TPA
 
     if plot:
+        use_cait_style()
         # plot the regressions
         plt.close()
-        plt.scatter(tp_hours, tphs, s=1, marker='.', color='blue')
+        plt.scatter(tp_hours, tphs, s=1, marker='.', color='blue', zorder=10)
         for i, iv in enumerate(intervals):
             t = np.linspace(iv[0], iv[1], 100)
             for m in range(len(all_linear_tpas[i])):
                 lower, y, upper = all_regs[i][m].y_sigma(t)
-                plt.plot(t, y, color='red', linewidth=2, zorder=9)
-                plt.fill_between(t, lower, upper, color='black', alpha=0.3)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        #plt.ylim([0, y[-1]])
+                plt.plot(t, y, color='red', linewidth=2, zorder=15)
+                plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
+        make_grid()
+        plt.ylim([0, start_saturation])
         plt.xlabel('Hours (h)')
         plt.ylabel('Pulse Height (V)')
         plt.show()
+
 
         # plot the polynomials
         plt.close()
         for i, iv in enumerate(intervals):
             x_data, x_sigma = [], []
+            plot_timestamp = (iv[1] - iv[0]) / 2
+            print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
             for s in all_regs[i]:
-                xl, x, xu = s.y_sigma((iv[1] - iv[0]) / 2)
+                xl, x, xu = s.y_sigma(plot_timestamp)
                 x_data.append(x)
                 x_sigma.append(xu - xl)
             y_data = all_linear_tpas[i]
-            model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma)
+            model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
 
             h = np.linspace(0, start_saturation, 100)
             yl, y, yu = model.y_pred(h)
 
-            plt.plot(h, y, color='red', linewidth=2, zorder=1)
-            plt.fill_between(h, yl, yu, color='black', alpha=0.3)
-            plt.plot(x_data, y_data, 'b.', markersize=3.5)
-            plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+            plt.plot(h, y, color='red', linewidth=2, zorder=15)
+            plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
+            plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
+            plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
+        make_grid()
         plt.ylim([0, y[-1]])
         plt.ylabel('Testpulse Amplitude (V)')
         plt.xlabel('Pulse Height (V)')
@@ -224,6 +214,8 @@ def energy_calibration_linear(evhs,
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
     for e in range(len(evhs)):
+        if e%500 == 0:
+            print('Calculating Recoil Energies: {:.3} %'.format(100*e/len(evhs)))
         for i, iv in enumerate(intervals):
             if (i == 0 and ev_hours[e] <= iv[0]) or (ev_hours[e] > iv[0] and ev_hours[e] <= iv[1]):
                 x_data, x_sigma = [], []
@@ -232,7 +224,7 @@ def energy_calibration_linear(evhs,
                     x_data.append(x)
                     x_sigma.append(xu - xl)
                 y_data = all_linear_tpas[i]
-                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma)
+                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
                 yl, y, yu = model.y_pred(evhs[e])
 
                 energies[e] = cpe_factor * y

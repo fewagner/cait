@@ -199,6 +199,7 @@ class RdtMixin(object):
                              processes=processes,
                              event_dtype=event_dtype,
                              ints_in_header=ints_in_header,
+                             sample_frequency=self.sample_frequency,
                              )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -246,22 +247,20 @@ class RdtMixin(object):
             raise NotImplementedError('For other cases than 7 Ints in Header this is not implemented yet.')
 
         # create file handles
-        f = h5py.File(self.path_h5, 'r+')
-        f.require_group('controlpulses')
-        cp_hours = f['controlpulses'].require_dataset(name='hours',
-                                                      shape=(len(hours)),
-                                                      dtype=float)
-        cp_hours[...] = hours
-        cp_ph = f['controlpulses'].require_dataset(name='pulse_height',
-                                                      shape=(self.nmbr_channels, nmbr_cp),
-                                                      dtype=float)
+        with h5py.File(self.path_h5, 'r+') as f:
+            f.require_group('controlpulses')
+            cp_hours = f['controlpulses'].require_dataset(name='hours',
+                                                          shape=(len(hours)),
+                                                          dtype=float)
+            cp_hours[...] = hours
+            cp_ph = f['controlpulses'].require_dataset(name='pulse_height',
+                                                          shape=(self.nmbr_channels, nmbr_cp),
+                                                          dtype=float)
 
-        for i, c in enumerate(self.channels):
-            cond = data['detector_nmbr'] == c
+            for i, c in enumerate(self.channels):
+                cond = data['detector_nmbr'] == c
 
-            # write data to file
-            cp_ph[i, ...] = data['pulse_height'][cond]
-
-        f.close()
+                # write data to file
+                cp_ph[i, ...] = data['pulse_height'][cond]
 
         print('CON File included.')

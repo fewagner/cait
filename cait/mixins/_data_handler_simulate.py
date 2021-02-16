@@ -83,143 +83,140 @@ class SimulateMixin(object):
         """
 
         # create file handle
-        f = h5py.File(path_sim, 'w')
-        f_read = h5py.File(self.path_h5, 'r')
+        with h5py.File(path_sim, 'w') as f, h5py.File(self.path_h5, 'r') as f_read:
 
-        nmbr_thrown_events = 0
-        nmbr_thrown_testpulses = 0
+            nmbr_thrown_events = 0
+            nmbr_thrown_testpulses = 0
 
-        if size_events > 0:
-            print('Simulating Events.')
-            data = f.create_group('events')
-            data.create_dataset(name='event',
-                                shape=(self.nmbr_channels, size_events * pulses_per_bl, self.record_length),
-                                dtype=dtype)
-            data.create_dataset(name='true_ph',
-                                shape=(self.nmbr_channels, size_events * pulses_per_bl),
-                                dtype=float)
-            data.create_dataset(name='true_onset',
-                                shape=(size_events * pulses_per_bl,),
-                                dtype=float)
+            if size_events > 0:
+                print('Simulating Events.')
+                data = f.create_group('events')
+                data.create_dataset(name='event',
+                                    shape=(self.nmbr_channels, size_events * pulses_per_bl, self.record_length),
+                                    dtype=dtype)
+                data.create_dataset(name='true_ph',
+                                    shape=(self.nmbr_channels, size_events * pulses_per_bl),
+                                    dtype=float)
+                data.create_dataset(name='true_onset',
+                                    shape=(size_events * pulses_per_bl,),
+                                    dtype=float)
 
-            for i in range(pulses_per_bl):
-                events, phs, t0s, nmbr_thrown_events = simulate_events(path_h5=self.path_h5,
-                                                                       type='events',
-                                                                       size=size_events,
-                                                                       record_length=self.record_length,
-                                                                       nmbr_channels=self.nmbr_channels,
-                                                                       ph_intervals=ev_ph_intervals,
-                                                                       discrete_ph=ev_discrete_phs,
-                                                                       exceptional_sev_naming=exceptional_sev_naming,
-                                                                       channels_exceptional_sev=channels_exceptional_sev,
-                                                                       t0_interval=t0_interval,  # in ms
-                                                                       fake_noise=fake_noise,
-                                                                       use_bl_from_idx=start_from_bl_idx,
-                                                                       rms_thresholds=rms_thresholds,
-                                                                       lamb=lamb,
-                                                                       sample_length=sample_length,
-                                                                       saturation=saturation,
-                                                                       reuse_bl=reuse_bl,
-                                                                       ps_dev=ps_dev)
-                data['event'][:, i * size_events:(i + 1) * size_events, :] = events
-                data['true_ph'][:, i * size_events:(i + 1) * size_events] = phs
-                data['true_onset'][i * size_events:(i + 1) * size_events] = t0s
+                for i in range(pulses_per_bl):
+                    events, phs, t0s, nmbr_thrown_events = simulate_events(path_h5=self.path_h5,
+                                                                           type='events',
+                                                                           size=size_events,
+                                                                           record_length=self.record_length,
+                                                                           nmbr_channels=self.nmbr_channels,
+                                                                           ph_intervals=ev_ph_intervals,
+                                                                           discrete_ph=ev_discrete_phs,
+                                                                           exceptional_sev_naming=exceptional_sev_naming,
+                                                                           channels_exceptional_sev=channels_exceptional_sev,
+                                                                           t0_interval=t0_interval,  # in ms
+                                                                           fake_noise=fake_noise,
+                                                                           use_bl_from_idx=start_from_bl_idx,
+                                                                           rms_thresholds=rms_thresholds,
+                                                                           lamb=lamb,
+                                                                           sample_length=sample_length,
+                                                                           saturation=saturation,
+                                                                           reuse_bl=reuse_bl,
+                                                                           ps_dev=ps_dev)
+                    data['event'][:, i * size_events:(i + 1) * size_events, :] = events
+                    data['true_ph'][:, i * size_events:(i + 1) * size_events] = phs
+                    data['true_onset'][i * size_events:(i + 1) * size_events] = t0s
 
-            labels = np.ones([self.nmbr_channels, size_events])
-            for c in channels_exceptional_sev:
-                labels[c] *= assign_labels[c]
+                labels = np.ones([self.nmbr_channels, size_events])
+                for c in channels_exceptional_sev:
+                    labels[c] *= assign_labels[c]
 
-            data.create_dataset(name='labels', data=labels)
+                data.create_dataset(name='labels', data=labels)
 
-            # store sev
+                # store sev
 
-            sev = f_read['stdevent']['event']
-            mp = f_read['stdevent']['mainpar']
-            fitpar = f_read['stdevent']['fitpar']
+                sev = f_read['stdevent']['event']
+                mp = f_read['stdevent']['mainpar']
+                fitpar = f_read['stdevent']['fitpar']
 
-            data = f.create_group('stdevent')
-            data.create_dataset(name='event', data=sev)
-            data.create_dataset(name='mainpar', data=mp)
-            data.create_dataset(name='fitpar', data=fitpar)
+                data = f.create_group('stdevent')
+                data.create_dataset(name='event', data=sev)
+                data.create_dataset(name='mainpar', data=mp)
+                data.create_dataset(name='fitpar', data=fitpar)
 
-        if size_tp > 0:
-            print('Simulating Testpulses.')
-            data = f.create_group('testpulses')
-            events, phs, t0s, nmbr_thrown_testpulses = simulate_events(path_h5=self.path_h5,
-                                                                       type='testpulses',
-                                                                       size=size_tp,
-                                                                       record_length=self.record_length,
-                                                                       nmbr_channels=self.nmbr_channels,
-                                                                       ph_intervals=tp_ph_intervals,
-                                                                       discrete_ph=tp_discrete_phs,
-                                                                       t0_interval=[-20, 20],  # in ms
-                                                                       fake_noise=fake_noise,
-                                                                       use_bl_from_idx=start_from_bl_idx + size_events + nmbr_thrown_events,
-                                                                       rms_thresholds=rms_thresholds,
-                                                                       lamb=lamb,
-                                                                       sample_length=sample_length,
-                                                                       saturation=saturation,
-                                                                       reuse_bl=reuse_bl,
-                                                                       ps_dev=ps_dev)
-            data.create_dataset(name='event', data=events, dtype=dtype)
-            data.create_dataset(name='true_ph', data=phs)
-            if saturation:
-                fp = f_read['saturation']['fitpar'][0]
-                data.create_dataset(name='testpulseamplitude', data=phs[0] / scale_factor(*fp))
-            data.create_dataset(name='true_onset', data=t0s)
-            data.create_dataset(name='labels',
-                                data=2 * np.ones([self.nmbr_channels, size_tp]))  # 2 is the label for testpulses
+            if size_tp > 0:
+                print('Simulating Testpulses.')
+                data = f.create_group('testpulses')
+                events, phs, t0s, nmbr_thrown_testpulses = simulate_events(path_h5=self.path_h5,
+                                                                           type='testpulses',
+                                                                           size=size_tp,
+                                                                           record_length=self.record_length,
+                                                                           nmbr_channels=self.nmbr_channels,
+                                                                           ph_intervals=tp_ph_intervals,
+                                                                           discrete_ph=tp_discrete_phs,
+                                                                           t0_interval=[-20, 20],  # in ms
+                                                                           fake_noise=fake_noise,
+                                                                           use_bl_from_idx=start_from_bl_idx + size_events + nmbr_thrown_events,
+                                                                           rms_thresholds=rms_thresholds,
+                                                                           lamb=lamb,
+                                                                           sample_length=sample_length,
+                                                                           saturation=saturation,
+                                                                           reuse_bl=reuse_bl,
+                                                                           ps_dev=ps_dev)
+                data.create_dataset(name='event', data=events, dtype=dtype)
+                data.create_dataset(name='true_ph', data=phs)
+                if saturation:
+                    fp = f_read['saturation']['fitpar'][0]
+                    data.create_dataset(name='testpulseamplitude', data=phs[0] / scale_factor(*fp))
+                data.create_dataset(name='true_onset', data=t0s)
+                data.create_dataset(name='labels',
+                                    data=2 * np.ones([self.nmbr_channels, size_tp]))  # 2 is the label for testpulses
 
-            # store sev
+                # store sev
 
-            sev = f_read['stdevent_tp']['event']
-            mp = np.array([calc_main_parameters(x).getArray() for x in sev])
+                sev = f_read['stdevent_tp']['event']
+                mp = np.array([calc_main_parameters(x).getArray() for x in sev])
 
-            data = f.create_group('stdevent_tp')
-            data.create_dataset(name='event', data=sev, dtype=dtype)
-            data.create_dataset(name='mainpar', data=mp)
+                data = f.create_group('stdevent_tp')
+                data.create_dataset(name='event', data=sev, dtype=dtype)
+                data.create_dataset(name='mainpar', data=mp)
 
-        data = f.create_group('noise')
-        # store nps new and old
+            data = f.create_group('noise')
+            # store nps new and old
 
-        nps = f_read['noise']['nps']
-        nps_sim = []
-        for c in range(self.nmbr_channels):
-            nps_sim.append(calculate_mean_nps(
-                events[c, :, :])[0])
+            nps = f_read['noise']['nps']
+            nps_sim = []
+            for c in range(self.nmbr_channels):
+                nps_sim.append(calculate_mean_nps(
+                    events[c, :, :])[0])
 
-        data.create_dataset(name='nps', data=nps)
-        data.create_dataset(name='nps_sim', data=np.array([n for n in nps_sim]))
+            data.create_dataset(name='nps', data=nps)
+            data.create_dataset(name='nps_sim', data=np.array([n for n in nps_sim]))
 
-        if size_noise > 0:
-            print('Simulating Noise.')
+            if size_noise > 0:
+                print('Simulating Noise.')
 
-            events, phs, t0s, nmbr_thrown_noise = simulate_events(path_h5=self.path_h5,
-                                                                  type='noise',
-                                                                  size=size_noise,
-                                                                  record_length=self.record_length,
-                                                                  nmbr_channels=self.nmbr_channels,
-                                                                  fake_noise=fake_noise,
-                                                                  use_bl_from_idx=start_from_bl_idx + size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
-                                                                  rms_thresholds=rms_thresholds,
-                                                                  lamb=lamb,
-                                                                  sample_length=sample_length,
-                                                                  saturation=saturation,
-                                                                  reuse_bl=reuse_bl,
-                                                                  ps_dev=ps_dev
-                                                                  )
-            data.create_dataset(name='event', data=events, dtype=dtype)
-            data.create_dataset(name='labels',
-                                data=3 * np.ones([self.nmbr_channels, size_noise]))  # 3 is the noise label
+                events, phs, t0s, nmbr_thrown_noise = simulate_events(path_h5=self.path_h5,
+                                                                      type='noise',
+                                                                      size=size_noise,
+                                                                      record_length=self.record_length,
+                                                                      nmbr_channels=self.nmbr_channels,
+                                                                      fake_noise=fake_noise,
+                                                                      use_bl_from_idx=start_from_bl_idx + size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
+                                                                      rms_thresholds=rms_thresholds,
+                                                                      lamb=lamb,
+                                                                      sample_length=sample_length,
+                                                                      saturation=saturation,
+                                                                      reuse_bl=reuse_bl,
+                                                                      ps_dev=ps_dev
+                                                                      )
+                data.create_dataset(name='event', data=events, dtype=dtype)
+                data.create_dataset(name='labels',
+                                    data=3 * np.ones([self.nmbr_channels, size_noise]))  # 3 is the noise label
 
-        if store_of == 0:
-            print('Store OF.')
-            of_real = f_read['optimumfilter']['optimumfilter_real']
-            of_imag = f_read['optimumfilter']['optimumfilter_imag']
-            data = f.create_group('optimumfilter')
-            data.create_dataset(name='optimumfilter_real', data=of_real)
-            data.create_dataset(name='optimumfilter_imag', data=of_imag)
+            if store_of == 0:
+                print('Store OF.')
+                of_real = f_read['optimumfilter']['optimumfilter_real']
+                of_imag = f_read['optimumfilter']['optimumfilter_imag']
+                data = f.create_group('optimumfilter')
+                data.create_dataset(name='optimumfilter_real', data=of_real)
+                data.create_dataset(name='optimumfilter_imag', data=of_imag)
 
-        print('Simulation done.')
-        f.close()
-        f_read.close()
+            print('Simulation done.')

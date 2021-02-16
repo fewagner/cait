@@ -43,42 +43,40 @@ class FitMixin(object):
         if not path_h5:
             path_h5 = self.path_h5
 
-        h5f = h5py.File(path_h5, 'r+')
-        events = h5f[type]['event']
+        with h5py.File(path_h5, 'r+') as h5f:
+            events = h5f[type]['event']
 
-        # take away offset
-        idx=[i for i in range(len(events[0]))]
-        events = events - np.mean(events[:, :, :int(self.record_length/8)], axis=2, keepdims=True)
+            # take away offset
+            idx=[i for i in range(len(events[0]))]
+            events = events - np.mean(events[:, :, :int(self.record_length/8)], axis=2, keepdims=True)
 
-        print('CALCULATE FIT.')
+            print('CALCULATE FIT.')
 
-        # get start values from SEV fit if exists
-        try:
-            if type == 'events':
-                sev_fitpar = h5f['stdevent']['fitpar']
-                p_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[0])
-                l_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[1])
-            else:
-                raise NameError('This is only to break the loop, bc type is not events.')
-        except NameError:
-            p_fit_pm = fit_pulse_shape
-            l_fit_pm = fit_pulse_shape
+            # get start values from SEV fit if exists
+            try:
+                if type == 'events':
+                    sev_fitpar = h5f['stdevent']['fitpar']
+                    p_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[0])
+                    l_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[1])
+                else:
+                    raise NameError('This is only to break the loop, bc type is not events.')
+            except NameError:
+                p_fit_pm = fit_pulse_shape
+                l_fit_pm = fit_pulse_shape
 
-        with Pool(processes) as p:
-            p_fitpar_event = np.array(
-                p.map(p_fit_pm, events[0, idx, :]))
-            l_fitpar_event = np.array(
-                p.map(l_fit_pm, events[1, idx, :]))
+            with Pool(processes) as p:
+                p_fitpar_event = np.array(
+                    p.map(p_fit_pm, events[0, idx, :]))
+                l_fitpar_event = np.array(
+                    p.map(l_fit_pm, events[1, idx, :]))
 
-        fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
+            fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
 
-        h5f[type].require_dataset('fitpar',
-                               shape=(self.nmbr_channels, len(events[0]), 6),
-                               dtype='f')
+            h5f[type].require_dataset('fitpar',
+                                   shape=(self.nmbr_channels, len(events[0]), 6),
+                                   dtype='f')
 
-        h5f[type]['fitpar'][:, idx, :] = fitpar_event
-
-        h5f.close()
+            h5f[type]['fitpar'][:, idx, :] = fitpar_event
 
 
     # apply sev fit
@@ -100,50 +98,49 @@ class FitMixin(object):
             raise KeyError('Order Polynomial must be 3! (Other Versions Depricated.)')
 
         # open the dataset
-        f = h5py.File(self.path_h5, 'r+')
-        events = f[type]['event']
-        sev_par = np.array(f['stdevent']['fitpar'])
-        t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+        with h5py.File(self.path_h5, 'r+') as f:
+            events = f[type]['event']
+            sev_par = np.array(f['stdevent']['fitpar'])
+            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
-        # apply fit for all channels, save parameters
-        par = np.zeros([self.nmbr_channels, len(events[0]), int(order_bl_polynomial + 3)])
-        for c in range(self.nmbr_channels):
-            if verb:
-                print('Fitting channel {}.'.format(c))
-            # create instance of fit model
-            fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down)
+            # apply fit for all channels, save parameters
+            par = np.zeros([self.nmbr_channels, len(events[0]), int(order_bl_polynomial + 3)])
+            for c in range(self.nmbr_channels):
+                if verb:
+                    print('Fitting channel {}.'.format(c))
+                # create instance of fit model
+                fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down)
 
-            # fit all
-            for i in range(len(events[0])):
-                if verb and i % 50 == 0:
-                    print('Fitting Events, {:4.2f} % finished'.format(
-                        100 * i / len(events[0])))
-                par[c, i] = fit_model.fit_cubic(events[c, i])
+                # fit all
+                for i in range(len(events[0])):
+                    if verb and i % 50 == 0:
+                        print('Fitting Events, {:4.2f} % finished'.format(
+                            100 * i / len(events[0])))
+                    par[c, i] = fit_model.fit_cubic(events[c, i])
 
-        # write sev fit results to file
-        f['events'].require_dataset(name='sev_fit_par'.format(order_bl_polynomial),
-                                    shape=par.shape,
-                                    dtype='float')
-        f['events'].require_dataset(name='sev_fit_rms'.format(order_bl_polynomial),
-                                    shape=(self.nmbr_channels, len(events[0])),
-                                    dtype='float')
-        f['events']['sev_fit_par'][...] = par
-        for c in range(self.nmbr_channels):
-            fit_model = sev_fit_template(pm_par=sev_par[c], t=t)
-            for i in range(len(events[0])):
-                # if order_bl_polynomial == 0:
-                #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sef(*par[c, i])) ** 2)
-                # elif order_bl_polynomial == 1:
-                #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sel(*par[c, i])) ** 2)
-                # elif order_bl_polynomial == 2:
-                #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
-                # elif order_bl_polynomial == 3:
-                f['events']['sev_fit_rms'][c, i] = np.mean((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
-                # else:
-                #     raise KeyError('Order Polynomial must be 0,1,2,3!')
+            # write sev fit results to file
+            f['events'].require_dataset(name='sev_fit_par'.format(order_bl_polynomial),
+                                        shape=par.shape,
+                                        dtype='float')
+            f['events'].require_dataset(name='sev_fit_rms'.format(order_bl_polynomial),
+                                        shape=(self.nmbr_channels, len(events[0])),
+                                        dtype='float')
+            f['events']['sev_fit_par'][...] = par
+            for c in range(self.nmbr_channels):
+                fit_model = sev_fit_template(pm_par=sev_par[c], t=t)
+                for i in range(len(events[0])):
+                    # if order_bl_polynomial == 0:
+                    #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sef(*par[c, i])) ** 2)
+                    # elif order_bl_polynomial == 1:
+                    #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.sel(*par[c, i])) ** 2)
+                    # elif order_bl_polynomial == 2:
+                    #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
+                    # elif order_bl_polynomial == 3:
+                    f['events']['sev_fit_rms'][c, i] = np.mean((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
+                    # else:
+                    #     raise KeyError('Order Polynomial must be 0,1,2,3!')
 
-        print('Done.')
-        f.close()
+            print('Done.')
 
 
     def calc_bl_coefficients(self, type='noise', down=1, verb=False):
@@ -157,38 +154,38 @@ class FitMixin(object):
         print('Calculating Baseline Coefficients.')
 
         # open file
-        h5f = h5py.File(self.path_h5, 'r+')
-        events = h5f[type]
-        nmbr_bl = len(events['event'][0])
-        events.require_dataset('fit_coefficients',
-                                  shape=(self.nmbr_channels, nmbr_bl, 4),
-                                  dtype='f')
-        events.require_dataset('fit_rms',
-                                  shape=(self.nmbr_channels, nmbr_bl),
-                                  dtype='f')
-        bl_temp = baseline_template_cubic
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            events = h5f[type]
+            nmbr_bl = len(events['event'][0])
+            events.require_dataset('fit_coefficients',
+                                      shape=(self.nmbr_channels, nmbr_bl, 4),
+                                      dtype='f')
+            events.require_dataset('fit_rms',
+                                      shape=(self.nmbr_channels, nmbr_bl),
+                                      dtype='f')
+            bl_temp = baseline_template_cubic
 
-        t = np.linspace(0, self.record_length - 1, self.record_length)
-        if down > 1:
-            t = np.mean(t.reshape(int(len(t) / down), down), axis=1)
+            t = np.linspace(0, self.record_length - 1, self.record_length)
+            if down > 1:
+                t = np.mean(t.reshape(int(len(t) / down), down), axis=1)
 
-        for c in range(self.nmbr_channels):
-            for i in range(nmbr_bl):
-                if verb and i % 100 == 0:
-                    print('Calculating Baseline for Channel {}: {:4.2f} %'.format(c, i*100/nmbr_bl))
-                # fit template to every bl
-                ev = events['event'][c, i]
-                if down > 1:
-                    ev = np.mean(ev.reshape(int(len(ev)/down), down), axis=1)
-                coeff, _ = curve_fit(bl_temp, t, ev)
-                rms = get_rms(bl_temp(t, *coeff), ev)
+            for c in range(self.nmbr_channels):
+                for i in range(nmbr_bl):
+                    if verb and i % 100 == 0:
+                        print('Calculating Baseline for Channel {}: {:4.2f} %'.format(c, i*100/nmbr_bl))
+                    # fit template to every bl
+                    ev = events['event'][c, i]
+                    if down > 1:
+                        ev = np.mean(ev.reshape(int(len(ev)/down), down), axis=1)
+                    coeff, _ = curve_fit(bl_temp, t, ev)
+                    rms = get_rms(bl_temp(t, *coeff), ev)
 
-                # save fit coefficients in hdf5
-                events['fit_coefficients'][c, i, ...] = coeff
-                events['fit_rms'][c, i] = rms
+                    # save fit coefficients in hdf5
+                    events['fit_coefficients'][c, i, ...] = coeff
+                    events['fit_rms'][c, i] = rms
 
-        print('Fit Coeff and Rms calculated.')
-        h5f.close()
+            print('Fit Coeff and Rms calculated.')
+
 
     def calc_saturation(self,
                         channel=0,
@@ -204,21 +201,20 @@ class FitMixin(object):
         :rtype: -
         """
 
-        h5f = h5py.File(self.path_h5, 'r+')
+        with h5py.File(self.path_h5, 'r+') as h5f:
 
-        if only_idx is None:
-            only_idx = list(range(len(h5f['testpulses']['testpulseamplitude'])))
+            if only_idx is None:
+                only_idx = list(range(len(h5f['testpulses']['testpulseamplitude'])))
 
-        par, _ = curve_fit(logistic_curve,
-                           xdata=h5f['testpulses']['testpulseamplitude'][only_idx],
-                           ydata=h5f['testpulses']['mainpar'][channel, only_idx, 0],
-                           bounds=(0,[np.inf, np.inf, ]))
+            par, _ = curve_fit(logistic_curve,
+                               xdata=h5f['testpulses']['testpulseamplitude'][only_idx],
+                               ydata=h5f['testpulses']['mainpar'][channel, only_idx, 0],
+                               bounds=(0,[np.inf, np.inf, ]))
 
-        sat = h5f.require_group('saturation')
-        sat.require_dataset(name='fitpar',
-                            shape=(self.nmbr_channels, len(par)),
-                            dtype=np.float)
-        sat['fitpar'][channel, ...] = par
+            sat = h5f.require_group('saturation')
+            sat.require_dataset(name='fitpar',
+                                shape=(self.nmbr_channels, len(par)),
+                                dtype=np.float)
+            sat['fitpar'][channel, ...] = par
 
-        h5f.close()
         print('Saturation saved.')

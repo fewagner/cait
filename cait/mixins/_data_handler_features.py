@@ -41,35 +41,34 @@ class FeaturesMixin(object):
         if not path_h5:
             path_h5 = self.path_h5
 
-        h5f = h5py.File(path_h5, 'r+')
-        events = h5f[type]
+        with h5py.File(path_h5, 'r+') as h5f:
+            events = h5f[type]
 
-        print('CALCULATE MAIN PARAMETERS.')
+            print('CALCULATE MAIN PARAMETERS.')
 
-        with Pool(processes) as p:  # basically a for loop running on 4 processes
-            mainpar_list_event = []
-            for c in range(self.nmbr_channels):
-                mainpar_list_event.append(p.map(
-                    calc_main_parameters, events['event'][c, :, :]))
-        mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
+            with Pool(processes) as p:  # basically a for loop running on 4 processes
+                mainpar_list_event = []
+                for c in range(self.nmbr_channels):
+                    mainpar_list_event.append(p.map(
+                        calc_main_parameters, events['event'][c, :, :]))
+            mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
 
-        events.require_dataset(name='mainpar',
-                               shape=(mainpar_event.shape),
-                               dtype='float')
-        events['mainpar'][...] = mainpar_event
+            events.require_dataset(name='mainpar',
+                                   shape=(mainpar_event.shape),
+                                   dtype='float')
+            events['mainpar'][...] = mainpar_event
 
-        events['mainpar'].attrs.create(name='pulse_height', data=0)
-        events['mainpar'].attrs.create(name='t_zero', data=1)
-        events['mainpar'].attrs.create(name='t_rise', data=2)
-        events['mainpar'].attrs.create(name='t_max', data=3)
-        events['mainpar'].attrs.create(name='t_decaystart', data=4)
-        events['mainpar'].attrs.create(name='t_half', data=5)
-        events['mainpar'].attrs.create(name='t_end', data=6)
-        events['mainpar'].attrs.create(name='offset', data=7)
-        events['mainpar'].attrs.create(name='linear_drift', data=8)
-        events['mainpar'].attrs.create(name='quadratic_drift', data=9)
+            events['mainpar'].attrs.create(name='pulse_height', data=0)
+            events['mainpar'].attrs.create(name='t_zero', data=1)
+            events['mainpar'].attrs.create(name='t_rise', data=2)
+            events['mainpar'].attrs.create(name='t_max', data=3)
+            events['mainpar'].attrs.create(name='t_decaystart', data=4)
+            events['mainpar'].attrs.create(name='t_half', data=5)
+            events['mainpar'].attrs.create(name='t_end', data=6)
+            events['mainpar'].attrs.create(name='offset', data=7)
+            events['mainpar'].attrs.create(name='linear_drift', data=8)
+            events['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
-        h5f.close()
 
     # calc stdevent testpulses
     def calc_sev(self,
@@ -116,98 +115,97 @@ class FeaturesMixin(object):
         :return: -
         """
 
-        h5f = h5py.File(self.path_h5, 'r+')
-        events = h5f[type]['event']
-        mainpar = h5f[type]['mainpar']
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            events = h5f[type]['event']
+            mainpar = h5f[type]['mainpar']
 
-        std_evs = []
+            std_evs = []
 
-        # if no pulse_height_interval is specified set it to average values for all channels
-        if pulse_height_interval == None:
-            pulse_height_interval = [[0.5, 1.5]
-                                     for c in range(self.nmbr_channels)]
+            # if no pulse_height_interval is specified set it to average values for all channels
+            if pulse_height_interval == None:
+                pulse_height_interval = [[0.5, 1.5]
+                                         for c in range(self.nmbr_channels)]
 
-        # fix the issue with different arguments for different channels
-        inp = [left_right_cutoff, rise_time_interval, decay_time_interval, onset_interval]
-        for i, var in enumerate(inp):
-            if var is None:
-                inp[i] = [None for c in range(self.nmbr_channels)]
+            # fix the issue with different arguments for different channels
+            inp = [left_right_cutoff, rise_time_interval, decay_time_interval, onset_interval]
+            for i, var in enumerate(inp):
+                if var is None:
+                    inp[i] = [None for c in range(self.nmbr_channels)]
 
-        if use_labels:
-            labels = h5f[type]['labels']
-        else:
-            labels = [None for c in range(self.nmbr_channels)]
-
-        if correct_label is None:
-            if type == 'events':
-                sev = h5f.require_group('stdevent')
-                correct_label = 1
-            elif type == 'testpulses':
-                sev = h5f.require_group('stdevent_tp')
-                correct_label = 2
+            if use_labels:
+                labels = h5f[type]['labels']
             else:
-                raise NotImplementedError('Type must be events or testpulses!')
-        else:
-            sev = h5f.require_group('stdevent_{}'.format(correct_label))
+                labels = [None for c in range(self.nmbr_channels)]
 
-        if use_idx is None:
-            use_idx = list(range(len(events[0])))
+            if correct_label is None:
+                if type == 'events':
+                    sev = h5f.require_group('stdevent')
+                    correct_label = 1
+                elif type == 'testpulses':
+                    sev = h5f.require_group('stdevent_tp')
+                    correct_label = 2
+                else:
+                    raise NotImplementedError('Type must be events or testpulses!')
+            else:
+                sev = h5f.require_group('stdevent_{}'.format(correct_label))
 
-        for c in range(self.nmbr_channels):
-            std_evs.append(generate_standard_event(events=events[c, use_idx, :],
-                                                   main_parameters=mainpar[c, use_idx, :],
-                                                   labels=labels[c],
-                                                   correct_label=correct_label,
-                                                   pulse_height_interval=pulse_height_interval[c],
-                                                   left_right_cutoff=inp[0][c],
-                                                   rise_time_interval=inp[1][c],
-                                                   decay_time_interval=inp[2][c],
-                                                   onset_interval=inp[3][c],
-                                                   remove_offset=remove_offset,
-                                                   verb=verb,
-                                                   scale_fit_height=scale_fit_height,
-                                                   sample_length=sample_length))
+            if use_idx is None:
+                use_idx = list(range(len(events[0])))
 
-        sev.require_dataset('event',
-                            shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
-                            dtype='f')
-        sev['event'][...] = np.array([x[0] for x in std_evs])
-        sev.require_dataset('fitpar',
-                            shape=(self.nmbr_channels, len(std_evs[0][1])),
-                            dtype='f')
-        sev['fitpar'][...] = np.array([x[1] for x in std_evs])
+            for c in range(self.nmbr_channels):
+                std_evs.append(generate_standard_event(events=events[c, use_idx, :],
+                                                       main_parameters=mainpar[c, use_idx, :],
+                                                       labels=labels[c],
+                                                       correct_label=correct_label,
+                                                       pulse_height_interval=pulse_height_interval[c],
+                                                       left_right_cutoff=inp[0][c],
+                                                       rise_time_interval=inp[1][c],
+                                                       decay_time_interval=inp[2][c],
+                                                       onset_interval=inp[3][c],
+                                                       remove_offset=remove_offset,
+                                                       verb=verb,
+                                                       scale_fit_height=scale_fit_height,
+                                                       sample_length=sample_length))
 
-        # description of the fitparameters (data=column_in_fitpar)
-        sev['fitpar'].attrs.create(name='t_0', data=0)
-        sev['fitpar'].attrs.create(name='A_n', data=1)
-        sev['fitpar'].attrs.create(name='A_t', data=2)
-        sev['fitpar'].attrs.create(name='tau_n', data=3)
-        sev['fitpar'].attrs.create(name='tau_in', data=4)
-        sev['fitpar'].attrs.create(name='tau_t', data=5)
+            sev.require_dataset('event',
+                                shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
+                                dtype='f')
+            sev['event'][...] = np.array([x[0] for x in std_evs])
+            sev.require_dataset('fitpar',
+                                shape=(self.nmbr_channels, len(std_evs[0][1])),
+                                dtype='f')
+            sev['fitpar'][...] = np.array([x[1] for x in std_evs])
 
-        mp = np.array([calc_main_parameters(x[0]).getArray() for x in std_evs])
+            # description of the fitparameters (data=column_in_fitpar)
+            sev['fitpar'].attrs.create(name='t_0', data=0)
+            sev['fitpar'].attrs.create(name='A_n', data=1)
+            sev['fitpar'].attrs.create(name='A_t', data=2)
+            sev['fitpar'].attrs.create(name='tau_n', data=3)
+            sev['fitpar'].attrs.create(name='tau_in', data=4)
+            sev['fitpar'].attrs.create(name='tau_t', data=5)
 
-        sev.require_dataset('mainpar',
-                            shape=mp.shape,
-                            dtype='f')
+            mp = np.array([calc_main_parameters(x[0]).getArray() for x in std_evs])
 
-        sev['mainpar'][...] = mp
+            sev.require_dataset('mainpar',
+                                shape=mp.shape,
+                                dtype='f')
 
-        # description of the mainpar (data=col_in_mainpar)
-        sev['mainpar'].attrs.create(name='pulse_height', data=0)
-        sev['mainpar'].attrs.create(name='t_zero', data=1)
-        sev['mainpar'].attrs.create(name='t_rise', data=2)
-        sev['mainpar'].attrs.create(name='t_max', data=3)
-        sev['mainpar'].attrs.create(name='t_decaystart', data=4)
-        sev['mainpar'].attrs.create(name='t_half', data=5)
-        sev['mainpar'].attrs.create(name='t_end', data=6)
-        sev['mainpar'].attrs.create(name='offset', data=7)
-        sev['mainpar'].attrs.create(name='linear_drift', data=8)
-        sev['mainpar'].attrs.create(name='quadratic_drift', data=9)
+            sev['mainpar'][...] = mp
 
-        print('{} SEV calculated.'.format(type))
+            # description of the mainpar (data=col_in_mainpar)
+            sev['mainpar'].attrs.create(name='pulse_height', data=0)
+            sev['mainpar'].attrs.create(name='t_zero', data=1)
+            sev['mainpar'].attrs.create(name='t_rise', data=2)
+            sev['mainpar'].attrs.create(name='t_max', data=3)
+            sev['mainpar'].attrs.create(name='t_decaystart', data=4)
+            sev['mainpar'].attrs.create(name='t_half', data=5)
+            sev['mainpar'].attrs.create(name='t_end', data=6)
+            sev['mainpar'].attrs.create(name='offset', data=7)
+            sev['mainpar'].attrs.create(name='linear_drift', data=8)
+            sev['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
-        h5f.close()
+            print('{} SEV calculated.'.format(type))
+
 
     def calc_of(self, down=1):
         """
@@ -216,48 +214,47 @@ class FeaturesMixin(object):
         :return: -
         """
 
-        h5f = h5py.File(self.path_h5, 'r+')
-        stdevent_pulse = np.array([h5f['stdevent']['event'][i]
-                          for i in range(self.nmbr_channels)])
-        mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            stdevent_pulse = np.array([h5f['stdevent']['event'][i]
+                              for i in range(self.nmbr_channels)])
+            mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
 
-        if down > 1:
-            stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(len(stdevent_pulse[1])/down), down), axis=2)
-            first_nps_val = mean_nps[:, 0]
-            mean_nps = mean_nps[:, 1:]
-            mean_nps = np.mean(mean_nps.reshape(-1, int(len(mean_nps[1]) / down), down), axis=2)
-            mean_nps = np.concatenate((first_nps_val.reshape(-1,1), mean_nps), axis=1)
+            if down > 1:
+                stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(len(stdevent_pulse[1])/down), down), axis=2)
+                first_nps_val = mean_nps[:, 0]
+                mean_nps = mean_nps[:, 1:]
+                mean_nps = np.mean(mean_nps.reshape(-1, int(len(mean_nps[1]) / down), down), axis=2)
+                mean_nps = np.concatenate((first_nps_val.reshape(-1,1), mean_nps), axis=1)
 
-        print('CREATE OPTIMUM FILTER.')
+            print('CREATE OPTIMUM FILTER.')
 
-        of = np.array([optimal_transfer_function(
-            stdevent_pulse[i], mean_nps[i]) for i in range(self.nmbr_channels)])
+            of = np.array([optimal_transfer_function(
+                stdevent_pulse[i], mean_nps[i]) for i in range(self.nmbr_channels)])
 
-        optimumfilter = h5f.require_group('optimumfilter')
-        if down > 1:
-            optimumfilter.require_dataset('optimumfilter_real_down{}'.format(down),
-                                          dtype='f',
-                                          shape=of.real.shape)
-            optimumfilter.require_dataset('optimumfilter_imag_down{}'.format(down),
-                                          dtype='f',
-                                          shape=of.real.shape)
+            optimumfilter = h5f.require_group('optimumfilter')
+            if down > 1:
+                optimumfilter.require_dataset('optimumfilter_real_down{}'.format(down),
+                                              dtype='f',
+                                              shape=of.real.shape)
+                optimumfilter.require_dataset('optimumfilter_imag_down{}'.format(down),
+                                              dtype='f',
+                                              shape=of.real.shape)
 
-            optimumfilter['optimumfilter_real_down{}'.format(down)][...] = of.real
-            optimumfilter['optimumfilter_imag_down{}'.format(down)][...] = of.imag
-        else:
-            optimumfilter.require_dataset('optimumfilter_real',
-                                          dtype='f',
-                                          shape=of.real.shape)
-            optimumfilter.require_dataset('optimumfilter_imag',
-                                          dtype='f',
-                                          shape=of.real.shape)
+                optimumfilter['optimumfilter_real_down{}'.format(down)][...] = of.real
+                optimumfilter['optimumfilter_imag_down{}'.format(down)][...] = of.imag
+            else:
+                optimumfilter.require_dataset('optimumfilter_real',
+                                              dtype='f',
+                                              shape=of.real.shape)
+                optimumfilter.require_dataset('optimumfilter_imag',
+                                              dtype='f',
+                                              shape=of.real.shape)
 
-            optimumfilter['optimumfilter_real'][...] = of.real
-            optimumfilter['optimumfilter_imag'][...] = of.imag
+                optimumfilter['optimumfilter_real'][...] = of.real
+                optimumfilter['optimumfilter_imag'][...] = of.imag
 
-        print('OF updated.')
+            print('OF updated.')
 
-        h5f.close()
 
     # apply the optimum filter
     def apply_of(self, type='events', chunk_size=10000, hard_restrict=False):
@@ -272,31 +269,30 @@ class FeaturesMixin(object):
 
         print('Calculating OF Heights.')
 
-        f = h5py.File(self.path_h5, 'r+')
-        events = f[type]['event']
-        sev = np.array(f['stdevent']['event'])
-        nps = np.array(f['noise']['nps'])
-        of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=complex)
-        of.real = f['optimumfilter']['optimumfilter_real']
-        of.imag = f['optimumfilter']['optimumfilter_imag']
+        with h5py.File(self.path_h5, 'r+') as f:
+            events = f[type]['event']
+            sev = np.array(f['stdevent']['event'])
+            nps = np.array(f['noise']['nps'])
+            of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=complex)
+            of.real = f['optimumfilter']['optimumfilter_real']
+            of.imag = f['optimumfilter']['optimumfilter_imag']
 
-        f[type].require_dataset(name='of_ph',
-                                shape=(self.nmbr_channels, len(events[0])),
-                                dtype='float')
+            f[type].require_dataset(name='of_ph',
+                                    shape=(self.nmbr_channels, len(events[0])),
+                                    dtype='float')
 
-        nmbr_events = len(events[0])
-        counter = 0
-        while counter + chunk_size < nmbr_events:
+            nmbr_events = len(events[0])
+            counter = 0
+            while counter + chunk_size < nmbr_events:
+                for c in range(self.nmbr_channels):
+                    of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                                           hard_restrict=hard_restrict)
+                    f[type]['of_ph'][c, counter:counter + chunk_size] = of_ph
+                counter += chunk_size
             for c in range(self.nmbr_channels):
-                of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                       hard_restrict=hard_restrict)
-                f[type]['of_ph'][c, counter:counter + chunk_size] = of_ph
-            counter += chunk_size
-        for c in range(self.nmbr_channels):
-            of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c], hard_restrict=hard_restrict)
-            f[type]['of_ph'][c, counter:nmbr_events] = of_ph
+                of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c], hard_restrict=hard_restrict)
+                f[type]['of_ph'][c, counter:nmbr_events] = of_ph
 
-        f.close()
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
@@ -349,88 +345,87 @@ class FeaturesMixin(object):
         :return: -
         """
 
-        h5f = h5py.File(self.path_h5, 'r+')
+        with h5py.File(self.path_h5, 'r+') as h5f:
 
-        if correct_label is None and idx_list is None:
-            raise KeyError('Provide either Correct Label or Index List!')
+            if correct_label is None and idx_list is None:
+                raise KeyError('Provide either Correct Label or Index List!')
 
-        if correct_label is not None:
-            if use_prediction_instead_label:
-                if model is not None:
-                    labels = h5f[type]['{}_predictions'.format(model)][channel]
+            if correct_label is not None:
+                if use_prediction_instead_label:
+                    if model is not None:
+                        labels = h5f[type]['{}_predictions'.format(model)][channel]
+                    else:
+                        raise KeyError('Please provide a model string!')
                 else:
-                    raise KeyError('Please provide a model string!')
+                    labels = h5f[type]['labels'][channel]
             else:
-                labels = h5f[type]['labels'][channel]
-        else:
-            labels = None
+                labels = None
 
-        if idx_list is None:
-            idx_list = [i for i in range(len(labels))]
+            if idx_list is None:
+                idx_list = [i for i in range(len(labels))]
 
-        events = h5f[type]['event'][channel, idx_list, :]
-        mainpar = h5f[type]['mainpar'][channel, idx_list, :]
-        if labels is not None:
-            labels = labels[idx_list]
+            events = h5f[type]['event'][channel, idx_list, :]
+            mainpar = h5f[type]['mainpar'][channel, idx_list, :]
+            if labels is not None:
+                labels = labels[idx_list]
 
-        sev = h5f.require_group('stdevent_{}'.format(naming))
+            sev = h5f.require_group('stdevent_{}'.format(naming))
 
-        sev_event, par = generate_standard_event(events=events,
-                                                 main_parameters=mainpar,
-                                                 labels=labels,
-                                                 correct_label=correct_label,
-                                                 pulse_height_interval=pulse_height_interval,
-                                                 left_right_cutoff=left_right_cutoff,
-                                                 rise_time_interval=rise_time_interval,
-                                                 decay_time_interval=decay_time_interval,
-                                                 onset_interval=onset_interval,
-                                                 remove_offset=remove_offset,
-                                                 verb=verb,
-                                                 scale_fit_height=scale_fit_height,
-                                                 sample_length=sample_length)
+            sev_event, par = generate_standard_event(events=events,
+                                                     main_parameters=mainpar,
+                                                     labels=labels,
+                                                     correct_label=correct_label,
+                                                     pulse_height_interval=pulse_height_interval,
+                                                     left_right_cutoff=left_right_cutoff,
+                                                     rise_time_interval=rise_time_interval,
+                                                     decay_time_interval=decay_time_interval,
+                                                     onset_interval=onset_interval,
+                                                     remove_offset=remove_offset,
+                                                     verb=verb,
+                                                     scale_fit_height=scale_fit_height,
+                                                     sample_length=sample_length)
 
-        sev.require_dataset('event',
-                            shape=(len(sev_event),),  # this is then length of sev
-                            dtype='f')
-        sev['event'][...] = sev_event
-        sev.require_dataset('fitpar',
-                            shape=(len(par),),
-                            dtype='f')
-        sev['fitpar'][...] = par
+            sev.require_dataset('event',
+                                shape=(len(sev_event),),  # this is then length of sev
+                                dtype='f')
+            sev['event'][...] = sev_event
+            sev.require_dataset('fitpar',
+                                shape=(len(par),),
+                                dtype='f')
+            sev['fitpar'][...] = par
 
-        # description of the fitparameters (data=column_in_fitpar)
-        sev['fitpar'].attrs.create(name='t_0', data=0)
-        sev['fitpar'].attrs.create(name='A_n', data=1)
-        sev['fitpar'].attrs.create(name='A_t', data=2)
-        sev['fitpar'].attrs.create(name='tau_n', data=3)
-        sev['fitpar'].attrs.create(name='tau_in', data=4)
-        sev['fitpar'].attrs.create(name='tau_t', data=5)
+            # description of the fitparameters (data=column_in_fitpar)
+            sev['fitpar'].attrs.create(name='t_0', data=0)
+            sev['fitpar'].attrs.create(name='A_n', data=1)
+            sev['fitpar'].attrs.create(name='A_t', data=2)
+            sev['fitpar'].attrs.create(name='tau_n', data=3)
+            sev['fitpar'].attrs.create(name='tau_in', data=4)
+            sev['fitpar'].attrs.create(name='tau_t', data=5)
 
-        mp = calc_main_parameters(sev_event).getArray()
+            mp = calc_main_parameters(sev_event).getArray()
 
-        sev.require_dataset('mainpar',
-                            shape=mp.shape,
-                            dtype='f')
+            sev.require_dataset('mainpar',
+                                shape=mp.shape,
+                                dtype='f')
 
-        sev['mainpar'][...] = mp
+            sev['mainpar'][...] = mp
 
-        # description of the mainpar (data=col_in_mainpar)
-        sev['mainpar'].attrs.create(name='pulse_height', data=0)
-        sev['mainpar'].attrs.create(name='t_zero', data=1)
-        sev['mainpar'].attrs.create(name='t_rise', data=2)
-        sev['mainpar'].attrs.create(name='t_max', data=3)
-        sev['mainpar'].attrs.create(name='t_decaystart', data=4)
-        sev['mainpar'].attrs.create(name='t_half', data=5)
-        sev['mainpar'].attrs.create(name='t_end', data=6)
-        sev['mainpar'].attrs.create(name='offset', data=7)
-        sev['mainpar'].attrs.create(name='linear_drift', data=8)
-        sev['mainpar'].attrs.create(name='quadratic_drift', data=9)
+            # description of the mainpar (data=col_in_mainpar)
+            sev['mainpar'].attrs.create(name='pulse_height', data=0)
+            sev['mainpar'].attrs.create(name='t_zero', data=1)
+            sev['mainpar'].attrs.create(name='t_rise', data=2)
+            sev['mainpar'].attrs.create(name='t_max', data=3)
+            sev['mainpar'].attrs.create(name='t_decaystart', data=4)
+            sev['mainpar'].attrs.create(name='t_half', data=5)
+            sev['mainpar'].attrs.create(name='t_end', data=6)
+            sev['mainpar'].attrs.create(name='offset', data=7)
+            sev['mainpar'].attrs.create(name='linear_drift', data=8)
+            sev['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
-        print('{} SEV calculated.'.format(type))
+            print('{} SEV calculated.'.format(type))
 
-        h5f.close()
 
-    def calc_nps(self, use_labels=False, down=1):
+    def calc_nps(self, use_labels=False, down=1, percentile=50):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3)
@@ -441,30 +436,36 @@ class FeaturesMixin(object):
         print('Calculate NPS.')
 
         # open file
-        h5f = h5py.File(self.path_h5, 'r+')
-        baselines = np.array(h5f['noise']['event'])
-        if use_labels:
-            labels = np.array(h5f['noise']['labels'])
-
-        mean_nps = []
-        for c in range(self.nmbr_channels):
-            bl = baselines[c]
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            baselines = np.array(h5f['noise']['event'])
             if use_labels:
-                bl = bl[labels[c] == 3]  # 3 is noise label
-            mean_nps.append(calculate_mean_nps(bl, down=down)[0])
+                labels = np.array(h5f['noise']['labels'])
 
-        mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
+            mean_nps = []
+            for c in range(self.nmbr_channels):
+                bl = baselines[c]
+                if use_labels:
+                    bl = bl[labels[c] == 3]  # 3 is noise label
+                mean_nps.append(calculate_mean_nps(bl, down=down, percentile=percentile)[0])
 
-        naming = 'nps'
-        if down > 1:
-            naming += '_down' + str(down)
+            mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
+            frequencies = np.fft.rfftfreq(self.record_length, d=1. / self.sample_frequency * down)
 
-        h5f['noise'].require_dataset(naming,
-                                     shape=mean_nps.shape,
-                                     dtype='float')
-        h5f['noise'][naming][...] = mean_nps
+            naming = 'nps'
+            naming_fq = 'freq'
+            if down > 1:
+                naming += '_down' + str(down)
+                naming_fq += '_down' + str(down)
 
-        h5f.close()
+            h5f['noise'].require_dataset(naming,
+                                         shape=mean_nps.shape,
+                                         dtype='float')
+            h5f['noise'][naming][...] = mean_nps
+            h5f['noise'].require_dataset(naming_fq,
+                                         shape=frequencies.shape,
+                                         dtype='float')
+            h5f['noise'][naming_fq][...] = frequencies
+
 
     def calc_additional_mp(self, type, path_h5=None, down=1):
         """
@@ -479,44 +480,43 @@ class FeaturesMixin(object):
         if not path_h5:
             path_h5 = self.path_h5
 
-        h5f = h5py.File(path_h5, 'r+')
-        events = h5f[type]
+        with h5py.File(path_h5, 'r+') as h5f:
+            events = h5f[type]
 
-        of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
-        of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
-        of = of_real + 1j * of_imag
+            of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
+            of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
+            of = of_real + 1j * of_imag
 
-        print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
+            print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
 
-        add_par_event = []
-        for c in range(self.nmbr_channels):
-            add_par_event.append([calc_additional_parameters(ev, of[c], down=down) for ev in events['event'][c]])
+            add_par_event = []
+            for c in range(self.nmbr_channels):
+                add_par_event.append([calc_additional_parameters(ev, of[c], down=down) for ev in events['event'][c]])
 
-        add_par_event = np.array(add_par_event)
+            add_par_event = np.array(add_par_event)
 
-        events.require_dataset(name='add_mainpar',
-                               shape=(add_par_event.shape),
-                               dtype='float')
-        events['add_mainpar'][...] = add_par_event
+            events.require_dataset(name='add_mainpar',
+                                   shape=(add_par_event.shape),
+                                   dtype='float')
+            events['add_mainpar'][...] = add_par_event
 
-        events['add_mainpar'].attrs.create(name='array_max', data=0)
-        events['add_mainpar'].attrs.create(name='array_min', data=1)
-        events['add_mainpar'].attrs.create(name='var_first_eight', data=2)
-        events['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
-        events['add_mainpar'].attrs.create(name='var_last_eight', data=4)
-        events['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
-        events['add_mainpar'].attrs.create(name='var', data=6)
-        events['add_mainpar'].attrs.create(name='mean', data=7)
-        events['add_mainpar'].attrs.create(name='skewness', data=8)
-        events['add_mainpar'].attrs.create(name='max_derivative', data=9)
-        events['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
-        events['add_mainpar'].attrs.create(name='min_derivative', data=11)
-        events['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
-        events['add_mainpar'].attrs.create(name='max_filtered', data=13)
-        events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
-        events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
+            events['add_mainpar'].attrs.create(name='array_max', data=0)
+            events['add_mainpar'].attrs.create(name='array_min', data=1)
+            events['add_mainpar'].attrs.create(name='var_first_eight', data=2)
+            events['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
+            events['add_mainpar'].attrs.create(name='var_last_eight', data=4)
+            events['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
+            events['add_mainpar'].attrs.create(name='var', data=6)
+            events['add_mainpar'].attrs.create(name='mean', data=7)
+            events['add_mainpar'].attrs.create(name='skewness', data=8)
+            events['add_mainpar'].attrs.create(name='max_derivative', data=9)
+            events['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
+            events['add_mainpar'].attrs.create(name='min_derivative', data=11)
+            events['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
+            events['add_mainpar'].attrs.create(name='max_filtered', data=13)
+            events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
+            events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
-        h5f.close()
 
     def apply_pca(self, nmbr_components, type='events'):
         """
@@ -530,44 +530,42 @@ class FeaturesMixin(object):
         :rtype:
         """
 
-        f = h5py.File(self.path_h5, 'r+')
-        if 'pca_projection' in f[type]:
-            print('Overwrite old pca projections')
-            del f[type]['pca_projection']
-        if 'pca_components' in f[type]:
-            print('Overwrite old pca components')
-            del f[type]['pca_components']
-        pca_projection = f[type].create_dataset(name='pca_projection',
-                                                shape=(self.nmbr_channels, len(f['events']['hours']), nmbr_components),
+        with h5py.File(self.path_h5, 'r+') as f:
+            if 'pca_projection' in f[type]:
+                print('Overwrite old pca projections')
+                del f[type]['pca_projection']
+            if 'pca_components' in f[type]:
+                print('Overwrite old pca components')
+                del f[type]['pca_components']
+            pca_projection = f[type].create_dataset(name='pca_projection',
+                                                    shape=(self.nmbr_channels, len(f['events']['hours']), nmbr_components),
+                                                    dtype=float)
+            pca_error = f[type].require_dataset(name='pca_error',
+                                                shape=(self.nmbr_channels, len(f['events']['hours'])),
                                                 dtype=float)
-        pca_error = f[type].require_dataset(name='pca_error',
-                                            shape=(self.nmbr_channels, len(f['events']['hours'])),
-                                            dtype=float)
-        pca_components = f[type].create_dataset(name='pca_components',
-                                                shape=(
-                                                self.nmbr_channels, nmbr_components, len(f[type]['event'][0, 0])),
-                                                dtype=float)
+            pca_components = f[type].create_dataset(name='pca_components',
+                                                    shape=(
+                                                    self.nmbr_channels, nmbr_components, len(f[type]['event'][0, 0])),
+                                                    dtype=float)
 
-        for c in range(self.nmbr_channels):
-            print('Channel ', c)
-            X = f[type]['event'][c]
-            X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
-            pca = PCA(n_components=nmbr_components)
-            X_transformed = pca.fit_transform(X)
+            for c in range(self.nmbr_channels):
+                print('Channel ', c)
+                X = f[type]['event'][c]
+                X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
+                pca = PCA(n_components=nmbr_components)
+                X_transformed = pca.fit_transform(X)
 
-            print('Explained Variance: ', pca.explained_variance_ratio_)
-            print('Singular Values: ', pca.singular_values_)
+                print('Explained Variance: ', pca.explained_variance_ratio_)
+                print('Singular Values: ', pca.singular_values_)
 
-            # print('X_transformed: ', X_transformed)
-            # print('PCA error: ', np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1))
+                # print('X_transformed: ', X_transformed)
+                # print('PCA error: ', np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1))
 
-            pca_projection[c, ...] = X_transformed
-            pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X) ** 2, axis=1)
+                pca_projection[c, ...] = X_transformed
+                pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X) ** 2, axis=1)
 
-            for i in range(nmbr_components):
-                transformed = np.zeros(nmbr_components)
-                transformed[i] = 1
-                comp = pca.inverse_transform(transformed.reshape(1, -1))
-                pca_components[c, i, :] = comp.reshape(-1)
-
-        f.close()
+                for i in range(nmbr_components):
+                    transformed = np.zeros(nmbr_components)
+                    transformed[i] = 1
+                    comp = pca.inverse_transform(transformed.reshape(1, -1))
+                    pca_components[c, i, :] = comp.reshape(-1)

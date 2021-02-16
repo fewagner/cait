@@ -7,13 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from ..fit._templates import pulse_template
 from ..fit._saturation import logistic_curve
-import os
-
-package_directory = os.path.dirname(os.path.abspath(__file__))
-plt.style.use('seaborn-paper')
-path_styles = os.path.join(package_directory, 'plt_styles', 'PaperDoubleFig_75.mplstyle')
-
-plt.style.use(path_styles)
+from ..styles._plt_styles import use_cait_style, make_grid
 
 # -----------------------------------------------------------
 # CLASS
@@ -49,41 +43,37 @@ class PlotMixin(object):
         :return: -
         """
 
-        f = h5py.File(self.path_h5, 'r')
-        sev = f[type]['event']
-        sev_fitpar = f[type]['fitpar']
+        with h5py.File(self.path_h5, 'r') as f:
+            sev = f[type]['event']
+            sev_fitpar = f[type]['fitpar']
 
-        t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
-        # plot
-        plt.close()
+            # plot
+            use_cait_style()
+            plt.close()
 
-        for i, ch in enumerate(self.channel_names):
-            plt.subplot(self.nmbr_channels, 1, i + 1)
-            if not show_fit:
-                plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, label='Standardevent')
-            else:
-                plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
-                plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2, label='Parametric Fit')
-            # major grid lines
-            plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-            # minor grid lines
-            plt.minorticks_on()
-            plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-            plt.xlabel('Time (ms)')
-            plt.ylabel('Amplitude (V)')
-            plt.legend()
-            if title is None:
-                plt.title(ch + ' ' + type)
-            else:
-                plt.title(title)
+            for i, ch in enumerate(self.channel_names):
+                plt.subplot(self.nmbr_channels, 1, i + 1)
+                if not show_fit:
+                    plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, label='Standardevent')
+                else:
+                    plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
+                    plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2, label='Parametric Fit')
+                make_grid()
+                plt.xlabel('Time (ms)')
+                plt.ylabel('Amplitude (V)')
+                plt.legend()
+                if title is None:
+                    plt.title(ch + ' ' + type)
+                else:
+                    plt.title(title)
 
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        f.close()
 
     def show_exceptional_sev(self,
                              naming,
@@ -105,39 +95,35 @@ class PlotMixin(object):
         :return: -
         """
 
-        f = h5py.File(self.path_h5, 'r')
-        sev = np.array(f['stdevent_{}'.format(naming)]['event'])
-        sev_fitpar = np.array(f['stdevent_{}'.format(naming)]['fitpar'])
+        with h5py.File(self.path_h5, 'r') as f:
+            sev = np.array(f['stdevent_{}'.format(naming)]['event'])
+            sev_fitpar = np.array(f['stdevent_{}'.format(naming)]['fitpar'])
 
-        t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
-        # plot
-        plt.close()
+            # plot
+            use_cait_style()
+            plt.close()
 
-        if not show_fit:
-            plt.plot(t, sev, zorder=10, linewidth=3, label='Standardevent')
-        else:
-            plt.plot(t, sev, zorder=10, linewidth=1, alpha=0.5, label='Standardevent')
-            plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, label='Parametric Fit')
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        plt.legend()
-        plt.xlabel('Time (ms)')
-        plt.ylabel('Amplitude (V)')
-        if title is None:
-            plt.title('stdevent_{}'.format(naming))
-        else:
-            plt.title(title)
+            if not show_fit:
+                plt.plot(t, sev, zorder=10, linewidth=3, label='Standardevent')
+            else:
+                plt.plot(t, sev, zorder=10, linewidth=1, alpha=0.5, label='Standardevent')
+                plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, label='Parametric Fit')
+            make_grid()
+            plt.legend()
+            plt.xlabel('Time (ms)')
+            plt.ylabel('Amplitude (V)')
+            if title is None:
+                plt.title('stdevent_{}'.format(naming))
+            else:
+                plt.title(title)
 
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        f.close()
 
     # Plot the NPS
     def show_nps(self,
@@ -151,32 +137,28 @@ class PlotMixin(object):
             the futher code execution
         :return: -
         """
-        f = h5py.File(self.path_h5, 'r')
+        with h5py.File(self.path_h5, 'r') as f:
 
-        # plot
-        plt.close()
+            # plot
+            use_cait_style()
+            plt.close()
 
-        for i, ch in enumerate(self.channel_names):
-            plt.subplot(self.nmbr_channels, 1, i + 1)
-            plt.loglog(f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
-            # major grid lines
-            plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-            # minor grid lines
-            plt.minorticks_on()
-            plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-            if title is None:
-                plt.title(ch + ' NPS')
-            else:
-                plt.title(title)
-            plt.xlabel('Frequency (Hz)')
-            plt.ylabel('Frequency Amplitude (a.u.)')
+            for i, ch in enumerate(self.channel_names):
+                plt.subplot(self.nmbr_channels, 1, i + 1)
+                plt.loglog(f['noise']['freq'], f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
+                make_grid()
+                if title is None:
+                    plt.title(ch + ' NPS')
+                else:
+                    plt.title(title)
+                plt.xlabel('Frequency (Hz)')
+                plt.ylabel('Frequency Amplitude (a.u.)')
 
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        f.close()
 
     # Plot the OF
     def show_of(self,
@@ -191,40 +173,35 @@ class PlotMixin(object):
             the futher code execution
         :return: -
         """
-        f = h5py.File(self.path_h5, 'r')
+        with h5py.File(self.path_h5, 'r') as f:
 
-        if down is None:
-            of = np.array(f['optimumfilter']['optimumfilter_real']) + \
-                 1j * np.array(f['optimumfilter']['optimumfilter_imag'])
-        else:
-            of = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)]) + \
-                 1j * np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
-        of = np.abs(of) ** 2
-
-        # plot
-        plt.close()
-
-        for i, ch in enumerate(self.channel_names):
-            plt.subplot(self.nmbr_channels, 1, i + 1)
-            plt.loglog(of[i], color=self.colors[i], zorder=10, linewidth=3)
-            # major grid lines
-            plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-            # minor grid lines
-            plt.minorticks_on()
-            plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-            plt.xlabel('Frequency (Hz)')
-            plt.ylabel('Frequency Amplitude (a.u.)')
-            if title is None:
-                plt.title(ch + ' OF')
+            if down is None:
+                of = np.array(f['optimumfilter']['optimumfilter_real']) + \
+                     1j * np.array(f['optimumfilter']['optimumfilter_imag'])
             else:
-                plt.title(title)
+                of = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)]) + \
+                     1j * np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
+            of = np.abs(of) ** 2
 
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            # plot
+            use_cait_style()
+            plt.close()
 
-        f.close()
+            for i, ch in enumerate(self.channel_names):
+                plt.subplot(self.nmbr_channels, 1, i + 1)
+                plt.loglog(f['noise']['freq'], of[i], color=self.colors[i], zorder=10, linewidth=3)
+                make_grid()
+                plt.xlabel('Frequency (Hz)')
+                plt.ylabel('Frequency Amplitude (a.u.)')
+                if title is None:
+                    plt.title(ch + ' OF')
+                else:
+                    plt.title(title)
+
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
 
     # plot histogram of some value
@@ -260,55 +237,51 @@ class PlotMixin(object):
         :return: -
         """
 
-        hf5 = h5py.File(self.path_h5, 'r+')
+        with h5py.File(self.path_h5, 'r+') as hf5:
 
-        if idx0 is None and idx1 is None and idx2 is None:
-            vals = hf5[group][key]
-        elif idx0 is None and idx1 is None and idx2 is not None:
-            vals = hf5[group][key][:, :, idx2]
-        elif idx0 is None and idx1 is not None and idx2 is None:
-            vals = hf5[group][key][:, idx1]
-        elif idx0 is None and idx1 is not None and idx2 is not None:
-            vals = hf5[group][key][:, idx1, idx2]
-        elif idx0 is not None and idx1 is None and idx2 is None:
-            vals = hf5[group][key][idx0]
-        elif idx0 is not None and idx1 is None and idx2 is not None:
-            vals = hf5[group][key][idx0, :, idx2]
-        elif idx0 is not None and idx1 is not None and idx2 is None:
-            vals = hf5[group][key][idx0, idx1]
-        elif idx0 is not None and idx1 is not None and idx2 is not None:
-            vals = hf5[group][key][idx0, idx1, idx2]
+            if idx0 is None and idx1 is None and idx2 is None:
+                vals = hf5[group][key]
+            elif idx0 is None and idx1 is None and idx2 is not None:
+                vals = hf5[group][key][:, :, idx2]
+            elif idx0 is None and idx1 is not None and idx2 is None:
+                vals = hf5[group][key][:, idx1]
+            elif idx0 is None and idx1 is not None and idx2 is not None:
+                vals = hf5[group][key][:, idx1, idx2]
+            elif idx0 is not None and idx1 is None and idx2 is None:
+                vals = hf5[group][key][idx0]
+            elif idx0 is not None and idx1 is None and idx2 is not None:
+                vals = hf5[group][key][idx0, :, idx2]
+            elif idx0 is not None and idx1 is not None and idx2 is None:
+                vals = hf5[group][key][idx0, idx1]
+            elif idx0 is not None and idx1 is not None and idx2 is not None:
+                vals = hf5[group][key][idx0, idx1, idx2]
 
-        if cut_flag is not None:
-            vals=vals[cut_flag]
+            if cut_flag is not None:
+                vals=vals[cut_flag]
 
-        plt.close()
-        plt.hist(vals,
-                 bins=bins,
-                 range=range, zorder=10)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        if xlabel is None:
-            plt.xlabel('{} {} [{},{},{}]'.format(group, key, _str_empty(idx0), _str_empty(idx1), _str_empty(idx2)))
-        else:
-            plt.xlabel(xlabel)
-        if ylabel is None:
-            plt.ylabel('Counts')
-        else:
-            plt.ylabel(ylabel)
-        if title is not None:
-            plt.title(title)
-        plt.xlim(xran)
-        plt.ylim(yran)
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            use_cait_style()
+            plt.close()
+            plt.hist(vals,
+                     bins=bins,
+                     range=range, zorder=10)
+            make_grid()
+            if xlabel is None:
+                plt.xlabel('{} {} [{},{},{}]'.format(group, key, _str_empty(idx0), _str_empty(idx1), _str_empty(idx2)))
+            else:
+                plt.xlabel(xlabel)
+            if ylabel is None:
+                plt.ylabel('Counts')
+            else:
+                plt.ylabel(ylabel)
+            if title is not None:
+                plt.title(title)
+            plt.xlim(xran)
+            plt.ylim(yran)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        hf5.close()
 
     # show scatter plot of some value
     def show_scatter(self,
@@ -346,57 +319,53 @@ class PlotMixin(object):
         :return: -
         """
 
-        hf5 = h5py.File(self.path_h5, 'r+')
-        vals = []
+        with h5py.File(self.path_h5, 'r+') as hf5:
+            vals = []
 
-        for i in [0, 1]:
-            if idx0s[i] is None and idx1s[i] is None and idx2s[i] is None:
-                vals.append(hf5[groups[i]][keys[i]])
-            elif idx0s[i] is None and idx1s[i] is None and idx2s[i] is not None:
-                vals.append(hf5[groups[i]][keys[i]][:, :, idx2s[i]])
-            elif idx0s[i] is None and idx1s[i] is not None and idx2s[i] is None:
-                vals.append(hf5[groups[i]][keys[i]][:, idx1s[i]])
-            elif idx0s[i] is None and idx1s[i] is not None and idx2s[i] is not None:
-                vals.append(hf5[groups[i]][keys[i]][:, idx1s[i], idx2s[i]])
-            elif idx0s[i] is not None and idx1s[i] is None and idx2s[i] is None:
-                vals.append(hf5[groups[i]][keys[i]][idx0s[i]])
-            elif idx0s[i] is not None and idx1s[i] is None and idx2s[i] is not None:
-                vals.append(hf5[groups[i]][keys[i]][idx0s[i], :, idx2s[i]])
-            elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is None:
-                vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i]])
-            elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is not None:
-                vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i], idx2s[i]])
+            for i in [0, 1]:
+                if idx0s[i] is None and idx1s[i] is None and idx2s[i] is None:
+                    vals.append(hf5[groups[i]][keys[i]])
+                elif idx0s[i] is None and idx1s[i] is None and idx2s[i] is not None:
+                    vals.append(hf5[groups[i]][keys[i]][:, :, idx2s[i]])
+                elif idx0s[i] is None and idx1s[i] is not None and idx2s[i] is None:
+                    vals.append(hf5[groups[i]][keys[i]][:, idx1s[i]])
+                elif idx0s[i] is None and idx1s[i] is not None and idx2s[i] is not None:
+                    vals.append(hf5[groups[i]][keys[i]][:, idx1s[i], idx2s[i]])
+                elif idx0s[i] is not None and idx1s[i] is None and idx2s[i] is None:
+                    vals.append(hf5[groups[i]][keys[i]][idx0s[i]])
+                elif idx0s[i] is not None and idx1s[i] is None and idx2s[i] is not None:
+                    vals.append(hf5[groups[i]][keys[i]][idx0s[i], :, idx2s[i]])
+                elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is None:
+                    vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i]])
+                elif idx0s[i] is not None and idx1s[i] is not None and idx2s[i] is not None:
+                    vals.append(hf5[groups[i]][keys[i]][idx0s[i], idx1s[i], idx2s[i]])
 
-            if cut_flag is not None:
-                vals[i] = vals[cut_flag]
+                if cut_flag is not None:
+                    vals[i] = vals[cut_flag]
 
-        plt.close()
-        plt.scatter(vals[0],
-                    vals[1],
-                    marker=marker, zorder=10)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        if xlabel is None:
-            plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]), _str_empty(idx2s[0])))
-        else:
-            plt.xlabel(xlabel)
-        if ylabel is None:
-            plt.ylabel('{} {} [{},{},{}]'.format(groups[1], keys[1], _str_empty(idx0s[1]), _str_empty(idx1s[1]), _str_empty(idx2s[1])))
-        else:
-            plt.ylabel(ylabel)
-        if title is not None:
-            plt.title(title)
-        plt.xlim(xran)
-        plt.ylim(yran)
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            use_cait_style()
+            plt.close()
+            plt.scatter(vals[0],
+                        vals[1],
+                        marker=marker, zorder=10)
+            make_grid()
+            if xlabel is None:
+                plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]), _str_empty(idx2s[0])))
+            else:
+                plt.xlabel(xlabel)
+            if ylabel is None:
+                plt.ylabel('{} {} [{},{},{}]'.format(groups[1], keys[1], _str_empty(idx0s[1]), _str_empty(idx1s[1]), _str_empty(idx2s[1])))
+            else:
+                plt.ylabel(ylabel)
+            if title is not None:
+                plt.title(title)
+            plt.xlim(xran)
+            plt.ylim(yran)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        hf5.close()
 
     # show histogram of main parameter
     def show_hist(self,
@@ -434,63 +403,60 @@ class PlotMixin(object):
         :return: -
         """
 
-        f_h5 = h5py.File(self.path_h5, 'r')
-        nmbr_mp = f_h5[type]['mainpar'].attrs[which_mp]
-        par = f_h5[type]['mainpar'][which_channel, :, nmbr_mp]
-        nmbr_events = len(par)
+        with h5py.File(self.path_h5, 'r') as f_h5:
+            nmbr_mp = f_h5[type]['mainpar'].attrs[which_mp]
+            par = f_h5[type]['mainpar'][which_channel, :, nmbr_mp]
+            nmbr_events = len(par)
 
-        if only_idx is None:
-            only_idx = [i for i in range(nmbr_events)]
-        par = par[only_idx]
+            if only_idx is None:
+                only_idx = [i for i in range(nmbr_events)]
+            par = par[only_idx]
 
-        if which_labels is not None:
-            pars = []
-            for lab in which_labels:
-                pars.append(par[f_h5[type]['labels'][which_channel, only_idx] == lab])
-        elif which_predictions is not None:
-            pars = []
-            for pred in which_predictions:
-                pars.append(par[f_h5[type]['{}_predictions'.format(pred_model)][which_channel, only_idx] == pred])
+            if which_labels is not None:
+                pars = []
+                for lab in which_labels:
+                    pars.append(par[f_h5[type]['labels'][which_channel, only_idx] == lab])
+            elif which_predictions is not None:
+                pars = []
+                for pred in which_predictions:
+                    pars.append(par[f_h5[type]['{}_predictions'.format(pred_model)][which_channel, only_idx] == pred])
 
-        # choose which mp to plot
-        plt.close()
-        if which_labels is not None:
-            for p, l in zip(pars, which_labels):
-                plt.hist(p,
+            # choose which mp to plot
+            use_cait_style()
+            plt.close()
+            if which_labels is not None:
+                for p, l in zip(pars, which_labels):
+                    plt.hist(p,
+                             bins=bins,
+                             # color=self.colors[which_channel],
+                             label='Label ' + str(l), alpha=0.8,
+                             range=ran, zorder=10)
+            elif which_predictions is not None:
+                for p, l in zip(pars, which_predictions):
+                    plt.hist(p,
+                             bins=bins,
+                             # color=self.colors[which_channel],
+                             label='Prediction ' + str(l), alpha=0.8,
+                             range=ran, zorder=10)
+            else:
+                plt.hist(par,
                          bins=bins,
                          # color=self.colors[which_channel],
-                         label='Label ' + str(l), alpha=0.8,
                          range=ran, zorder=10)
-        elif which_predictions is not None:
-            for p, l in zip(pars, which_predictions):
-                plt.hist(p,
-                         bins=bins,
-                         # color=self.colors[which_channel],
-                         label='Prediction ' + str(l), alpha=0.8,
-                         range=ran, zorder=10)
-        else:
-            plt.hist(par,
-                     bins=bins,
-                     # color=self.colors[which_channel],
-                     range=ran, zorder=10)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        plt.ylabel('Counts')
-        plt.xlabel(type + ' ' + which_mp + ' Channel ' + str(which_channel))
-        if title is not None:
-            plt.title(title)
-        plt.legend()
+            make_grid()
+            plt.ylabel('Counts')
+            plt.xlabel(type + ' ' + which_mp + ' Channel ' + str(which_channel))
+            if title is not None:
+                plt.title(title)
+            plt.legend()
 
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        print('Histogram for {} created.'.format(which_mp))
-        f_h5.close()
+            print('Histogram for {} created.'.format(which_mp))
+
 
     # show light yield plot
     def show_LY(self,
@@ -526,88 +492,88 @@ class PlotMixin(object):
         :param block: bool, if True the plots are non blocking in the cmd
         """
 
-        f_h5 = h5py.File(self.path_h5, 'r')
-        x_par = f_h5[type]['mainpar'][x_channel, :, 0]
-        y_par = f_h5[type]['mainpar'][y_channel, :, 0]
-        nmbr_events = len(x_par)
+        with h5py.File(self.path_h5, 'r') as f_h5:
+            x_par = f_h5[type]['mainpar'][x_channel, :, 0]
+            y_par = f_h5[type]['mainpar'][y_channel, :, 0]
+            nmbr_events = len(x_par)
 
-        if only_idx is None:
-            only_idx = [i for i in range(nmbr_events)]
-        x_par = x_par[only_idx]
-        y_par = y_par[only_idx]
+            if only_idx is None:
+                only_idx = [i for i in range(nmbr_events)]
+            x_par = x_par[only_idx]
+            y_par = y_par[only_idx]
 
-        if which_labels is not None:
-            x_pars = []
-            y_pars = []
-            for lab in which_labels:
-                if good_y_classes is None:
-                    condition = f_h5[type]['labels'][x_channel, only_idx] == lab
-                else:
-                    condition = [e in good_y_classes for e in f_h5[type]['labels'][y_channel, only_idx]]
-                    condition = np.logical_and(f_h5[type]['labels'][x_channel, only_idx] == lab,
-                                               condition)
-                x_pars.append(x_par[condition])
-                y_pars.append(y_par[condition])
-        elif which_predictions is not None:
-            x_pars = []
-            y_pars = []
-            for pred in which_predictions:
-                if good_y_classes is None:
-                    condition = f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred
-                else:
-                    condition = [e in good_y_classes for e in
-                                 f_h5[type]['{}_predictions'.format(pred_model)][y_channel, only_idx]]
-                    condition = np.logical_and(
-                        f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred,
-                        condition)
-                x_pars.append(x_par[condition])
-                y_pars.append(y_par[condition])
+            if which_labels is not None:
+                x_pars = []
+                y_pars = []
+                for lab in which_labels:
+                    if good_y_classes is None:
+                        condition = f_h5[type]['labels'][x_channel, only_idx] == lab
+                    else:
+                        condition = [e in good_y_classes for e in f_h5[type]['labels'][y_channel, only_idx]]
+                        condition = np.logical_and(f_h5[type]['labels'][x_channel, only_idx] == lab,
+                                                   condition)
+                    x_pars.append(x_par[condition])
+                    y_pars.append(y_par[condition])
+            elif which_predictions is not None:
+                x_pars = []
+                y_pars = []
+                for pred in which_predictions:
+                    if good_y_classes is None:
+                        condition = f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred
+                    else:
+                        condition = [e in good_y_classes for e in
+                                     f_h5[type]['{}_predictions'.format(pred_model)][y_channel, only_idx]]
+                        condition = np.logical_and(
+                            f_h5[type]['{}_predictions'.format(pred_model)][x_channel, only_idx] == pred,
+                            condition)
+                    x_pars.append(x_par[condition])
+                    y_pars.append(y_par[condition])
 
-        # choose which mp to plot
-        plt.close()
-        if which_labels is not None:
-            for xp, yp, l in zip(x_pars, y_pars, which_labels):
-                plt.scatter(xp,
-                            yp / xp,
+            # choose which mp to plot
+            use_cait_style()
+            plt.close()
+            if which_labels is not None:
+                for xp, yp, l in zip(x_pars, y_pars, which_labels):
+                    plt.scatter(xp,
+                                yp / xp,
+                                marker=marker,
+                                label='Label ' + str(l),
+                                alpha=alpha,
+                                s=s, zorder=10)
+            elif which_predictions is not None:
+                for xp, yp, l in zip(x_pars, y_pars, which_predictions):
+                    plt.scatter(xp,
+                                yp / xp,
+                                marker=marker,
+                                label='Prediction ' + str(l),
+                                alpha=alpha,
+                                s=s, zorder=10)
+            else:
+                plt.scatter(x_par,
+                            y_par / x_par,
                             marker=marker,
-                            label='Label ' + str(l),
                             alpha=alpha,
                             s=s, zorder=10)
-        elif which_predictions is not None:
-            for xp, yp, l in zip(x_pars, y_pars, which_predictions):
-                plt.scatter(xp,
-                            yp / xp,
-                            marker=marker,
-                            label='Prediction ' + str(l),
-                            alpha=alpha,
-                            s=s, zorder=10)
-        else:
-            plt.scatter(x_par,
-                        y_par / x_par,
-                        marker=marker,
-                        alpha=alpha,
-                        s=s, zorder=10)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        if xlabel is None:
-            plt.xlabel('Amplitude Ch ' + str(x_channel) + ' (V)')
-        else:
-            plt.xlabel(xlabel)
-        if ylabel is None:
-            plt.ylabel('Amplitude Ch ' + str(y_channel) + ' / Amplitude Ch ' + str(x_channel))
-        else:
-            plt.ylabel(ylabel)
-        plt.title('Light Yield ' + type)
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+            make_grid()
+            if xlabel is None:
+                plt.xlabel('Amplitude Ch ' + str(x_channel) + ' (V)')
+            else:
+                plt.xlabel(xlabel)
+            if ylabel is None:
+                plt.ylabel('Amplitude Ch ' + str(y_channel) + ' / Amplitude Ch ' + str(x_channel))
+            else:
+                plt.ylabel(ylabel)
+            if title is None:
+                plt.title('Light Yield ' + type)
+            else:
+                plt.title(title)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
-        print('LY Plot created.')
-        f_h5.close()
+            print('LY Plot created.')
+
 
     def show_saturation(self, show_fit=True, channel=0, marker='.', s=1,
                         only_idx=None, title=None,
@@ -627,37 +593,32 @@ class PlotMixin(object):
         :rtype: -
         """
 
-        f_h5 = h5py.File(self.path_h5, 'r')
+        with h5py.File(self.path_h5, 'r') as f_h5:
 
-        if only_idx is None:
-            only_idx = list(range(len(f_h5['testpulses']['testpulseamplitude'])))
+            if only_idx is None:
+                only_idx = list(range(len(f_h5['testpulses']['testpulseamplitude'])))
 
-        tpa = f_h5['testpulses']['testpulseamplitude']
-        ph = f_h5['testpulses']['mainpar'][channel, only_idx, 0]
+            tpa = f_h5['testpulses']['testpulseamplitude']
+            ph = f_h5['testpulses']['mainpar'][channel, only_idx, 0]
 
-        x = np.linspace(0, np.max(tpa))
+            x = np.linspace(0, np.max(tpa))
 
-        plt.close()
-        plt.scatter(tpa, ph,
-                    marker=marker, s=s, label='TPA vs PH', zorder=10)
-        if show_fit:
-            fitpar = f_h5['saturation']['fitpar'][channel]
-            plt.plot(x, logistic_curve(x, *fitpar),
-                     label='Fitted Log Curve', zorder=10)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
-        plt.xlabel('Test Pulse Amplitude (V)')
-        plt.ylabel('Pulse Height (V)')
-        if title is None:
-            plt.title('Saturation Ch {}'.format(channel))
-        else:
-            plt.title(title)
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
-
-        f_h5.close()
+            use_cait_style()
+            plt.close()
+            plt.scatter(tpa, ph,
+                        marker=marker, s=s, label='TPA vs PH', zorder=10)
+            if show_fit:
+                fitpar = f_h5['saturation']['fitpar'][channel]
+                plt.plot(x, logistic_curve(x, *fitpar),
+                         label='Fitted Log Curve', zorder=10)
+            make_grid()
+            plt.xlabel('Test Pulse Amplitude (V)')
+            plt.ylabel('Pulse Height (V)')
+            if title is None:
+                plt.title('Saturation Ch {}'.format(channel))
+            else:
+                plt.title(title)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)

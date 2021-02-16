@@ -28,9 +28,9 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, 
 
     cond = np.logical_and(cond, np.abs(cphs - mu) < significance * sigma)
     print('Control Pulse PH {:.3f} +- {:.3f}, within {} sigma: {:.3f} %'.format(mu, sigma, significance,
-                                                                                  100 * np.sum(
-                                                                                      cond) / len(
-                                                                                      cond)))
+                                                                                100 * np.sum(
+                                                                                    cond) / len(
+                                                                                    cond)))
 
     print('Good Control Pulses: {}/{} ({:.3f}%)'.format(np.sum(cond), nmbr_cps, 100 * np.sum(cond) / nmbr_cps))
 
@@ -76,7 +76,10 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, 
 
     return flag_ev, flag_cp
 
-def testpulse_stability(tpas, tphs, hours_tp, hours_ev, significance=3, noise_level=0.005, max_gap=1):
+
+def testpulse_stability(tpas, tphs, hours_tp, hours_ev,
+                        significance=3, noise_level=0.005, max_gap=1,
+                        lb=None, ub=None):
     """
     Return all event indices, that are between two stable testpulses
     TODO
@@ -86,6 +89,15 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev, significance=3, noise_le
     print('Do Control Pulse Stability Cut')
 
     unique_tpas = np.unique(tpas)
+    print('Unique TPAs: ', unique_tpas)
+
+    if lb is not None:
+        if len(lb) != len(unique_tpas):
+            raise KeyError('The argument lb needs to be a list of same length as the unique tpas!')
+    if ub is not None:
+        if len(ub) != len(unique_tpas):
+            raise KeyError('The argument ub needs to be a list of same length as the unique tpas!')
+
     tpas = np.array(tpas)
     tphs = np.array(tphs)
     hours_tp = np.array(hours_tp)
@@ -95,21 +107,31 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev, significance=3, noise_le
 
     # cleaning
     cond_noise = tphs > noise_level
-    print('Testpulses after Noise Cut: {}/{} ({:.3f}%)'.format(np.sum(cond_noise), len(cond_noise), 100 * np.sum(cond_noise) / len(cond_noise)))
+    print('Testpulses after Noise Cut: {}/{} ({:.3f}%)'.format(np.sum(cond_noise), len(cond_noise),
+                                                               100 * np.sum(cond_noise) / len(cond_noise)))
 
     tpas = tpas[cond_noise]
     tphs = tphs[cond_noise]
     cond = np.ones(len(tpas), dtype=bool)
 
-    for val in unique_tpas:
-        # get all hours that are not within significance standard deviations
-        mu = np.mean(tphs[tpas == val])
-        sigma = np.std(tphs[tpas == val])
+    for i, val in enumerate(unique_tpas):
+        # apply the bounds
+        if lb is not None:
+            cond[tpas == val] = np.logical_and(cond[tpas == val], tphs[tpas == val] > lb[i])
+        if ub is not None:
+            cond[tpas == val] = np.logical_and(cond[tpas == val], tphs[tpas == val] < ub[i])
+        if lb is not None or ub is not None:
+            print('TPA {:.3f} after lb/ub cut: {}/{}'.format(val, np.sum(cond[tpas == val]), len(cond[tpas == val])))
 
-        cond[tpas == val] = np.abs(tphs[tpas == val] - mu) < significance * sigma
+        # get all hours that are not within significance standard deviations
+        mu = np.mean(tphs[np.logical_and(tpas == val, cond)])
+        sigma = np.std(tphs[np.logical_and(tpas == val, cond)])
+
+        cond[tpas == val] = np.logical_and(cond[tpas == val], np.abs(tphs[tpas == val] - mu) < significance * sigma)
         print('TPA {:.3f} with PH {:.3f} +- {:.3f}, within {} sigma: {:.3f} %'.format(val, mu, sigma, significance,
-                                                                              100 * np.sum(cond[tpas == val]) / len(
-                                                                                  cond[tpas == val])))
+                                                                                      100 * np.sum(
+                                                                                          cond[tpas == val]) / len(
+                                                                                          cond[tpas == val])))
 
     print('Good Testpulses: {}/{} ({:.3f}%)'.format(np.sum(cond), nmbr_tps, 100 * np.sum(cond) / nmbr_tps))
 
@@ -150,8 +172,8 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev, significance=3, noise_le
         excluded_hours += hours_tp[0]
         excluded_hours += np.max([0, hours_ev[-1] - hours_tp[-1]])
 
-
     print('Good Events: {}/{} ({:.3f}%)'.format(np.sum(flag_ev), len(flag_ev), 100 * np.sum(flag_ev) / len(flag_ev)))
-    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_tp[-1] - excluded_hours, hours_tp[-1], 100*(hours_tp[-1] - excluded_hours)/hours_tp[-1]))
+    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_tp[-1] - excluded_hours, hours_tp[-1],
+                                                        100 * (hours_tp[-1] - excluded_hours) / hours_tp[-1]))
 
     return flag_ev, flag_tp

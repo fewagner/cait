@@ -7,15 +7,8 @@ from scipy.stats import linregress, t, norm
 from scipy import odr
 from sklearn.ensemble import GradientBoostingRegressor
 from scipy.interpolate import interp1d
-import os
-from pathlib import Path
+from ..styles._plt_styles import use_cait_style, make_grid
 
-package_directory = os.path.dirname(os.path.abspath(__file__))
-package_directory = Path(package_directory)
-plt.style.use('seaborn-paper')
-path_styles = os.path.join(package_directory.parent, 'mixins', 'plt_styles', 'PaperDoubleFig_75.mplstyle')
-
-plt.style.use(path_styles)
 
 # functions
 
@@ -47,8 +40,8 @@ class PolyModel:
         d = np.dot(np.dot(x_mat, self.out.cov_beta), np.transpose(x_mat))
         d = np.diag(d)
 
-        lower, upper = y - np.sqrt(self.dydx(x) * self.x_sigma_interp(x)**2 + self.out.res_var * d), \
-                       y + np.sqrt(self.dydx(x) * self.x_sigma_interp(x)**2 + self.out.res_var * d)
+        lower, upper = y - np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x)**2 + self.out.res_var * d), \
+                       y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x)**2 + self.out.res_var * d)
         return lower, y, upper
 
 
@@ -60,7 +53,8 @@ def energy_calibration_tree(evhs,
                             start_saturation,  # in V Pulse Height
                             cpe_factor,
                             exclude_tpas=[],
-                            plot=False
+                            poly_order=5,
+                            plot=False,
                             ):
     """
     TODO
@@ -119,21 +113,19 @@ def energy_calibration_tree(evhs,
     linear_tpas = np.array(linear_tpas)
 
     if plot:
+        use_cait_style()
         # plot the regressions
         plt.close()
-        plt.scatter(tp_hours, tphs, s=1, marker='.', color='blue')
+        plt.scatter(tp_hours, tphs, s=5, marker='.', color='blue', zorder=10)
         t = np.linspace(0, tp_hours[-1], 100)
         for m in range(len(linear_tpas)):
             lower = lower_regs[m].predict(t.reshape(-1, 1))
             y = mean_regs[m].predict(t.reshape(-1, 1))
             upper = upper_regs[m].predict(t.reshape(-1, 1))
-            plt.plot(t, y, color='red', linewidth=2, zorder=9)
-            plt.fill_between(t, lower, upper, color='black', alpha=0.3)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+            plt.plot(t, y, color='red', linewidth=2, zorder=15)
+            plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
+        make_grid()
+        plt.ylim(0, start_saturation)
         plt.ylabel('Pulse Height (V)')
         plt.xlabel('Time (h)')
         plt.show()
@@ -141,28 +133,27 @@ def energy_calibration_tree(evhs,
         # plot the polynomials
         plt.close()
         x_data, x_sigma = [], []
+        plot_timestamp = tp_hours[-1] / 2
         for l, m, u in zip(lower_regs, mean_regs, upper_regs):
-            xl, x, xu = l.predict(np.array([[tp_hours[-1] / 2]])), m.predict(np.array([[tp_hours[-1] / 2]])), u.predict(
-                np.array([[tp_hours[-1] / 2]]))
+            xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(np.array([[plot_timestamp]])), u.predict(
+                np.array([[plot_timestamp]]))
             x_data.append(x)
             x_sigma.append(xu - xl)
         x_data = np.array(x_data).reshape(-1)
         x_sigma = np.array(x_sigma).reshape(-1)
         y_data = linear_tpas
-        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma)
+        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
 
         h = np.linspace(0, start_saturation, 100)
         yl, y, yu = model.y_pred(h)
 
-        plt.plot(h, y, color='red', linewidth=2, zorder=1)
-        plt.fill_between(h, yl, yu, color='black', alpha=0.3)
-        plt.plot(x_data, y_data, 'b.', markersize=3.5)
-        plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0)
-        # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
-        # minor grid lines
-        plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
+
+        plt.plot(h, y, color='red', linewidth=2, zorder=15)
+        plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
+        plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
+        plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
+        make_grid()
         plt.ylim([0, y[-1]])
         plt.ylabel('Testpulse Amplitude (V)')
         plt.xlabel('Pulse Height (V)')
@@ -174,6 +165,8 @@ def energy_calibration_tree(evhs,
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
     for e in range(len(evhs)):
+        if e%500 == 0:
+            print('Calculating Recoil Energies: {:.3} %'.format(100*e/len(evhs)))
         x_data, x_sigma = [], []
         for l, m, u in zip(lower_regs, mean_regs, upper_regs):
             xl, x, xu = l.predict(ev_hours[e].reshape(-1, 1)), m.predict(ev_hours[e].reshape(-1, 1)), u.predict(
@@ -183,7 +176,7 @@ def energy_calibration_tree(evhs,
         x_data = np.array(x_data).reshape(-1)
         x_sigma = np.array(x_sigma).reshape(-1)
         y_data = linear_tpas
-        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma)
+        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
         yl, y, yu = model.y_pred(evhs[e])
 
         energies[e] = cpe_factor * y

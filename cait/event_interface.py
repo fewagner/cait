@@ -9,6 +9,8 @@ import math
 from .features._fem import get_elements, plot_S1
 from .filter._of import filter_event
 from .fit._templates import sev_fit_template
+from .styles._plt_styles import use_cait_style, make_grid
+
 
 # -----------------------------------------------------------
 # CLASS
@@ -109,30 +111,28 @@ class EventInterface:
         path_h5 = path + '{}{}.h5'.format(fname, app)
         self.path_h5 = path_h5
 
-        self.f = h5py.File(path_h5, 'r+')
-        self.channels = channels
+        with h5py.File(path_h5, 'r+') as f:
+            self.channels = channels
 
-        self.nmbrs = {}
+            self.nmbrs = {}
 
-        try:
-            self.nmbrs['events'] = len(self.f['events']['event'][0])
-            print('Nmbr triggered events: ', self.nmbrs['events'])
-        except KeyError:
-            print('No triggered events in h5 file.')
+            try:
+                self.nmbrs['events'] = len(f['events']['event'][0])
+                print('Nmbr triggered events: ', self.nmbrs['events'])
+            except KeyError:
+                print('No triggered events in h5 file.')
 
-        try:
-            self.nmbrs['testpulses'] = len(self.f['testpulses']['event'][0])
-            print('Nmbr testpulses: ', self.nmbrs['testpulses'])
-        except KeyError:
-            print('No Testpulses in h5 file.')
+            try:
+                self.nmbrs['testpulses'] = len(f['testpulses']['event'][0])
+                print('Nmbr testpulses: ', self.nmbrs['testpulses'])
+            except KeyError:
+                print('No Testpulses in h5 file.')
 
-        try:
-            self.nmbrs['noise'] = len(self.f['noise']['event'][0])
-            print('Nmbr noise: ', self.nmbrs['noise'])
-        except KeyError:
-            print('No noise in h5 file.')
-
-        self.f.close()
+            try:
+                self.nmbrs['noise'] = len(f['noise']['event'][0])
+                print('Nmbr noise: ', self.nmbrs['noise'])
+            except KeyError:
+                print('No noise in h5 file.')
 
         print('Bck File loaded.')
 
@@ -199,24 +199,23 @@ class EventInterface:
         :return: -
         """
 
-        self.f = h5py.File(self.path_h5, 'r+')
+        with h5py.File(self.path_h5, 'r+') as f:
 
-        if not type in self.valid_types:
-            raise ValueError('Type should be events, testpulses or noise.')
+            if not type in self.valid_types:
+                raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv_labels = path + \
-            'labels_{}_'.format(self.fname)
+            self.path_csv_labels = path + \
+                'labels_{}_'.format(self.fname)
 
-        # check if hdf5 file has labels
-        if not self.f[type]['labels']:
-            print('Load HDF5 File with labels first!')
-        else:
-            np.savetxt(self.path_csv_labels + type + '.csv',
-                       np.array(self.f[type]['labels']),
-                       fmt='%i', delimiter='\n')
-            print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
+            # check if hdf5 file has labels
+            if not f[type]['labels']:
+                print('Load HDF5 File with labels first!')
+            else:
+                np.savetxt(self.path_csv_labels + type + '.csv',
+                           np.array(f[type]['labels']),
+                           fmt='%i', delimiter='\n')
+                print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
 
-        self.f.close()
 
     # ------------------------------------------------------------
     # PREDICTIONS HANDLING
@@ -266,23 +265,22 @@ class EventInterface:
         :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
         :return: -
         """
-        self.f = h5py.File(self.path_h5, 'r+')
+        with h5py.File(self.path_h5, 'r+') as f:
 
-        if not type in self.valid_types:
-            raise ValueError('Type should be events, testpulses or noise.')
+            if not type in self.valid_types:
+                raise ValueError('Type should be events, testpulses or noise.')
 
-        self.path_csv_predictions = path + \
-            '{}_predictions_{}_'.format(model, self.fname)
+            self.path_csv_predictions = path + \
+                '{}_predictions_{}_'.format(model, self.fname)
 
-        # check if hdf5 file has labels
-        if not self.f[type]['{}_predictions'.format(model)]:
-            print('Load HDF5 File with labels first!')
-        else:
-            np.savetxt(self.path_csv_predictions + type + '.csv',
-                       np.array(self.f[type]['{}_predictions'.format(model)]),
-                       fmt='%i', delimiter='\n')
-            print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
-        self.f.close()
+            # check if hdf5 file has labels
+            if not f[type]['{}_predictions'.format(model)]:
+                print('Load HDF5 File with labels first!')
+            else:
+                np.savetxt(self.path_csv_predictions + type + '.csv',
+                           np.array(f[type]['{}_predictions'.format(model)]),
+                           fmt='%i', delimiter='\n')
+                print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
 
     # ------------------------------------------------------------
     # FEATURE HANDLING
@@ -293,26 +291,24 @@ class EventInterface:
         """
         Add the optimal transfer function from the HDF5 file
         """
-        self.f = h5py.File(self.path_h5, 'r+')
-        of_real = np.array(self.f['optimumfilter']['optimumfilter_real'])
-        of_imag = np.array(self.f['optimumfilter']['optimumfilter_imag'])
-        self.of = of_real + 1j*of_imag
-        print('Added the optimal transfer function.')
-        self.f.close()
+        with h5py.File(self.path_h5, 'r+') as f:
+            of_real = np.array(f['optimumfilter']['optimumfilter_real'])
+            of_imag = np.array(f['optimumfilter']['optimumfilter_imag'])
+            self.of = of_real + 1j*of_imag
+            print('Added the optimal transfer function.')
 
     def load_sev_par(self, sample_length=0.04):
         """
         Add the sev fit parameters from the HDF5 file
         """
-        self.f = h5py.File(self.path_h5, 'r+')
-        sev_par = np.array(self.f['stdevent']['fitpar'])
-        t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
-        self.fit_models = []
-        for c in range(self.nmbr_channels):
-            self.fit_models.append(sev_fit_template(pm_par=sev_par[c], t=t))
+        with h5py.File(self.path_h5, 'r+') as f:
+            sev_par = np.array(f['stdevent']['fitpar'])
+            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+            self.fit_models = []
+            for c in range(self.nmbr_channels):
+                self.fit_models.append(sev_fit_template(pm_par=sev_par[c], t=t))
 
-        print('Added the sev fit parameters.')
-        self.f.close()
+            print('Added the sev fit parameters.')
 
 
     # ------------------------------------------------------------
@@ -449,116 +445,116 @@ class EventInterface:
         :param type: string, either events, testpulses or noise
         :return: -
         """
-        self.f = h5py.File(self.path_h5, 'r+')
+        with h5py.File(self.path_h5, 'r+') as f:
 
-        if not type in self.valid_types:
-            raise ValueError('Type should be events, testpulses or noise.')
+            if not type in self.valid_types:
+                raise ValueError('Type should be events, testpulses or noise.')
 
-        # get event
-        event = np.array(self.f[type]['event'][:, idx, :])
-        appendix = ''
+            # get event
+            event = np.array(f[type]['event'][:, idx, :])
+            appendix = ''
 
-        # optimum filter
-        if self.show_filtered:
-            for c in range(self.nmbr_channels):
-                offset = np.mean(event[c, :int(len(event[c])/8)])
-                event[c] = filter_event(event[c] - offset, self.of[c]) + offset
-            appendix = 'Filtered'
+            # optimum filter
+            if self.show_filtered:
+                for c in range(self.nmbr_channels):
+                    offset = np.mean(event[c, :int(len(event[c])/8)])
+                    event[c] = filter_event(event[c] - offset, self.of[c]) + offset
+                appendix = 'Filtered'
 
-        # downsample
-        if not self.down == 1:
-            event = event.reshape(self.nmbr_channels,
-                                  self.window_size, self.down)
-            event = np.mean(event, axis=2)
+            # downsample
+            if not self.down == 1:
+                event = event.reshape(self.nmbr_channels,
+                                      self.window_size, self.down)
+                event = np.mean(event, axis=2)
 
-        # derivative
-        if self.show_derivative:
-            event = self.down * \
-                np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
-            appendix = 'Derivative'
-
-        # triangulation
-        if self.show_triangulation:
-            elements = []
-            for i in range(self.nmbr_channels):
-                elements.append(get_elements(
-                    event[i], std_thres=self.std_thres[i]))
-
-        # mp
-        if self.show_mp:
-            main_par = np.array(self.f[type]['mainpar'][:, idx])
-
-        # sev
-        if self.sev:
-            sev_fit = []
-            fp = self.f['events']['sev_fit_par'][:, idx, :]
-            for c in range(self.nmbr_channels):
-                offset = np.mean(event[c, :int(len(event[c]) / 8)])
-                sev_fit.append(self.fit_models[c].sec(*fp[c]) + offset)
-
-        # def colors
-        if self.nmbr_channels == 1:
-            colors = ['blue']
-            anti_colors = ['red']
-        else:
-            colors = ['red' for i in range(self.nmbr_channels - 1)]
-            colors.append('blue')
-            anti_colors = ['blue' for i in range(self.nmbr_channels - 1)]
-            colors.append('red')
-
-        # -------- START PLOTTING --------
-        plt.close()
-
-        for i in range(self.nmbr_channels):
-
-            plt.subplot(self.nmbr_channels, 1, i + 1)
-            plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
-            plt.plot(event[i], label=self.channel_names[i], color=colors[i])
-            plt.title('Index {}, {} {}'.format(idx,
-                                             self.channel_names[i], appendix))
+            # derivative
+            if self.show_derivative:
+                event = self.down * \
+                    np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
+                appendix = 'Derivative'
 
             # triangulation
             if self.show_triangulation:
-                plot_S1(event[i], elements[i], color=anti_colors[i])
+                elements = []
+                for i in range(self.nmbr_channels):
+                    elements.append(get_elements(
+                        event[i], std_thres=self.std_thres[i]))
 
-            # main parameters
+            # mp
             if self.show_mp:
-                self._plot_mp(
-                    main_par[i], color=anti_colors[i], down=self.down)
+                main_par = np.array(f[type]['mainpar'][:, idx])
 
             # sev
             if self.sev:
-                plt.plot(sev_fit[i], color='orange')
+                sev_fit = []
+                fp = f['events']['sev_fit_par'][:, idx, :]
+                for c in range(self.nmbr_channels):
+                    offset = np.mean(event[c, :int(len(event[c]) / 8)])
+                    sev_fit.append(self.fit_models[c].sec(*fp[c]) + offset)
 
-            plt.xlim(self.xlim)
-            plt.ylim(self.ylim)
+            # def colors
+            if self.nmbr_channels == 1:
+                colors = ['blue']
+                anti_colors = ['red']
+            else:
+                colors = ['red' for i in range(self.nmbr_channels - 1)]
+                colors.append('blue')
+                anti_colors = ['blue' for i in range(self.nmbr_channels - 1)]
+                colors.append('red')
 
-        plt.show(block=False)
-        # -------- END PLOTTING --------
+            # -------- START PLOTTING --------
+            use_cait_style()
+            plt.close()
 
-        # labels
-        try:
-            label = self.labels[type][:, idx]
+            for i in range(self.nmbr_channels):
 
-            for i, nm in enumerate(self.channel_names):
-                print('Label {}: {}'.format(nm, label[i]))
+                plt.subplot(self.nmbr_channels, 1, i + 1)
+                plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
+                plt.plot(event[i], label=self.channel_names[i], color=colors[i])
+                plt.title('Index {}, {} {}'.format(idx,
+                                                 self.channel_names[i], appendix))
 
-        except NameError:
-            print('No or incorrect Labels.')
+                # triangulation
+                if self.show_triangulation:
+                    plot_S1(event[i], elements[i], color=anti_colors[i])
 
-        # predictions
-        if len(self.predictions) > 0:
-            for p_arr in self.predictions[type]:
-                pred = p_arr[:, idx]
+                # main parameters
+                if self.show_mp:
+                    self._plot_mp(
+                        main_par[i], color=anti_colors[i], down=self.down)
+
+                # sev
+                if self.sev:
+                    plt.plot(sev_fit[i], color='orange')
+
+                make_grid()
+                plt.xlim(self.xlim)
+                plt.ylim(self.ylim)
+
+            plt.show(block=False)
+            # -------- END PLOTTING --------
+
+            # labels
+            try:
+                label = self.labels[type][:, idx]
+
                 for i, nm in enumerate(self.channel_names):
-                    print('Prediction {}: {}'.format(nm, pred[i]))
+                    print('Label {}: {}'.format(nm, label[i]))
 
-        # TPA
-        if type == 'testpulses':
-            tpa = self.f['testpulses']['testpulseamplitude'][idx]
-            print('TPA: {}'.format(tpa))
+            except NameError:
+                print('No or incorrect Labels.')
 
-        self.f.close()
+            # predictions
+            if len(self.predictions) > 0:
+                for p_arr in self.predictions[type]:
+                    pred = p_arr[:, idx]
+                    for i, nm in enumerate(self.channel_names):
+                        print('Prediction {}: {}'.format(nm, pred[i]))
+
+            # TPA
+            if type == 'testpulses':
+                tpa = f['testpulses']['testpulseamplitude'][idx]
+                print('TPA: {}'.format(tpa))
 
 
     def _print_labels(self):
