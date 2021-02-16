@@ -774,7 +774,7 @@ class EvaluationTools:
 
     def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True,
                            figsize=None, perplexity=30, as_cols=False, rdseed=None,
-                           verb=False):
+                           dot_size=5, verb=False):
         """
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
@@ -786,10 +786,18 @@ class EvaluationTools:
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
         :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
         :param rdseed:          - Optional, default None    : Random seed for numpy random. (Default 1)
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot. (Default 5)
         :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == None:
             np.random.seed(seed=rdseed)  # fixing random seed
+
+
+        if type(dot_size) != int:
+            dot_size=5
+            print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                  "Value of 'dot_size' has to be of type int. It is set to 5.")
+
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -974,10 +982,10 @@ class EvaluationTools:
 
             if self.save_as != False:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=2, alpha=0.7)
+                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
             else:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=5, alpha=0.7)
+                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
             pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
@@ -993,14 +1001,14 @@ class EvaluationTools:
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=plt_what, verb=verb),
-                                      s=2,
+                                      s=dot_size,
                                       alpha=0.7)
             else:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=plt_what, verb=verb),
-                                      s=5,
+                                      s=dot_size,
                                       alpha=0.7)
 
         for i in range(nrows * ncols):
@@ -1009,8 +1017,8 @@ class EvaluationTools:
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
 
-        fig.tight_layout()
-        plt.tight_layout()
+        # fig.tight_layout()
+        # plt.tight_layout()
         if self.save_as != False:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
@@ -1039,7 +1047,7 @@ class EvaluationTools:
 
 
     def plt_pred_with_pca(self, pred_methods, xy_comp=(1, 2), plt_what='all', plt_labels=True,
-                          figsize=None, as_cols=False, rdseed=None,
+                          figsize=None, as_cols=False, rdseed=None, dot_size = 5,
                           verb=False):
         """
         Plots data with PCE when given a one or a list of predictions method
@@ -1053,6 +1061,7 @@ class EvaluationTools:
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
         :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
         :param rdseed:          - Optional, default None    : Random seed for numpy random. (Default 1)
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot. (Default 5)
         :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
@@ -1064,9 +1073,15 @@ class EvaluationTools:
                 type(xy_comp[1]) != int and \
                 xy_comp[0] > 0 and \
                 xy_comp[1] > 0:
-            raise ValueError(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+            raise ValueError(console_colors.ERROR + "ERROR: " + console_colors.ENDC +
                              "The parameter xy_comp has to be of shape '(<int>,<int>)'" +
                              "with the integer being > 0.")
+
+
+        if type(dot_size) != int:
+            dot_size=5
+            print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                  "Value of 'dot_size' has to be of type int. It is set to 5.")
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -1250,10 +1265,10 @@ class EvaluationTools:
 
             if self.save_as != False:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=2, alpha=0.7)
+                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
             else:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=5, alpha=0.7)
+                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
             pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
@@ -1269,14 +1284,14 @@ class EvaluationTools:
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=plt_what, verb=verb),
-                                      s=2,
+                                      s=dot_size,
                                       alpha=0.7)
             else:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=plt_what, verb=verb),
-                                      s=5,
+                                      s=dot_size,
                                       alpha=0.7)
 
         for i in range(nrows * ncols):
@@ -1397,15 +1412,19 @@ class EvaluationTools:
         if 1 and 9 in max_height_per_label:
             fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
-            ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
-                    label=['{}'.format(self.labels[events_nbr]),
-                        '{}'.format(self.labels[saturated_nbr])],
+            ax.hist(max_height_per_label[events_nbr],
+                    label='{}'.format(self.labels[events_nbr]),
+                    bins=bins)
+            ax.hist(max_height_per_label[saturated_nbr],
+                    label='{}'.format(self.labels[saturated_nbr]),
                     bins=bins)
 
             ax.set_xlabel('pulse height (V)')
             ax.set_ylabel('number of events')
 
             plt.legend()
+            fig.tight_layout()
+            plt.tight_layout()
             if ylog:
                 ax.set_yscale('log')
             if self.save_as != False:
@@ -1513,10 +1532,15 @@ class EvaluationTools:
             else:
                 ax[k][j].plot(bin_boundries[l][0],
                               bin_boundries[l][1])
+            # ax[k][j].set_xlable('pulse height (V)')
+            # ax[k][j].set_ylable('accuray')
 
-        plt.xlable('pulse height (V)')
-        plt.ylable('accuray')
-        plt.show()
+
+        fig.tight_layout()
+        # plt.xlable('pulse height (V)')
+        # plt.ylable('accuray')
+        # plt.show()
+        plt.tight_layout()
         if self.save_as != False:
             plt.savefig('{}correctly_labeled_per_v.{}'.format(self.save_plot_dir, self.save_as))
         else:
@@ -1700,7 +1724,7 @@ class EvaluationTools:
         else:
             cm_conv_labels = dict([(n,i) for i, n in enumerate(np.unique(self.get_label_nbrs(what, verb=verb)))])
             true_label_nbrs = [cm_conv_labels[l] for l in self.get_label_nbrs(what, verb=verb)]
-        
+
 
         cm = confusion_matrix(true_label_nbrs,
                               self.get_pred(pred_method, what, verb=verb))
