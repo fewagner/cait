@@ -23,7 +23,7 @@ class EventInterface:
     """
 
     def __init__(self, module, run, record_length,
-                 sample_frequency=25000, nmbr_channels=2, down=1):
+                 sample_frequency=25000, nmbr_channels=2, down=1, dpi=300):
         """
         Provide general information about the detector for a new instance of the class.
 
@@ -62,6 +62,7 @@ class EventInterface:
             self.channel_names = ['Channel {}'.format(i) for i in range(nmbr_channels)]
         self.xlim = None
         self.ylim = None
+        self.dpi=dpi
 
         print('Event Interface Instance created.')
 
@@ -348,7 +349,7 @@ class EventInterface:
                     offset + 0.736 * pulse_height,
                     offset + 0.368 * pulse_height]
 
-        plt.scatter(x_values, y_values, color=color)
+        plt.scatter(x_values, y_values, color=color, zorder=15)
 
     # Access options of label interface
     def viewer_options(self):
@@ -500,17 +501,17 @@ class EventInterface:
                 colors = ['red' for i in range(self.nmbr_channels - 1)]
                 colors.append('blue')
                 anti_colors = ['blue' for i in range(self.nmbr_channels - 1)]
-                colors.append('red')
+                anti_colors.append('red')
 
             # -------- START PLOTTING --------
-            use_cait_style()
+            use_cait_style(dpi=self.dpi)
             plt.close()
 
             for i in range(self.nmbr_channels):
 
                 plt.subplot(self.nmbr_channels, 1, i + 1)
                 plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
-                plt.plot(event[i], label=self.channel_names[i], color=colors[i])
+                plt.plot(event[i], label=self.channel_names[i], color=colors[i], zorder=10)
                 plt.title('Index {}, {} {}'.format(idx,
                                                  self.channel_names[i], appendix))
 
@@ -525,7 +526,7 @@ class EventInterface:
 
                 # sev
                 if self.sev:
-                    plt.plot(sev_fit[i], color='orange')
+                    plt.plot(sev_fit[i], color='orange', zorder=15)
 
                 make_grid()
                 plt.xlim(self.xlim)

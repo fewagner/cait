@@ -80,7 +80,8 @@ class FitMixin(object):
 
 
     # apply sev fit
-    def apply_sev_fit(self, type='events', order_bl_polynomial=3, sample_length=0.04, down=1, verb=False):
+    def apply_sev_fit(self, type='events', order_bl_polynomial=3, sample_length=0.04, down=1,
+                      t0_bounds=(-20,20), verb=False):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -109,7 +110,7 @@ class FitMixin(object):
                 if verb:
                     print('Fitting channel {}.'.format(c))
                 # create instance of fit model
-                fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down)
+                fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds)
 
                 # fit all
                 for i in range(len(events[0])):

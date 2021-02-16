@@ -37,7 +37,7 @@ def plot_S1(this_event, elements, color='r'):
     y_val = [this_event[el[0]] for el in elements]
     x_val.append(elements[-1][1] - 1)
     y_val.append(this_event[elements[-1][1] - 1])
-    plt.plot(x_val, y_val, color=color)
+    plt.plot(x_val, y_val, color=color, zorder=15)
     plt.scatter(x_val, y_val, color=color)
 
 

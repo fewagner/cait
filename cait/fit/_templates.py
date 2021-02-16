@@ -87,12 +87,13 @@ class sev_fit_template:
     :param down: int, power of 2, the downsample rate of the event for fitting
     """
 
-    def __init__(self, pm_par, t, down=1):
+    def __init__(self, pm_par, t, down=1, t0_bounds=(-20, 20)):
         self.pm_par = pm_par
         self.down = down
         if down > 1:
-            t = np.mean(t.reshape(int(len(t)/down), down), axis=1)  # only first of the grouped time values
+            t = np.mean(t.reshape(int(len(t) / down), down), axis=1)  # only first of the grouped time values
         self.t = t
+        self.t0_bounds = t0_bounds
 
     def sef(self, h, t0, a0):
         """
@@ -153,9 +154,18 @@ class sev_fit_template:
         x = np.copy(self.pm_par)
         x[0] -= t0
         pulse = pulse_template(self.t, *x)
+
         return h * pulse + a0 + \
                a1 * (self.t - t0) + a2 * (self.t - t0) ** 2 + \
                a3 * (self.t - t0) ** 3
+
+    def t0_minimizer(self, par, h0, a00, a10, a20, a30, event):
+        out = np.sum((self.sec(h0, par, a00, a10, a20, a30) - event) ** 2)
+        if par < self.t0_bounds[0]:
+            out *= 1 + (par - self.t0_bounds[0]) ** 2
+        elif par > self.t0_bounds[1]:
+            out *= 1 + (par - self.t0_bounds[1]) ** 2
+        return out
 
     def fit_cubic(self, event):
         """
@@ -166,7 +176,7 @@ class sev_fit_template:
         """
 
         if self.down > 1:
-            event = np.mean(event.reshape(int(len(event)/self.down), self.down), axis=1)
+            event = np.mean(event.reshape(int(len(event) / self.down), self.down), axis=1)
 
         offset = np.mean(event[:int(len(event) / 8)])
         event = event - offset
@@ -179,11 +189,10 @@ class sev_fit_template:
         a30 = 0
 
         # fit t0
-        t0_minimizer = lambda par: np.sum((self.sec(h0, par, a00, a10, a20, a30) - event) ** 2)
-        res = minimize(t0_minimizer,
+        res = minimize(self.t0_minimizer,
                        x0=np.array([0]),
                        method='nelder-mead',
-                       #bounds=((-30, 30),)
+                       args=(h0, a00, a10, a20, a30, event),
                        )
         t0 = res.x
 
@@ -192,7 +201,7 @@ class sev_fit_template:
         res = minimize(par_minimizer,
                        x0=np.array([h0, a00, a10, a20, a30]),
                        method='nelder-mead',
-                       #bounds=((-0.05, 20), (None, None), (None, None), (None, None), (None, None))
+                       # bounds=((-0.05, 20), (None, None), (None, None), (None, None), (None, None))
                        )
         h, a0, a1, a2, a3 = res.x
         a0 += offset
