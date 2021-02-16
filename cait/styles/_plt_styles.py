@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # functions
 
-def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18):
+def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=300):
     """
     TODO
 
@@ -17,9 +17,11 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18):
     mpl.rcParams['xtick.labelsize'] = fontsize
     mpl.rcParams['ytick.labelsize'] = fontsize
     mpl.rcParams['font.size'] = fontsize
-    mpl.rcParams['figure.autolayout'] = True
+    if autolayout != None:
+        mpl.rcParams['figure.autolayout'] = autolayout
     mpl.rcParams['figure.figsize'] = (x_size, y_size)
-    mpl.rcParams['figure.dpi'] = 300
+    if dpi != None:
+        mpl.rcParams['figure.dpi'] = dpi
     mpl.rcParams['axes.titlesize'] = fontsize
     mpl.rcParams['axes.labelsize'] = fontsize
     mpl.rcParams['lines.linewidth'] = 2
@@ -27,7 +29,8 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18):
     mpl.rcParams['legend.fontsize'] = fontsize
     mpl.rcParams['mathtext.fontset'] = 'stix'
     mpl.rcParams['font.family'] = 'STIXGeneral'
-    mpl.rcParams['savefig.dpi'] = 300
+    if dpi != None:
+        mpl.rcParams['savefig.dpi'] = dpi
 
 def make_grid():
     # major grid lines
