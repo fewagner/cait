@@ -68,7 +68,7 @@ class PlotMixin(object):
                     plt.ylabel('Amplitude (V)')
                     plt.legend()
                     if title is None:
-                        plt.title(ch + ' ' + type)
+                        plt.title(str(ch) + ' ' + type)
                     else:
                         plt.title(title)
 
@@ -85,7 +85,7 @@ class PlotMixin(object):
                 plt.ylabel('Amplitude (V)')
                 plt.legend()
                 if title is None:
-                    plt.title(channel + ' ' + type)
+                    plt.title(str(channel) + ' ' + type)
                 else:
                     plt.title(title)
 
@@ -171,7 +171,7 @@ class PlotMixin(object):
                     plt.loglog(f['noise']['freq'], f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
                     make_grid()
                     if title is None:
-                        plt.title(ch + ' NPS')
+                        plt.title(str(ch) + ' NPS')
                     else:
                         plt.title(title)
                     plt.ylabel('Frequency Amplitude (a.u.)')
@@ -181,7 +181,7 @@ class PlotMixin(object):
                 plt.loglog(f['noise']['freq'], f['noise']['nps'][channel], color=self.colors[channel], zorder=10, linewidth=3)
                 make_grid()
                 if title is None:
-                    plt.title(channel + ' NPS')
+                    plt.title(str(channel) + ' NPS')
                 else:
                     plt.title(title)
                 plt.ylabel('Frequency Amplitude (a.u.)')
@@ -230,7 +230,7 @@ class PlotMixin(object):
                     make_grid()
                     plt.ylabel('Frequency Amplitude (a.u.)')
                     if title is None:
-                        plt.title(ch + ' OF')
+                        plt.title(str(ch) + ' OF')
                     else:
                         plt.title(title)
                 plt.xlabel('Frequency (Hz)')
@@ -240,7 +240,7 @@ class PlotMixin(object):
                 plt.xlabel('Frequency (Hz)')
                 plt.ylabel('Frequency Amplitude (a.u.)')
                 if title is None:
-                    plt.title(channel + ' OF')
+                    plt.title(str(channel) + ' OF')
                 else:
                     plt.title(title)
 
@@ -511,6 +511,8 @@ class PlotMixin(object):
                 ylabel=None,
                 x_channel=0,
                 y_channel=1,
+                xlim=None,
+                ylim=None,
                 only_idx=None,
                 type='events',
                 which_labels=None,
@@ -600,6 +602,10 @@ class PlotMixin(object):
                             marker=marker,
                             alpha=alpha,
                             s=s, zorder=10)
+            if xlim is not None:
+                plt.xlim(xlim)
+            if ylim is not None:
+                plt.ylim(ylim)
             make_grid()
             if xlabel is None:
                 plt.xlabel('Amplitude Ch ' + str(x_channel) + ' (V)')
