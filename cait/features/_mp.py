@@ -195,7 +195,7 @@ def get_times(t_zero, t_rise, t_decaystart, t_half, t_end):
     return length_rise, length_peak, length_firsthalfdecay, length_secondhalfdecay
 
 
-def calc_main_parameters(event, down=1):
+def calc_main_parameters(event, down=1, max_bounds=None):
     """
     Calculates the Main Parameters for an Event.
     Optional, the event can be downsampled by a given factor befor the calculation
@@ -206,21 +206,25 @@ def calc_main_parameters(event, down=1):
     """
 
     length_event = len(event)
+    if max_bounds is None:
+        max_bounds = [0, length_event]
 
     offset = np.mean(event[:int(length_event/8)])
 
-    # smoothing
+    # smoothing or downsampling
     if down == 1:
         event_smoothed = box_car_smoothing(event - offset)
     else:
         event_smoothed = event.reshape(int(length_event / down), down)
         event_smoothed = np.mean(event_smoothed, axis=1)
         event_smoothed = event_smoothed - offset
+        max_bounds[0] = int(max_bounds[0]/down)
+        max_bounds[1] = int(max_bounds[1] / down)
 
     length_event_smoothed = len(event_smoothed)
 
     # get the maximal pulse height and the time of the maximum
-    maximum_pulse_height = np.max(event_smoothed)  # [idx_lower_region : idx_upper_region]
+    maximum_pulse_height = np.max(event_smoothed[max_bounds[0]:max_bounds[1]])  # [idx_lower_region : idx_upper_region]
     # maximum_index = np.argmax(event_smoothed)  # [idx_lower_region : idx_upper_region]  + idx_lower_region
 
     if maximum_pulse_height > np.std(event_smoothed):  # typically this will be the case
@@ -239,7 +243,7 @@ def calc_main_parameters(event, down=1):
     if quadratic_drift != 0:
         event_nodrift = event_nodrift - quadratic_drift * np.linspace(0, length_event_smoothed - 1, length_event_smoothed) ** 2
 
-    maximum_index = np.argmax(event_nodrift)
+    maximum_index = int(np.argmax(event_nodrift[max_bounds[0]:max_bounds[1]]) + max_bounds[0])
     # maximum_pulse_height = event_smoothed[maximum_index]
     maximum_pulse_height_condition = event_smoothed[maximum_index]
 

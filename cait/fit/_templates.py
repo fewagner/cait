@@ -4,12 +4,14 @@
 
 import numpy as np
 from scipy.optimize import minimize
+import numba as nb
 
 
 # -----------------------------------------------------
 # FUNCTIONS
 # -----------------------------------------------------
 
+@nb.njit
 def baseline_template_quad(t, c0, c1, c2):
     """
     Template for the baseline fit, with constant linear and
@@ -24,6 +26,7 @@ def baseline_template_quad(t, c0, c1, c2):
     return c0 + t * c1 + t ** 2 * c2
 
 
+@nb.njit
 def baseline_template_cubic(t, c0, c1, c2, c3):
     """
     Template for the baseline fit, with constant linear,
@@ -39,6 +42,7 @@ def baseline_template_cubic(t, c0, c1, c2, c3):
     return c0 + t * c1 + t ** 2 * c2 + t ** 3 * c3
 
 
+@nb.njit
 def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     """
     Parametric model for the pulse shape, 6 parameters
@@ -52,15 +56,18 @@ def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     :param tau_t: float, parameter for decay 2. comp
     :return: 1D array, the pulse model evaluated on the time grid
     """
-
-    pulse = (t >= t0).astype(float)
-    t_red = t[t >= t0]
-    pulse[t >= t0] *= (An * (np.exp(-(t_red - t0) / tau_n) - np.exp(-(t_red - t0) / tau_in)) + \
-                       At * (np.exp(-(t_red - t0) / tau_t) - np.exp(-(t_red - t0) / tau_n)))
+    n = t.shape[0]
+    cond = t > t0
+    # print(cond)
+    pulse = np.zeros(n)
+    # pulse = 1e-5*np.ones(n)
+    pulse[cond] = (An * (np.exp(-(t[cond] - t0) / tau_n) - np.exp(-(t[cond] - t0) / tau_in)) + \
+                   At * (np.exp(-(t[cond] - t0) / tau_t) - np.exp(-(t[cond] - t0) / tau_n)))
     return pulse
 
 
 # Define gauss function
+@nb.njit
 def gauss(x, *p):
     """
     Evaluate a gauss function on a given grid x
@@ -71,6 +78,30 @@ def gauss(x, *p):
     """
     A, mu, sigma = p
     return A / sigma / np.sqrt(2 * np.pi) * np.exp(-(x - mu) ** 2 / (2. * sigma ** 2))
+
+
+@nb.njit()
+def sec(t, h, t0, a0, a1, a2, a3, t00, An, At, tau_n, tau_in, tau_t):
+    """
+    Standard Event Model with Cubic Baseline
+
+    :param h: float, hight of pulse shape
+    :param t0: float, onset of pulse shape
+    :param a0: float, offset of the baseline
+    :param a1: float, linear drift component of the baseline
+    :param a2: float, quadratic drift component of the baseline
+    :param a3: float, cubic drift component of the baseline
+    :return: 1D array, the pulse model evaluated on the time grid
+    """
+    t0_comb = t0 + t00
+    cond = t > t0_comb
+    pulse = a0 + \
+            a1 * t + a2 * t ** 2 + \
+            a3 * t ** 3
+    pulse[cond] += h * (An * (np.exp(-(t[cond] - t0_comb) / tau_n) - np.exp(-(t[cond] - t0_comb) / tau_in)) + \
+                        At * (np.exp(-(t[cond] - t0_comb) / tau_t) - np.exp(-(t[cond] - t0_comb) / tau_n)))
+
+    return pulse
 
 
 # -----------------------------------------------------
@@ -87,13 +118,18 @@ class sev_fit_template:
     :param down: int, power of 2, the downsample rate of the event for fitting
     """
 
-    def __init__(self, pm_par, t, down=1, t0_bounds=(-20, 20)):
-        self.pm_par = pm_par
+    def __init__(self, pm_par, t, down=1, t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None):
+        self.pm_par = np.array(pm_par)
         self.down = down
         if down > 1:
             t = np.mean(t.reshape(int(len(t) / down), down), axis=1)  # only first of the grouped time values
-        self.t = t
+        self.t = np.array(t)
         self.t0_bounds = t0_bounds
+        self.truncation_level = truncation_level
+        if interval_restriction_factor is not None:
+            if interval_restriction_factor > 0.8 or interval_restriction_factor < 0:
+                raise KeyError("interval_restriction_factor must be float > 0 and < 0.8!")
+        self.interval_restriction_factor = interval_restriction_factor
 
     def sef(self, h, t0, a0):
         """
@@ -139,32 +175,61 @@ class sev_fit_template:
         return h * pulse_template(self.t, *x) + a0 + \
                a1 * (self.t - t0) + a2 * (self.t - t0) ** 2
 
-    def sec(self, h, t0, a0, a1, a2, a3):
-        """
-        Standard Event Model with Cubic Baseline
-
-        :param h: float, hight of pulse shape
-        :param t0: float, onset of pulse shape
-        :param a0: float, offset of the baseline
-        :param a1: float, linear drift component of the baseline
-        :param a2: float, quadratic drift component of the baseline
-        :param a3: float, cubic drift component of the baseline
-        :return: 1D array, the pulse model evaluated on the time grid
-        """
-        x = np.copy(self.pm_par)
-        x[0] -= t0
-        pulse = pulse_template(self.t, *x)
-
-        return h * pulse + a0 + \
-               a1 * (self.t - t0) + a2 * (self.t - t0) ** 2 + \
-               a3 * (self.t - t0) ** 3
+    def wrap_sec(self, h, t0, a0, a1, a2, a3):
+        return sec(self.t, h, t0, a0, a1, a2, a3, *self.pm_par)
 
     def t0_minimizer(self, par, h0, a00, a10, a20, a30, event):
-        out = np.sum((self.sec(h0, par, a00, a10, a20, a30) - event) ** 2)
+        # TODO
+
+        out = 0
+
+        # t0 bounds
         if par < self.t0_bounds[0]:
-            out *= 1 + (par - self.t0_bounds[0]) ** 2
+            out += 1.0e100 - 1.0e100 * (par[0] - self.t0_bounds[0])
         elif par > self.t0_bounds[1]:
-            out *= 1 + (par - self.t0_bounds[1]) ** 2
+            out += 1.0e100 - 1.0e100 * (self.t0_bounds[1] - par[0])
+
+        if out == 0:
+
+            # truncate in interval
+            if self.interval_restriction_factor is not None:
+                low = int(self.interval_restriction_factor * (len(event) - 1) / 4)
+                up = int((len(event) - 1) * (1 - (3 / 4) * self.interval_restriction_factor))
+                fit = sec(self.t[low:up], h0, par, a00, a10, a20, a30, *self.pm_par)
+                event = event[low:up]
+            else:
+                fit = sec(self.t, h0, par, a00, a10, a20, a30, *self.pm_par)
+
+            # truncate in height
+            if self.truncation_level is not None:
+                cond = event < self.truncation_level
+                out = np.sum((event[cond] - fit[cond]) ** 2)
+            else:
+                out = np.sum((event - fit) ** 2)
+
+        return out
+
+    def par_minimizer(self, par, t0, event):
+        # TODO
+
+        out = 0
+
+        # truncate in interval
+        if self.interval_restriction_factor is not None:
+            low = int(self.interval_restriction_factor * (len(event) - 1) / 4)
+            up = int((len(event) - 1) * (1 - (3 / 4) * self.interval_restriction_factor))
+            fit = sec(self.t[low:up], par[0], t0, par[1], par[2], par[3], par[4], *self.pm_par)
+            event = event[low:up]
+        else:
+            fit = sec(self.t, par[0], t0, par[1], par[2], par[3], par[4], *self.pm_par)
+
+        # truncate in height
+        if self.truncation_level is not None:
+            cond = event < self.truncation_level
+            out = np.sum((fit[cond] - event[cond]) ** 2)
+        else:
+            out = np.sum((fit - event) ** 2)
+
         return out
 
     def fit_cubic(self, event):
@@ -184,7 +249,7 @@ class sev_fit_template:
         # find d, height and k approx
         a00 = 0  # np.mean(event[:1000])
         h0 = np.max(event)
-        a10 = (event[-1] - self.sec(h0, 0, 0, 0, 0, 0)[-1] - event[0]) / (self.t[-1] - self.t[0])
+        a10 = (event[-1] - sec(self.t, h0, 0, 0, 0, 0, 0, *self.pm_par)[-1] - event[0]) / (self.t[-1] - self.t[0])
         a20 = 0
         a30 = 0
 
@@ -193,15 +258,16 @@ class sev_fit_template:
                        x0=np.array([0]),
                        method='nelder-mead',
                        args=(h0, a00, a10, a20, a30, event),
+                       options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
                        )
         t0 = res.x
 
         # fit height, d and k with fixed t0
-        par_minimizer = lambda par: np.sum((self.sec(par[0], t0, par[1], par[2], par[3], par[4]) - event) ** 2)
-        res = minimize(par_minimizer,
+        res = minimize(self.par_minimizer,
                        x0=np.array([h0, a00, a10, a20, a30]),
                        method='nelder-mead',
-                       # bounds=((-0.05, 20), (None, None), (None, None), (None, None), (None, None))
+                       args=(t0, event),
+                       options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True}
                        )
         h, a0, a1, a2, a3 = res.x
         a0 += offset

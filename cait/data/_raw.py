@@ -108,10 +108,10 @@ def read_rdt_file(fname, path, channels,
                        ('trig_delay', 'i4'),
                        ('abs_time_s', 'i4'),
                        ('abs_time_mus', 'i4'),
-                       ('delay_ch_tp', 'i4'),
+                       ('delay_ch_tp', 'i4', int(ints_in_header==7)),
                        ('time_low', 'i4'),
                        ('time_high', 'i4'),
-                       ('qcd_events', 'i4', int(ints_in_header==7)),
+                       ('qcd_events', 'i4'),
                        ('hours', 'f4'),
                        ('dead_time', 'f4'),
                        ('test_pulse_amplitude', 'f4'),
@@ -159,7 +159,7 @@ def read_rdt_file(fname, path, channels,
         for c in range(nmbr_channels):
             for i, d in enumerate(record.descr):
                 name = d[0]
-                if name == 'qcd_events' and ints_in_header != 7:
+                if name == 'delay_ch_tp' and ints_in_header != 7:
                     continue
                 metainfo[c, :, i] = recs[good_recs[c]][name]
                 if i >= 13:

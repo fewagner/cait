@@ -81,7 +81,7 @@ class FitMixin(object):
 
     # apply sev fit
     def apply_sev_fit(self, type='events', order_bl_polynomial=3, sample_length=0.04, down=1,
-                      t0_bounds=(-20,20), verb=False):
+                      t0_bounds=(-20,20), truncation_level=None, interval_restriction_factor=None, verb=False):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -98,6 +98,9 @@ class FitMixin(object):
         if order_bl_polynomial not in [3]:
             raise KeyError('Order Polynomial must be 3! (Other Versions Depricated.)')
 
+        if truncation_level is None:
+            truncation_level = [None for i in range(self.nmbr_channels)]
+
         # open the dataset
         with h5py.File(self.path_h5, 'r+') as f:
             events = f[type]['event']
@@ -110,7 +113,9 @@ class FitMixin(object):
                 if verb:
                     print('Fitting channel {}.'.format(c))
                 # create instance of fit model
-                fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds)
+                fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds,
+                                             truncation_level=truncation_level[c],
+                                             interval_restriction_factor=interval_restriction_factor)
 
                 # fit all
                 for i in range(len(events[0])):
@@ -137,7 +142,7 @@ class FitMixin(object):
                     # elif order_bl_polynomial == 2:
                     #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
                     # elif order_bl_polynomial == 3:
-                    f['events']['sev_fit_rms'][c, i] = np.mean((events[c, i] - fit_model.sec(*par[c, i])) ** 2)
+                    f['events']['sev_fit_rms'][c, i] = np.mean((events[c, i] - fit_model.wrap_sec(*par[c, i])) ** 2)
                     # else:
                     #     raise KeyError('Order Polynomial must be 0,1,2,3!')
 

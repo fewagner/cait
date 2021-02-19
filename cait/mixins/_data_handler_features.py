@@ -28,7 +28,7 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
-    def calc_mp(self, type='events', path_h5=None, processes=4):
+    def calc_mp(self, type='events', path_h5=None, processes=4, down=1, max_bounds=None):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
@@ -43,14 +43,16 @@ class FeaturesMixin(object):
 
         with h5py.File(path_h5, 'r+') as h5f:
             events = h5f[type]
+            nmbr_ev = len(events['event'][0])
 
             print('CALCULATE MAIN PARAMETERS.')
 
             with Pool(processes) as p:  # basically a for loop running on 4 processes
                 mainpar_list_event = []
                 for c in range(self.nmbr_channels):
-                    mainpar_list_event.append(p.map(
-                        calc_main_parameters, events['event'][c, :, :]))
+                    mainpar_list_event.append(p.starmap(
+                        calc_main_parameters,
+                        [(events['event'][c, i, :], down, max_bounds ) for i in range(nmbr_ev)]))
             mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
 
             events.require_dataset(name='mainpar',
@@ -84,7 +86,9 @@ class FeaturesMixin(object):
                    remove_offset=True,
                    verb=True,
                    scale_fit_height=True,
-                   sample_length=0.04):
+                   sample_length=0.04,
+                    t0_start=None,
+                 opt_start=False):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
 
@@ -120,6 +124,10 @@ class FeaturesMixin(object):
             mainpar = h5f[type]['mainpar']
 
             std_evs = []
+
+            # set the start values for t0
+            if t0_start is None:
+                t0_start = [None for i in range(self.nmbr_channels)]
 
             # if no pulse_height_interval is specified set it to average values for all channels
             if pulse_height_interval == None:
@@ -165,7 +173,10 @@ class FeaturesMixin(object):
                                                        remove_offset=remove_offset,
                                                        verb=verb,
                                                        scale_fit_height=scale_fit_height,
-                                                       sample_length=sample_length))
+                                                       sample_length=sample_length,
+                                                       t0_start=t0_start[c],
+                                                       opt_start=opt_start,
+                                                       ))
 
             sev.require_dataset('event',
                                 shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev

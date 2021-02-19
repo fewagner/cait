@@ -166,7 +166,7 @@ class EventInterface:
             print('Error! Load a bck file first.')
 
     # Load CSV file for labeling
-    def load_labels_csv(self, path, type):
+    def load_labels_csv(self, path, type='events'):
         """
         Load a csv file with labels
 
@@ -491,7 +491,7 @@ class EventInterface:
                 fp = f['events']['sev_fit_par'][:, idx, :]
                 for c in range(self.nmbr_channels):
                     offset = np.mean(event[c, :int(len(event[c]) / 8)])
-                    sev_fit.append(self.fit_models[c].sec(*fp[c]) + offset)
+                    sev_fit.append(self.fit_models[c].wrap_sec(*fp[c]))
 
             # def colors
             if self.nmbr_channels == 1:

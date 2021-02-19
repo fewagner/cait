@@ -22,7 +22,9 @@ def generate_standard_event(events,
                             remove_offset=True,
                             verb=False,
                             scale_fit_height=True,
-                            sample_length=0.04):
+                            sample_length=0.04,
+                            t0_start=None,
+                            opt_start=False):
     """
     Calculates the standard event and fits the pulse shape model.
 
@@ -106,12 +108,16 @@ def generate_standard_event(events,
     standardevent = np.mean(events[use_indices == 1], axis=0)
     standardevent /= np.max(standardevent)
 
-    par = fit_pulse_shape(standardevent, sample_length=sample_length)
+    if t0_start is None:
+        t0_start = -3
+    par = fit_pulse_shape(standardevent, sample_length=sample_length, t0_start=t0_start, opt_start=opt_start)
 
     if scale_fit_height:
         t = (np.arange(0, len(standardevent), dtype=float) - len(standardevent) / 4) * sample_length
         fit_max = np.max(pulse_template(t, *par))
-        par[1] /= fit_max
-        par[2] /= fit_max
+        print('Parameter: ', par)
+        if not np.isclose(fit_max, 0):
+            par[1] /= fit_max
+            par[2] /= fit_max
 
     return standardevent, par
