@@ -1,49 +1,36 @@
-.. cait documentation master file, created by
-   sphinx-quickstart on Fri Oct 30 17:50:05 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-
-Getting started
-*************************************
-
-Installation
-===================
-
-Code Structure
-===================
-
-
-Documentation
-**************************
+.. include:: ../../README.rst
 
 .. toctree::
+   :caption: Home
    :maxdepth: 2
-   :caption: Contents:
 
-cait DataHandler
-===================
-.. automodule:: cait.DataHandler
-   :members:
+   ../starting
+   ../installing
+   ../about
+   ../contributing
 
-cait EventInterface
-=====================
-.. automodule:: cait.EventInterface
-   :members:
+.. toctree::
+   :caption: Tutorials
+   :maxdepth: 1
 
-cait ModelHandler
-=====================
-.. automodule:: cait.ModelHandler
-   :members:
+   ../tutorials/conversion
 
-cait StreamInterface
-=====================
-.. automodule:: cait.StreamInterface
-   :members:
+.. toctree::
+   :caption: Documentation
+   :maxdepth: 3
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   ../documentation/datahandler
+   ../documentation/evaluationtools
+   ../documentation/bandfit
+   ../documentation/calibration
+   ../documentation/cuts
+   ../documentation/data
+   ../documentation/datasets
+   ../documentation/evaluation
+   ../documentation/features
+   ../documentation/filter
+   ../documentation/fit
+   ../documentation/models
+   ../documentation/simulate
+   ../documentation/styles
+   ../documentation/trigger

@@ -128,6 +128,12 @@ class FitMixin(object):
             f['events'].require_dataset(name='sev_fit_par'.format(order_bl_polynomial),
                                         shape=par.shape,
                                         dtype='float')
+            f['events']['sev_fit_par'].attrs.create(name='pulse_height', data=0)
+            f['events']['sev_fit_par'].attrs.create(name='onset', data=1)
+            f['events']['sev_fit_par'].attrs.create(name='constant_coefficient', data=2)
+            f['events']['sev_fit_par'].attrs.create(name='linear_coefficient', data=3)
+            f['events']['sev_fit_par'].attrs.create(name='quadratic_coefficient', data=4)
+            f['events']['sev_fit_par'].attrs.create(name='cubic_coefficient', data=5)
             f['events'].require_dataset(name='sev_fit_rms'.format(order_bl_polynomial),
                                         shape=(self.nmbr_channels, len(events[0])),
                                         dtype='float')

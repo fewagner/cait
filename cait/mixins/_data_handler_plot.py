@@ -9,6 +9,7 @@ from ..fit._templates import pulse_template
 from ..fit._saturation import logistic_curve
 from ..styles._plt_styles import use_cait_style, make_grid
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -18,6 +19,7 @@ def _str_empty(value):
         return ''
     else:
         return str(value)
+
 
 class PlotMixin(object):
     """
@@ -33,7 +35,8 @@ class PlotMixin(object):
                  block=True,
                  sample_length=0.04,
                  show=True,
-                 save_path=None):
+                 save_path=None,
+                 dpi=300):
         """
         Plot the standardevent of all channels
         :param type: string, either stdevent for events or stdevent_tp for testpulses
@@ -51,7 +54,7 @@ class PlotMixin(object):
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
             # plot
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
 
             if channel is None:
@@ -61,8 +64,10 @@ class PlotMixin(object):
                     if not show_fit:
                         plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, label='Standardevent')
                     else:
-                        plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
-                        plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2, label='Parametric Fit')
+                        plt.plot(t, sev[i], color=self.colors[i], zorder=10, linewidth=3, alpha=0.5,
+                                 label='Standardevent')
+                        plt.plot(t, pulse_template(t, *sev_fitpar[i]), color='black', alpha=0.7, zorder=10, linewidth=2,
+                                 label='Parametric Fit')
                     make_grid()
                     plt.xlabel('Time (ms)')
                     plt.ylabel('Amplitude (V)')
@@ -77,8 +82,10 @@ class PlotMixin(object):
                 if not show_fit:
                     plt.plot(t, sev[channel], color=self.colors[channel], zorder=10, linewidth=3, label='Standardevent')
                 else:
-                    plt.plot(t, sev[channel], color=self.colors[channel], zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
-                    plt.plot(t, pulse_template(t, *sev_fitpar[channel]), color='black', alpha=0.7, zorder=10, linewidth=2,
+                    plt.plot(t, sev[channel], color=self.colors[channel], zorder=10, linewidth=3, alpha=0.5,
+                             label='Standardevent')
+                    plt.plot(t, pulse_template(t, *sev_fitpar[channel]), color='black', alpha=0.7, zorder=10,
+                             linewidth=2,
                              label='Parametric Fit')
                 make_grid()
                 plt.xlabel('Time (ms)')
@@ -94,15 +101,15 @@ class PlotMixin(object):
             if show:
                 plt.show(block=block)
 
-
     def show_exceptional_sev(self,
                              naming,
                              title=None,
                              show_fit=True,
                              block=True,
                              sample_length=0.04,
-                 show=True,
-                 save_path=None):
+                             show=True,
+                             save_path=None,
+                             dpi=300):
         """
         Plot an exceptional standardevent of one channel
 
@@ -122,7 +129,7 @@ class PlotMixin(object):
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
             # plot
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
 
             if not show_fit:
@@ -144,14 +151,14 @@ class PlotMixin(object):
             if show:
                 plt.show(block=block)
 
-
     # Plot the NPS
     def show_nps(self,
                  channel=None,
                  title=None,
                  block=True,
                  show=True,
-                 save_path=None):
+                 save_path=None,
+                 dpi=300):
         """
         Plot the Noise Power Spectrum of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -161,7 +168,7 @@ class PlotMixin(object):
         with h5py.File(self.path_h5, 'r') as f:
 
             # plot
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
 
             if channel is None:
@@ -178,7 +185,8 @@ class PlotMixin(object):
                 plt.xlabel('Frequency (Hz)')
 
             else:
-                plt.loglog(f['noise']['freq'], f['noise']['nps'][channel], color=self.colors[channel], zorder=10, linewidth=3)
+                plt.loglog(f['noise']['freq'], f['noise']['nps'][channel], color=self.colors[channel], zorder=10,
+                           linewidth=3)
                 make_grid()
                 if title is None:
                     plt.title(str(channel) + ' NPS')
@@ -187,21 +195,20 @@ class PlotMixin(object):
                 plt.ylabel('Frequency Amplitude (a.u.)')
                 plt.xlabel('Frequency (Hz)')
 
-
             if save_path is not None:
                 plt.savefig(save_path)
             if show:
                 plt.show(block=block)
-
 
     # Plot the OF
     def show_of(self,
                 channel=None,
                 title=None,
                 block=True,
-                 show=True,
-                 save_path=None,
-                down=None):
+                show=True,
+                save_path=None,
+                down=None,
+                dpi=300):
         """
         Plot the Optimum Filter of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -219,7 +226,7 @@ class PlotMixin(object):
             of = np.abs(of) ** 2
 
             # plot
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
 
             if channel is None:
@@ -249,7 +256,6 @@ class PlotMixin(object):
             if show:
                 plt.show(block=block)
 
-
     # plot histogram of some value
     def show_values(self,
                     group,
@@ -267,7 +273,8 @@ class PlotMixin(object):
                     show=True,
                     xran=None,
                     yran=None,
-                    save_path=None):
+                    save_path=None,
+                    dpi=300):
         """
         Shows a histogram of some values from the HDF5 file
 
@@ -303,9 +310,9 @@ class PlotMixin(object):
                 vals = hf5[group][key][idx0, idx1, idx2]
 
             if cut_flag is not None:
-                vals=vals[cut_flag]
+                vals = vals[cut_flag]
 
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
             plt.hist(vals,
                      bins=bins,
@@ -328,7 +335,6 @@ class PlotMixin(object):
             if show:
                 plt.show(block=block)
 
-
     # show scatter plot of some value
     def show_scatter(self,
                      groups,
@@ -344,8 +350,9 @@ class PlotMixin(object):
                      marker='.',
                      xran=None,
                      yran=None,
-                 show=True,
-                 save_path=None):
+                     show=True,
+                     save_path=None,
+                     dpi=300):
         """
         Shows a scatter plot of some values from the HDF5 file
 
@@ -389,18 +396,20 @@ class PlotMixin(object):
                 if cut_flag is not None:
                     vals[i] = vals[i][cut_flag]
 
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
             plt.scatter(vals[0],
                         vals[1],
                         marker=marker, zorder=10)
             make_grid()
             if xlabel is None:
-                plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]), _str_empty(idx2s[0])))
+                plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]),
+                                                     _str_empty(idx2s[0])))
             else:
                 plt.xlabel(xlabel)
             if ylabel is None:
-                plt.ylabel('{} {} [{},{},{}]'.format(groups[1], keys[1], _str_empty(idx0s[1]), _str_empty(idx1s[1]), _str_empty(idx2s[1])))
+                plt.ylabel('{} {} [{},{},{}]'.format(groups[1], keys[1], _str_empty(idx0s[1]), _str_empty(idx1s[1]),
+                                                     _str_empty(idx2s[1])))
             else:
                 plt.ylabel(ylabel)
             if title is not None:
@@ -411,7 +420,6 @@ class PlotMixin(object):
                 plt.savefig(save_path)
             if show:
                 plt.show(block=block)
-
 
     # show histogram of main parameter
     def show_hist(self,
@@ -426,8 +434,9 @@ class PlotMixin(object):
                   bins=100,
                   block=False,
                   ran=None,
-                 show=True,
-                 save_path=None):
+                  show=True,
+                  save_path=None,
+                  dpi=300):
         """
         Show a histogram of main parameter values
 
@@ -468,7 +477,7 @@ class PlotMixin(object):
                     pars.append(par[f_h5[type]['{}_predictions'.format(pred_model)][which_channel, only_idx] == pred])
 
             # choose which mp to plot
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
             if which_labels is not None:
                 for p, l in zip(pars, which_labels):
@@ -503,7 +512,6 @@ class PlotMixin(object):
 
             print('Histogram for {} created.'.format(which_mp))
 
-
     # show light yield plot
     def show_LY(self,
                 title=None,
@@ -524,8 +532,9 @@ class PlotMixin(object):
                 marker='.',
                 alpha=0.8,
                 s=10,
-                 show=True,
-                 save_path=None):
+                show=True,
+                save_path=None,
+                dpi=300):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
 
@@ -587,7 +596,7 @@ class PlotMixin(object):
                     y_pars.append(y_par[condition])
 
             # choose which mp to plot
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
             if which_labels is not None:
                 for xp, yp, l in zip(x_pars, y_pars, which_labels):
@@ -635,12 +644,12 @@ class PlotMixin(object):
 
             print('LY Plot created.')
 
-
-    def show_saturation(self, show_fit=True, channel=0, marker='.', s=1,
+    def show_saturation(self, show_fit=True, channel=0, marker='.', s=1, alpha=1,
                         only_idx=None, title=None,
                         block=False,
-                 show=True,
-                 save_path=None):
+                        show=True,
+                        save_path=None,
+                        dpi=300):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
 
@@ -664,10 +673,10 @@ class PlotMixin(object):
 
             x = np.linspace(0, np.max(tpa))
 
-            use_cait_style()
+            use_cait_style(dpi=dpi)
             plt.close()
             plt.scatter(tpa, ph,
-                        marker=marker, s=s, label='TPA vs PH', zorder=10)
+                        marker=marker, s=s, label='TPA vs PH', zorder=10, alpha=alpha)
             if show_fit:
                 fitpar = f_h5['saturation']['fitpar'][channel]
                 plt.plot(x, logistic_curve(x, *fitpar),

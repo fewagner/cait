@@ -1,7 +1,7 @@
 
 from .event_interface import EventInterface
 from .data_handler import DataHandler
-from .model_handler import ModelHandler
+from cait.models._model_handler import ModelHandler
 from .evaluation_tools import EvaluationTools
 
 __all__ = ['EventInterface',
@@ -17,6 +17,6 @@ __all__ = ['EventInterface',
            'models',
            'simulate',
            'trigger',
-           'limit',
+           'bandfit',
            'styles'
            ]

@@ -276,7 +276,7 @@ class RdtMixin(object):
                 nmbr_noise = len(metainfo_noise[0])
                 print('Adding {} Noise Events.'.format(nmbr_noise))
 
-                noise = h5f.require_group('events')
+                noise = h5f.require_group('noise')
                 noise.require_dataset('event', shape=pulse_noise.shape, dtype=event_dtype)
                 noise.require_dataset('hours', shape=metainfo_noise[0, :, 10].shape, dtype=float)
                 noise.require_dataset('time_s', shape=metainfo_noise[0, :, 4].shape, dtype='int32')
@@ -299,7 +299,7 @@ class RdtMixin(object):
                 nmbr_tp = len(metainfo_tp[0])
                 print('Adding {} Testpulse Events.'.format(nmbr_tp))
 
-                testpulses = h5f.require_group('events')
+                testpulses = h5f.require_group('testpulses')
                 testpulses.require_dataset('event', shape=pulse_tp.shape, dtype=event_dtype)
                 testpulses.require_dataset('hours', shape=metainfo_tp[0, :, 10].shape, dtype=float)
                 testpulses.require_dataset('time_s', shape=metainfo_tp[0, :, 4].shape, dtype='int32')

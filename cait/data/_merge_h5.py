@@ -2,18 +2,20 @@
 
 import h5py
 import numpy as np
+import os
 
 
 # function
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
-                  groups_to_merge=['events', 'testpulses', 'noise'],
+                  groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses'],
                   sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset',
-                                 'hours', 'labels', 'testpulseamplitude', 'time_s', 'time_mus'],
+                                 'hours', 'labels', 'testpulseamplitude', 'time_s', 'time_mus', 'pulse_height'],
                   concatenate_axis=[1, 1, 1, 0, 0, 1, 0, 0, 0],
                   groups_from_a=[],
                   groups_from_b=[],
-                  continue_hours=False):
+                  continue_hours=True,
+                  keep_original_files=True):
     """
     Merges two HDF5 files, groups to merge can be chosen
 
@@ -38,54 +40,53 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :rtype: -
     """
 
-    a = h5py.File(path_h5_a, 'r')
-    b = h5py.File(path_h5_b, 'r')
-    m = h5py.File(path_h5_merged, 'w')
+    with h5py.File(path_h5_a, 'r') as a, h5py.File(path_h5_b, 'r') as b, h5py.File(path_h5_merged, 'w') as m:
 
-    # merge the groups
-    for group in groups_to_merge:
+        # merge the groups
+        for group in groups_to_merge:
 
-        print('MERGE GROUP: {}.'.format(group))
+            print('MERGE GROUP: {}.'.format(group))
 
-        if group in a.keys() and group in b.keys():
+            if group in a.keys() and group in b.keys():
 
-            # create group in hdf5
-            g = m.create_group(group)
-
-            for i, set in enumerate(sets_to_merge):
-
-                print('SET: {}.'.format(set))
-
-                if set in list(a[group].keys()) and set in list(b[group].keys()):
-
-                    print('creating ...')
-
-                    if continue_hours and set == 'hours':
-                        last_hour = a[group][set][-1] + (b[group]['time_s'][0] + 10e-6 * b[group]['time_mus'][0] -
-                                                         a[group]['time_s'][-1] - 10e-6 * a[group]['time_mus'][
-                                                             -1]) / 3600
-                        data = np.concatenate((a[group][set],
-                                               b[group][set] + last_hour), axis=concatenate_axis[i])
-                    else:
-                        data = np.concatenate((a[group][set],
-                                               b[group][set]), axis=concatenate_axis[i])
-
-                    # create set in hdf5
-                    g.create_dataset(set, data=data)
-
-    # take the groups from a and b
-    for f, g_lists in zip([a, b], [groups_from_a, groups_from_b]):
-        for group in g_lists:
-            if group in list(f.keys()):
-                print('COPY GROUP: {}.'.format(group))
+                # create group in hdf5
                 g = m.create_group(group)
-                for set in f[group].keys():
-                    print('SET: {}.'.format(set))
-                    print('creating ...')
-                    g.create_dataset(set, data=f[group][set])
 
-    a.close()
-    b.close()
-    m.close()
+                for i, set in enumerate(sets_to_merge):
+
+                    print('SET: {}.'.format(set))
+
+                    if set in list(a[group].keys()) and set in list(b[group].keys()):
+
+                        print('creating ...')
+
+                        if continue_hours and set == 'hours':
+                            last_hour = a[group][set][-1] + (b[group]['time_s'][0] + 10e-6 * b[group]['time_mus'][0] -
+                                                             a[group]['time_s'][-1] - 10e-6 * a[group]['time_mus'][
+                                                                 -1]) / 3600
+                            data = np.concatenate((a[group][set],
+                                                   b[group][set] + last_hour), axis=concatenate_axis[i])
+                        else:
+                            data = np.concatenate((a[group][set],
+                                                   b[group][set]), axis=concatenate_axis[i])
+
+                        # create set in hdf5
+                        g.create_dataset(set, data=data)
+
+        # take the groups from a and b
+        for f, g_lists in zip([a, b], [groups_from_a, groups_from_b]):
+            for group in g_lists:
+                if group in list(f.keys()):
+                    print('COPY GROUP: {}.'.format(group))
+                    g = m.create_group(group)
+                    for set in f[group].keys():
+                        print('SET: {}.'.format(set))
+                        print('creating ...')
+                        g.create_dataset(set, data=f[group][set])
+
+    if not keep_original_files:
+        for p in [path_h5_a, path_h5_b]:
+            print('Deleting {}.'.format(p))
+            os.remove(p)
 
     print('Merge done.')
