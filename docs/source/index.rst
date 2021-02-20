@@ -20,6 +20,7 @@
    :maxdepth: 3
 
    ../documentation/datahandler
+   ../documentation/eventinterface
    ../documentation/evaluationtools
    ../documentation/bandfit
    ../documentation/calibration
