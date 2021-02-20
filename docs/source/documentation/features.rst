@@ -1,10 +1,8 @@
 ***************************************
-Features
+cait.features
 ***************************************
 
-.. contents:: Table of Contents
-
-cait features
-================
 .. automodule:: cait.features
    :members:
+   :undoc-members:
+   :show-inheritance:

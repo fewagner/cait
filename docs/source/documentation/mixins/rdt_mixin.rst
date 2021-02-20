@@ -1,8 +1,9 @@
 ***************************************
-cait.simulate
+RdtMixin
 ***************************************
 
-.. automodule:: cait.simulate
+.. autoclass:: cait.mixins.RdtMixin
    :members:
    :undoc-members:
+   :inherited-members:
    :show-inheritance:

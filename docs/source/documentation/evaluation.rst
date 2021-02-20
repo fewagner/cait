@@ -1,10 +1,8 @@
 ***************************************
-Evaluation
+cait.evaluation
 ***************************************
 
-.. contents:: Table of Contents
-
-cait evaluation
-================
 .. automodule:: cait.evaluation
    :members:
+   :undoc-members:
+   :show-inheritance:

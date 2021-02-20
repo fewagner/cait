@@ -1,10 +1,8 @@
 ***************************************
-Models
+cait.models
 ***************************************
 
-.. contents:: Table of Contents
-
-cait models
-================
 .. automodule:: cait.models
    :members:
+   :undoc-members:
+   :show-inheritance:

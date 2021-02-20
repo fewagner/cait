@@ -1,8 +1,9 @@
 ***************************************
-cait.simulate
+CsmplMixin
 ***************************************
 
-.. automodule:: cait.simulate
+.. autoclass:: cait.mixins.CsmplMixin
    :members:
    :undoc-members:
+   :inherited-members:
    :show-inheritance:

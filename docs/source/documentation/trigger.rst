@@ -1,10 +1,8 @@
 ***************************************
-Trigger
+cait.trigger
 ***************************************
 
-.. contents:: Table of Contents
-
-cait trigger
-================
 .. automodule:: cait.trigger
    :members:
+   :undoc-members:
+   :show-inheritance:

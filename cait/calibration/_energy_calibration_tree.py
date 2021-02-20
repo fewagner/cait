@@ -55,6 +55,7 @@ def energy_calibration_tree(evhs,
                             exclude_tpas=[],
                             poly_order=5,
                             plot=False,
+                            dpi=None,
                             ):
     """
     TODO
@@ -113,7 +114,7 @@ def energy_calibration_tree(evhs,
     linear_tpas = np.array(linear_tpas)
 
     if plot:
-        use_cait_style()
+        use_cait_style(dpi=dpi)
         # plot the regressions
         plt.close()
         plt.scatter(tp_hours, tphs, s=5, marker='.', color='blue', zorder=10)

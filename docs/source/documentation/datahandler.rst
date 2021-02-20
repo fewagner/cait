@@ -1,10 +1,8 @@
-***************************************
-The DataHandler Class
-***************************************
+***********
+DataHandler
+***********
 
-.. contents:: Table of Contents
-
-cait DataHandler
-================
 .. autoclass:: cait.DataHandler
    :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,8 +1,9 @@
 ***************************************
-cait.simulate
+FeaturesMixin
 ***************************************
 
-.. automodule:: cait.simulate
+.. autoclass:: cait.mixins.FeaturesMixin
    :members:
    :undoc-members:
+   :inherited-members:
    :show-inheritance:

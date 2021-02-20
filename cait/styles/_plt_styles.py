@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 
 # functions
 
-def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=300):
+def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=None):
     """
     TODO
 

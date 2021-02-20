@@ -9,9 +9,9 @@ import os
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses'],
-                  sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset',
+                  sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset', 'of_ph', 'sev_fit_par', 'sev_fit_rms',
                                  'hours', 'labels', 'testpulseamplitude', 'time_s', 'time_mus', 'pulse_height'],
-                  concatenate_axis=[1, 1, 1, 0, 0, 1, 0, 0, 0],
+                  concatenate_axis=[1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1],
                   groups_from_a=[],
                   groups_from_b=[],
                   continue_hours=True,
@@ -42,10 +42,19 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
 
     with h5py.File(path_h5_a, 'r') as a, h5py.File(path_h5_b, 'r') as b, h5py.File(path_h5_merged, 'w') as m:
 
+        # define hours gap
+        if continue_hours:
+            if 'testpulses' in a and 'testpulses' in b:
+                second_file_hours = a['testpulses']['hours'][-1] + (b['testpulses']['time_s'][0] + 10e-6 * b['testpulses']['time_mus'][0] -
+                                                 a['testpulses']['time_s'][-1] - 10e-6 * a['testpulses']['time_mus'][
+                                                     -1]) / 3600
+            else:
+                raise KeyError('continue_hours argument requires testpulses group in both files!')
+
         # merge the groups
         for group in groups_to_merge:
 
-            print('MERGE GROUP: {}.'.format(group))
+            print('--> MERGE GROUP: {}.'.format(group))
 
             if group in a.keys() and group in b.keys():
 
@@ -61,11 +70,8 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                         print('creating ...')
 
                         if continue_hours and set == 'hours':
-                            last_hour = a[group][set][-1] + (b[group]['time_s'][0] + 10e-6 * b[group]['time_mus'][0] -
-                                                             a[group]['time_s'][-1] - 10e-6 * a[group]['time_mus'][
-                                                                 -1]) / 3600
                             data = np.concatenate((a[group][set],
-                                                   b[group][set] + last_hour), axis=concatenate_axis[i])
+                                                   b[group][set] + second_file_hours), axis=concatenate_axis[i])
                         else:
                             data = np.concatenate((a[group][set],
                                                    b[group][set]), axis=concatenate_axis[i])

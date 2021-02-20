@@ -1,10 +1,8 @@
 ***************************************
-Calibration
+cait.calibration
 ***************************************
 
-.. contents:: Table of Contents
-
-cait calibration
-================
 .. automodule:: cait.calibration
    :members:
+   :undoc-members:
+   :show-inheritance:

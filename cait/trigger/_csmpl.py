@@ -4,6 +4,7 @@ import numpy as np
 import numba as nb
 from ..data._raw import convert_to_V
 from ..filter._of import filter_event
+from ..styles import use_cait_style, make_grid
 from scipy import signal
 import matplotlib.pyplot as plt
 import sqlite3
@@ -306,7 +307,8 @@ def plot_csmpl(path,
                end_time=None,
                sample_duration=0.00004,
                hours=False,
-               plot_stamps=None
+               plot_stamps=None,
+               dpi=300,
                ):
     """
     TODO
@@ -366,11 +368,13 @@ def plot_csmpl(path,
 
     print('Plot.')
     plt.close()
+    use_cait_style(dpi=dpi)
     plt.plot(time, event)
     if plot_stamps is not None:
         for s in plot_stamps:
             if s > time[0] and s < time[-1]:
                 plt.axvline(x=s, color='grey', alpha=0.5)
+    make_grid()
     if hours:
         plt.xlabel('Time (h)')
     else:

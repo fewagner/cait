@@ -1,10 +1,9 @@
 ***************************************
-Datasets
+cait.datasets
 ***************************************
 
-.. contents:: Table of Contents
 
-cait datasets
-================
 .. automodule:: cait.datasets
    :members:
+   :undoc-members:
+   :show-inheritance:

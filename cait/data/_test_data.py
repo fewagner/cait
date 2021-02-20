@@ -96,20 +96,24 @@ class TestData():
         self.time = (np.arange(0, record_length, dtype=float) - record_length / 4) / self.sample_frequency * 1e3
         self.events = [pulse_template(self.time, *fitpar[0]), pulse_template(self.time, *fitpar[1])]
 
-    def generate(self, start_offset=0):  # in seconds
+    def generate(self, start_offset=0, source=None):  # in seconds
         """
         Generate all files from a measurement file (rdt, con, par, csmpl, sql, dig, test).
 
         :param start_offset: The time elapsed from start of measurement to start of this file in seconds.
         :type start_offset: float >= 0
         """
-        self._generate_rdt_file(start_offset=start_offset)
-        self._generate_con_file()
-        self._generate_par_file(start_offset=start_offset)
-        self._generate_csmpl_files()
-        self._generate_sql_file(start_offset=start_offset)
-        self._generate_dig_stamps()
-        self._generate_test_stamps()
+        if source == 'hw' or source is None:
+            self._generate_rdt_file(start_offset=start_offset)
+            self._generate_con_file()
+            self._generate_par_file(start_offset=start_offset)
+        if source == 'stream' or source is None:
+            self._generate_csmpl_files()
+            self._generate_sql_file(start_offset=start_offset)
+            self._generate_dig_stamps()
+            self._generate_test_stamps()
+        if source is not None and source != 'hw' and source != 'stream':
+            raise KeyError('Argument source must be either hw or stream!')
 
     def update_duration(self, new_duration):
         """

@@ -1,10 +1,8 @@
 ***************************************
-Limit
+cait.bandfit
 ***************************************
 
-.. contents:: Table of Contents
-
-cait limit
-================
-.. automodule:: cait.limit
+.. automodule:: cait.bandfit
    :members:
+   :undoc-members:
+   :show-inheritance:

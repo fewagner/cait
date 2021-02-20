@@ -1,10 +1,8 @@
 ***************************************
-The EventInterface Class
+cait.EventInterface
 ***************************************
 
-.. contents:: Table of Contents
-
-cait EventInterface
-================
 .. autoclass:: cait.EventInterface
    :members:
+   :undoc-members:
+   :show-inheritance:

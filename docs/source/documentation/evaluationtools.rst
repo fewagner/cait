@@ -1,10 +1,8 @@
 ***************************************
-The EvaluationTools Class
+cait.EvaluationTools
 ***************************************
 
-.. contents:: Table of Contents
-
-cait EvaluationTools
-================
 .. autoclass:: cait.EvaluationTools
    :members:
+   :undoc-members:
+   :show-inheritance:

@@ -4,34 +4,36 @@
    :caption: Home
    :maxdepth: 2
 
-   ../starting
-   ../installing
-   ../about
-   ../contributing
+   starting
+   installing
+   about
+   contributing
 
 .. toctree::
    :caption: Tutorials
    :maxdepth: 1
 
-   ../tutorials/conversion
+   tutorials/conversion
+   tutorials/trigger
+   tutorials/features
 
 .. toctree::
    :caption: Documentation
    :maxdepth: 3
 
-   ../documentation/datahandler
-   ../documentation/eventinterface
-   ../documentation/evaluationtools
-   ../documentation/bandfit
-   ../documentation/calibration
-   ../documentation/cuts
-   ../documentation/data
-   ../documentation/datasets
-   ../documentation/evaluation
-   ../documentation/features
-   ../documentation/filter
-   ../documentation/fit
-   ../documentation/models
-   ../documentation/simulate
-   ../documentation/styles
-   ../documentation/trigger
+   documentation/dh_class
+   documentation/eventinterface
+   documentation/evaluationtools
+   documentation/bandfit
+   documentation/calibration
+   documentation/cuts
+   documentation/data
+   documentation/datasets
+   documentation/evaluation
+   documentation/features
+   documentation/filter
+   documentation/fit
+   documentation/models
+   documentation/simulate
+   documentation/styles
+   documentation/trigger

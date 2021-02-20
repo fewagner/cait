@@ -1,8 +1,9 @@
 ***************************************
-cait.simulate
+AnalysisMixin
 ***************************************
 
-.. automodule:: cait.simulate
+.. autoclass:: cait.mixins.AnalysisMixin
    :members:
    :undoc-members:
+   :inherited-members:
    :show-inheritance:

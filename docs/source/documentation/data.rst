@@ -1,10 +1,8 @@
 ***************************************
-Data
+cait.data
 ***************************************
 
-.. contents:: Table of Contents
-
-cait data
-================
 .. automodule:: cait.data
    :members:
+   :undoc-members:
+   :show-inheritance:

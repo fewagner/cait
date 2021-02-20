@@ -101,6 +101,7 @@ def energy_calibration_linear(evhs,
                               exclude_tpas=[],
                               plot=False,
                               poly_order=5,
+                              dpi=None,
                               ):
     """
     TODO
@@ -165,7 +166,7 @@ def energy_calibration_linear(evhs,
         all_regs.append(regs)  # all_regs[n][m] gives now the lin reg parameters in the n'th interval for the m'th TPA
 
     if plot:
-        use_cait_style()
+        use_cait_style(dpi=dpi)
         # plot the regressions
         plt.close()
         plt.scatter(tp_hours, tphs, s=1, marker='.', color='blue', zorder=10)

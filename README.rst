@@ -36,14 +36,13 @@ You can now import the library in Python, e.g.
 
 .. code:: python
 
-    import cait
-
+    import cait as ai
     from cait import EventInterface
 
 Version History
 ===============
 
-Master brunch is on Version 0.1.0-alpha.
+Master brunch is on Version 0.1.0-beta.
 
 Version numbers follow the segmantic versioning guide (https://semver.org/).
 

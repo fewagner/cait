@@ -1,10 +1,8 @@
 ***************************************
-Fit
+cait.fit
 ***************************************
 
-.. contents:: Table of Contents
-
-cait fit
-================
 .. automodule:: cait.fit
    :members:
+   :undoc-members:
+   :show-inheritance:

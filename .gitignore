@@ -74,6 +74,9 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/build/
+docs/source/tutorials/.ipynb_checkpoints/
+docs/source/tutorials/test_data/
 
 # PyBuilder
 target/
