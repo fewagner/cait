@@ -52,7 +52,7 @@ class FeaturesMixin(object):
                 for c in range(self.nmbr_channels):
                     mainpar_list_event.append(p.starmap(
                         calc_main_parameters,
-                        [(events['event'][c, i, :], down, max_bounds ) for i in range(nmbr_ev)]))
+                        [(events['event'][c, i, :], down, max_bounds) for i in range(nmbr_ev)]))
             mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
 
             events.require_dataset(name='mainpar',

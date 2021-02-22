@@ -195,7 +195,7 @@ def get_times(t_zero, t_rise, t_decaystart, t_half, t_end):
     return length_rise, length_peak, length_firsthalfdecay, length_secondhalfdecay
 
 
-def calc_main_parameters(event, down=1, max_bounds=None):
+def calc_main_parameters(event, down=1, max_bounds=None, quad_drift=False):
     """
     Calculates the Main Parameters for an Event.
     Optional, the event can be downsampled by a given factor befor the calculation
@@ -227,7 +227,7 @@ def calc_main_parameters(event, down=1, max_bounds=None):
     maximum_pulse_height = np.max(event_smoothed[max_bounds[0]:max_bounds[1]])  # [idx_lower_region : idx_upper_region]
     # maximum_index = np.argmax(event_smoothed)  # [idx_lower_region : idx_upper_region]  + idx_lower_region
 
-    if maximum_pulse_height > np.std(event_smoothed):  # typically this will be the case
+    if maximum_pulse_height > np.std(event_smoothed) or not quad_drift:  # typically this will be the case
 
         # get baseline offset and linear drift
         # offset = event_smoothed[0]
