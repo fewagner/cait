@@ -55,7 +55,7 @@ def energy_calibration_tree(evhs,
                             exclude_tpas=[],
                             poly_order=5,
                             plot=False,
-                            dpi=None,
+                            dpi=150,
                             ):
     """
     TODO

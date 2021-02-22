@@ -36,7 +36,7 @@ class PlotMixin(object):
                  sample_length=0.04,
                  show=True,
                  save_path=None,
-                 dpi=300):
+                 dpi=150):
         """
         Plot the standardevent of all channels
         :param type: string, either stdevent for events or stdevent_tp for testpulses
@@ -109,7 +109,7 @@ class PlotMixin(object):
                              sample_length=0.04,
                              show=True,
                              save_path=None,
-                             dpi=300):
+                             dpi=150):
         """
         Plot an exceptional standardevent of one channel
 
@@ -158,7 +158,7 @@ class PlotMixin(object):
                  block=True,
                  show=True,
                  save_path=None,
-                 dpi=300):
+                 dpi=150):
         """
         Plot the Noise Power Spectrum of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -208,7 +208,7 @@ class PlotMixin(object):
                 show=True,
                 save_path=None,
                 down=None,
-                dpi=300):
+                dpi=150):
         """
         Plot the Optimum Filter of all channels
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -274,7 +274,7 @@ class PlotMixin(object):
                     xran=None,
                     yran=None,
                     save_path=None,
-                    dpi=300):
+                    dpi=150):
         """
         Shows a histogram of some values from the HDF5 file
 
@@ -352,7 +352,7 @@ class PlotMixin(object):
                      yran=None,
                      show=True,
                      save_path=None,
-                     dpi=300):
+                     dpi=150):
         """
         Shows a scatter plot of some values from the HDF5 file
 
@@ -436,7 +436,7 @@ class PlotMixin(object):
                   ran=None,
                   show=True,
                   save_path=None,
-                  dpi=300):
+                  dpi=150):
         """
         Show a histogram of main parameter values
 
@@ -534,7 +534,7 @@ class PlotMixin(object):
                 s=10,
                 show=True,
                 save_path=None,
-                dpi=300):
+                dpi=150):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
 
@@ -649,7 +649,7 @@ class PlotMixin(object):
                         block=False,
                         show=True,
                         save_path=None,
-                        dpi=300):
+                        dpi=150):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
 

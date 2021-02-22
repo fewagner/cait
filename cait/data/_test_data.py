@@ -17,6 +17,8 @@ class TestData():
                  event_tpa=[0.33, 0.33], baseline_resolution=[0.002, 0.003],
                  k=[1, 1.5], l=[12, 8], record_length=16384, dvm_channels=0, start_s=1602879720, offset=[0, 0],
                  fitpar=[[-1.11, 4, 0.02, 4.15, 2.1, 53.06], [0.77, 51.76, 50.81, 37.24, 8.33, 8.59]],
+                 fitpar_carrier=[[-2.38, 1.73, 1.65, 136, 0.38, 2.13], [0, 0, 0, 1, 1, 1]],
+                 include_carriers=False,
                  eventsize=2081024, samplesdiv=2, cdaq_offset=30000, types=[0, 1], clock=10000000):
         """
         A class for the generation of test data for all data processing routines.
@@ -52,9 +54,16 @@ class TestData():
         :type start_s: int > 0, standard value: 16.10.2020 22:22:00, the time of the first cait commit
         :param offset: The baseline offset of the channels.
         :type offset: list of two floats
-        :param fitpar: The parameters of the Franz-pulse shape for the events of all channels.
+        :param fitpar: The parameters of the Franz-pulse shape for the alternative events of all channels.
         :type fitpar: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
             the fit_pulse_model
+        :param fitpar_carr: The parameters of the Franz-pulse shape for the events of all channels.
+        :type fitpar_carr: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
+            the fit_pulse_model
+        :param carrier_probability: The probablity for an carrier event when the tpa is 0.
+        :type carrier_probability: float > 0, < 1
+        :param ph_variation: The relative variation of the pulse height.
+        :type ph_variation: float > 0 and < 1
         :param eventsize: The number of samples per bankswitch in 50kHz.
         :type eventsize: int > 0
         :param samplesdiv: The factor with that eventsize has to be divided, to match it with the sample_frequency.
@@ -81,6 +90,8 @@ class TestData():
         self.record_length = record_length
         self.dvm_channels = dvm_channels
         self.fitpar = fitpar
+        self.fitpar_carrier = fitpar_carrier
+        self.include_carriers = include_carriers
         self.tpas = np.array(tpas)
         self.event_tpa = event_tpa
         self.tpas_nocp = self.tpas[self.tpas <= 10]
@@ -95,6 +106,7 @@ class TestData():
         self.types = types
         self.time = (np.arange(0, record_length, dtype=float) - record_length / 4) / self.sample_frequency * 1e3
         self.events = [pulse_template(self.time, *fitpar[0]), pulse_template(self.time, *fitpar[1])]
+        self.carrier_events = [pulse_template(self.time, *fitpar_carrier[0]), pulse_template(self.time, *fitpar_carrier[1])]
 
     def generate(self, start_offset=0, source=None):  # in seconds
         """
@@ -155,6 +167,7 @@ class TestData():
         :param start_offset: The time elapsed from start of measurement to start of this file in seconds.
         :type start_offset: float >= 0
         """
+
         record = np.dtype([('detector_nmbr', 'i4'),
                            ('coincide_pulses', 'i4'),
                            ('trig_count', 'i4'),
@@ -197,7 +210,10 @@ class TestData():
                 sample = np.maximum(np.minimum(self.tpas[int(e % len(self.tpas))], 10), 0)
                 if sample == 0:
                     sample = self.event_tpa[c]
-                sample = sample * self.events[c]
+                if self.include_carriers and e % 2 == 1:
+                    sample = sample * self.carrier_events[c]
+                else:
+                    sample = sample * self.events[c]
                 sample = sample + np.random.normal(loc=self.offset[c], scale=self.baseline_resolution[c],
                                                    size=self.record_length)
                 sample = self._saturation_curve(sample, self.l[c], self.k[c])
@@ -317,7 +333,10 @@ class TestData():
                 tpa = np.maximum(np.minimum(self.tpas[int(i % len(self.tpas))], 10), 0)
                 if tpa == 0:
                     tpa = self.event_tpa[c]
-                arr[start_sample:stop_sample] += tpa * self.events[c][:duration_event]
+                if self.include_carriers and i % 2 == 1:
+                    arr[start_sample:stop_sample] += tpa * self.carrier_events[c][:duration_event]
+                else:
+                    arr[start_sample:stop_sample] += tpa * self.events[c][:duration_event]
 
             # apply the saturation function
             arr = self._saturation_curve(arr, self.l[c], self.k[c])
@@ -424,7 +443,8 @@ class TestData():
 
         stamps = np.empty(self.nmbr_events, dtype=teststamp)
         for e in range(self.nmbr_events):
-            stamps['stamp'][e] = (e + 1) * self.pulser_interval_samples + self.cdaq_offset  # the dig stamps are in 10MHz samples
+            stamps['stamp'][e] = (
+                                         e + 1) * self.pulser_interval_samples + self.cdaq_offset  # the dig stamps are in 10MHz samples
             stamps['stamp'][e] = np.floor(stamps['stamp'][e] * self.clock / self.sample_frequency)
             stamps['tpa'][e] = self.tpas[int(e % len(self.tpas))]
             stamps['tpch'][e] = 0

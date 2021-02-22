@@ -23,7 +23,7 @@ class EventInterface:
     """
 
     def __init__(self, module, run, record_length,
-                 sample_frequency=25000, nmbr_channels=2, down=1, dpi=300):
+                 sample_frequency=25000, nmbr_channels=2, down=1, dpi=None):
         """
         Provide general information about the detector for a new instance of the class.
 

@@ -314,7 +314,7 @@ class FeaturesMixin(object):
                              model=None,
                              correct_label=None,
                              idx_list=None,
-                             pulse_height_interval=[0.5, 1.5],
+                             pulse_height_interval=[0, 10],
                              left_right_cutoff=None,
                              rise_time_interval=None,
                              decay_time_interval=None,
@@ -478,7 +478,7 @@ class FeaturesMixin(object):
             h5f['noise'][naming_fq][...] = frequencies
 
 
-    def calc_additional_mp(self, type, path_h5=None, down=1):
+    def calc_additional_mp(self, type='events', path_h5=None, down=1):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 

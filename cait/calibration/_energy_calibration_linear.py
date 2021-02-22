@@ -101,7 +101,7 @@ def energy_calibration_linear(evhs,
                               exclude_tpas=[],
                               plot=False,
                               poly_order=5,
-                              dpi=None,
+                              dpi=150,
                               ):
     """
     TODO

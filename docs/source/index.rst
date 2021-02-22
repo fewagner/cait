@@ -8,6 +8,7 @@
    installing
    about
    contributing
+   guidelines
 
 .. toctree::
    :caption: Tutorials

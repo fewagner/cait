@@ -111,7 +111,7 @@ class AnalysisMixin(object):
                                          dtype=bool)
             h5['events']['rate_cut'][...] = flag
 
-    def calc_controlpulse_stability(self, channel, significance=3, max_gap=0.5):
+    def calc_controlpulse_stability(self, channel, significance=3, max_gap=0.5, lb=0, ub=100):
         # TODO
 
         with h5py.File(self.path_h5, 'r+') as f:
@@ -121,7 +121,8 @@ class AnalysisMixin(object):
             hours_ev = f['events']['hours']
             # cphs, hours_cp, hours_ev, significance=3, max_gap=1
             flag_ev, flag_cp = controlpulse_stability(cphs, hours_cp, hours_ev,
-                                                      significance=significance, max_gap=max_gap)
+                                                      significance=significance, max_gap=max_gap,
+                                                      lb=lb, ub=ub)
 
             f['events'].require_dataset(name='controlpuls_stability',
                                         shape=(self.nmbr_channels, len(flag_ev)),
