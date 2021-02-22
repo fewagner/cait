@@ -10,6 +10,8 @@ experiment, but also suitable for the COSINUS and NUCLEUS experiment.
 
 ### Installation
 
+**Attention!** We are days away from the first pulic release of cait. Until then, please use the dev_[] branch instead of the outdated master branch. Stay tuned for an updated documentation and numerous tutorials on ReadtheDocs and open source availability of cait through the Python package index!
+
 For installing Cait, first install and upgrade the following helper libraries:
 
 > pip install -U wheel setuptools twine
