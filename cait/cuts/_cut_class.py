@@ -62,6 +62,16 @@ class LogicalCut:
         """
         return self.cut_flag
 
+    def get_antiflag(self):
+        """
+        TODO
+
+        :return:
+        :rtype:
+        """
+        return np.logical_not(self.cut_flag)
+
+
     def get_idx(self):
         """
         TODO
