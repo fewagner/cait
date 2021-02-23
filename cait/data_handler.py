@@ -376,7 +376,8 @@ class DataHandler(SimulateMixin,
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
-    def downsample_raw_data(self, type:str='events', down:int=16, dtype:str='float32'):
+    def downsample_raw_data(self, type: str = 'events', down: int = 16, dtype: str = 'float32',
+                            name_appendix: str = '', delete_old:bool=True):
         """
         Downsample the dataset "event" from a specified group in the HDF5 file.
 
@@ -389,21 +390,77 @@ class DataHandler(SimulateMixin,
         :type type: string
         :param down: The factor by which the data is downsampled. This should be a factor of 2.
         :type down: int
-        :param dtype:
+        :param dtype: The data type of the new stored events, typically you want this to be float32.
         :type dtype: string
+        :param name_appendix: An appendix to the dataset event in order to keep the old and the new events.
+        :type name_appendix: string
+        :param delete_old: If true, the old events are deleted. Deactivate only, if an unique name_appendix is choosen.
+        :type delete_old: bool
 
         >>> dh.downsample_raw_data()
         Old Dataset Event deleted from group events.
         New Dataset Event with downsample rate 16 created in group events.
         """
+
+        if name_appendix == '' and not delete_old:
+            raise KeyError('To keep the old events please choose appropriate name appendix for the new!')
+
         with h5py.File(self.path_h5, 'r+') as h5f:
             if "event" in h5f[type]:
                 events = np.array(h5f[type]['event'])
-                del h5f[type]['event']
+                if delete_old:
+                    del h5f[type]['event']
                 print('Old Dataset Event deleted from group {}.'.format(type))
                 events = np.mean(events.reshape((events.shape[0], events.shape[1], int(events.shape[2] / down), down)),
                                  axis=3)
-                h5f[type].create_dataset('event', data=events, dtype=dtype)
+                h5f[type].create_dataset('event' + name_appendix, data=events, dtype=dtype)
                 print('New Dataset Event with downsample rate {} created in group {}.'.format(down, type))
+            else:
+                raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
+
+    def truncate_raw_data(self, type: str,
+                          truncated_idx_low: int,
+                          truncated_idx_up: int,
+                          dtype: str = 'float32',
+                          name_appendix: str = '',
+                          delete_old: bool=True):
+        """
+        Truncate the record window of the dataset "event" from a specified group in the HDF5 file.
+
+        For measurements with high event rate (above ground, ...) a long record window might be counter productive,
+        due to more pile uped events in the window. For this reason, you can truncate the length of the record window
+        with this function.
+
+        :param type: The group in the HDF5 set from which the events are downsampled,
+            typically 'events', 'testpulses' or noise.
+        :type type: string
+        :param truncated_idx_low: The lower index within the old record window, that becomes the first index in the
+            truncated record window.
+        :type truncated_idx_low: int
+        :param truncated_idx_up: The upper index winthin the old record window, that becomes the last index in the
+            truncated record window.
+        :type truncated_idx_up: int
+        :param dtype: The data type of the new stored events, typically you want this to be float32.
+        :type dtype: string
+        :param name_appendix: An appendix to the dataset event in order to keep the old and the new events.
+        :type name_appendix: string
+        :param delete_old: If true, the old events are deleted. Deactivate only, if an unique name_appendix is choosen.
+        :type delete_old: bool
+        """
+
+        if name_appendix == '' and not delete_old:
+            raise KeyError('To keep the old events please choose appropriate name appendix for the new!')
+
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            if "event" in h5f[type]:
+                events = np.array(h5f[type]['event'])
+                if delete_old:
+                    del h5f[type]['event']
+                print('Old Dataset Event deleted from group {}.'.format(type))
+                events = events[:, :, truncated_idx_low:truncated_idx_up]
+                h5f[type].create_dataset('event'+name_appendix, data=events, dtype=dtype)
+                print('New Dataset Event truncated to interval {}:{} created in group {}.'.format(truncated_idx_low,
+                                                                                                  truncated_idx_up,
+                                                                                                  type))
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))

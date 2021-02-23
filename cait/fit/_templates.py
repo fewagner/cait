@@ -80,7 +80,7 @@ def gauss(x, *p):
     return A / sigma / np.sqrt(2 * np.pi) * np.exp(-(x - mu) ** 2 / (2. * sigma ** 2))
 
 
-@nb.njit()
+@nb.njit
 def sec(t, h, t0, a0, a1, a2, a3, t00, An, At, tau_n, tau_in, tau_t):
     """
     Standard Event Model with Cubic Baseline
@@ -130,6 +130,12 @@ class sev_fit_template:
             if interval_restriction_factor > 0.8 or interval_restriction_factor < 0:
                 raise KeyError("interval_restriction_factor must be float > 0 and < 0.8!")
         self.interval_restriction_factor = interval_restriction_factor
+        if self.interval_restriction_factor is not None:
+            self.low = int(self.interval_restriction_factor * (len(self.t) - 1) / 4)
+            self.up = int((len(self.t) - 1) * (1 - (3 / 4) * self.interval_restriction_factor))
+        else:
+            self.low = 0
+            self.up = len(self.t)
 
     def sef(self, h, t0, a0):
         """
@@ -176,72 +182,64 @@ class sev_fit_template:
                a1 * (self.t - t0) + a2 * (self.t - t0) ** 2
 
     def wrap_sec(self, h, t0, a0, a1, a2, a3):
+        """
+        A wrapper function for the pulse shape model.
+        """
         return sec(self.t, h, t0, a0, a1, a2, a3, *self.pm_par)
 
-    def t0_minimizer(self, par, h0, a00, a10, a20, a30, event):
+    @staticmethod
+    @nb.njit
+    def t0_minimizer(par, h0, a00, a10, a20, a30, event, t, t0_lb, t0_ub, low, up, pm_par, trunc_flag):
         # TODO
 
         out = 0
 
         # t0 bounds
-        if par < self.t0_bounds[0]:
-            out += 1.0e100 - 1.0e100 * (par[0] - self.t0_bounds[0])
-        elif par > self.t0_bounds[1]:
-            out += 1.0e100 - 1.0e100 * (self.t0_bounds[1] - par[0])
-
-        if out == 0:
-
+        if par[0] < t0_lb:
+            out += 1.0e100 - 1.0e100 * (par[0] - t0_ub)
+        elif par[0] > t0_ub:
+            out += 1.0e100 - 1.0e100 * (t0_ub - par[0])
+        else:
             # truncate in interval
-            if self.interval_restriction_factor is not None:
-                low = int(self.interval_restriction_factor * (len(event) - 1) / 4)
-                up = int((len(event) - 1) * (1 - (3 / 4) * self.interval_restriction_factor))
-                fit = sec(self.t[low:up], h0, par, a00, a10, a20, a30, *self.pm_par)
-                event = event[low:up]
-            else:
-                fit = sec(self.t, h0, par, a00, a10, a20, a30, *self.pm_par)
+            fit = sec(t[low:up], h0, par[0], a00, a10, a20, a30,
+                      pm_par[0], pm_par[1], pm_par[2], pm_par[3],
+                      pm_par[4], pm_par[5])
 
             # truncate in height
-            if self.truncation_level is not None:
-                cond = event < self.truncation_level
-                out = np.sum((event[cond] - fit[cond]) ** 2)
-            else:
-                out = np.sum((event - fit) ** 2)
+            out += np.sum((event[trunc_flag] - fit[trunc_flag]) ** 2)
 
         return out
 
-    def par_minimizer(self, par, t0, event):
+    @staticmethod
+    @nb.njit
+    def par_minimizer(par, t0, event, t, low, up, pm_par, trunc_flag):
         # TODO
 
-        out = 0
-
         # truncate in interval
-        if self.interval_restriction_factor is not None:
-            low = int(self.interval_restriction_factor * (len(event) - 1) / 4)
-            up = int((len(event) - 1) * (1 - (3 / 4) * self.interval_restriction_factor))
-            fit = sec(self.t[low:up], par[0], t0, par[1], par[2], par[3], par[4], *self.pm_par)
-            event = event[low:up]
-        else:
-            fit = sec(self.t, par[0], t0, par[1], par[2], par[3], par[4], *self.pm_par)
+        fit = sec(t[low:up], par[0], t0, par[1], par[2], par[3], par[4], pm_par[0],
+                  pm_par[1], pm_par[2], pm_par[3], pm_par[4], pm_par[5])
 
         # truncate in height
-        if self.truncation_level is not None:
-            cond = event < self.truncation_level
-            out = np.sum((fit[cond] - event[cond]) ** 2)
-        else:
-            out = np.sum((fit - event) ** 2)
+        out = np.sum((fit[trunc_flag] - event[trunc_flag]) ** 2)
 
         return out
 
     def fit_cubic(self, event):
         """
-        Calculates the SEV Fit Parameter
+        Calculates the standard event fit parameters with a cubic baseline model.
 
-        :param event: 1D array, the event to fit
-        :return: 1D array, the sev fit parameters
+        :param event: The event to fit.
+        :type event: 1D array
+        :return: The sev fit parameters.
+        :rtype: array
         """
 
         if self.down > 1:
             event = np.mean(event.reshape(int(len(event) / self.down), self.down), axis=1)
+        if self.truncation_level is not None:
+            truncation_flag = event < self.truncation_level
+        else:
+            truncation_flag = np.ones(len(event), dtype=bool)
 
         offset = np.mean(event[:int(len(event) / 8)])
         event = event - offset
@@ -254,10 +252,11 @@ class sev_fit_template:
         a30 = 0
 
         # fit t0
-        res = minimize(self.t0_minimizer,
-                       x0=np.array([0]),
+        res = minimize(fun=self.t0_minimizer,
+                       x0=np.array([-3]),
                        method='nelder-mead',
-                       args=(h0, a00, a10, a20, a30, event),
+                       args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
+                             self.low, self.up, self.pm_par, truncation_flag,),
                        options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
                        )
         t0 = res.x
@@ -266,7 +265,7 @@ class sev_fit_template:
         res = minimize(self.par_minimizer,
                        x0=np.array([h0, a00, a10, a20, a30]),
                        method='nelder-mead',
-                       args=(t0, event),
+                       args=(t0, event, self.t, self.low, self.up, self.pm_par, truncation_flag,),
                        options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True}
                        )
         h, a0, a1, a2, a3 = res.x

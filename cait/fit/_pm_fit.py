@@ -3,7 +3,7 @@
 # -------------------------------------------------------
 
 import numpy as np
-# import numba as nb
+import numba as nb
 from scipy.optimize import curve_fit, minimize, differential_evolution, Bounds
 from ..fit._templates import pulse_template
 import warnings
@@ -14,13 +14,16 @@ import warnings
 # -------------------------------------------------------
 
 # @nb.njit
-def arrays_equal(a, b):
+def arrays_equal(a: list, b: list):
     """
-    A utlis function to compare if two arrays are the same, not used anymore in the current build
+    A utlis function to compare if two arrays are the same, not used anymore in the current build.
 
-    :param a: the first array
-    :param b: the second array
-    :return: bool, if the same arrays or not
+    :param a: The first array.
+    :type a: array
+    :param b: The second array.
+    :type b: array
+    :return: If the arrays are the same or not.
+    :rtype: bool
     """
     if a.shape != b.shape:
         return False
@@ -29,9 +32,21 @@ def arrays_equal(a, b):
             return False
     return True
 
-
+@nb.njit
 def boundscheck(pars, lbounds,
-                ubounds):  # parameter check -> if parameter is out of bounds, return a large positive value
+                ubounds):
+    """
+    Checks if parameters are out of bounds and returns large positive value if so.
+
+    :param pars: The parameters that we want to check
+    :type pars: array
+    :param lbounds: The lower bounds for all parameters.
+    :type lbounds: array
+    :param ubounds: The upper bounds for all parameters.
+    :type ubounds: array
+    :return: Zero if all parameters are within their bounds, large positive if parameters exceed bounds.
+    :rtype: float
+    """
     retval = 0.0
     for i in np.arange(len(pars)):
         if pars[i] < lbounds[i]:
@@ -40,15 +55,35 @@ def boundscheck(pars, lbounds,
             retval += 1.0e100 - 1.0e100 * (ubounds[i] - pars[i])
     return retval
 
+@nb.njit
+def ps_minimizer(par, t, event, t0_lb, t0_ub, tau_lb):
+    """
+    The minimizer function for the parametric pulse shape model fit.
 
-def ps_minimizer(par, t, event, t0_bounds, tau_lb):
+    This function is implemented with Numba in no python mode and precompiled, for better performance.
+
+    :param par: The parameters that are minimized: (t0, An, At, tau_n, tau_in, tau_t).
+    :type par: numpy array
+    :param t: The time grid in ms.
+    :type t: numpy array
+    :param event: The time series of the event that is to fit.
+    :type event: numpy array
+    :param t0_lb:
+    :type t0_lb: float
+    :param t0_ub:
+    :type t0_ub: float
+    :param tau_lb:
+    :type tau_lb: float
+    :return: The loss value that it to be minimized.
+    :rtype: float
+    """
     out = 0
 
     # t0 bounds
-    if par[0] < t0_bounds[0]:
-        out += 1.0e100 - 1.0e100 * (par[0] - t0_bounds[0])
-    elif par[0] > t0_bounds[1]:
-        out += 1.0e100 - 1.0e100 * (t0_bounds[1] - par[0])
+    if par[0] < t0_lb:
+        out += 1.0e100 - 1.0e100 * (par[0] - t0_lb)
+    elif par[0] > t0_ub:
+        out += 1.0e100 - 1.0e100 * (t0_lb - par[0])
 
     # tau lower bounds
     for p in par[3:6]:
@@ -56,7 +91,7 @@ def ps_minimizer(par, t, event, t0_bounds, tau_lb):
             out += 1.0e100 - 1.0e100 * (p - tau_lb)
 
     if out == 0:
-        fit = pulse_template(t, *par)
+        fit = pulse_template(t, par[0], par[1], par[2], par[3], par[4], par[5])
         out += np.sum((fit - event) ** 2)
 
     return out
@@ -92,7 +127,7 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04, down=1, t0_start=-3, t0_
                         )
 
         par = differential_evolution(ps_minimizer,
-                                     args=(t_dummy, event, [-10, 5], 1e-2),
+                                     args=(t_dummy, event, t0_bounds[0], t0_bounds[1], 1e-2),
                                      bounds=bounds,
                                      strategy='rand1bin',
                                      workers=-1,
@@ -107,7 +142,7 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04, down=1, t0_start=-3, t0_
     par = minimize(ps_minimizer,
                    x0=x0,
                    method='nelder-mead',
-                   args=(t_dummy, event, [-10, 5], 1e-2),
+                   args=(t_dummy, event, t0_bounds[0], t0_bounds[1], 1e-2),
                    options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
                    )
 
