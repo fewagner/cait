@@ -529,7 +529,7 @@ class FeaturesMixin(object):
             events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
 
-    def apply_pca(self, nmbr_components, type='events'):
+    def apply_pca(self, nmbr_components, type='events', down=1):
         """
         TODO
 
@@ -562,6 +562,8 @@ class FeaturesMixin(object):
             for c in range(self.nmbr_channels):
                 print('Channel ', c)
                 X = f[type]['event'][c]
+                if down > 1:
+                    X = np.mean(X.reshape(X.shape[0], int(X.shape[1]/down), down), axis=2)
                 X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
                 pca = IncrementalPCA(n_components=nmbr_components, batch_size=500)
                 X_transformed = pca.fit_transform(X)
@@ -576,7 +578,8 @@ class FeaturesMixin(object):
                 pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X) ** 2, axis=1)
 
                 for i in range(nmbr_components):
+                    # create the unit vector in the transformed pca
                     transformed = np.zeros(nmbr_components)
                     transformed[i] = 1
                     comp = pca.inverse_transform(transformed.reshape(1, -1))
-                    pca_components[c, i, :] = comp.reshape(-1)
+                    pca_components[c, i, :] = comp.reshape(-1).repeat(down, axis=0)
