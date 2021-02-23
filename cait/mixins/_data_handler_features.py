@@ -529,7 +529,7 @@ class FeaturesMixin(object):
             events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
 
-    def apply_pca(self, nmbr_components, type='events', force_full=False):
+    def apply_pca(self, nmbr_components, type='events'):
         """
         TODO
 
@@ -540,11 +540,6 @@ class FeaturesMixin(object):
         :return:
         :rtype:
         """
-
-        if force_full:
-            svd_solver = 'full'
-        else:
-            svd_solver = 'auto'
 
         with h5py.File(self.path_h5, 'r+') as f:
             if 'pca_projection' in f[type]:
@@ -568,7 +563,7 @@ class FeaturesMixin(object):
                 print('Channel ', c)
                 X = f[type]['event'][c]
                 X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
-                pca = IncrementalPCA(n_components=nmbr_components, svd_solver=svd_solver, batch_size=500)
+                pca = IncrementalPCA(n_components=nmbr_components, batch_size=500)
                 X_transformed = pca.fit_transform(X)
 
                 print('Explained Variance: ', pca.explained_variance_ratio_)
