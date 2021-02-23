@@ -10,6 +10,8 @@ from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
 from ..filter._of import get_amplitudes
 from sklearn.decomposition import PCA, IncrementalPCA
+from sklearn.preprocessing import FunctionTransformer
+from sklearn.pipeline import Pipeline
 
 from ..data._baselines import calculate_mean_nps
 
@@ -71,23 +73,22 @@ class FeaturesMixin(object):
             events['mainpar'].attrs.create(name='linear_drift', data=8)
             events['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
-
     # calc stdevent testpulses
     def calc_sev(self,
-                   type='events',
-                   use_labels=False,
-                   correct_label=None,
-                   use_idx=None,
-                   pulse_height_interval=None,
-                   left_right_cutoff=None,
-                   rise_time_interval=None,
-                   decay_time_interval=None,
-                   onset_interval=None,
-                   remove_offset=True,
-                   verb=True,
-                   scale_fit_height=True,
-                   sample_length=0.04,
-                    t0_start=None,
+                 type='events',
+                 use_labels=False,
+                 correct_label=None,
+                 use_idx=None,
+                 pulse_height_interval=None,
+                 left_right_cutoff=None,
+                 rise_time_interval=None,
+                 decay_time_interval=None,
+                 onset_interval=None,
+                 remove_offset=True,
+                 verb=True,
+                 scale_fit_height=True,
+                 sample_length=0.04,
+                 t0_start=None,
                  opt_start=False):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
@@ -217,7 +218,6 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-
     def calc_of(self, down=1):
         """
         Calculate the Optimum Filer from the NPS and the SEV
@@ -227,15 +227,15 @@ class FeaturesMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             stdevent_pulse = np.array([h5f['stdevent']['event'][i]
-                              for i in range(self.nmbr_channels)])
+                                       for i in range(self.nmbr_channels)])
             mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
 
             if down > 1:
-                stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(len(stdevent_pulse[1])/down), down), axis=2)
+                stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(len(stdevent_pulse[1]) / down), down), axis=2)
                 first_nps_val = mean_nps[:, 0]
                 mean_nps = mean_nps[:, 1:]
                 mean_nps = np.mean(mean_nps.reshape(-1, int(len(mean_nps[1]) / down), down), axis=2)
-                mean_nps = np.concatenate((first_nps_val.reshape(-1,1), mean_nps), axis=1)
+                mean_nps = np.concatenate((first_nps_val.reshape(-1, 1), mean_nps), axis=1)
 
             print('CREATE OPTIMUM FILTER.')
 
@@ -265,7 +265,6 @@ class FeaturesMixin(object):
                 optimumfilter['optimumfilter_imag'][...] = of.imag
 
             print('OF updated.')
-
 
     # apply the optimum filter
     def apply_of(self, type='events', chunk_size=10000, hard_restrict=False):
@@ -303,7 +302,6 @@ class FeaturesMixin(object):
             for c in range(self.nmbr_channels):
                 of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c], hard_restrict=hard_restrict)
                 f[type]['of_ph'][c, counter:nmbr_events] = of_ph
-
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
@@ -435,7 +433,6 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-
     def calc_nps(self, use_labels=False, down=1, percentile=50):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
@@ -476,7 +473,6 @@ class FeaturesMixin(object):
                                          shape=frequencies.shape,
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
-
 
     def calc_additional_mp(self, type='events', path_h5=None, down=1):
         """
@@ -528,8 +524,7 @@ class FeaturesMixin(object):
             events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
             events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
-
-    def apply_pca(self, nmbr_components, type='events', down=1):
+    def apply_pca(self, nmbr_components=2, type='events', down=1, batchsize=500):
         """
         TODO
 
@@ -542,6 +537,25 @@ class FeaturesMixin(object):
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
+
+            def downsample(X):
+                X_down = np.empty([len(X), int(len(X[0])/down)])
+                for i, x in enumerate(X):
+                    X_down[i] = np.mean(x.reshape(int(X.shape[1] / down), down), axis=1)
+                return X_down
+
+            def remove_offset(X):
+                for x in iter(X):
+                    x -= np.mean(x[:int(self.record_length / 8)], axis=0, keepdims=True)
+                return X
+
+            rem_off = FunctionTransformer(remove_offset)
+            downsam = FunctionTransformer(downsample)
+            pca = IncrementalPCA(n_components=nmbr_components, batch_size=batchsize)
+            pipe = Pipeline([('downsample', downsam),
+                             ('remove_offset', rem_off),
+                             ('PCA', pca)])
+
             if 'pca_projection' in f[type]:
                 print('Overwrite old pca projections')
                 del f[type]['pca_projection']
@@ -549,33 +563,32 @@ class FeaturesMixin(object):
                 print('Overwrite old pca components')
                 del f[type]['pca_components']
             pca_projection = f[type].create_dataset(name='pca_projection',
-                                                    shape=(self.nmbr_channels, len(f['events']['hours']), nmbr_components),
+                                                    shape=(
+                                                        self.nmbr_channels, len(f[type]['hours']), nmbr_components),
                                                     dtype=float)
             pca_error = f[type].require_dataset(name='pca_error',
-                                                shape=(self.nmbr_channels, len(f['events']['hours'])),
+                                                shape=(self.nmbr_channels, len(f[type]['hours'])),
                                                 dtype=float)
             pca_components = f[type].create_dataset(name='pca_components',
                                                     shape=(
-                                                    self.nmbr_channels, nmbr_components, len(f[type]['event'][0, 0])),
+                                                        self.nmbr_channels, nmbr_components,
+                                                        len(f[type]['event'][0, 0])),
                                                     dtype=float)
 
             for c in range(self.nmbr_channels):
                 print('Channel ', c)
                 X = f[type]['event'][c]
-                if down > 1:
-                    X = np.mean(X.reshape(X.shape[0], int(X.shape[1]/down), down), axis=2)
-                X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
-                pca = IncrementalPCA(n_components=nmbr_components, batch_size=500)
-                X_transformed = pca.fit_transform(X)
+                X_transformed = pipe.fit_transform(X)
 
-                print('Explained Variance: ', pca.explained_variance_ratio_)
-                print('Singular Values: ', pca.singular_values_)
-
-                # print('X_transformed: ', X_transformed)
-                # print('PCA error: ', np.mean((pca.inverse_transform(X_transformed) - X)**2, axis=1))
+                print('Explained Variance: ', pipe['PCA'].explained_variance_ratio_)
+                print('Singular Values: ', pipe['PCA'].singular_values_)
 
                 pca_projection[c, ...] = X_transformed
-                pca_error[c, ...] = np.mean((pca.inverse_transform(X_transformed) - X) ** 2, axis=1)
+                for i, ev in enumerate(X):
+                    transformed_ev = pipe['downsample'].transform(ev.reshape(1, -1))
+                    transformed_ev = pipe['remove_offset'].transform(transformed_ev)
+                    pca_error[c, i] = np.mean(
+                        (pipe['PCA'].inverse_transform(X_transformed[i]) - transformed_ev) ** 2)
 
                 for i in range(nmbr_components):
                     # create the unit vector in the transformed pca

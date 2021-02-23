@@ -236,13 +236,14 @@ class sev_fit_template:
 
         if self.down > 1:
             event = np.mean(event.reshape(int(len(event) / self.down), self.down), axis=1)
+
+        offset = np.mean(event[:int(len(event) / 8)])
+        event = event - offset
+
         if self.truncation_level is not None:
             truncation_flag = event < self.truncation_level
         else:
             truncation_flag = np.ones(len(event), dtype=bool)
-
-        offset = np.mean(event[:int(len(event) / 8)])
-        event = event - offset
 
         # find d, height and k approx
         a00 = 0  # np.mean(event[:1000])
