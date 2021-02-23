@@ -6,7 +6,7 @@ The DataHandler class handles most of the processing and organization of your da
 of the child class DataHandler, which inherits methods from several mixins classes. A mixin is a attribute-less base
 with the purpose of providing further methods to the child class, without overloading the code-content of the child
 class. The mixins are structured thematically. For the child class, as well as for every mixin class, an individual
-documantation page exists:
+documantation page exists.
 
 .. toctree::
    :caption: Child and Mixins

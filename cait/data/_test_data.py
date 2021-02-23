@@ -10,71 +10,85 @@ import datetime
 # class
 
 class TestData():
-    # needs rdt, con, par
+    """
+    A class for the generation of *.rdt, *.par, *.con, *.csmpl, *.db, *.dig_stamps and *.test_stamps files for
+    the testing of all data processing routines.
 
-    def __init__(self, filepath, duration=92, pulser_interval=3, sample_frequency=25000,
-                 channels=[0, 1], tpas=[20, 0.1, -1., 20, 0.3, 0, 20, 0.5, 1, 20, 3, -1, 20, 0, 10],
-                 event_tpa=[0.33, 0.33], baseline_resolution=[0.002, 0.003],
-                 k=[1, 1.5], l=[12, 8], record_length=16384, dvm_channels=0, start_s=1602879720, offset=[0, 0],
-                 fitpar=[[-1.11, 4, 0.02, 4.15, 2.1, 53.06], [0.77, 51.76, 50.81, 37.24, 8.33, 8.59]],
-                 fitpar_carrier=[[-2.38, 1.73, 1.65, 136, 0.38, 2.13], [0, 0, 0, 1, 1, 1]],
-                 include_carriers=False,
-                 eventsize=2081024, samplesdiv=2, cdaq_offset=30000, types=[0, 1], clock=10000000):
-        """
-        A class for the generation of test data for all data processing routines.
+    :param filepath: The path to the location of the generated data, including file name without appendix,
+        e.g. "../data/run01_Test/mock_001".
+    :type filepath: string
+    :param duration: The duration of the generated measurement time in seconds.
+    :type duration: float, > 0
+    :param pulser_interval: The interval in which test pulses are sent.
+    :type pulser_interval: float, > 0
+    :param sample_frequency: The sample frequency of the measurement in Hz.
+    :type sample_frequency: int, > 0
+    :param channels: A list of the channel numbers, corresponding to channels in RDT or CSMPL files.
+    :type channels: list of integers > 0
+    :param tpas: A list of the Test Pulse Amplitudes that are sent in this order. A TPA > 10 is set to 10 and
+        counted as control pulse. A TPA < 0 is set to 0 and counted as noise baseline recording. A TPA of 0 is
+        counted as triggered event and set to the height event_tpa.
+    :type tpas: list of floats
+    :param event_tpa: The height of a TPA 0 event, before application of the saturation curve.
+    :type event_tpa: list of nmbr_channels floats
+    :param baseline_resolution: The standard deviations of the noise, before application of the saturation function.
+    :type baseline_resolution: list of nmbr_channels floats
+    :param k: The slope parameter of the logistics function, that is used to describe the saturation.
+    :type k: list of nmbr_channels floats > 0
+    :param l: The maximal height of the logistics function, that is used to describe the saturation.
+    :type l: list of nmbr_channels floats > 0
+    :param record_length: The number of samples in a record window.
+    :type record_length: int > 0, should be power of 2
+    :param dvm_channels: The number of DVM channels in the RDT file. This feature is currently not implemented,
+        please stick with the standard value of 0.
+    :type dvm_channels: just put this to 0
+    :param start_s: The linux time stamp in seconds of the start of the measurement.
+    :type start_s: int > 0, standard value: 16.10.2020 22:22:00, the time of the first cait commit
+    :param offset: The baseline offset of the channels.
+    :type offset: list of two floats
+    :param fitpar: The parameters of the Proebst-pulse shape for the alternative events of all channels.
+    :type fitpar: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
+        the fit_pulse_model
+    :param fitpar_carr: The parameters of the Proebst-pulse shape for the events of all channels.
+    :type fitpar_carr: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
+        the fit_pulse_model
+    :param carrier_probability: The probablity for an carrier event when the tpa is 0.
+    :type carrier_probability: float > 0, < 1
+    :param ph_variation: The relative variation of the pulse height.
+    :type ph_variation: float > 0 and < 1
+    :param eventsize: The number of samples per bankswitch in 50kHz.
+    :type eventsize: int > 0
+    :param samplesdiv: The factor with that eventsize has to be divided, to match it with the sample_frequency.
+    :type samplesdiv: int > 0
+    :param cdaq_offset: The offset of the cdaq to the hardware daq, in samples with length 1/sample_frequency.
+    :type cdaq_offset: int, > 0 but < event_size/samplesdiv
+    :param types: If 0 it is a phonon channel, if 1 a light channel. Other types ambiguous.
+    :type types: int
+    :param clock: The frequency of the clock for the cdaq, for CRESST it is 10MHz.
+    :type clock: int > 0
 
-        :param filepath: The path to the location of the generated data, including file name without appendix,
-            e.g. "../data/run01_Test/mock_001"
-        :type filepath: string
-        :param duration: The duration of the generated measurement time in seconds.
-        :type duration: float, > 0
-        :param pulser_interval: The interval in which test pulses are sent.
-        :type pulser_interval: float, > 0
-        :param sample_frequency: The sample frequency of the measurement in Hz.
-        :type sample_frequency: int, > 0
-        :param channels: A list of the channel numbers, corresponding to channels in RDT or CSMPL files.
-        :type channels: list of integers > 0
-        :param tpas: A list of the Test Pulse Amplitudes that are sent in this order. A TPA > 10 is set to 10 and
-            counted as control pulse. A TPA < 0 is set to 0 and counted as noise baseline recording. A TPA of 0 is
-            counted as triggered event and set to the height event_tpa.
-        :type tpas: list of floats
-        :param event_tpa: The height of a TPA 0 event, befor application of the saturation curve.
-        :type event_tpa: list of nmbr_channels floats
-        :param baseline_resolution: The standard deviations of the noise, before application of the saturation function.
-        :type baseline_resolution: list of nmbr_channels floats
-        :param k: The slope parameter of the logistics function, that is used to describe the saturation.
-        :type k: list of nmbr_channels floats > 0
-        :param l: The maximal height of the logistics function, that is used to describe the saturation.
-        :type l: list of nmbr_channels floats > 0
-        :param record_length: The number of samples in a record window.
-        :type record_length: int > 0, should be power of 2
-        :param dvm_channels: ???
-        :type dvm_channels: just put this to 0
-        :param start_s: The linux time stamp in seconds of the start of the measurement.
-        :type start_s: int > 0, standard value: 16.10.2020 22:22:00, the time of the first cait commit
-        :param offset: The baseline offset of the channels.
-        :type offset: list of two floats
-        :param fitpar: The parameters of the Franz-pulse shape for the alternative events of all channels.
-        :type fitpar: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
-            the fit_pulse_model
-        :param fitpar_carr: The parameters of the Franz-pulse shape for the events of all channels.
-        :type fitpar_carr: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
-            the fit_pulse_model
-        :param carrier_probability: The probablity for an carrier event when the tpa is 0.
-        :type carrier_probability: float > 0, < 1
-        :param ph_variation: The relative variation of the pulse height.
-        :type ph_variation: float > 0 and < 1
-        :param eventsize: The number of samples per bankswitch in 50kHz.
-        :type eventsize: int > 0
-        :param samplesdiv: The factor with that eventsize has to be divided, to match it with the sample_frequency.
-        :type samplesdiv: int > 0
-        :param cdaq_offset: The offset of the cdaq to the hardware daq, in samples with length 1/sample_frequency.
-        :type cdaq_offset: int, > 0 but < event_size/samplesdiv
-        :param types: If 0 it is a phonon channel, if 1 a light channel. Other types ambiguous.
-        :type types: int
-        :param clock: The frequency of the clock for the cdaq, for CRESST it is 10MHz.
-        :type clock: int > 0
-        """
+    >>> import cait as ai
+    >>> test_data = test_data = ai.data.TestData(filepath='test_001')
+    >>> test_data.generate()
+    Rdt file written.
+    Con file written.
+    Par file written.
+    Csmpl Files for all Channels written.
+    Sql file written.
+    Dig_stamps file written.
+    Test_stamps file written.
+    """
+
+    def __init__(self, filepath:str, duration:float=92, pulser_interval:float=3, sample_frequency:int=25000,
+                 channels:list=[0, 1], tpas:list=[20, 0.1, -1., 20, 0.3, 0, 20, 0.5, 1, 20, 3, -1, 20, 0, 10],
+                 event_tpa:list=[0.33, 0.33], baseline_resolution:list=[0.002, 0.003],
+                 k:list=[1, 1.5], l:list=[12, 8], record_length:int=16384, dvm_channels:int=0,
+                 start_s:int=1602879720, offset:list=[0, 0],
+                 fitpar:list=[[-1.11, 4, 0.02, 4.15, 2.1, 53.06], [0.77, 51.76, 50.81, 37.24, 8.33, 8.59]],
+                 fitpar_carrier:list=[[-2.38, 1.73, 1.65, 136, 0.38, 2.13], [0, 0, 0, 1, 1, 1]],
+                 include_carriers:bool=False,
+                 eventsize:int=2081024, samplesdiv:int=2, cdaq_offset:int=30000, types:list=[0, 1], clock:int=10000000):
+
         self.filepath = filepath
         self.duration = duration
         self.nmbr_samples = int(duration * sample_frequency)
@@ -108,12 +122,23 @@ class TestData():
         self.events = [pulse_template(self.time, *fitpar[0]), pulse_template(self.time, *fitpar[1])]
         self.carrier_events = [pulse_template(self.time, *fitpar_carrier[0]), pulse_template(self.time, *fitpar_carrier[1])]
 
-    def generate(self, start_offset=0, source=None):  # in seconds
+    def generate(self, start_offset:int=0, source:bool=None):  # in seconds
         """
         Generate all files from a measurement file (rdt, con, par, csmpl, sql, dig, test).
 
+        Please be careful with the generation and merge of two test data files: You should set the start_offset of the
+        second file such, that the record time of both files are well separated (>1 minute). In the process of triggering and
+        determination of trigger times the start time of a file is extracted from the time stamps of test pulses and
+        might therefore be wrong for intervals of several seconds. As this error is consistently done for all timestamps
+        in the second file, it does not influence the analysis - however, if the start_offset of simulated data is too
+        close to the end of a previous file, the events will overlap.
+
         :param start_offset: The time elapsed from start of measurement to start of this file in seconds.
         :type start_offset: float >= 0
+        :param source: If this argument is passed, it must be either 'hw' to simulate the files from a hardware data
+            aquisition (RDT, PAR, CON) or 'stream' to simulate the files from stream data (CSMPL, SQL, DIG_STAMPS,
+            TEST_STAMPS)
+        :type source: string or None
         """
         if source == 'hw' or source is None:
             self._generate_rdt_file(start_offset=start_offset)
@@ -127,9 +152,9 @@ class TestData():
         if source is not None and source != 'hw' and source != 'stream':
             raise KeyError('Argument source must be either hw or stream!')
 
-    def update_duration(self, new_duration):
+    def update_duration(self, new_duration:float):
         """
-        Update the duration of a measurement file for the next generation.
+        Update the duration of a measurement file for the next data generation.
 
         :param new_duration: The new duration in seconds.
         :type new_duration: float
@@ -140,7 +165,7 @@ class TestData():
         self.nmbr_events = int(self.duration / self.pulser_interval)
         self.nmbr_bankswitches = int(self.duration / self.bankswitch_samples)
 
-    def update_filepath(self, file_path):
+    def update_filepath(self, file_path:str):
         """
         Update the file path of a measurement file for the next generation.
 
@@ -152,15 +177,19 @@ class TestData():
 
     # private ---------
 
-    def _saturation_curve(self, x, l, k):
-        # logistic function centered to zero
+    def _saturation_curve(self, x:float, l:float, k:float):
+        """
+        Logistic function centered to zero.
+        """
         return l * (1 / (1 + np.exp(-k * x)) - 0.5)
 
-    def _inverse_saturation_curve(self, y, l, k):
-        # inverse logistic function centered to zero
+    def _inverse_saturation_curve(self, y:float, l:float, k:float):
+        """
+        The inverse of a logistic function centered to zero.
+        """
         return (np.log((l + 2 * y) / (3 * l - 2 * y))) ** (1 / k)
 
-    def _generate_rdt_file(self, start_offset=0):  # in seconds
+    def _generate_rdt_file(self, start_offset:float=0):
         """
         Generate an rdt file of the measurement.
 
@@ -272,7 +301,7 @@ class TestData():
 
         print('Con file written.')
 
-    def _generate_par_file(self, start_offset=0):
+    def _generate_par_file(self, start_offset:float=0):
         """
         Generate a par file from the measurement.
 
@@ -352,7 +381,7 @@ class TestData():
 
         print('Csmpl Files for all Channels written.')
 
-    def _generate_sql_file(self, start_offset=0):
+    def _generate_sql_file(self, start_offset:float=0):
         """
         Generate an sql file with data of the measurement.
 

@@ -27,20 +27,54 @@ class DataHandler(SimulateMixin,
                   CsmplMixin,
                   ):
     """
-    A class for the processing of raw data set. Uses Mixins for most features.
+    A class for the processing of raw data events.
+
+    The DataHandler class is one of the core parts of the cait Package. An instance of the class is bound to a HDF5 file
+    and stores all data from the recorded binary files (*.rdt, ...), as well as the calculated features
+    (main parameters, standard events, ...) in the file.
+
+    :param run: The number of the measuremend run. This is a necessary argument, to identify a measurement with a given module uniquely.
+    :type run: string
+    :param module: The naming of the detector module. Necessary for unique identification of the physics data.
+    :type module: string
+    :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
+    :type channels: list of integers
+    :param record_length: The number of samples in one record window. To ensure performance of all features, this should be a power of 2.
+    :type record_length: int
+    :param sample_frequency: The sampling frequency of the recording.
+    :type sample_frequency: int
+
+    Example for the generation of an HDF5 for events from an test *.rdt file:
+
+    >>> import cait as ai
+    >>> test_data = ai.data.TestData(filepath='test_001')
+    >>> test_data.generate(source='hw')
+    Rdt file written.
+    Con file written.
+    Par file written.
+    >>> dh = ai.DataHandler()
+    DataHandler instance created.
+    >>> dh.convert_dataset(path_rdt='./', fname='test_001', path_h5='./')
+    Start converting.
+    READ EVENTS FROM RDT FILE.
+    Total Records in File:  40
+    Event Counts:  19
+    WORKING ON EVENTS WITH TPA = 0.
+    CREATE DATASET WITH EVENTS.
+    CALCULATE MAIN PARAMETERS.
+    WORKING ON EVENTS WITH TPA = -1.
+    CREATE DATASET WITH NOISE.
+    WORKING ON EVENTS WITH TPA > 0.
+    CREATE DATASET WITH TESTPULSES.
+    CALCULATE MP.
+    Hdf5 dataset created in  ./
+    Filepath and -name saved.
+
+    Most of the methods are included via parent mixin classes (see folder cait/mixins).
     """
 
-    def __init__(self, run='01', module='Test', channels=[0, 1], record_length=16384, sample_frequency=25000):
-        """
-        Give general information of the detector
-
-        :param run: int, the number of the run
-        :param module: string, the naming of the detector module
-        :param channels: list, the channels in the bck file that belong to the module
-        :param record_length: int, the number of samples in one record window
-        :param sample_frequency: int, the sample requency of the recording
-        """
-
+    def __init__(self, run: str = '01', module: str = 'Test', channels: list = [0, 1],
+                 record_length: int = 16384, sample_frequency: int = 25000):
         self.run = run
         self.module = module
         self.record_length = record_length
@@ -71,11 +105,19 @@ class DataHandler(SimulateMixin,
                      fname: str,
                      appendix=True):
         """
-        Set the path to the bck_XXX.hdf5 file for further processing.
+        Set the path to the *.h5 file for further processing.
 
-        :param path_h5: String to directory that contains the runXY_Module folders
-        :param fname: String, usually something like bck_xxx
-        :param appendix: bool, if false the filename must not have an appendix like "-P_ChX-[...]"
+        This function is usually called right after the initialization of a new object. If the intance has already done
+        the conversion from *.rdt to *.h5, the path is already set automatically and the call is obsolete.
+
+        :param path_h5: Directory that contains the H5 file.
+        :type path_h5: string
+        :param fname: The name of the H5 file.
+        :type fname: string
+        :param appendix: If true, an appendix like "-P_ChX-[...]" is automatically appended to the path_h5 string.
+        :type appendix: bool
+
+        >>> dh.set_filepath(path_h5='./', fname='test_001')
         """
         app = ''
         if appendix:
@@ -92,17 +134,31 @@ class DataHandler(SimulateMixin,
         self.fname = fname
 
     def import_labels(self,
-                      path_labels,
-                      type='events',
+                      path_labels: str,
+                      type: str = 'events',
                       path_h5=None):
         """
         Include the *.csv file with the labels into the HDF5 File.
-        :param path_labels: string, path to the folder that contains the csv file
-            e.g. "data" --> look for labels in "data/labels_bck_0XX_<type>"
-        :param type: string, the type of labels, typically "events" or "testpulses"
-        :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
-            e.g. "data/hdf5s/bck_001[...].h5"
-        :return: -
+
+        :param path_labels: Path to the folder that contains the csv file.
+            E.g. "data" looks for labels in "data/labels_bck_0XX_<type>".
+        :type path_labels: string
+        :param type: The group name in the HDF5 file of the events, typically "events" or "testpulses".
+        :type type: string
+        :param path_h5: Provide an alternative full path to the HDF5 file to include the labels,
+            e.g. "data/hdf5s/bck_001[...].h5".
+        :type path_h5: string or None
+
+        >>> ei = ai.EventInterface()
+        Event Interface Instance created.
+        >>> ei.load_h5(path='./',fname='test_001',channels=[0,1])
+        Nmbr triggered events:  4
+        Nmbr testpulses:  11
+        Nmbr noise:  4
+        Bck File loaded.
+        >>> ei.create_labels_csv(path='./')
+        >>> dh.import_labels(path_labels='./')
+        Added Labels.
         """
 
         if not path_h5:
@@ -158,23 +214,30 @@ class DataHandler(SimulateMixin,
                 print("File '{}' does not exist.".format(path_labels))
 
     def import_predictions(self,
-                           model,
-                           path_predictions,
-                           type='events',
-                           only_channel=None,
-                           path_h5=None):
+                           model: str,
+                           path_predictions: str,
+                           type: str = 'events',
+                           only_channel: int = None,
+                           path_h5: str = None):
         """
-        Include the *.csv file with the predictions of a model into the HDF5 File.
-        :param model: string, the naming for the type of model, e.g. Random Forest --> "RF"
-        :param path_predictions: string, path to the folder that contains the csv file
-            e.g. "data/" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>"
-            if the only_channel is not None, then additionally "_Ch<only_channel>" is append to the
-            looked for file
-        :param type: string, the type of labels, typically "events" or "testpulses"
-        :param only_channel: int, if the labels are only for a specific channel then define here which channel
-        :param path_h5: string, optional, provide an extra (full) path to the hdf5 file
-            e.g. "data/hdf5s/bck_001[...].h5"
-        :return: -
+        Include the *.csv file with the predictions from a machine learning model into the HDF5 File.
+
+        :param model: The naming for the type of model, e.g. Random Forest --> "RF".
+        :type model: string
+        :param path_predictions: Path to the folder that contains the csv file.
+            E.g. "data/" --> look for predictions in "data/<model>_predictions_<self.fname>_<type>".
+            If the argument only_channel is not None, then additionally "_Ch<only_channel>" is append to the
+            looked for file.
+        :type path_predictions: string
+        :param type: The name of the group in the HDF5 file, typically "events" or "testpulses".
+        :type type: string
+        :param only_channel: If the labels are only for a specific channel then define here for which channel.
+        :type only_channel: int or None
+        :param path_h5: Provide an alternative (full) path to the HDF5 file, e.g. "data/hdf5s/bck_001[...].h5".
+        :type path_h5: string or None
+
+        >>> dh.import_predictions(model='RF', path_predictions='./')
+        Added RF Predictions.
         """
 
         if not path_h5:
@@ -271,9 +334,19 @@ class DataHandler(SimulateMixin,
 
     def get_filehandle(self, path=None):
         """
-        Returns the opened filestream to the hdf5 file
-        :param path: string, optional, give a path to the hdf5 file
-        :return: h5py file object
+        Get the opened filestream to the HDF5 file.
+
+        This is usually needed for individual feature calculations, plots or cuts, that are not ready-to-play implemented.
+
+        :param path: Provide an alternative full path to the HDF5 file of that we want to open the file stream.
+        :type path: string or None
+        :return: The opened file stream. Please look into the h5py Python library for details about the file stream.
+        :rtype: h5py file stream
+
+        >>> with dh.get_filehandle() as f:
+        ...     f.keys()
+        ...
+        <KeysViewHDF5 ['events', 'noise', 'testpulses']>
         """
         if path is None:
             f = h5py.File(self.path_h5, 'r+')
@@ -281,14 +354,20 @@ class DataHandler(SimulateMixin,
             f = h5py.File(path, 'r+')
         return f
 
-    def drop_raw_data(self, type='events'):
+    def drop_raw_data(self, type: str = 'events'):
         """
-        TODO
+        Delete the dataset "event" from a specified group in the HDF5 file.
 
-        :param type:
-        :type type:
-        :return:
-        :rtype:
+        For large scale analysis and limited server space, the covnerted HDF5 datasets exceed storage space capacities.
+        For this scenario, the raw data events can be deleted after the calculation of all useful features. At a later
+        point, the events can be included again if needed.
+
+        :param type: The group in the HDF5 set from which the events are deleted,
+            typically 'events', 'testpulses' or noise.
+        :type type: string
+
+        >>> dh.drop_raw_data()
+        Dataset Event deleted from group events.
         """
         with h5py.File(self.path_h5, 'r+') as h5f:
             if "event" in h5f[type]:
@@ -297,14 +376,25 @@ class DataHandler(SimulateMixin,
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
-    def downsample_raw_data(self, type='events', down=16, dtype='float32'):
+    def downsample_raw_data(self, type:str='events', down:int=16, dtype:str='float32'):
         """
-        TODO
+        Downsample the dataset "event" from a specified group in the HDF5 file.
 
-        :param type:
-        :type type:
-        :return:
-        :rtype:
+        For large scale analysis and limited server space, the covnerted HDF5 datasets exceed storage space capacities.
+        For this scenario, the raw data events can be downsampled of a given factor. Downsampling to sample frequencies
+        below 1kHz is in many situations sufficient for viewing events and most features calculations.
+
+        :param type: The group in the HDF5 set from which the events are downsampled,
+            typically 'events', 'testpulses' or noise.
+        :type type: string
+        :param down: The factor by which the data is downsampled. This should be a factor of 2.
+        :type down: int
+        :param dtype:
+        :type dtype: string
+
+        >>> dh.downsample_raw_data()
+        Old Dataset Event deleted from group events.
+        New Dataset Event with downsample rate 16 created in group events.
         """
         with h5py.File(self.path_h5, 'r+') as h5f:
             if "event" in h5f[type]:

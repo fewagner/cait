@@ -20,21 +20,38 @@ from .styles._plt_styles import use_cait_style, make_grid
 class EventInterface:
     """
     A class for the viewing and labeling of Events from HDF5 data sets.
+
+    The Event interface is one of the core classes of the cait package. It is used to view raw data events and label
+    them in order to train supervised machine learning models. The interface is with an interactive menu
+    optimized for an efficient workflow.
+
+    :param module: The naming of the detector module, e.g. "TUM40".
+    :type module: string
+    :param run: The number of the run from which the measurement originates,
+        necessary for unique identification of the data.
+    :type run: string
+    :param record_length: The number of samples in a record window.
+    :type int
+    :param sample_frequency: The record frequency of the measurement.
+    :type int
+    :param nmbr_channels: The number of channels of the detector modules,
+        typically 1, 2 (phonon/light) or 3 (including I-sticks or ring).
+    :type nmbr_channels: int
+    :param down: The downsample rate for viewing the events. This can later be adapted in the interactive menu.
+    :type down: int
+
+    >>> ei = ai.EventInterface()
+    Event Interface Instance created.
+    >>> ei.load_h5(path='./', fname='test_001', channels=[0,1])
+    Nmbr triggered events: 4
+    Nmbr testpulses:  11
+    Nmbr noise:  4
+    HDF5 File loaded.
+    >>> ei.create_labels_csv(path='./')
     """
 
-    def __init__(self, module, run, record_length,
-                 sample_frequency=25000, nmbr_channels=2, down=1, dpi=None):
-        """
-        Provide general information about the detector for a new instance of the class.
-
-        :param module: string, the naming of the detector module
-        :param run: int, the number of the run from which the measurement comes
-        :param record_length: int, the number of samples in a record window
-        :param sample_frequency: int, the record frequency of the measurement
-        :param nmbr_channels: int, the number of channels of the detector modules
-        :param down: int, the downsample rate for viewing the events
-        """
-
+    def __init__(self, module: str = 'Test', run: str = '01', record_length: int = 16384,
+                 sample_frequency: int = 25000, nmbr_channels: int = 2, down: int = 1, dpi: int = None):
         self.nmbr_channels = nmbr_channels
         self.module = module
         self.run = run
@@ -62,7 +79,7 @@ class EventInterface:
             self.channel_names = ['Channel {}'.format(i) for i in range(nmbr_channels)]
         self.xlim = None
         self.ylim = None
-        self.dpi=dpi
+        self.dpi = dpi
 
         print('Event Interface Instance created.')
 
@@ -71,20 +88,29 @@ class EventInterface:
     # ------------------------------------------------------------
 
     # Load in the hdf5 dataset
-    def load_h5(self, path,
-                fname,
-                channels,
+    def load_h5(self, path: str,
+                fname: str,
+                channels: list,
                 appendix=True,
                 which_to_label=['events']):
         """
-        Load a hdf5 dataset to the instance
+        Load a hdf5 dataset to the event interface instance. This is typically done right after the declaration of a new instance.
 
-        :param path: string, path to the file folder; e.g. "data/" --> filepath "data/fname-[appendix].h5"
-        :param channels: list of strings, the numbers of the channels that are included in the bck file
-        :param fname: string, the file naming, e.g. bck, cal, blue, ....
-        :param appendix: bool, if True the appendix generated from the gen_h5_from_rdt function is appended to the name
-        :param which_to_label: list of strings, possible members are events, testpulses, noise
-        :return: -
+        :param path: Path to the file folder. E.g. "data/" --> filepath "data/fname-[appendix].h5".
+        :type path: string
+        :param channels: The numbers of the channels that are included in the HDF5 file. The should be consistent with
+            the appendix of the file name. If the file has no appendix, the numbering can be done arbitrarily, e.g. with
+            [0, 1] for a two-channel detector module.
+        :type channels: list of string
+        :param fname: The file name without suffix, e.g. "test_001.h5" --> "test_001".
+        :type fname: string
+        :param appendix: If True the appendix generated from the gen_h5_from_rdt function is automatically
+            appended to the fname string. Use this argument, if your HDF5 file has such an appendix. Do not put the
+            appendix in the fname string then, e.g. "test_001-P_Ch1-L_Ch2.h5" --> fname="test_001", appendix=True
+        :type appendix: bool
+        :param which_to_label: Specify which groups from the HDF5 set should be labeled. Possible list members are
+            'events', 'testpulses' and 'noise'. In most use cases you will just want the standard argument ['events'].
+        :type which_to_label: list of strings
         """
 
         if appendix:
@@ -135,24 +161,28 @@ class EventInterface:
             except KeyError:
                 print('No noise in h5 file.')
 
-        print('Bck File loaded.')
+        print('HDF5 File loaded.')
 
     # ------------------------------------------------------------
     # LABELS HANDLING
     # ------------------------------------------------------------
 
     # Create CSV file for labeling
-    def create_labels_csv(self, path):
+    def create_labels_csv(self, path: str):
         """
-        Create a new CSV file to store the labels
+        Create a new CSV file to store the labels.
 
-        :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/labels_bck_001_type.csv"
-        :return: -
+        The labels are intentionally not included in the HDF5 set right away, to provide a fail-save mechanism in case
+        the HDF5 file is re-converted or the this method is accidentally called, overwriting existing labels. Labels are
+        usually assigned per hand, making the labels the most time-costly values in your dataset.
+
+        :param path: The path to the file folder where the labels CSV is to be created. A unique naming is automatically
+            assigned, e.g. "data/" --> file name "data/labels_bck_001_type.csv".
+        :type path: string
         """
 
         self.path_csv_labels = path + \
-            'labels_{}_'.format(self.fname)
+                               'labels_{}_'.format(self.fname)
 
         try:
             for type in self.which_to_label:
@@ -163,24 +193,28 @@ class EventInterface:
                            fmt='%i', delimiter='\n')
 
         except NameError:
-            print('Error! Load a bck file first.')
+            print('Error! Load a h5 file first.')
 
     # Load CSV file for labeling
-    def load_labels_csv(self, path, type='events'):
+    def load_labels_csv(self, path: str, type: str = 'events'):
         """
-        Load a csv file with labels
+        Load a CSV file with labels for the given detector module.
 
-        :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/labels_bck_001_type.csv"
-        :param type: string, either events, testpulses or noise
-        :return: -
+        :param path: the path to the file folder containing the labels CSV file,
+            e.g. "data/" --> file name "data/labels_bck_001_type.csv".
+        :type path: string
+        :param type: The group in the HDF5 corresponding to the labels, either 'events', 'testpulses' or 'noise'.
+        :type type: string
+
+        >>> ei.load_labels_csv(path='./')
+        Loading Labels from ./labels_test_001_events.csv.
         """
 
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_labels = path + \
-            'labels_{}_'.format(self.fname)
+                               'labels_{}_'.format(self.fname)
 
         filename = self.path_csv_labels + type + '.csv'
         print('Loading Labels from {}.'.format(filename))
@@ -190,14 +224,21 @@ class EventInterface:
         self.labels[type] = labels
 
     # Export labels from hdf5 file to CSV file
-    def export_labels(self, path, type):
+    def export_labels(self, path: str, type: str = 'events'):
         """
-        Save the labels included in the HDF5 file as CSV file
+        Save the labels included in the HDF5 file as CSV file.
 
-        :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/labels_bck_001_type.csv"
-        :param type: string, either events or testpulses or noise
-        :return: -
+        You will usually need this option if you have an HDF5 file with included labels, but lost the corresponding CSV
+        file. Also, it is recommended to export and store the labels as CSV in on a safe place, e.g. in a Wiki.
+
+        :param path: The path to the file folder containing the labels CSV,
+            e.g. "data/" --> file name "data/labels_bck_001_type.csv".
+        :type path: string
+        :param type: The group in the HDF5 file corresponding to the labels, either 'events', 'testpulses' or 'noise'.
+        :type type: string
+
+        >>> ei.export_labels(path='./')
+        Labels from HDF5 exported to ./labels_test_001_.
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
@@ -206,7 +247,7 @@ class EventInterface:
                 raise ValueError('Type should be events, testpulses or noise.')
 
             self.path_csv_labels = path + \
-                'labels_{}_'.format(self.fname)
+                                   'labels_{}_'.format(self.fname)
 
             # check if hdf5 file has labels
             if not f[type]['labels']:
@@ -215,29 +256,33 @@ class EventInterface:
                 np.savetxt(self.path_csv_labels + type + '.csv',
                            np.array(f[type]['labels']),
                            fmt='%i', delimiter='\n')
-                print('Labels from HDF5 exported to {}.'.format(self.path_csv_labels))
-
+                print('Labels from HDF5 exported to {}{}.'.format(self.path_csv_labels, type))
 
     # ------------------------------------------------------------
     # PREDICTIONS HANDLING
     # ------------------------------------------------------------
 
-    def load_predictions_csv(self, path, type, model):
+    def load_predictions_csv(self, path: str, model: str, type: str = 'events'):
         """
-        Load a csv file with predictions
+        Load a CSV file with predictions from a machine learning model for the given HDF5 dataset.
 
-        :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/<model>_predictions_bck_001_type.csv"
-        :param type: string, either events, testpulses or noise
-        :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
-        :return: -
+        :param path: The path to the file folder containing the CSV file with the predictions,
+            e.g. "data/" --> file name "data/<model>_predictions_bck_001_type.csv".
+        :type path: string
+        :param type: The group in the HDF5 file corresponding to the predictions, either 'events', 'testpulses' or 'noise'.
+        :type type: string
+        :param model: The name of the model that made the predictions, e.g. "RF" --> Random Forest.
+        :type model: string
+
+        >>> ei.load_predictions_csv(path='./', model='RF')
+        Loading Predictions from ./RF_predictions_test_001_events.csv.
         """
 
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
         self.path_csv_predictions = path + \
-            '{}_predictions_{}_'.format(model, self.fname)
+                                    '{}_predictions_{}_'.format(model, self.fname)
 
         filename = self.path_csv_predictions + type + '.csv'
         print('Loading Predictions from {}.'.format(filename))
@@ -255,16 +300,20 @@ class EventInterface:
             self.model_names[type] = []
         self.model_names[type].append(model)
 
-
-    def export_predictions(self, path, type, model):
+    def export_predictions(self, path: str, model: str, type: str = 'events'):
         """
-        Save the predictions included in the HDF5 file as CSV file
+        Save the predictions from a machine learning model included in the HDF5 file as CSV file.
 
-        :param path: string, the path to the file folder,
-            e.g. "data/" --> file name "data/<model>_predictions_bck_001_type.csv"
-        :param type: string, either events or testpulses or noise
-        :param model: string, the name of the model that made the predictions, e.g. "RF" --> Random Forest
-        :return: -
+        :param path: The path to the file folder containing the predictions CSV,
+            e.g. "data/" --> file name "data/<model>_predictions_bck_001_type.csv".
+        :type path: string
+        :param type: The name of the group in the HDF5 file, either 'events' or 'testpulses' or 'noise'.
+        :type type: string
+        :param model: The name of the model that made the predictions, e.g. "RF" --> Random Forest.
+        :type model: string
+
+        >>> ei.export_predictions(path='./', model='RF')
+        RF Predictions from HDF5 exported to RF_predictions_test_001_events.
         """
         with h5py.File(self.path_h5, 'r+') as f:
 
@@ -272,7 +321,7 @@ class EventInterface:
                 raise ValueError('Type should be events, testpulses or noise.')
 
             self.path_csv_predictions = path + \
-                '{}_predictions_{}_'.format(model, self.fname)
+                                        '{}_predictions_{}_'.format(model, self.fname)
 
             # check if hdf5 file has labels
             if not f[type]['{}_predictions'.format(model)]:
@@ -281,7 +330,7 @@ class EventInterface:
                 np.savetxt(self.path_csv_predictions + type + '.csv',
                            np.array(f[type]['{}_predictions'.format(model)]),
                            fmt='%i', delimiter='\n')
-                print('{} Predictions from HDF5 exported to {}.'.format(model, self.path_csv_predictions))
+                print('{} Predictions from HDF5 exported to {}{}.'.format(model, self.path_csv_predictions, type))
 
     # ------------------------------------------------------------
     # FEATURE HANDLING
@@ -290,17 +339,34 @@ class EventInterface:
     # Load OF
     def load_of(self):
         """
-        Add the optimal transfer function from the HDF5 file
+        Add the optimal transfer function from the HDF5 file.
+
+        This is needed in order to view the filtered event in the labeling or viewing process. For this to work, the
+        optimal transfer function must be included in the HDF5 file, e.g. calculated with an instance of the DataHandler
+        before (dh.calc_of()).
+
+        >>> ei.load_of()
+        Added the optimal transfer function.
         """
         with h5py.File(self.path_h5, 'r+') as f:
             of_real = np.array(f['optimumfilter']['optimumfilter_real'])
             of_imag = np.array(f['optimumfilter']['optimumfilter_imag'])
-            self.of = of_real + 1j*of_imag
+            self.of = of_real + 1j * of_imag
             print('Added the optimal transfer function.')
 
     def load_sev_par(self, sample_length=0.04):
         """
-        Add the sev fit parameters from the HDF5 file
+        Add the sev fit parameters from the HDF5 file.
+
+        This is needed in order to view the fitted event in the labeling or viewing process. For this to work, the sev
+        fit parameters for every event must be included in the HDF5 file, e.g. calculated with an instance of the
+        DataHandler before (dh.apply_sev_fit()).
+
+        :param sample_length: The length of a sample in milliseconds, i.e. 1/sample_frequency.
+        :type sample_length: float
+
+        >>> ei.load_sev_par()
+        Added the sev fit parameters.
         """
         with h5py.File(self.path_h5, 'r+') as f:
             sev_par = np.array(f['stdevent']['fitpar'])
@@ -311,20 +377,18 @@ class EventInterface:
 
             print('Added the sev fit parameters.')
 
-
     # ------------------------------------------------------------
     # LABEL AND VIEWER INTERFACE
     # ------------------------------------------------------------
 
-    def _plot_mp(self, main_par, down=1, color='r', offset_in_samples=0):
+    def _plot_mp(self, main_par, down: int = 1, color: str = 'r', offset_in_samples: int = 0):
         """
-        Function to plot the main parameters, typically accessed by the labeling tool internally
+        Function to plot the main parameters, typically accessed by the labeling tool internally.
 
         :param main_par: list of the 10 main parameters
         :param down: int, the downsample rate
         :param color: string, the color in which the mp are plotted
         :param offset_in_samples: int, an offset parameter from the beginning of the file
-        :return: -
         """
         pulse_height = main_par[0]
         t_zero = main_par[1]
@@ -352,11 +416,9 @@ class EventInterface:
         plt.scatter(x_values, y_values, color=color, zorder=15)
 
     # Access options of label interface
-    def viewer_options(self):
+    def _viewer_options(self):
         """
         Prints out all the options that are available in the event viewer/labeling tool
-
-        :return: -
         """
         print('---------- OPTIONS: ----------')
         print('down ... downsample')
@@ -438,13 +500,20 @@ class EventInterface:
                 print('Please enter a valid option or q to end.')
 
     # Show specific sample idx from the dataset
-    def show(self, idx, type):
+    def show(self, idx: int, type: str = 'events'):
         """
-        Plots an event
+        Plots an event of the dataset.
 
-        :param idx: the index of the event that is to show in the hdf5 file
-        :param type: string, either events, testpulses or noise
-        :return: -
+        :param idx: The index of the event that is to show in the hdf5 file.
+        :type idx: int
+        :param type: The containing group in the HDF5 data set, either 'events', 'testpulses' or 'noise'.
+        :type type: string
+
+        >>> ei.show(idx=0)
+        Label Phonon: 0.0
+        Label Light: 0.0
+
+        .. image:: pics/event.png
         """
         with h5py.File(self.path_h5, 'r+') as f:
 
@@ -458,7 +527,7 @@ class EventInterface:
             # optimum filter
             if self.show_filtered:
                 for c in range(self.nmbr_channels):
-                    offset = np.mean(event[c, :int(len(event[c])/8)])
+                    offset = np.mean(event[c, :int(len(event[c]) / 8)])
                     event[c] = filter_event(event[c] - offset, self.of[c]) + offset
                 appendix = 'Filtered'
 
@@ -471,7 +540,7 @@ class EventInterface:
             # derivative
             if self.show_derivative:
                 event = self.down * \
-                    np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
+                        np.diff(event, axis=1, prepend=event[:, 0, np.newaxis])
                 appendix = 'Derivative'
 
             # triangulation
@@ -513,7 +582,7 @@ class EventInterface:
                 plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
                 plt.plot(event[i], label=self.channel_names[i], color=colors[i], zorder=10)
                 plt.title('Index {}, {} {}'.format(idx,
-                                                 self.channel_names[i], appendix))
+                                                   self.channel_names[i], appendix))
 
                 # triangulation
                 if self.show_triangulation:
@@ -557,12 +626,9 @@ class EventInterface:
                 tpa = f['testpulses']['testpulseamplitude'][idx]
                 print('TPA: {}'.format(tpa))
 
-
     def _print_labels(self):
         """
-        Prints the labels that are available
-
-        :return: -
+        Prints the labels that are available. The list can be expanded for any given use case.
         """
         print('---------- LABELS: ----------')
         print('0 ... unlabeled')
@@ -588,9 +654,9 @@ class EventInterface:
         print('20 ... Sharp Light Event')
         print('99 ... unknown/other')
 
-    def _ask_for_label(self, idx, which='phonon'):
+    def _ask_for_label(self, idx:int, which:str='phonon'):
         """
-        Takes and processes an user input to the viewer/labeling tool
+        Takes and processes an user input to the viewer/labeling tool.
 
         :param idx: int, the index of the event that is to label in the h5 file
         :param which: string, the naming of the channel, e.g. phonon/light
@@ -623,9 +689,9 @@ class EventInterface:
                     print(
                         'Enter Integer > 0 or q end, b back, n next, o options, i idx')
 
-    def _ask_for_idx(self, length):
+    def _ask_for_idx(self, length:int):
         """
-        Gets an index from the user to which we want to jump
+        Gets an index from the user to which we want to jump.
 
         :param length: int, maximal index the user may put
         :return: int, the index the used put
@@ -643,27 +709,40 @@ class EventInterface:
             except ValueError:
                 print('Enter valid index!')
 
-
     def start_labeling(self,
-                       start_from_idx=0,
-                       print_label_list=True,
-                       label_only_class=None,
-                       label_only_prediction=None,
-                       model=None):
+                       start_from_idx:int=0,
+                       print_label_list:bool=True,
+                       label_only_class:int=None,
+                       label_only_prediction:int=None,
+                       model:str=None):
         """
-        Starts the label/view interface
-        The user gets the events shown and is asked for labels. There are viewer options available:
-        There are four options: n, b, i -idx, o, q
-        n … next sample
-        b … previous sample
-        q … quit
-        o … show set options and ask for changes, options are down - der - mp - predRF - predLSTM - triang - of - … - q
+        Starts the label/view interface.
 
-        :param start_from_idx: int, an index to start labeling from
-        :param label_only_class: int, if set only events of this class will be shown
-        :param label_only_prediction: int, if set only events of this prediction will be shown
-        :param model: string, the naming of the model that made the predictions
-        :return: -
+        The user gets the events shown and is asked for labels. There are viewer options available:
+
+        - n … next sample
+        - b … previous sample
+        - idx ... user is asked for an index to jump to
+        - q … quit
+        - o … show set options and ask for changes, options are down - der - mp - predRF - predLSTM - triang - of - … - q
+
+        The options in the options menu change the displayed event:
+
+        - down ... Event is downsampled before plotting, this smoothes the noise.
+        - der ... The derivative of the event is shown.
+        - mp ... The main parameters are visualized as scatter points in the plot.
+        - triang ... A triangulation of the event is shown. This feature is experimental and not supported any longer.
+        - of ... The filtered event is shown.
+        - q ... Quit the menu and go back to the labeling interface.
+
+        :param start_from_idx: An event index to start labeling from.
+        :type start_from_idx: int
+        :param label_only_class: If set only events of this class will be shown in the labeling/viewing process.
+        :type label_only_class: int
+        :param label_only_prediction: If set only events of this prediction will be shown in the labeling/viewing process.
+        :type label_only_prediction: int
+        :param model: The naming of the model that made the predictions, e.g. 'RF' for Random Forest
+        :type model: string
         """
         if label_only_class:
             print('Start labeling from idx {}, label only class {}.'.format(
@@ -698,7 +777,7 @@ class EventInterface:
                 else:
                     prediction_condition = True
 
-                if class_condition and prediction_condition: # or label_all_classes:
+                if class_condition and prediction_condition:  # or label_all_classes:
 
                     if print_label_list:
                         self._print_labels()
@@ -719,7 +798,7 @@ class EventInterface:
                             print('Skipping this label.')
                             break
                         elif user_input == -4:
-                            self.viewer_options()
+                            self._viewer_options()
                             idx -= 1
                             break
                         elif user_input == -5:

@@ -49,9 +49,9 @@ Code Guidelines
 
 A software project with multiple contributors from various levels of experience needs clear and easy structure to ensure long-term usability. For this reason, please consider the following guidelines in every commit:
 
-- Obey the official code guidelines for Python, outlined in the PEP8 Style Guide.
+- Obey the official code guidelines for Python, outlined in the PEP8 Style Guide. Especially, name functions and variables with lowercase letters and underscores ("recoil_energy") and classes with uppercase letters ("LogicalCut").
 
-- Always use descriptive names for functions and variables, avoid abbreviations wherever possible. E.g. "recoil_energy" instead of "er", "control_pulse" instead of "cp". We allow for exceptions in some cases ("sev", "nps", ...), especially if the meaning of a variable is uniquely understandable form the context ("for bl in baselines: ...").
+- Always use descriptive names for functions and variables, avoid abbreviations wherever possible. E.g. "recoil_energy" instead of "E_r", "control_pulse" instead of "c_p". We allow for exceptions in some cases ("sev", "nps", ...), especially if the meaning of a variable is uniquely understandable form the context ("for bl in baselines: ...").
 
 - Include a doc string to every function and class with full specification of all arguments and clear explanation the usage and functionality.
 

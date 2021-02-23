@@ -2,6 +2,13 @@
 Installation
 ************
 
+There are various ways for the installation of cait, which are outlined in the following. Usually we provide a stable
+release, typically hosted on the GitLab/GitHub master branch and a development version. The development version might
+still be unstable and undocumented in some new features, does however include all cutting-edge and current implementations.
+Our recommendation is therefore to use the development branch, combined with active bug-reporting in the GitLab/Hub
+issue tracker. Due to the still very small user and developer community, the stable release is also to be understood as
+a beta version.
+
 Installation from PyPI (recommended)
 ====================================
 
