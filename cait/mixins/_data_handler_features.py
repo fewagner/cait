@@ -563,7 +563,7 @@ class FeaturesMixin(object):
                 print('Channel ', c)
                 X = f[type]['event'][c]
                 X -= np.mean(X[:, :int(self.record_length / 8)], axis=1, keepdims=True)
-                pca = PCA(n_components=nmbr_components)
+                pca = PCA(n_components=nmbr_components, svd_solver='full')
                 X_transformed = pca.fit_transform(X)
 
                 print('Explained Variance: ', pca.explained_variance_ratio_)
