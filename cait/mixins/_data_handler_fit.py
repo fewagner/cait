@@ -81,7 +81,7 @@ class FitMixin(object):
     # apply sev fit
     def apply_sev_fit(self, type='events', only_channels=None, order_bl_polynomial=3, sample_length=0.04, down=1,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
-                      verb=False, processes=4, events_to_fit=None):
+                      verb=False, processes=4, events_to_fit=None, name_appendix=''):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -122,25 +122,22 @@ class FitMixin(object):
                     with Pool(processes) as p:
                         par[c, ...] = list(tqdm.tqdm(p.imap(fit_model.fit_cubic, events[c]), total=events_to_fit))
 
-                    # for i in range(len(events[0])):
-                    #     par[c, i] = fit_model.fit_cubic(events[c, i])
-
             # write sev fit results to file
-            f['events'].require_dataset(name='sev_fit_par'.format(order_bl_polynomial),
+            set_fitpar = f['events'].require_dataset(name='sev_fit_par{}'.format(name_appendix),
                                         shape=par.shape,
                                         dtype='float')
-            f['events']['sev_fit_par'].attrs.create(name='pulse_height', data=0)
-            f['events']['sev_fit_par'].attrs.create(name='onset', data=1)
-            f['events']['sev_fit_par'].attrs.create(name='constant_coefficient', data=2)
-            f['events']['sev_fit_par'].attrs.create(name='linear_coefficient', data=3)
-            f['events']['sev_fit_par'].attrs.create(name='quadratic_coefficient', data=4)
-            f['events']['sev_fit_par'].attrs.create(name='cubic_coefficient', data=5)
-            f['events'].require_dataset(name='sev_fit_rms'.format(order_bl_polynomial),
+            set_fitpar.attrs.create(name='pulse_height', data=0)
+            set_fitpar.attrs.create(name='onset', data=1)
+            set_fitpar.attrs.create(name='constant_coefficient', data=2)
+            set_fitpar.attrs.create(name='linear_coefficient', data=3)
+            set_fitpar.attrs.create(name='quadratic_coefficient', data=4)
+            set_fitpar.attrs.create(name='cubic_coefficient', data=5)
+            set_fitrms = f['events'].require_dataset(name='sev_fit_rms{}'.format(name_appendix),
                                         shape=(self.nmbr_channels, len(events[0])),
                                         dtype='float')
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
-                    f['events']['sev_fit_par'][c, ...] = par[c]
+                    set_fitpar[c, ...] = par[c]
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
                     fit_model = sev_fit_template(pm_par=sev_par[c], t=t)
@@ -152,7 +149,7 @@ class FitMixin(object):
                         # elif order_bl_polynomial == 2:
                         #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
                         # elif order_bl_polynomial == 3:
-                        f['events']['sev_fit_rms'][c, i] = np.mean((events[c, i][
+                        set_fitrms[c, i] = np.mean((events[c, i][
                                                                     fit_model.low:fit_model.up] - fit_model.wrap_sec(
                             *par[c, i])[fit_model.low:fit_model.up]) ** 2)
                         # else:

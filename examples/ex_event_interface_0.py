@@ -37,5 +37,5 @@ if __name__ == '__main__':
 
     # start the labeling process interface
     # you could also look at an individual event by index
-    ei.start_labeling(start_from_idx=1,
+    ei.start(start_from_idx=1,
                       label_only_class=None)

@@ -245,7 +245,7 @@ def trigger_csmpl(paths,
                         blocks.append(block)
                     block += trig + trigger_block
                     if len(triggers) % 100 == 0:
-                        print('nmbr triggers: {}, finished: {}'.format(len(triggers), counter / take_samples))
+                        print('nmbr triggers: {}, finished: {:.2f}%'.format(len(triggers), 100 * counter / take_samples))
 
                 # increment
                 counter += record_length - 2 * overlap
@@ -294,6 +294,14 @@ def get_record_window(path,
                         dtype=np.short)
 
     event = convert_to_V(event)
+
+    # handling end of file and fill up with zeros
+    if len(event) < record_length:
+        new_event = np.zeros(record_length)
+        new_event[:len(event)] = event
+        event = np.copy(new_event)
+        del new_event
+
     if down > 1:
         event = np.mean(event.reshape(int(len(event) / down), down), axis=1)
     time = start_time + np.arange(0, record_length / down) * sample_duration * down
@@ -520,7 +528,7 @@ def get_test_stamps(path,
     return hours, tpas, testpulse_channels
 
 
-def get_starttime(path_sql, csmpl_channel, csmpl_file_identity):
+def get_starttime(path_sql, csmpl_channel, sql_file_label):
     """
     TODO
 
@@ -536,7 +544,7 @@ def get_starttime(path_sql, csmpl_channel, csmpl_file_identity):
     connection = sqlite3.connect(path_sql)
     cursor = connection.cursor()
     sql = "SELECT CREATED FROM FILELIST WHERE ch=? AND LABEL=? AND TYPE=? LIMIT 1"
-    adr = (csmpl_channel, csmpl_file_identity, "0",)
+    adr = (csmpl_channel, sql_file_label, "0",)
     cursor.execute(sql, adr)
     query_results = cursor.fetchone()
 

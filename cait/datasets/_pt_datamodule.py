@@ -10,7 +10,7 @@ class CryoDataModule(pl.LightningDataModule):
     Pytorch Lightning DataModule for processing of HDF5 dataset
     """
 
-    def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices,
+    def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices=None,
                  transform=None, nmbr_events=None, double=False):
         super().__init__()
         """
@@ -55,7 +55,7 @@ class CryoDataModule(pl.LightningDataModule):
         :param nmbr_workers: the number of processes to run, best choose the number of CPUs on the machine - this might
             cause issues if load_to_memory is not activated
         :type nmbr_workers: int
-        :param load_to_memory: if set, the whole data gets loaded into memory, if nmbr_workers > 0 this is recommended
+        :param load_to_memory: depricated! not recommended! if set, the whole data gets loaded into memory
         :type load_to_memory: bool
         :param dataset_size: the size of the whole dataset, gets overwritten if only_idx is set
         :type dataset_size: int or None
@@ -87,6 +87,9 @@ class CryoDataModule(pl.LightningDataModule):
         self.label_keys = label_keys
         self.keys_one_hot = keys_one_hot
         self.load_to_memory = load_to_memory
+
+        if load_to_memory:
+            print('Attention: The feature load_to_memory is depricated and not recommended!')
 
         if not load_to_memory and nmbr_workers > 0:
             print('Attention: nmbr_workers > 0 and not load to memory might cause issues with the h5 file read!')

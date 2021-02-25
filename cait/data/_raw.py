@@ -13,6 +13,7 @@ from pathlib import Path
 
 from ._progressBar import printProgressBar
 
+
 # ---------------------------------------------------------------
 # FUNCTIONS
 # ---------------------------------------------------------------
@@ -35,6 +36,7 @@ def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
     event = c + (event + a) * b
 
     return event
+
 
 @nb.njit
 def convert_to_int(event, bits=16, max=10, min=-10, offset=0):
@@ -76,7 +78,7 @@ def read_rdt_file(fname, path, channels,
             second contain the pulses.
     """
 
-    nmbr_channels = len(channels) # this is fixed at the moment, change asap
+    nmbr_channels = len(channels)  # this is fixed at the moment, change asap
 
     if fname[-4:] == '.rdt':
         fname = fname[:-4]
@@ -108,7 +110,7 @@ def read_rdt_file(fname, path, channels,
                        ('trig_delay', 'i4'),
                        ('abs_time_s', 'i4'),
                        ('abs_time_mus', 'i4'),
-                       ('delay_ch_tp', 'i4', int(ints_in_header==7)),
+                       ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
                        ('time_low', 'i4'),
                        ('time_high', 'i4'),
                        ('qcd_events', 'i4'),
@@ -136,10 +138,10 @@ def read_rdt_file(fname, path, channels,
                     break
                 cond = recs[i]['detector_nmbr'] == channels[0]
                 for j, c in enumerate(channels[1:]):
-                    cond = np.logical_and(cond, recs[i+j+1]['detector_nmbr'] == c)
+                    cond = np.logical_and(cond, recs[i + j + 1]['detector_nmbr'] == c)
                 if cond:
                     for j in range(nmbr_channels):
-                        good_recs[j].append(i+j)
+                        good_recs[j].append(i + j)
         else:  # exceptional handling for case of just one channel
             for i in range(length_recs):
                 if recs[i]['detector_nmbr'] == channels[0]:
@@ -161,7 +163,7 @@ def read_rdt_file(fname, path, channels,
                 name = d[0]
                 if name == 'delay_ch_tp' and ints_in_header != 7:
                     continue
-                metainfo[c, :, i] = recs[good_recs[c]][name]
+                metainfo[c, :, i] = recs[good_recs[c]][name].reshape(-1)
                 if i >= 13:
                     break
             dvms[c] = recs[good_recs[c]]['dvm_channels']
@@ -170,9 +172,8 @@ def read_rdt_file(fname, path, channels,
             else:
                 pulse[c] = recs[good_recs[c]]['samples']
 
-
     if remove_offset and not store_as_int:
-        pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :int(record_length/8)], axis=2).T).T
+        pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :int(record_length / 8)], axis=2).T).T
 
         # uncomment if needed
         # dvms = np.dstack([p_dvms, l_dvms])

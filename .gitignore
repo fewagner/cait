@@ -125,3 +125,5 @@ dmypy.json
 .pyre/
 
 /examples/plots/
+/docs/source/tutorials/lightning_logs/
+/docs/source/tutorials/callbacks/

@@ -1,50 +1,63 @@
+import h5py
 
 
-def nn_predict(f_handle,
-                 model,
-                 tpa,
-                 nmbr_channels,
-                 nmbr_events,
-                 group_name,
-                 key_name,
-                 chunk_size,
-                 channel):
+def nn_predict(h5_path,
+               model,
+               feature_channel,
+               group_name='events',
+               prediction_name='prediction',
+               keys=['event'],
+               chunk_size=50,
+               no_channel_idx_in_pred=False,
+               ):
     # TODO
 
-    # add predictions to the h5 file
-    data = f_handle.require_group(group_name)
-    if tpa:
-        data.require_dataset(name=key_name,
-                             shape=(nmbr_events),
-                             dtype=float)
-    else:
-        data.require_dataset(name=key_name,
-                             shape=(nmbr_channels, nmbr_events),
-                             dtype=float)
+    with h5py.File(h5_path, 'r+') as f_handle:
 
-    count = 0
-    while count < nmbr_events - chunk_size:
-        print('count: ', count)
+        nmbr_channels = len(f_handle[group_name][keys[0]])
+        nmbr_events = len(f_handle[group_name][keys[0]][0])
 
+        # add predictions to the h5 file
+        data = f_handle.require_group(group_name)
+        if no_channel_idx_in_pred:
+            data.require_dataset(name=prediction_name,
+                                 shape=(nmbr_events),
+                                 dtype=float)
+        else:
+            data.require_dataset(name=prediction_name,
+                                 shape=(nmbr_channels, nmbr_events),
+                                 dtype=float)
+
+        count = 0
+        while count < nmbr_events - chunk_size:
+            print('Events predicted: {}%'.format(100 * count / nmbr_events))
+
+            # make input data
+            x = {}
+            for k in keys:
+                x[k + '_ch' + str(feature_channel)] = f_handle[group_name][k][feature_channel,
+                                                      count:count + chunk_size]  # array of shape: (nmbr_events, nmbr_features)
+
+            # make predictions
+            prediction = model.predict(x).numpy()
+            if no_channel_idx_in_pred:
+                data[prediction_name][count:count + chunk_size] = prediction.reshape(-1)
+            else:
+                data[prediction_name][feature_channel, count:count + chunk_size] = prediction.reshape(-1)
+
+            count += chunk_size
         # make input data
-        x = {'event_ch0': f_handle[group_name]['event'][channel,
-                          count:count + chunk_size]}  # array of shape: (nmbr_events, nmbr_features)
+        x = {}
+        for k in keys:
+            x[k + '_ch' + str(feature_channel)] = f_handle[group_name][k][feature_channel,
+                                                  count:count + chunk_size]  # array of shape: (nmbr_events, nmbr_features)
 
         # make predictions
         prediction = model.predict(x).numpy()
-        if tpa:
-            data[key_name][count:count + chunk_size] = prediction.reshape(-1)
+
+        if no_channel_idx_in_pred:
+            data[prediction_name][count:] = prediction.reshape(-1)
         else:
-            data[key_name][channel, count:count + chunk_size] = prediction.reshape(-1)
+            data[prediction_name][feature_channel, count:] = prediction.reshape(-1)
 
-        count += chunk_size
-    # make input data
-    x = {'event_ch0': f_handle[group_name]['event'][channel, count:]}  # array of shape: (nmbr_events, nmbr_features)
-
-    # make predictions
-    prediction = model.predict(x).numpy()
-
-    if tpa:
-        data[key_name][count:] = prediction.reshape(-1)
-    else:
-        data[key_name][channel, count:] = prediction.reshape(-1)
+        print('{} written to file {}.'.format(prediction_name, h5_path))

@@ -129,10 +129,10 @@ class sev_fit_template:
         if interval_restriction_factor is not None:
             if interval_restriction_factor > 0.8 or interval_restriction_factor < 0:
                 raise KeyError("interval_restriction_factor must be float > 0 and < 0.8!")
-        self.interval_restriction_factor = interval_restriction_factor
-        if self.interval_restriction_factor is not None:
+            self.interval_restriction_factor = interval_restriction_factor
             self.low = int(self.interval_restriction_factor * (len(self.t) - 1) / 4)
             self.up = int((len(self.t) - 1) * (1 - (3 / 4) * self.interval_restriction_factor))
+            print(self.low, self.up)
         else:
             self.low = 0
             self.up = len(self.t)
@@ -238,7 +238,7 @@ class sev_fit_template:
             event = np.mean(event.reshape(int(len(event) / self.down), self.down), axis=1)
 
         offset = np.mean(event[:int(len(event) / 8)])
-        event = event - offset
+        event -= offset
 
         if self.truncation_level is not None:
             truncation_flag = event < self.truncation_level

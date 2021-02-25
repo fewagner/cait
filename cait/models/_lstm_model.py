@@ -21,7 +21,7 @@ class LSTMModule(LightningModule):
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
-                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False, bidirectional=False,
+                 norm_vals=None, offset_keys=None, weight_decay=1e-5, bidirectional=False,
                  norm_type='minmax', lr_scheduler=True, indiv_norm=False, attention=False):
         """
         Initial information for the neural network module
@@ -54,8 +54,6 @@ class LSTMModule(LightningModule):
         :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
         :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
         :type offset_keys: list of strings
-        :param dain: use the deep adaptive input normalization
-        :type dain: bool
         """
 
         super().__init__()

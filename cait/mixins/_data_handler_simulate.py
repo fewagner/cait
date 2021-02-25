@@ -129,6 +129,29 @@ class SimulateMixin(object):
                     labels[c] *= assign_labels[c]
 
                 data.create_dataset(name='labels', data=labels)
+                data['labels'].attrs.create(name='unlabeled', data=0)
+                data['labels'].attrs.create(name='Event_Pulse', data=1)
+                data['labels'].attrs.create(name='Test/Control_Pulse', data=2)
+                data['labels'].attrs.create(name='Noise', data=3)
+                data['labels'].attrs.create(name='Squid_Jump', data=4)
+                data['labels'].attrs.create(name='Spike', data=5)
+                data['labels'].attrs.create(name='Early_or_late_Trigger', data=6)
+                data['labels'].attrs.create(name='Pile_Up', data=7)
+                data['labels'].attrs.create(name='Carrier_Event', data=8)
+                data['labels'].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+                data['labels'].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                data['labels'].attrs.create(name='Decaying_Baseline', data=11)
+                data['labels'].attrs.create(name='Temperature_Rise', data=12)
+                data['labels'].attrs.create(name='Stick_Event', data=13)
+                data['labels'].attrs.create(name='Square_Waves', data=14)
+                data['labels'].attrs.create(name='Human_Disturbance', data=15)
+                data['labels'].attrs.create(name='Large_Sawtooth', data=16)
+                data['labels'].attrs.create(name='Cosinus_Tail', data=17)
+                data['labels'].attrs.create(name='Light_only_Event', data=18)
+                data['labels'].attrs.create(name='Ring_Light_Event', data=19)
+                data['labels'].attrs.create(
+                    name='Sharp_Light_Event', data=20)
+                data['labels'].attrs.create(name='unknown/other', data=99)
 
                 # store sev
 
@@ -168,6 +191,29 @@ class SimulateMixin(object):
                 data.create_dataset(name='true_onset', data=t0s)
                 data.create_dataset(name='labels',
                                     data=2 * np.ones([self.nmbr_channels, size_tp]))  # 2 is the label for testpulses
+                data['labels'].attrs.create(name='unlabeled', data=0)
+                data['labels'].attrs.create(name='Event_Pulse', data=1)
+                data['labels'].attrs.create(name='Test/Control_Pulse', data=2)
+                data['labels'].attrs.create(name='Noise', data=3)
+                data['labels'].attrs.create(name='Squid_Jump', data=4)
+                data['labels'].attrs.create(name='Spike', data=5)
+                data['labels'].attrs.create(name='Early_or_late_Trigger', data=6)
+                data['labels'].attrs.create(name='Pile_Up', data=7)
+                data['labels'].attrs.create(name='Carrier_Event', data=8)
+                data['labels'].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+                data['labels'].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                data['labels'].attrs.create(name='Decaying_Baseline', data=11)
+                data['labels'].attrs.create(name='Temperature_Rise', data=12)
+                data['labels'].attrs.create(name='Stick_Event', data=13)
+                data['labels'].attrs.create(name='Square_Waves', data=14)
+                data['labels'].attrs.create(name='Human_Disturbance', data=15)
+                data['labels'].attrs.create(name='Large_Sawtooth', data=16)
+                data['labels'].attrs.create(name='Cosinus_Tail', data=17)
+                data['labels'].attrs.create(name='Light_only_Event', data=18)
+                data['labels'].attrs.create(name='Ring_Light_Event', data=19)
+                data['labels'].attrs.create(
+                    name='Sharp_Light_Event', data=20)
+                data['labels'].attrs.create(name='unknown/other', data=99)
 
                 # store sev
 
@@ -210,6 +256,29 @@ class SimulateMixin(object):
                 data.create_dataset(name='event', data=events, dtype=dtype)
                 data.create_dataset(name='labels',
                                     data=3 * np.ones([self.nmbr_channels, size_noise]))  # 3 is the noise label
+                data['labels'].attrs.create(name='unlabeled', data=0)
+                data['labels'].attrs.create(name='Event_Pulse', data=1)
+                data['labels'].attrs.create(name='Test/Control_Pulse', data=2)
+                data['labels'].attrs.create(name='Noise', data=3)
+                data['labels'].attrs.create(name='Squid_Jump', data=4)
+                data['labels'].attrs.create(name='Spike', data=5)
+                data['labels'].attrs.create(name='Early_or_late_Trigger', data=6)
+                data['labels'].attrs.create(name='Pile_Up', data=7)
+                data['labels'].attrs.create(name='Carrier_Event', data=8)
+                data['labels'].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+                data['labels'].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                data['labels'].attrs.create(name='Decaying_Baseline', data=11)
+                data['labels'].attrs.create(name='Temperature_Rise', data=12)
+                data['labels'].attrs.create(name='Stick_Event', data=13)
+                data['labels'].attrs.create(name='Square_Waves', data=14)
+                data['labels'].attrs.create(name='Human_Disturbance', data=15)
+                data['labels'].attrs.create(name='Large_Sawtooth', data=16)
+                data['labels'].attrs.create(name='Cosinus_Tail', data=17)
+                data['labels'].attrs.create(name='Light_only_Event', data=18)
+                data['labels'].attrs.create(name='Ring_Light_Event', data=19)
+                data['labels'].attrs.create(
+                    name='Sharp_Light_Event', data=20)
+                data['labels'].attrs.create(name='unknown/other', data=99)
 
             if store_of == 0:
                 print('Store OF.')

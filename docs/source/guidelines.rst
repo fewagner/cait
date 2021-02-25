@@ -53,7 +53,7 @@ A software project with multiple contributors from various levels of experience 
 
 - Always use descriptive names for functions and variables, avoid abbreviations wherever possible. E.g. "recoil_energy" instead of "E_r", "control_pulse" instead of "c_p". We allow for exceptions in some cases ("sev", "nps", ...), especially if the meaning of a variable is uniquely understandable form the context ("for bl in baselines: ...").
 
-- Include a doc string to every function and class with full specification of all arguments and clear explanation the usage and functionality.
+- Include a doc string to every function and class with full specification of all arguments and clear explanation of the usage and functionality in the restructured text format. If feasible, include a minimal code example. If the function produces plots, include an example of a plot.
 
 Debugging
 =========

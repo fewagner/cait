@@ -20,6 +20,7 @@ from .evaluation._color import console_colors, mpl_default_colors
 from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
 from .styles._plt_styles import use_cait_style, make_grid
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -203,9 +204,9 @@ class EvaluationTools:
                 self.pl_channel = channel
             else:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                                "Parameter 'pl_channel = {}' has no valid value.\n".format(channel) +
-                                "(Use '0' for the phonon and '1' for the light in a 2-channel detector setup)\n" +
-                                "(Use '0,1' for the phonon and '2' for the light in a 3-channel detector setup)")
+                                 "Parameter 'pl_channel = {}' has no valid value.\n".format(channel) +
+                                 "(Use '0' for the phonon and '1' for the light in a 2-channel detector setup)\n" +
+                                 "(Use '0,1' for the phonon and '2' for the light in a 3-channel detector setup)")
         else:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "Parameter 'pl_channel' has to be of type int.")
@@ -263,13 +264,15 @@ class EvaluationTools:
                 self.__add_data(
                     np.copy(ds['events/event'][channel, use_idx, :]))
             # elif which_data is None:
-                # self.__add_data(np.array([]))
-                # do nothing
+            # self.__add_data(np.array([]))
+            # do nothing
             elif type(which_data) == list or type(which_data) == np.ndarray:
                 tmp_which_data = np.array(which_data)
                 if not (tmp_which_data.shape[0] == np.array(ds['events/labels'][channel, use_idx]).shape[0]):
                     raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                                     "Given 'which_data' must be of size {} but is of size {}".format(np.array(ds['events/labels'][channel, use_idx]).shape[0], tmp_which_data.shape[0]))
+                                     "Given 'which_data' must be of size {} but is of size {}".format(
+                                         np.array(ds['events/labels'][channel, use_idx]).shape[0],
+                                         tmp_which_data.shape[0]))
                 self.__add_data(tmp_which_data)
 
             # add also the events and the mainpar seperately
@@ -494,18 +497,18 @@ class EvaluationTools:
     def get_train(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.get_train_event_nbrs(verb=verb), \
-            self.get_train_data(verb=verb), \
-            self.get_train_features(verb=verb), \
-            self.get_train_file_nbrs(verb=verb), \
-            self.get_train_label_nbrs(verb=verb)
+               self.get_train_data(verb=verb), \
+               self.get_train_features(verb=verb), \
+               self.get_train_file_nbrs(verb=verb), \
+               self.get_train_label_nbrs(verb=verb)
 
     def get_test(self, verb=False):
         self.__check_test_set(verb=verb)
         return self.get_test_event_nbrs(verb=verb), \
-            self.get_test_data(verb=verb), \
-            self.get_test_features(verb=verb), \
-            self.get_test_file_nbrs(verb=verb), \
-            self.get_test_label_nbrs(verb=verb)
+               self.get_test_data(verb=verb), \
+               self.get_test_features(verb=verb), \
+               self.get_test_file_nbrs(verb=verb), \
+               self.get_test_label_nbrs(verb=verb)
 
     # ------- get event numbers -------
     def get_train_event_nbrs(self, verb=False):
@@ -766,11 +769,6 @@ class EvaluationTools:
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
             return [self.files[f] for f in self.file_nbrs]
 
-
-
-
-
-
     # ################### PLOT ###################
 
     def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True,
@@ -793,12 +791,10 @@ class EvaluationTools:
         if type(rdseed) == None:
             np.random.seed(seed=rdseed)  # fixing random seed
 
-
         if type(dot_size) != int:
-            dot_size=5
+            dot_size = 5
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Value of 'dot_size' has to be of type int. It is set to 5.")
-
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -836,8 +832,6 @@ class EvaluationTools:
 
         # -------- MATPLOTLIB event handler --------
 
-
-
         def update_annot(ind):
             for i in range(nrows * ncols):
                 pos = sc[i].get_offsets()[ind['ind'][0]]
@@ -849,15 +843,13 @@ class EvaluationTools:
                                            self.get_event_nbrs(plt_what)[id])
                     if plt_labels:
                         text = text + \
-                            ", {}".format(
-                                self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
+                               ", {}".format(
+                                   self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
                 else:
                     text = "{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
-
-
 
         def hover(event):
             for i in range(nrows * ncols):
@@ -874,8 +866,6 @@ class EvaluationTools:
                         if vis:
                             annot[i].set_visible(False)
                             fig.canvas.draw_idle()
-
-
 
         def onclick(event):
             for i in range(nrows * ncols):
@@ -897,12 +887,15 @@ class EvaluationTools:
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(plt_what, verb=verb)[id],
                             self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
-                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
-                            plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
+                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
+                                                                                        self.get_event_nbrs(
+                                                                                            plt_what, verb=verb)[id],
+                                                                                        self.files[
+                                                                                            self.get_file_nbrs(plt_what,
+                                                                                                               verb=verb)[
+                                                                                                id]], text)
                         print(instr)
                         os.system(instr)
-
-
 
         def on_key(event):
             if event.key == 'm':
@@ -927,8 +920,14 @@ class EvaluationTools:
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
                                 self.get_event_nbrs(plt_what, verb=verb)[id],
                                 self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
-                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
-                                plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
+                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
+                                                                                               self.get_event_nbrs(
+                                                                                                   plt_what, verb=verb)[
+                                                                                                   id], self.files[
+                                                                                                   self.get_file_nbrs(
+                                                                                                       plt_what,
+                                                                                                       verb=verb)[id]],
+                                                                                               text)
                             os.system(instr)
             elif event.key == 'p':
                 for i in range(nrows * ncols):
@@ -960,7 +959,6 @@ class EvaluationTools:
         else:
             use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
                            autolayout=False, dpi=None)
-
 
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
@@ -1049,10 +1047,8 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
-
     def plt_pred_with_pca(self, pred_methods, xy_comp=(1, 2), plt_what='all', plt_labels=True,
-                          figsize=None, as_cols=False, rdseed=None, dot_size = 5,
+                          figsize=None, as_cols=False, rdseed=None, dot_size=5,
                           verb=False):
         """
         Plots data with PCE when given a one or a list of predictions method
@@ -1082,9 +1078,8 @@ class EvaluationTools:
                              "The parameter xy_comp has to be of shape '(<int>,<int>)'" +
                              "with the integer being > 0.")
 
-
         if type(dot_size) != int:
-            dot_size=5
+            dot_size = 5
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Value of 'dot_size' has to be of type int. It is set to 5.")
 
@@ -1124,8 +1119,6 @@ class EvaluationTools:
 
         # -------- MATPLOTLIB event handler --------
 
-
-
         def update_annot(ind):
             for i in range(nrows * ncols):
                 pos = sc[i].get_offsets()[ind['ind'][0]]
@@ -1137,15 +1130,13 @@ class EvaluationTools:
                                            self.get_event_nbrs(plt_what)[id])
                     if plt_labels:
                         text = text + \
-                            ", {}".format(
-                                self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
+                               ", {}".format(
+                                   self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
                 else:
                     text = "{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
-
-
 
         def hover(event):
             for i in range(nrows * ncols):
@@ -1183,12 +1174,15 @@ class EvaluationTools:
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(plt_what, verb=verb)[id],
                             self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
-                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
-                            plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
+                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
+                                                                                        self.get_event_nbrs(
+                                                                                            plt_what, verb=verb)[id],
+                                                                                        self.files[
+                                                                                            self.get_file_nbrs(plt_what,
+                                                                                                               verb=verb)[
+                                                                                                id]], text)
                         print(instr)
                         os.system(instr)
-
-
 
         def on_key(event):
             if event.key == 'm':
@@ -1213,8 +1207,14 @@ class EvaluationTools:
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
                                 self.get_event_nbrs(plt_what, verb=verb)[id],
                                 self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
-                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel, self.get_event_nbrs(
-                                plt_what, verb=verb)[id], self.files[self.get_file_nbrs(plt_what, verb=verb)[id]], text)
+                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
+                                                                                               self.get_event_nbrs(
+                                                                                                   plt_what, verb=verb)[
+                                                                                                   id], self.files[
+                                                                                                   self.get_file_nbrs(
+                                                                                                       plt_what,
+                                                                                                       verb=verb)[id]],
+                                                                                               text)
                             os.system(instr)
             elif event.key == 'p':
                 for i in range(nrows * ncols):
@@ -1227,7 +1227,7 @@ class EvaluationTools:
                             import ipdb
                             ipdb.set_trace()
 
-        if self.save_as == False :
+        if self.save_as == False:
             print(
                 "-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
@@ -1243,7 +1243,7 @@ class EvaluationTools:
         # PCA
         pca = PCA(n_components=np.max(xy_comp))
         princcomp = pca.fit_transform(self.get_features(plt_what, verb=verb))
-        princcomp = princcomp[:,[xy_comp[0]-1,xy_comp[1]-1]]
+        princcomp = princcomp[:, [xy_comp[0] - 1, xy_comp[1] - 1]]
 
         plt.close()
         if figsize is None:
@@ -1337,7 +1337,6 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
     def pulse_height_histogram(self,
                                ncols=2,
                                extend_plot=False,
@@ -1402,7 +1401,6 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
     def events_saturated_histogram(self, figsize=None, bins='auto', verb=False, ylog=False):
         """
         Plots a histogram for all event pulses and strongly saturated event pulses
@@ -1440,7 +1438,7 @@ class EvaluationTools:
             fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
             ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
-                    label=['{}'.format(self.labels[events_nbr]),'{}'.format(self.labels[saturated_nbr])],
+                    label=['{}'.format(self.labels[events_nbr]), '{}'.format(self.labels[saturated_nbr])],
                     bins=bins,
                     histtype='barstacked')
 
@@ -1465,8 +1463,8 @@ class EvaluationTools:
             raise KeyError(
                 'No Labels for Event Pulses or Strongly Saturated Event Pulses')
 
-
-    def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, figsize=None, extend_plot=False, verb=False):
+    def correctly_labeled_per_v(self, pred_method, what='all', bin_size=4, ncols=2, figsize=None, extend_plot=False,
+                                verb=False):
         """
         Plots the number of correctly predicted labels over volts (pulse height)
         for every label.
@@ -1509,7 +1507,7 @@ class EvaluationTools:
             return
 
         max_height = self.get_mainpar(what, verb=verb)[
-            :, self.mainpar_labels['pulse_height']]
+                     :, self.mainpar_labels['pulse_height']]
 
         max_max_height = np.max(max_height)
         min_max_height = np.min(max_height)
@@ -1569,7 +1567,6 @@ class EvaluationTools:
             # ax[k][j].set_xlable('pulse height (V)')
             # ax[k][j].set_ylable('accuray')
 
-
         fig.tight_layout()
         # plt.xlable('pulse height (V)')
         # plt.ylable('accuray')
@@ -1602,7 +1599,7 @@ class EvaluationTools:
             use_cait_style(fontsize=14, dpi=None)
         else:
             use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
-                            dpi=None)
+                           dpi=None)
 
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
@@ -1626,7 +1623,7 @@ class EvaluationTools:
             return
 
         max_height = self.get_mainpar(what, verb=verb)[
-            :, self.mainpar_labels['pulse_height']]
+                     :, self.mainpar_labels['pulse_height']]
 
         max_max_height = np.max(max_height)
         min_max_height = np.min(max_height)
@@ -1695,8 +1692,6 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
-
     def confusion_matrix_pred(self, pred_method, what='all', rotation_xticklabels=0,
                               force_xlabelnbr=False, figsize=None, fig_title=False, verb=False):
         """
@@ -1746,7 +1741,7 @@ class EvaluationTools:
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
         else:
-            xlabels_order = np.unique(self.get_pred(pred_method, what, verb=verb))
+            xlabels_order = np.unique(self.get_pred(pred_method, what, verb=verb)).tolist()
 
         diff = len(ylabels_order) - len(xlabels_order)
         for i in range(abs(diff)):
@@ -1773,9 +1768,8 @@ class EvaluationTools:
         if self.get_pred_true_labels(pred_method):
             true_label_nbrs = self.get_label_nbrs(what, verb=verb)
         else:
-            cm_conv_labels = dict([(n,i) for i, n in enumerate(np.unique(self.get_label_nbrs(what, verb=verb)))])
+            cm_conv_labels = dict([(n, i) for i, n in enumerate(np.unique(self.get_label_nbrs(what, verb=verb)))])
             true_label_nbrs = [cm_conv_labels[l] for l in self.get_label_nbrs(what, verb=verb)]
-
 
         cm = confusion_matrix(true_label_nbrs,
                               self.get_pred(pred_method, what, verb=verb))
@@ -1857,8 +1851,6 @@ class EvaluationTools:
                 '{}confMat-{}.{}'.format(self.save_plot_dir, pred_method, self.save_as))
 
         plt.close()
-
-
 
     def plot_labels_distribution(self, figsize=None):
         """

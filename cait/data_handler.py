@@ -377,7 +377,7 @@ class DataHandler(SimulateMixin,
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
     def downsample_raw_data(self, type: str = 'events', down: int = 16, dtype: str = 'float32',
-                            name_appendix: str = '', delete_old:bool=True):
+                            name_appendix: str = '', delete_old: bool = True):
         """
         Downsample the dataset "event" from a specified group in the HDF5 file.
 
@@ -423,7 +423,7 @@ class DataHandler(SimulateMixin,
                           truncated_idx_up: int,
                           dtype: str = 'float32',
                           name_appendix: str = '',
-                          delete_old: bool=True):
+                          delete_old: bool = True):
         """
         Truncate the record window of the dataset "event" from a specified group in the HDF5 file.
 
@@ -458,9 +458,37 @@ class DataHandler(SimulateMixin,
                     del h5f[type]['event']
                 print('Old Dataset Event deleted from group {}.'.format(type))
                 events = events[:, :, truncated_idx_low:truncated_idx_up]
-                h5f[type].create_dataset('event'+name_appendix, data=events, dtype=dtype)
+                h5f[type].create_dataset('event' + name_appendix, data=events, dtype=dtype)
                 print('New Dataset Event truncated to interval {}:{} created in group {}.'.format(truncated_idx_low,
                                                                                                   truncated_idx_up,
                                                                                                   type))
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
+
+    def get(self, group: str, dataset: str):
+        """
+        Get a dataset from the HDF5 file with save closing of the file stream.
+
+        :param group: The name of the group in the HDF5 set.
+        :type group: string
+        :param dataset: The name of the dataset in the HDF5 set.
+        :type dataset: string
+        :return: The dataset from the HDF5 file
+        :rtype: numpy array
+        """
+        with h5py.File(self.path_h5, 'r+') as f:
+            data = np.array(f[group][dataset])
+        return data
+
+    def keys(self, group: str = None):
+        """
+        Print the keys of the HDF5 file or a group within it.
+
+        :param group: The name of a group in the HDF5 file of that we print the keys.
+        :type group: string or None
+        """
+        with h5py.File(self.path_h5, 'r+') as f:
+            if group is None:
+                print(list(f.keys()))
+            else:
+                print(list(f[group].keys()))

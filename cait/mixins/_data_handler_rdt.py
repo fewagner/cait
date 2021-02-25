@@ -106,7 +106,7 @@ class RdtMixin(object):
                            ('time_stamp_low', 'uint32'),
                            ('time_stamp_high', 'uint32'),
                            ('dead_time', 'float32'),
-                           ('mus_since_last_tp', 'int32', int(ints_in_header == 7)),
+                           ('mus_since_last_tp', 'int32', (int(ints_in_header == 7),)),
                            ])
 
         cons = np.fromfile(path_con, dtype=record, offset=12)
@@ -327,7 +327,7 @@ class RdtMixin(object):
                            ('time_stamp_low', 'uint32'),
                            ('time_stamp_high', 'uint32'),
                            ('dead_time', 'float32'),
-                           ('mus_since_last_tp', 'int32', int(ints_in_header == 7)),
+                           ('mus_since_last_tp', 'int32', (int(ints_in_header == 7),)),
                            ])
 
         # get data from con file

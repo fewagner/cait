@@ -311,7 +311,7 @@ class FeaturesMixin(object):
                              use_prediction_instead_label=False,
                              model=None,
                              correct_label=None,
-                             idx_list=None,
+                             use_idx=None,
                              pulse_height_interval=[0, 10],
                              left_right_cutoff=None,
                              rise_time_interval=None,
@@ -331,7 +331,7 @@ class FeaturesMixin(object):
         :param model: string or None, if set this is the name of the model whiches predictions are in the
             h5 file, e.g. "RF" --> look for "RF_predictions"
         :param correct_label: int or None, if not None use only events with this label
-        :param idx_list: list of ints or None, if set then only these indices are used for the sev creation
+        :param use_idx: list of ints or None, if set then only these indices are used for the sev creation
         :param pulse_height_interval: list of length 2 (interval), the upper
             and lower bound for the pulse heights to include into the creation of the SEV
         :param left_right_cutoff: float, the maximal abs value of the linear slope of events
@@ -356,7 +356,7 @@ class FeaturesMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5f:
 
-            if correct_label is None and idx_list is None:
+            if correct_label is None and use_idx is None:
                 raise KeyError('Provide either Correct Label or Index List!')
 
             if correct_label is not None:
@@ -370,13 +370,13 @@ class FeaturesMixin(object):
             else:
                 labels = None
 
-            if idx_list is None:
-                idx_list = [i for i in range(len(labels))]
+            if use_idx is None:
+                use_idx = [i for i in range(len(labels))]
 
-            events = h5f[type]['event'][channel, idx_list, :]
-            mainpar = h5f[type]['mainpar'][channel, idx_list, :]
+            events = h5f[type]['event'][channel, use_idx, :]
+            mainpar = h5f[type]['mainpar'][channel, use_idx, :]
             if labels is not None:
-                labels = labels[idx_list]
+                labels = labels[use_idx]
 
             sev = h5f.require_group('stdevent_{}'.format(naming))
 
@@ -524,7 +524,7 @@ class FeaturesMixin(object):
             events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
             events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
-    def apply_pca(self, nmbr_components=2, type='events', down=1, batchsize=500):
+    def apply_pca(self, nmbr_components=2, type='events', down=1, batchsize=500, fit_idx=None):
         """
         TODO
 
@@ -564,10 +564,10 @@ class FeaturesMixin(object):
                 del f[type]['pca_components']
             pca_projection = f[type].create_dataset(name='pca_projection',
                                                     shape=(
-                                                        self.nmbr_channels, len(f[type]['hours']), nmbr_components),
+                                                        self.nmbr_channels, len(f[type]['event'][0]), nmbr_components),
                                                     dtype=float)
             pca_error = f[type].require_dataset(name='pca_error',
-                                                shape=(self.nmbr_channels, len(f[type]['hours'])),
+                                                shape=(self.nmbr_channels, len(f[type]['event'][0])),
                                                 dtype=float)
             pca_components = f[type].create_dataset(name='pca_components',
                                                     shape=(
@@ -577,19 +577,26 @@ class FeaturesMixin(object):
 
             for c in range(self.nmbr_channels):
                 print('Channel ', c)
-                X = f[type]['event'][c]
-                X_transformed = pipe.fit_transform(X)
+                if fit_idx is None:
+                    X = f[type]['event'][c]
+                else:
+                    X = f[type]['event'][c, :fit_idx]
+                pipe.fit(X)
 
                 print('Explained Variance: ', pipe['PCA'].explained_variance_ratio_)
                 print('Singular Values: ', pipe['PCA'].singular_values_)
 
-                pca_projection[c, ...] = X_transformed
-                for i, ev in enumerate(X):
-                    transformed_ev = pipe['downsample'].transform(ev.reshape(1, -1))
-                    transformed_ev = pipe['remove_offset'].transform(transformed_ev)
-                    pca_error[c, i] = np.mean(
-                        (pipe['PCA'].inverse_transform(X_transformed[i]) - transformed_ev) ** 2)
+                # save the transformed events and their error
+                for i, ev in enumerate(f[type]['event'][c]):
+                    preprocessed_ev = pipe['downsample'].transform(ev.reshape(1, -1))
+                    preprocessed_ev = pipe['remove_offset'].transform(preprocessed_ev)
+                    transformed_ev = pipe['PCA'].transform(preprocessed_ev)
+                    pca_projection[c, i] = transformed_ev
 
+                    pca_error[c, i] = np.mean(
+                        (pipe['PCA'].inverse_transform(transformed_ev) - preprocessed_ev) ** 2)
+
+                # save the principal components
                 for i in range(nmbr_components):
                     # create the unit vector in the transformed pca
                     transformed = np.zeros(nmbr_components)

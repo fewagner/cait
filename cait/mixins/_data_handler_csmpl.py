@@ -14,33 +14,54 @@ from ..trigger._csmpl import trigger_csmpl, get_record_window, align_triggers, s
 
 class CsmplMixin(object):
     """
-    A Mixin Class to the DataHandler Class with methods for the csmpl files.
+    A Mixin Class to the DataHandler Class with methods for the triggering of *.csmpl files.
     """
 
     def include_csmpl_triggers(self,
                                csmpl_paths,  # list of all paths for the channels
-                               thresholds,
+                               thresholds,  # in V
                                trigger_block=None,
                                take_samples=-1,
                                start_time=0,
                                of=None,
                                path_sql=None,
                                csmpl_channels=None,
-                               filenames=None,
+                               sql_file_label=None,
                                down=1
                                ):
-        # TODO
+        """
+
+
+        :param csmpl_paths:
+        :type csmpl_paths:
+        :param thresholds:
+        :type thresholds:
+        :param trigger_block:
+        :type trigger_block:
+        :param take_samples:
+        :type take_samples:
+        :param start_time:
+        :type start_time:
+        :param of:
+        :type of:
+        :param path_sql:
+        :type path_sql:
+        :param csmpl_channels:
+        :type csmpl_channels:
+        :param filenames:
+        :type filenames:
+        :param down:
+        :type down:
+        :return:
+        :rtype:
+        """
 
         if trigger_block is None:
             trigger_block = self.record_length
 
-        if path_sql is not None and (csmpl_channels is None or filenames is None):
+        if path_sql is not None and (csmpl_channels is None or sql_file_label is None):
             raise KeyError(
-                'If you want to read start time from SQL database, you must provide the csmpl_channels and filenames!')
-
-        # correct paths
-
-        csmpl_paths = ["{}/{}".format(self.path_directory, c) for c in csmpl_paths]
+                'If you want to read start time from SQL database, you must provide the csmpl_channels and sql_file_label!')
 
         # open write file
         with h5py.File(self.path_h5, 'a') as h5f:
@@ -87,23 +108,23 @@ class CsmplMixin(object):
 
             if path_sql is not None:
                 # get file handle
-                if "trigger_time_stamp_high" in stream:
-                    print('overwrite old trigger_time_stamp_high')
-                    del stream['trigger_time_stamp_high']
-                stream.create_dataset(name='trigger_time_stamp_high',
+                if "trigger_time_s" in stream:
+                    print('overwrite old trigger_time_s')
+                    del stream['trigger_time_s']
+                stream.create_dataset(name='trigger_time_s',
                                       shape=(aligned_triggers.shape),
                                       dtype=float)
-                if "trigger_time_stamp_low" in stream:
-                    print('overwrite old trigger_time_stamp_low')
-                    del stream['trigger_time_stamp_low']
-                stream.create_dataset(name='trigger_time_stamp_low',
+                if "trigger_time_mus" in stream:
+                    print('overwrite old trigger_time_mus')
+                    del stream['trigger_time_mus']
+                stream.create_dataset(name='trigger_time_mus',
                                       shape=(aligned_triggers.shape),
                                       dtype=float)
 
                 # get start second from sql
                 file_start = get_starttime(path_sql=path_sql,
                                            csmpl_channel=csmpl_channels[0],
-                                           filename=filenames[0])
+                                           sql_file_label=sql_file_label)
 
                 stream['trigger_time_s'][...] = np.floor(aligned_triggers[c] + file_start)
                 stream['trigger_time_mus'][...] = 1e6 * (
@@ -114,18 +135,17 @@ class CsmplMixin(object):
 
     def include_nps(self, nps):
         # TODO
-        print('Write NPS')
         with h5py.File(self.path_h5, 'r+') as f:
             noise = f.require_group(name='noise')
             if 'nps' in noise:
                 del noise['nps']
             noise.create_dataset(name='nps',
                                  data=nps)
+        print('NPS written.')
 
 
     def include_sev(self, sev, fitpar, mainpar):
         # TODO
-        print('Write SEV')
         with h5py.File(self.path_h5, 'r+') as f:
             stdevent = f.require_group(name='stdevent')
             if 'event' in stdevent:
@@ -140,10 +160,11 @@ class CsmplMixin(object):
                                     data=fitpar)
             stdevent.create_dataset(name='mainpar',
                                     data=mainpar)
+        print('SEV written.')
+
 
     def include_of(self, of_real, of_imag, down=1):
         # TODO
-        print('Write OF')
         with h5py.File(self.path_h5, 'r+') as f:
             optimumfilter = f.require_group(name='optimumfilter')
             if down > 1:
@@ -164,6 +185,7 @@ class CsmplMixin(object):
                                              data=of_real)
                 optimumfilter.create_dataset(name='optimumfilter_imag',
                                              data=of_imag)
+        print('OF written.')
 
 
     def include_triggered_events(self,
@@ -261,7 +283,7 @@ class CsmplMixin(object):
             if 'event' in write_events:
                 del write_events['event']
             write_events.create_dataset(name='event',
-                                        shape=(self.nmbr_channels, len(trigger_hours), self.record_length / down),
+                                        shape=(self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
                                         dtype=datatype)
 
             print('Include the triggered events.')
@@ -290,7 +312,7 @@ class CsmplMixin(object):
                 tp_ev = write_testpulses.create_dataset(name='event',
                                                         shape=(self.nmbr_channels, len(
                                                             tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)]),
-                                                               self.record_length / down),
+                                                               int(self.record_length / down)),
                                                         dtype=datatype)
 
                 this_hours = tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)]
@@ -339,7 +361,7 @@ class CsmplMixin(object):
             print('DONE')
 
 
-    def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, csmpl_file_identity,
+    def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, sql_file_label,
                             triggerdelay=2081024,
                             samplediv=2,
                             sample_length=0.00004):
@@ -351,7 +373,7 @@ class CsmplMixin(object):
             # get start second from sql
             file_start = get_starttime(path_sql=path_sql,
                                        csmpl_channel=csmpl_channels[0],
-                                       csmpl_file_identity=csmpl_file_identity)
+                                       sql_file_label=sql_file_label)
 
             # determine the offset of the trigger time stamps from the digitizer stamps
 

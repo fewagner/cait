@@ -79,6 +79,31 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                         # create set in hdf5
                         g.create_dataset(set, data=data)
 
+                        # add the labels list
+                        if set == 'labels':
+                            g[set].attrs.create(name='unlabeled', data=0)
+                            g[set].attrs.create(name='Event_Pulse', data=1)
+                            g[set].attrs.create(name='Test/Control_Pulse', data=2)
+                            g[set].attrs.create(name='Noise', data=3)
+                            g[set].attrs.create(name='Squid_Jump', data=4)
+                            g[set].attrs.create(name='Spike', data=5)
+                            g[set].attrs.create(name='Early_or_late_Trigger', data=6)
+                            g[set].attrs.create(name='Pile_Up', data=7)
+                            g[set].attrs.create(name='Carrier_Event', data=8)
+                            g[set].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+                            g[set].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+                            g[set].attrs.create(name='Decaying_Baseline', data=11)
+                            g[set].attrs.create(name='Temperature_Rise', data=12)
+                            g[set].attrs.create(name='Stick_Event', data=13)
+                            g[set].attrs.create(name='Square_Waves', data=14)
+                            g[set].attrs.create(name='Human_Disturbance', data=15)
+                            g[set].attrs.create(name='Large_Sawtooth', data=16)
+                            g[set].attrs.create(name='Cosinus_Tail', data=17)
+                            g[set].attrs.create(name='Light_only_Event', data=18)
+                            g[set].attrs.create(name='Ring_Light_Event', data=19)
+                            g[set].attrs.create(name='Sharp_Light_Event', data=20)
+                            g[set].attrs.create(name='unknown/other', data=99)
+
         # take the groups from a and b
         for f, g_lists in zip([a, b], [groups_from_a, groups_from_b]):
             for group in g_lists:

@@ -135,7 +135,7 @@ class EventInterface:
             raise ValueError(
                 'List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        path_h5 = path + '{}{}.h5'.format(fname, app)
+        path_h5 = path + '/{}{}.h5'.format(fname, app)
         self.path_h5 = path_h5
 
         with h5py.File(path_h5, 'r+') as f:
@@ -354,7 +354,7 @@ class EventInterface:
             self.of = of_real + 1j * of_imag
             print('Added the optimal transfer function.')
 
-    def load_sev_par(self, sample_length=0.04):
+    def load_sev_par(self, name_appendix='', sample_length=0.04):
         """
         Add the sev fit parameters from the HDF5 file.
 
@@ -368,6 +368,8 @@ class EventInterface:
         >>> ei.load_sev_par()
         Added the sev fit parameters.
         """
+
+        self.name_appendix = name_appendix  # save this for loading of the parameters when viewing
         with h5py.File(self.path_h5, 'r+') as f:
             sev_par = np.array(f['stdevent']['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
@@ -557,7 +559,7 @@ class EventInterface:
             # sev
             if self.sev:
                 sev_fit = []
-                fp = f['events']['sev_fit_par'][:, idx, :]
+                fp = f['events']['sev_fit_par{}'.format(self.name_appendix)][:, idx, :]
                 for c in range(self.nmbr_channels):
                     offset = np.mean(event[c, :int(len(event[c]) / 8)])
                     sev_fit.append(self.fit_models[c].wrap_sec(*fp[c]))
@@ -709,7 +711,7 @@ class EventInterface:
             except ValueError:
                 print('Enter valid index!')
 
-    def start_labeling(self,
+    def start(self,
                        start_from_idx:int=0,
                        print_label_list:bool=True,
                        label_only_class:int=None,

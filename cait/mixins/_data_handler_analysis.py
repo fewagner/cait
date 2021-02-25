@@ -20,12 +20,12 @@ class AnalysisMixin(object):
     """
 
     def calc_resolution(self,
-                        pec_factors: list,
                         ph_intervals: list,
+                        pec_factors: list = None,
                         fit_gauss: bool = True,
                         of_filter: bool = False,
                         sev_fit: bool = False,
-                        use_tp: bool = True,
+                        use_tp: bool = False,
                         ):
         """
         This function calculates the resolution of a detector from the testpulses or from simulated events.
@@ -36,15 +36,16 @@ class AnalysisMixin(object):
         optimum filter and as estimation with an standard event fit. To use the raw pulse height on simulated events,
         set the bool arguments of_filter, sev_fit and use_tp all to false.
 
+        :param ph_intervals: The upper and lower bounds of the peak in the pulse height spectrum to calculate
+            the resolution.
+        :type ph_intervals: list of float 2-tuples
         :param pec_factors: The PEC factor in keV for each channel to calculate the resolution in energy. This is the
             linearization of
             the energy calibration, calculated by dividing the energy of the calibration peak by its height in Volt.
             Multiplication of a volt pulse height with this factor gives a rough estimation of the recoil energy. The
-            exact energy calibration uses an energy-dependent PEC factor.
-        :type pec_factors: list of floats
-        :param ph_intervals: The upper and lower bounds of the peak in the pulse height spectrum to calculate
-            the resolution.
-        :type ph_intervals: list of float 2-tuples
+            exact energy calibration uses an energy-dependent PEC factor. If this argument is None, the output is in mV
+            instead.
+        :type pec_factors: list of floats or None
         :param fit_gauss: If this argument is true, the width of the peak is estimated with a gauss fit rather than with
             the sample standard deviation.
         :type fit_gauss: bool
@@ -110,12 +111,20 @@ class AnalysisMixin(object):
                     mu = np.mean(tphs)
                     sigma = np.std(tphs)
 
-                mus.append(pec_factors[c] * mu)
-                resolutions.append(pec_factors[c] * mu / true_ph * sigma)
+                if pec_factors is not None:
+                    mus.append(pec_factors[c] * mu)
+                    resolutions.append(pec_factors[c] * mu / true_ph * sigma)
 
-                print('Resolution channel {}: {:.3} eV (mean {:.3} keV, calculated with {})'.format(c, resolutions[
-                    c] * 1000,
-                                                                                                    mus[c], naming))
+                    print('Resolution channel {}: {:.3} eV (mean {:.3} keV, calculated with {})'.format(c, resolutions[
+                        c] * 1000,
+                                                                                                        mus[c], naming))
+                else:
+                    mus.append(mu)
+                    resolutions.append(mu / true_ph * sigma)
+
+                    print('Resolution channel {}: {:.3} mV (mean {:.3} V, calculated with {})'.format(c, resolutions[
+                        c] * 1000,
+                                                                                                        mus[c], naming))
         return np.array(resolutions), np.array(mus)
 
     def calc_rate_cut(self, interval: float = 10, significance: float = 3, min: float = 0, max: float = 60):

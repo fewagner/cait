@@ -29,14 +29,15 @@ class TestData():
         counted as control pulse. A TPA < 0 is set to 0 and counted as noise baseline recording. A TPA of 0 is
         counted as triggered event and set to the height event_tpa.
     :type tpas: list of floats
-    :param event_tpa: The height of a TPA 0 event, before application of the saturation curve.
+    :param event_tpa: The height of a TPA 0 event is sampled from a uniform distribution with with maximum and minimum
+        zero, before application of the saturation curve.
     :type event_tpa: list of nmbr_channels floats
     :param baseline_resolution: The standard deviations of the noise, before application of the saturation function.
     :type baseline_resolution: list of nmbr_channels floats
     :param k: The slope parameter of the logistics function, that is used to describe the saturation.
-    :type k: list of nmbr_channels floats > 0
+    :type scales: list of nmbr_channels floats > 0
     :param l: The maximal height of the logistics function, that is used to describe the saturation.
-    :type l: list of nmbr_channels floats > 0
+    :type slopes: list of nmbr_channels floats > 0
     :param record_length: The number of samples in a record window.
     :type record_length: int > 0, should be power of 2
     :param dvm_channels: The number of DVM channels in the RDT file. This feature is currently not implemented,
@@ -52,10 +53,10 @@ class TestData():
     :param fitpar_carr: The parameters of the Proebst-pulse shape for the events of all channels.
     :type fitpar_carr: list of nmbr_channels 1D numpy arrays, containing the 6 fit parameters, consistent with
         the fit_pulse_model
-    :param carrier_probability: The probablity for an carrier event when the tpa is 0.
-    :type carrier_probability: float > 0, < 1
-    :param ph_variation: The relative variation of the pulse height.
-    :type ph_variation: float > 0 and < 1
+    :param include_carriers: If true, every second event is a carrier event.
+    :type include_carriers: bool
+    :param relative_ph_sigma: The relative variation of the pulse height.
+    :type relative_ph_sigma: float > 0 and < 1
     :param eventsize: The number of samples per bankswitch in 50kHz.
     :type eventsize: int > 0
     :param samplesdiv: The factor with that eventsize has to be divided, to match it with the sample_frequency.
@@ -79,15 +80,16 @@ class TestData():
     Test_stamps file written.
     """
 
-    def __init__(self, filepath:str, duration:float=92, pulser_interval:float=3, sample_frequency:int=25000,
-                 channels:list=[0, 1], tpas:list=[20, 0.1, -1., 20, 0.3, 0, 20, 0.5, 1, 20, 3, -1, 20, 0, 10],
-                 event_tpa:list=[0.33, 0.33], baseline_resolution:list=[0.002, 0.003],
-                 k:list=[1, 1.5], l:list=[12, 8], record_length:int=16384, dvm_channels:int=0,
-                 start_s:int=1602879720, offset:list=[0, 0],
-                 fitpar:list=[[-1.11, 4, 0.02, 4.15, 2.1, 53.06], [0.77, 51.76, 50.81, 37.24, 8.33, 8.59]],
-                 fitpar_carrier:list=[[-2.38, 1.73, 1.65, 136, 0.38, 2.13], [0, 0, 0, 1, 1, 1]],
-                 include_carriers:bool=False,
-                 eventsize:int=2081024, samplesdiv:int=2, cdaq_offset:int=30000, types:list=[0, 1], clock:int=10000000):
+    def __init__(self, filepath: str, duration: float = 92, pulser_interval: float = 3, sample_frequency: int = 25000,
+                 channels: list = [0, 1], tpas: list = [20, 0.1, -1., 20, 0.3, 0, 20, 0.5, 1, 20, 3, -1, 20, 0, 10],
+                 event_tpa: list = [1, 1], baseline_resolution: list = [0.002, 0.003],
+                 slopes: list = [1, 1.5], scales: list = [12, 8], record_length: int = 16384, dvm_channels: int = 0,
+                 start_s: int = 1602879720, offset: list = [0, 0],
+                 fitpar: list = [[-1.11, 4, 0.02, 4.15, 2.1, 53.06], [0.77, 51.76, 50.81, 37.24, 8.33, 8.59]],
+                 fitpar_carrier: list = [[-2.38, 1.73, 1.65, 136, 0.38, 2.13], [0, 0, 0, 1, 1, 1]],
+                 include_carriers: bool = True, relative_ph_sigma=0.1,
+                 eventsize: int = 2081024, samplesdiv: int = 2, cdaq_offset: int = 30000, types: list = [0, 1],
+                 clock: int = 10000000):
 
         self.filepath = filepath
         self.duration = duration
@@ -99,14 +101,15 @@ class TestData():
         self.nmbr_events = int(self.duration / pulser_interval)
         self.bankswitch_samples = eventsize / samplesdiv
         self.nmbr_bankswitches = int(self.nmbr_samples / self.bankswitch_samples)
-        self.k = k
-        self.l = l
+        self.scales = scales
+        self.slopes = slopes
         self.record_length = record_length
         self.dvm_channels = dvm_channels
         self.fitpar = fitpar
         self.fitpar_carrier = fitpar_carrier
         self.include_carriers = include_carriers
         self.tpas = np.array(tpas)
+        self.all_tpas = np.tile(tpas, reps=int(np.ceil(self.nmbr_events / len(tpas))))[:self.nmbr_events]
         self.event_tpa = event_tpa
         self.tpas_nocp = self.tpas[self.tpas <= 10]
         self.baseline_resolution = baseline_resolution
@@ -120,9 +123,22 @@ class TestData():
         self.types = types
         self.time = (np.arange(0, record_length, dtype=float) - record_length / 4) / self.sample_frequency * 1e3
         self.events = [pulse_template(self.time, *fitpar[0]), pulse_template(self.time, *fitpar[1])]
-        self.carrier_events = [pulse_template(self.time, *fitpar_carrier[0]), pulse_template(self.time, *fitpar_carrier[1])]
+        self.carrier_events = [pulse_template(self.time, *fitpar_carrier[0]),
+                               pulse_template(self.time, *fitpar_carrier[1])]
+        self.relative_ph_sigma = relative_ph_sigma
+        self.ph_deviations = np.random.normal(loc=1, scale=relative_ph_sigma,
+                                              size=self.nmbr_events)
+        self.is_carrier = np.random.randint(1 + int(include_carriers), size=self.nmbr_events, dtype=bool)
+        self.from_source = np.random.randint(2, size=self.nmbr_events, dtype=bool)
+        self.from_source[self.is_carrier] = False
+        self.event_heights = []
+        for tpa in event_tpa:  # this means for all channels
+            self.event_heights.append(np.random.exponential(scale=tpa, size=self.nmbr_events))
+            self.event_heights[-1][self.is_carrier] /= 2  # carriers are smaller
+            self.event_heights[-1][self.from_source] = np.random.normal(loc=tpa, scale=0.1 * tpa, size=int(
+                np.sum(self.from_source)))  # these absorbers are from some calibration source
 
-    def generate(self, start_offset:int=0, source:bool=None):  # in seconds
+    def generate(self, start_offset: int = 0, source: bool = None):  # in seconds
         """
         Generate all files from a measurement file (rdt, con, par, csmpl, sql, dig, test).
 
@@ -152,7 +168,7 @@ class TestData():
         if source is not None and source != 'hw' and source != 'stream':
             raise KeyError('Argument source must be either hw or stream!')
 
-    def update_duration(self, new_duration:float):
+    def update_duration(self, new_duration: float):
         """
         Update the duration of a measurement file for the next data generation.
 
@@ -165,7 +181,7 @@ class TestData():
         self.nmbr_events = int(self.duration / self.pulser_interval)
         self.nmbr_bankswitches = int(self.duration / self.bankswitch_samples)
 
-    def update_filepath(self, file_path:str):
+    def update_filepath(self, file_path: str):
         """
         Update the file path of a measurement file for the next generation.
 
@@ -177,19 +193,19 @@ class TestData():
 
     # private ---------
 
-    def _saturation_curve(self, x:float, l:float, k:float):
+    def _saturation_curve(self, x: float, scale: float, slope: float):
         """
         Logistic function centered to zero.
         """
-        return l * (1 / (1 + np.exp(-k * x)) - 0.5)
+        return scale * (1 / (1 + np.exp(-slope * x)) - 0.5)
 
-    def _inverse_saturation_curve(self, y:float, l:float, k:float):
+    def _inverse_saturation_curve(self, y: float, scale: float, slope: float):
         """
         The inverse of a logistic function centered to zero.
         """
-        return (np.log((l + 2 * y) / (3 * l - 2 * y))) ** (1 / k)
+        return (np.log((scale + 2 * y) / (3 * scale - 2 * y))) ** (1 / slope)
 
-    def _generate_rdt_file(self, start_offset:float=0):
+    def _generate_rdt_file(self, start_offset: float = 0):
         """
         Generate an rdt file of the measurement.
 
@@ -233,19 +249,20 @@ class TestData():
                 recs['qcd_events'][idx] = 0
                 recs['hours'][idx] = (e + 1) * self.pulser_interval / 3600
                 recs['dead_time'][idx] = 0
-                recs['test_pulse_amplitude'][idx] = self.tpas[int(e % len(self.tpas))]
+                recs['test_pulse_amplitude'][idx] = self.all_tpas[e]
                 recs['dac_output'][idx] = 0
 
-                sample = np.maximum(np.minimum(self.tpas[int(e % len(self.tpas))], 10), 0)
-                if sample == 0:
-                    sample = self.event_tpa[c]
-                if self.include_carriers and e % 2 == 1:
-                    sample = sample * self.carrier_events[c]
+                if self.all_tpas[e] == 0:
+                    sample = self.event_heights[c][e]
                 else:
-                    sample = sample * self.events[c]
-                sample = sample + np.random.normal(loc=self.offset[c], scale=self.baseline_resolution[c],
-                                                   size=self.record_length)
-                sample = self._saturation_curve(sample, self.l[c], self.k[c])
+                    sample = np.maximum(np.minimum(self.all_tpas[e], 10), 0)
+                if self.include_carriers and self.is_carrier[e]:  # carriers
+                    sample *= self.carrier_events[c] * self.ph_deviations[e]
+                else:
+                    sample *= self.events[c] * self.ph_deviations[e]
+                sample += np.random.normal(loc=self.offset[c], scale=self.baseline_resolution[c],
+                                           size=self.record_length)
+                sample = self._saturation_curve(sample, slope=self.slopes[c], scale=self.scales[c])
 
                 recs['samples'][idx][...] = convert_to_int(sample)
 
@@ -281,15 +298,18 @@ class TestData():
                 idx = int(e * self.nmbr_channels + c)
                 recs['detector_nmbr'][idx] = self.channels[c]
                 recs['pulse_height'][idx] = self._saturation_curve(
-                    self.tpas[int(e % len(self.tpas))] + np.random.normal(loc=self.offset[c],
-                                                                          scale=self.baseline_resolution[c], size=1),
-                    self.l[c],
-                    self.k[c])
+                    self.all_tpas[e] * self.ph_deviations[e] + np.random.normal(loc=self.offset[c],
+                                                                                scale=
+                                                                                self.baseline_resolution[
+                                                                                    c], size=1),
+                    slope=self.slopes[c],
+                    scale=self.scales[c]) * np.random.normal(loc=1,
+                                                             scale=0.05, size=1)
                 recs['time_stamp_low'][idx] = int((((e + 1) * self.pulser_interval) * 1e7) % (2 ** 32))
                 recs['time_stamp_high'][idx] = int(((e + 1) * self.pulser_interval) * 1e7 / (2 ** 32))
                 recs['dead_time'][idx] = 0
                 recs['mus_since_last_tp'][idx] = 0
-                tpas[idx] = self.tpas[int(e % len(self.tpas))]
+                tpas[idx] = self.all_tpas[e]
 
         recs = recs[tpas > 10]
 
@@ -301,7 +321,7 @@ class TestData():
 
         print('Con file written.')
 
-    def _generate_par_file(self, start_offset:float=0):
+    def _generate_par_file(self, start_offset: float = 0):
         """
         Generate a par file from the measurement.
 
@@ -359,16 +379,18 @@ class TestData():
 
                 duration_event = stop_sample - start_sample
 
-                tpa = np.maximum(np.minimum(self.tpas[int(i % len(self.tpas))], 10), 0)
-                if tpa == 0:
-                    tpa = self.event_tpa[c]
-                if self.include_carriers and i % 2 == 1:
-                    arr[start_sample:stop_sample] += tpa * self.carrier_events[c][:duration_event]
+                if self.all_tpas[i] == 0:
+                    tpa = self.event_heights[c][i]
                 else:
-                    arr[start_sample:stop_sample] += tpa * self.events[c][:duration_event]
+                    tpa = np.maximum(np.minimum(self.all_tpas[i], 10), 0)
+                if self.include_carriers and self.is_carrier[i]:
+                    arr[start_sample:stop_sample] += tpa * self.carrier_events[c][:duration_event] * self.ph_deviations[
+                        i]
+                else:
+                    arr[start_sample:stop_sample] += tpa * self.events[c][:duration_event] * self.ph_deviations[i]
 
             # apply the saturation function
-            arr = self._saturation_curve(arr, self.l[c], self.k[c])
+            arr = self._saturation_curve(arr, slope=self.slopes[c], scale=self.scales[c])
 
             # convert to int
             arr_int = np.zeros(self.nmbr_samples, dtype=np.uint16)
@@ -381,7 +403,7 @@ class TestData():
 
         print('Csmpl Files for all Channels written.')
 
-    def _generate_sql_file(self, start_offset:float=0):
+    def _generate_sql_file(self, start_offset: float = 0):
         """
         Generate an sql file with data of the measurement.
 
@@ -472,10 +494,10 @@ class TestData():
 
         stamps = np.empty(self.nmbr_events, dtype=teststamp)
         for e in range(self.nmbr_events):
-            stamps['stamp'][e] = (
-                                         e + 1) * self.pulser_interval_samples + self.cdaq_offset  # the dig stamps are in 10MHz samples
+            stamps['stamp'][e] = (e + 1) * self.pulser_interval_samples + \
+                                 self.cdaq_offset  # the dig stamps are in 10MHz samples
             stamps['stamp'][e] = np.floor(stamps['stamp'][e] * self.clock / self.sample_frequency)
-            stamps['tpa'][e] = self.tpas[int(e % len(self.tpas))]
+            stamps['tpa'][e] = self.all_tpas[e]
             stamps['tpch'][e] = 0
 
         f = open(self.filepath + ".test_stamps", "bw")

@@ -135,8 +135,8 @@ class PlotMixin(object):
             if not show_fit:
                 plt.plot(t, sev, zorder=10, linewidth=3, label='Standardevent')
             else:
-                plt.plot(t, sev, zorder=10, linewidth=1, alpha=0.5, label='Standardevent')
-                plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, label='Parametric Fit')
+                plt.plot(t, sev, color='red', zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
+                plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, color='black', alpha=0.7, zorder=10, label='Parametric Fit')
             make_grid()
             plt.legend()
             plt.xlabel('Time (ms)')
@@ -225,6 +225,13 @@ class PlotMixin(object):
                      1j * np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
             of = np.abs(of) ** 2
 
+            freq = f['noise']['freq']
+
+            if down is not None:
+                first = np.array([freq[0]])
+                freq = np.mean(freq[1:].reshape(int(len(freq)/down), down), axis=1)
+                freq = np.concatenate((first, freq), axis=0)
+
             # plot
             use_cait_style(dpi=dpi)
             plt.close()
@@ -233,7 +240,7 @@ class PlotMixin(object):
 
                 for i, ch in enumerate(self.channel_names):
                     plt.subplot(self.nmbr_channels, 1, i + 1)
-                    plt.loglog(f['noise']['freq'], of[i], color=self.colors[i], zorder=10, linewidth=3)
+                    plt.loglog(freq, of[i], color=self.colors[i], zorder=10, linewidth=3)
                     make_grid()
                     plt.ylabel('Amplitude (a.u.)')
                     if title is None:
@@ -242,7 +249,7 @@ class PlotMixin(object):
                         plt.title(title)
                 plt.xlabel('Frequency (Hz)')
             else:
-                plt.loglog(f['noise']['freq'], of[channel], color=self.colors[channel], zorder=10, linewidth=3)
+                plt.loglog(freq, of[channel], color=self.colors[channel], zorder=10, linewidth=3)
                 make_grid()
                 plt.xlabel('Frequency (Hz)')
                 plt.ylabel('Amplitude (a.u.)')
@@ -513,7 +520,7 @@ class PlotMixin(object):
             print('Histogram for {} created.'.format(which_mp))
 
     # show light yield plot
-    def show_LY(self,
+    def show_ly(self,
                 title=None,
                 xlabel=None,
                 ylabel=None,
@@ -633,10 +640,7 @@ class PlotMixin(object):
                 plt.ylabel('Amplitude Ch ' + str(y_channel) + ' / Amplitude Ch ' + str(x_channel))
             else:
                 plt.ylabel(ylabel)
-            if title is None:
-                plt.title('Light Yield ' + type)
-            else:
-                plt.title(title)
+            plt.title(title)
             if save_path is not None:
                 plt.savefig(save_path)
             if show:

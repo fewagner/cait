@@ -18,13 +18,13 @@ def get_random_samplers(test_size, val_size, dataset_size=None, only_idx=None, s
 
     if only_idx is None:
         only_idx = list(range(dataset_size))
-    val_split = int((1 - (val_size + test_size)) * len(only_idx)) # floor rounds down
+    val_split = int((1 - (val_size + test_size)) * len(only_idx))  # floor rounds down
     test_split = int((1 - (test_size)) * len(only_idx))
     if shuffle_dataset:
         if random_seed is not None:
             np.random.seed(random_seed)
         np.random.shuffle(only_idx)
-    train_indices, val_indices, test_indices = only_idx[:val_split], only_idx[val_split:test_split], only_idx[:test_split]
+    train_indices, val_indices, test_indices = only_idx[:val_split], only_idx[val_split:test_split], only_idx[test_split:]
 
     return SubsetRandomSampler(train_indices), \
            SubsetRandomSampler(val_indices), \

@@ -14,9 +14,17 @@
    :caption: Tutorials
    :maxdepth: 1
 
-   tutorials/conversion
-   tutorials/trigger
-   tutorials/features
+   tutorials/abouttutorials
+   tutorials/01conversion
+   tutorials/02features
+   tutorials/03simulation
+   tutorials/04trigger
+   tutorials/05calibration
+   tutorials/06labeling
+   tutorials/07classification
+   tutorials/08plt_classification
+   tutorials/09regression
+   tutorials/10bandfit
 
 .. toctree::
    :caption: Documentation
