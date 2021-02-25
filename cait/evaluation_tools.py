@@ -771,7 +771,7 @@ class EvaluationTools:
 
     # ################### PLOT ###################
 
-    def plt_pred_with_tsne(self, pred_methods, plt_what='all', plt_labels=True,
+    def plt_pred_with_tsne(self, pred_methods, what='all', plt_labels=True,
                            figsize=None, perplexity=30, as_cols=False, rdseed=None,
                            dot_size=5, verb=False):
         """
@@ -779,7 +779,7 @@ class EvaluationTools:
         to compare different labels.
 
         :param pred_methods:    - Required                  : prediction method should be used
-        :param plt_what:        - Required                  : which data is plotted
+        :param what:        - Required                  : which data is plotted
         :param plt_labels:      - Optional, default True    : adds subplot with labels.
         :param figsize:         - Optional, default None    : sets figure size of plot.
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
@@ -824,11 +824,11 @@ class EvaluationTools:
             nrows = ncols
             ncols = temp
 
-        if plt_what not in ['all', 'test', 'train']:
-            plt_what = 'all'
+        if what not in ['all', 'test', 'train']:
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                      "If the value of 'plt_what' is not 'train' or 'test' then all are shown.")
+                      "If the value of 'what' is not 'train' or 'test' then all are shown.")
 
         # -------- MATPLOTLIB event handler --------
 
@@ -839,15 +839,15 @@ class EvaluationTools:
                 if ind['ind'].size == 1:
                     id = ind['ind'][0]
 
-                    text = "{}, {}".format(self.files[self.get_file_nbrs(plt_what)[id]].split('/')[-1].split('-')[0],
-                                           self.get_event_nbrs(plt_what)[id])
+                    text = "{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
+                                           self.get_event_nbrs(what)[id])
                     if plt_labels:
                         text = text + \
                                ", {}".format(
-                                   self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
+                                   self.labels[self.get_label_nbrs(what, verb=verb)[id]])
                 else:
                     text = "{}".format(
-                        " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
+                        " ".join(list(map(str, [self.get_event_nbrs(what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
@@ -877,21 +877,21 @@ class EvaluationTools:
                         id = ind['ind'][0]
 
                         text = "{}, {}".format(
-                            self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                            self.files[self.get_file_nbrs(what, verb=verb)[
                                 id]].split('/')[-1].split('-')[0],
-                            self.get_event_nbrs(plt_what, verb=verb)[id])
+                            self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
-                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]],
-                                                             self.get_label_nbrs(plt_what, verb=verb)[id])
+                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
+                                                             self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
-                            self.get_event_nbrs(plt_what, verb=verb)[id],
-                            self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
+                            self.get_event_nbrs(what, verb=verb)[id],
+                            self.files[self.get_file_nbrs(what, verb=verb)[id]]))
                         instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
                                                                                         self.get_event_nbrs(
-                                                                                            plt_what, verb=verb)[id],
+                                                                                            what, verb=verb)[id],
                                                                                         self.files[
-                                                                                            self.get_file_nbrs(plt_what,
+                                                                                            self.get_file_nbrs(what,
                                                                                                                verb=verb)[
                                                                                                 id]], text)
                         print(instr)
@@ -908,24 +908,24 @@ class EvaluationTools:
                             id = ind['ind'][0]
 
                             text = "{}, {}".format(
-                                self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                                self.files[self.get_file_nbrs(what, verb=verb)[
                                     id]].split('/')[-1].split('-')[0],
-                                self.get_event_nbrs(plt_what, verb=verb)[id])
+                                self.get_event_nbrs(what, verb=verb)[id])
                             if plt_labels:
                                 text = text + ", {} = {}".format(
                                     self.labels[self.get_label_nbrs(
-                                        plt_what, verb=verb)[id]],
-                                    self.get_label_nbrs(plt_what, verb=verb)[id])
+                                        what, verb=verb)[id]],
+                                    self.get_label_nbrs(what, verb=verb)[id])
 
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
-                                self.get_event_nbrs(plt_what, verb=verb)[id],
-                                self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
+                                self.get_event_nbrs(what, verb=verb)[id],
+                                self.files[self.get_file_nbrs(what, verb=verb)[id]]))
                             instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
                                                                                                self.get_event_nbrs(
-                                                                                                   plt_what, verb=verb)[
+                                                                                                   what, verb=verb)[
                                                                                                    id], self.files[
                                                                                                    self.get_file_nbrs(
-                                                                                                       plt_what,
+                                                                                                       what,
                                                                                                        verb=verb)[id]],
                                                                                                text)
                             os.system(instr)
@@ -951,7 +951,7 @@ class EvaluationTools:
         # -------- PLOT --------
         # TSNE
         princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
-            self.get_features(plt_what, verb=verb))
+            self.get_features(what, verb=verb))
 
         plt.close()
         if figsize is None:
@@ -981,15 +981,15 @@ class EvaluationTools:
         if plt_labels:
             start_i = 1
             ax[0].set_title(subtitles[0])
-            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(plt_what, verb=verb), return_legend=True,
+            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
             if self.save_as != False:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
+                                      c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
+                                      c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
@@ -1004,14 +1004,14 @@ class EvaluationTools:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
-                                                               what=plt_what, verb=verb),
+                                                               what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
             else:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
-                                                               what=plt_what, verb=verb),
+                                                               what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
 
@@ -1047,7 +1047,7 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-    def plt_pred_with_pca(self, pred_methods, xy_comp=(1, 2), plt_what='all', plt_labels=True,
+    def plt_pred_with_pca(self, pred_methods, xy_comp=(1, 2), what='all', plt_labels=True,
                           figsize=None, as_cols=False, rdseed=None, dot_size=5,
                           verb=False):
         """
@@ -1056,7 +1056,7 @@ class EvaluationTools:
 
         :param pred_methods:    - Required                  : prediction method should be used
         :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
-        :param plt_what:        - Optional, default 'all'   : which data is plotted
+        :param what:        - Optional, default 'all'   : which data is plotted
         :param plt_labels:      - Optional, default True    : adds subplot with labels.
         :param figsize:         - Optional, default None    : sets figure size of plot.
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
@@ -1111,11 +1111,11 @@ class EvaluationTools:
             nrows = ncols
             ncols = temp
 
-        if plt_what not in ['all', 'test', 'train']:
-            plt_what = 'all'
+        if what not in ['all', 'test', 'train']:
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                      "If the value of 'plt_what' is not 'train' or 'test' then all are shown.")
+                      "If the value of 'what' is not 'train' or 'test' then all are shown.")
 
         # -------- MATPLOTLIB event handler --------
 
@@ -1126,15 +1126,15 @@ class EvaluationTools:
                 if ind['ind'].size == 1:
                     id = ind['ind'][0]
 
-                    text = "{}, {}".format(self.files[self.get_file_nbrs(plt_what)[id]].split('/')[-1].split('-')[0],
-                                           self.get_event_nbrs(plt_what)[id])
+                    text = "{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
+                                           self.get_event_nbrs(what)[id])
                     if plt_labels:
                         text = text + \
                                ", {}".format(
-                                   self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]])
+                                   self.labels[self.get_label_nbrs(what, verb=verb)[id]])
                 else:
                     text = "{}".format(
-                        " ".join(list(map(str, [self.get_event_nbrs(plt_what)[id] for id in ind['ind']]))))
+                        " ".join(list(map(str, [self.get_event_nbrs(what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
@@ -1164,21 +1164,21 @@ class EvaluationTools:
                         id = ind['ind'][0]
 
                         text = "{}, {}".format(
-                            self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                            self.files[self.get_file_nbrs(what, verb=verb)[
                                 id]].split('/')[-1].split('-')[0],
-                            self.get_event_nbrs(plt_what, verb=verb)[id])
+                            self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
-                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(plt_what, verb=verb)[id]],
-                                                             self.get_label_nbrs(plt_what, verb=verb)[id])
+                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
+                                                             self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
-                            self.get_event_nbrs(plt_what, verb=verb)[id],
-                            self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
+                            self.get_event_nbrs(what, verb=verb)[id],
+                            self.files[self.get_file_nbrs(what, verb=verb)[id]]))
                         instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
                                                                                         self.get_event_nbrs(
-                                                                                            plt_what, verb=verb)[id],
+                                                                                            what, verb=verb)[id],
                                                                                         self.files[
-                                                                                            self.get_file_nbrs(plt_what,
+                                                                                            self.get_file_nbrs(what,
                                                                                                                verb=verb)[
                                                                                                 id]], text)
                         print(instr)
@@ -1195,24 +1195,24 @@ class EvaluationTools:
                             id = ind['ind'][0]
 
                             text = "{}, {}".format(
-                                self.files[self.get_file_nbrs(plt_what, verb=verb)[
+                                self.files[self.get_file_nbrs(what, verb=verb)[
                                     id]].split('/')[-1].split('-')[0],
-                                self.get_event_nbrs(plt_what, verb=verb)[id])
+                                self.get_event_nbrs(what, verb=verb)[id])
                             if plt_labels:
                                 text = text + ", {} = {}".format(
                                     self.labels[self.get_label_nbrs(
-                                        plt_what, verb=verb)[id]],
-                                    self.get_label_nbrs(plt_what, verb=verb)[id])
+                                        what, verb=verb)[id]],
+                                    self.get_label_nbrs(what, verb=verb)[id])
 
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
-                                self.get_event_nbrs(plt_what, verb=verb)[id],
-                                self.files[self.get_file_nbrs(plt_what, verb=verb)[id]]))
+                                self.get_event_nbrs(what, verb=verb)[id],
+                                self.files[self.get_file_nbrs(what, verb=verb)[id]]))
                             instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
                                                                                                self.get_event_nbrs(
-                                                                                                   plt_what, verb=verb)[
+                                                                                                   what, verb=verb)[
                                                                                                    id], self.files[
                                                                                                    self.get_file_nbrs(
-                                                                                                       plt_what,
+                                                                                                       what,
                                                                                                        verb=verb)[id]],
                                                                                                text)
                             os.system(instr)
@@ -1242,7 +1242,7 @@ class EvaluationTools:
         # -------- PLOT --------
         # PCA
         pca = PCA(n_components=np.max(xy_comp))
-        princcomp = pca.fit_transform(self.get_features(plt_what, verb=verb))
+        princcomp = pca.fit_transform(self.get_features(what, verb=verb))
         princcomp = princcomp[:, [xy_comp[0] - 1, xy_comp[1] - 1]]
 
         plt.close()
@@ -1272,15 +1272,15 @@ class EvaluationTools:
         if plt_labels:
             start_i = 1
             ax[0].set_title(subtitles[0])
-            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(plt_what, verb=verb), return_legend=True,
+            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
             if self.save_as != False:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
+                                      c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-                                      c=self.get_labels_in_color(what=plt_what, verb=verb), s=dot_size, alpha=0.7)
+                                      c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
@@ -1295,14 +1295,14 @@ class EvaluationTools:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
-                                                               what=plt_what, verb=verb),
+                                                               what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
             else:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
-                                                               what=plt_what, verb=verb),
+                                                               what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
 
@@ -1452,8 +1452,7 @@ class EvaluationTools:
                 ax.set_yscale('log')
             if self.save_as != False:
                 if ylog:
-                    plt.savefig(
-                        '{}evt_sat_hist-ylog.{}'.format(self.save_plot_dir, self.save_as))
+                    plt.savefig('{}evt_sat_hist-ylog.{}'.format(self.save_plot_dir, self.save_as))
                 else:
                     plt.savefig('{}evt_sat_hist.{}'.format(self.save_plot_dir, self.save_as))
             else:
