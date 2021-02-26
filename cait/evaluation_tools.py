@@ -61,22 +61,12 @@ class EvaluationTools:
     # ################### PRIVATE ###################
 
     def __add_data(self, data):
-        """
-        Adds data to the property data.
-
-        :param data: list of floats, added to the property data
-        """
         if self.data is None:
             self.data = data
         else:
             self.data = np.vstack([self.data, data])
 
     def __add_events(self, events):
-        """
-        Adds events to the property events.
-
-        :param data: list of ints, added to the property events
-        """
         if self.events is None:
             self.events = events
         else:
@@ -128,7 +118,6 @@ class EvaluationTools:
             for name, val in labels:
                 if (name, val) not in self.labels.keys():
                     self.labels[val] = name
-        # self.labels = dict(sorted(self.labels.keys(), key=operator.itemgetter(1)))
 
     def __add_event_nbrs(self, event_nbrs):
         if self.event_nbrs is None:
@@ -143,10 +132,6 @@ class EvaluationTools:
             self.file_nbrs = np.hstack([self.file_nbrs, file_nbrs])
 
     def __check_train_set(self, verb=False):
-        """
-        Checks wether there exists a seperation in a training and test data.
-        If not then it genereates one with the property test_size.
-        """
         if not self.is_traintest_valid:
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -495,35 +480,74 @@ class EvaluationTools:
     # ################### GETTER ###################
 
     def get_train(self, verb=False):
+        """
+        Getter-function which returns the data from the training set
+        in the following order:
+        1. event_nbrs
+        2. data
+        3. features
+        4. file_nbrs
+        5. label_nbrs   
+
+        :param verb: enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: tuple of size 6, where every entry in this tuple is an array
+        :rtype: tuple
+        """
         self.__check_train_set(verb=verb)
-        return self.get_train_event_nbrs(verb=verb), \
-               self.get_train_data(verb=verb), \
-               self.get_train_features(verb=verb), \
-               self.get_train_file_nbrs(verb=verb), \
-               self.get_train_label_nbrs(verb=verb)
+        return self.__get_train_event_nbrs(verb=verb), \
+               self.__get_train_data(verb=verb), \
+               self.__get_train_features(verb=verb), \
+               self.__get_train_file_nbrs(verb=verb), \
+               self.__get_train_label_nbrs(verb=verb)
 
     def get_test(self, verb=False):
+        """
+        Getter-function which returns the data from the test set
+        in the following order:
+        1. event_nbrs
+        2. data
+        3. features
+        4. file_nbrs
+        5. label_nbrs   
+
+        :param verb: enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: tuple of size 6, where every entry in this tuple is an array
+        :rtype: tuple
+        """
+
         self.__check_test_set(verb=verb)
-        return self.get_test_event_nbrs(verb=verb), \
-               self.get_test_data(verb=verb), \
-               self.get_test_features(verb=verb), \
-               self.get_test_file_nbrs(verb=verb), \
-               self.get_test_label_nbrs(verb=verb)
+        return self.__get_test_event_nbrs(verb=verb), \
+               self.__get_test_data(verb=verb), \
+               self.__get_test_features(verb=verb), \
+               self.__get_test_file_nbrs(verb=verb), \
+               self.__get_test_label_nbrs(verb=verb)
 
     # ------- get event numbers -------
-    def get_train_event_nbrs(self, verb=False):
+    def __get_train_event_nbrs(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.event_nbrs[self.is_train]
 
-    def get_test_event_nbrs(self, verb=False):
+    def __get_test_event_nbrs(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.event_nbrs[np.logical_not(self.is_train)]
 
     def get_event_nbrs(self, what='all', verb=False):
+        """
+        Getter-function which returns the event_nbrs
+
+        :param what: Defines what should be returned, which is either 'all' for all event_nbrs, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of event_nbrs depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_event_nbrs(verb=verb)
+            return self.__get_train_event_nbrs(verb=verb)
         elif what == 'test':
-            return self.get_test_event_nbrs(verb=verb)
+            return self.__get_test_event_nbrs(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -531,19 +555,29 @@ class EvaluationTools:
             return self.event_nbrs
 
     # ------- get data -------
-    def get_train_data(self, verb=False):
+    def __get_train_data(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.data[self.is_train, :]
 
-    def get_test_data(self, verb=False):
+    def __get_test_data(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.data[np.logical_not(self.is_train)]
 
     def get_data(self, what='all', verb=False):
+        """
+        Getter-function which returns the data
+
+        :param what: Defines what should be returned, which is either 'all' for all data, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of data depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_data(verb=verb)
+            return self.__get_train_data(verb=verb)
         elif what == 'test':
-            return self.get_test_data(verb=verb)
+            return self.__get_test_data(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -551,19 +585,29 @@ class EvaluationTools:
             return self.data
 
     # ------- get mainparameters -------
-    def get_train_mainpar(self, verb=False):
+    def __get_train_mainpar(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.mainpar[self.is_train, :]
 
-    def get_test_mainpar(self, verb=False):
+    def __get_test_mainpar(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.mainpar[np.logical_not(self.is_train)]
 
     def get_mainpar(self, what='all', verb=False):
+        """
+        Getter-function which returns the mainpar
+
+        :param what: Defines what should be returned, which is either 'all' for all mainpar, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of mainpar depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_mainpar(verb=verb)
+            return self.__get_train_mainpar(verb=verb)
         elif what == 'test':
-            return self.get_test_mainpar(verb=verb)
+            return self.__get_test_mainpar(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -571,19 +615,29 @@ class EvaluationTools:
             return self.mainpar
 
     # ------- get events -------
-    def get_train_events(self, verb=False):
+    def __get_train_events(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.events[self.is_train, :]
 
-    def get_test_events(self, verb=False):
+    def __get_test_events(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.events[np.logical_not(self.is_train)]
 
     def get_events(self, what='all', verb=False):
+        """
+        Getter-function which returns the events
+
+        :param what: Defines what should be returned, which is either 'all' for all events, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of events depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_events(verb=verb)
+            return self.__get_train_events(verb=verb)
         elif what == 'test':
-            return self.get_test_events(verb=verb)
+            return self.__get_test_events(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -591,19 +645,29 @@ class EvaluationTools:
             return self.events
 
     # ------- get features (normalized data) -------
-    def get_train_features(self, verb=False):
+    def __get_train_features(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.features[self.is_train]
 
-    def get_test_features(self, verb=False):
+    def __get_test_features(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.features[np.logical_not(self.is_train)]
 
     def get_features(self, what='all', verb=False):
+        """
+        Getter-function which returns the features
+
+        :param what: Defines what should be returned, which is either 'all' for all features, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of features depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_features(verb=verb)
+            return self.__get_train_features(verb=verb)
         elif what == 'test':
-            return self.get_test_features(verb=verb)
+            return self.__get_test_features(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -611,19 +675,29 @@ class EvaluationTools:
             return self.features
 
     # ------- get file nbrs -------
-    def get_train_file_nbrs(self, verb=False):
+    def __get_train_file_nbrs(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.file_nbrs[self.is_train]
 
-    def get_test_file_nbrs(self, verb=False):
+    def __get_test_file_nbrs(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.file_nbrs[np.logical_not(self.is_train)]
 
     def get_file_nbrs(self, what='all', verb=False):
+        """
+        Getter-function which returns the file_nbrs
+
+        :param what: Defines what should be returned, which is either 'all' for all file_nbrs, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of file_nbrs depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_file_nbrs(verb=verb)
+            return self.__get_train_file_nbrs(verb=verb)
         elif what == 'test':
-            return self.get_test_file_nbrs(verb=verb)
+            return self.__get_test_file_nbrs(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -631,36 +705,56 @@ class EvaluationTools:
             return self.file_nbrs
 
     # ------- get file nbrs -------
-    def get_train_label_nbrs(self, verb=False):
+    def __get_train_label_nbrs(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.label_nbrs[self.is_train]
 
-    def get_test_label_nbrs(self, verb=False):
+    def __get_test_label_nbrs(self, verb=False):
         self.__check_train_set(verb=verb)
         return self.label_nbrs[np.logical_not(self.is_train)]
 
     def get_label_nbrs(self, what='all', verb=False):
+        """
+        Getter-function which returns the label_nbrs
+
+        :param what: Defines what should be returned, which is either 'all' for all label_nbrs, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of label_nbrs depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_label_nbrs(verb=verb)
+            return self.__get_train_label_nbrs(verb=verb)
         elif what == 'test':
-            return self.get_test_label_nbrs(verb=verb)
+            return self.__get_test_label_nbrs(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
             return self.label_nbrs
 
-    def get_train_pred_in_color(self, pred_method, verb=False):
-        return [self.labels_color_map[i] for i in self.get_train_label_nbrs(verb=verb)]
+    def __get_train_pred_in_color(self, pred_method, verb=False):
+        return [self.labels_color_map[i] for i in self.__get_train_label_nbrs(verb=verb)]
 
-    def get_test_labels_in_color(self, verb=False):
-        return [self.labels_color_map[i] for i in self.get_test_label_nbrs(verb=verb)]
+    def __get_test_labels_in_color(self, verb=False):
+        return [self.labels_color_map[i] for i in self.__get_test_label_nbrs(verb=verb)]
 
     def get_labels_in_color(self, what='all', verb=False):
+        """
+        Getter-function which returns the labels_in_color, which can be usefull for plotting.
+
+        :param what: Defines what should be returned, which is either 'all' for all labels_in_color, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of labels_in_color depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_labels_in_color(verb=verb)
+            return self.__get_train_labels_in_color(verb=verb)
         elif what == 'test':
-            return self.get_test_labels_in_color(verb=verb)
+            return self.__get_test_labels_in_color(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -668,7 +762,7 @@ class EvaluationTools:
             return [self.labels_color_map[i] for i in self.get_label_nbrs()]
 
     # ------- get prediction (predicted label nbrs) -------
-    def get_train_pred(self, pred_method, verb=False):
+    def __get_train_pred(self, pred_method, verb=False):
         self.__check_train_set(verb=verb)
         if pred_method not in list(self.predictions.keys()):
             if verb:
@@ -677,7 +771,7 @@ class EvaluationTools:
             return False
         return self.predictions[pred_method][1][self.is_train]
 
-    def get_test_pred(self, pred_method, verb=False):
+    def __get_test_pred(self, pred_method, verb=False):
         self.__check_train_set(verb=verb)
         if pred_method not in list(self.predictions.keys()):
             if verb:
@@ -687,10 +781,24 @@ class EvaluationTools:
         return self.predictions[pred_method][1][np.logical_not(self.is_train)]
 
     def get_pred(self, pred_method, what='all', verb=False):
+        """
+        Getter-function which returns the prediction of a method.
+        The prediction has to be added at first and can be selected by providing the same abbreviation while adding it. 
+        The selection is done via the pred_method parameter.
+
+        :param pred_method: Parameter to select the prediction from a certain prediction method, which must be the same string as when added.
+        :type pred_method: str
+        :param what: Defines what should be returned, which is either 'all' for all prediction, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of prediction depending on the chosen prediction methode (pred_meth) and on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_pred(pred_method, verb=verb)
+            return self.__get_train_pred(pred_method, verb=verb)
         elif what == 'test':
-            return self.get_test_pred(pred_method, verb=verb)
+            return self.__get_test_pred(pred_method, verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -702,7 +810,7 @@ class EvaluationTools:
                 return False
             return self.predictions[pred_method][1]
 
-    def get_train_pred_in_color(self, pred_method, verb=False):
+    def __get_train_pred_in_color(self, pred_method, verb=False):
         self.__check_train_set(verb=verb)
         if pred_method not in list(self.predictions.keys()):
             if verb:
@@ -710,11 +818,11 @@ class EvaluationTools:
                       "The prediction method '{}' does not exist in the stored predictions.".format(pred_method))
             return False
         if self.get_pred_true_labels(pred_method):
-            return [self.labels_color_map[i] for i in self.get_train_pred(pred_method, verb=verb)]
+            return [self.labels_color_map[i] for i in self.__get_train_pred(pred_method, verb=verb)]
         else:
-            return [self.color_order[i] for i in self.get_train_pred(pred_method, verb=verb)]
+            return [self.color_order[i] for i in self.__get_train_pred(pred_method, verb=verb)]
 
-    def get_test_pred_in_color(self, pred_method, verb=False):
+    def __get_test_pred_in_color(self, pred_method, verb=False):
         self.__check_train_set(verb=verb)
         if pred_method not in list(self.predictions.keys()):
             if verb:
@@ -722,15 +830,29 @@ class EvaluationTools:
                       "The prediction method '{}' does not exist in the stored predictions.".format(pred_method))
             return False
         if self.get_pred_true_labels(pred_method):
-            return [self.labels_color_map[i] for i in self.get_test_pred(pred_method, verb=verb)]
+            return [self.labels_color_map[i] for i in self.__get_test_pred(pred_method, verb=verb)]
         else:
-            return [self.color_order[i] for i in self.get_test_pred(pred_method, verb=verb)]
+            return [self.color_order[i] for i in self.__get_test_pred(pred_method, verb=verb)]
 
     def get_pred_in_color(self, pred_method, what='all', verb=False):
+        """
+        Getter-function which returns the color coded prediction of a method.
+        The prediction has to be added at first and can be selected by providing the same abbreviation while adding it. 
+        The selection is done via the pred_method parameter.
+
+        :param pred_method: Parameter to select the prediction from a certain prediction method get color coded, which must be the same string as when added.
+        :type pred_method: str
+        :param what: Defines what should be returned, which is either 'all' for all color coded predicitons, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of the color coded predictions depending on the chosen prediction methode (pred_meth) and on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_pred_in_color(pred_method, verb=verb)
+            return self.__get_train_pred_in_color(pred_method, verb=verb)
         elif what == 'test':
-            return self.get_test_pred_in_color(pred_method, verb=verb)
+            return self.__get_test_pred_in_color(pred_method, verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -747,22 +869,40 @@ class EvaluationTools:
 
     # ------- get if prediction labels correspond to the actual labels -------
     def get_pred_true_labels(self, pred_method):
+        """
+        Returns if the labels in the prediction correspond to the actual labels, as in the dict self.labels.
+
+        :param pred_method: Abbreviation of the chosen prediction method
+        :type pred_method: str
+        :return: Return True or False if the labels of the chosen prediction method correspond to the actual labels
+        :rtype: bool
+        """
         return self.predictions[pred_method][0]
 
     # ------- get filepaths -------
-    def get_train_filepaths(self, verb=False):
+    def __get_train_filepaths(self, verb=False):
         self.__check_train_set(verb=verb)
         return [self.files[f] for f in self.file_nbrs[self.is_train]]
 
-    def get_test_filepaths(self, verb=False):
+    def __get_test_filepaths(self, verb=False):
         self.__check_train_set(verb=verb)
         return [self.files[f] for f in self.file_nbrs[np.logical_not(self.is_train)]]
 
     def get_filepaths(self, what='all', verb=False):
+        """
+        Getter-function which returns the filepaths for every event.
+
+        :param what: Defines what should be returned, which is either 'all' for all filepaths, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: Returns the part of labels_in_color depending on the parameter what
+        :rtype: array
+        """
         if what == 'train':
-            return self.get_train_filepaths(verb=verb)
+            return self.__get_train_filepaths(verb=verb)
         elif what == 'test':
-            return self.get_test_file_nbrs(verb=verb)
+            return self.__get_test_file_nbrs(verb=verb)
         else:
             if verb and what != 'all':
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -1056,7 +1196,7 @@ class EvaluationTools:
 
         :param pred_methods:    - Required                  : prediction method should be used
         :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
-        :param what:        - Optional, default 'all'   : which data is plotted
+        :param what:            - Optional, default 'all'   : which data is plotted
         :param plt_labels:      - Optional, default True    : adds subplot with labels.
         :param figsize:         - Optional, default None    : sets figure size of plot.
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
