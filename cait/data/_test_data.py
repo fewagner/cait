@@ -5,6 +5,7 @@ from ._raw import convert_to_int
 from ..fit._templates import pulse_template
 import sqlite3
 import datetime
+import os
 
 
 # class
@@ -137,6 +138,7 @@ class TestData():
             self.event_heights[-1][self.is_carrier] /= 2  # carriers are smaller
             self.event_heights[-1][self.from_source] = np.random.normal(loc=tpa, scale=0.1 * tpa, size=int(
                 np.sum(self.from_source)))  # these absorbers are from some calibration source
+        self._check_filepath()
 
     def generate(self, start_offset: int = 0, source: bool = None):  # in seconds
         """
@@ -190,8 +192,17 @@ class TestData():
         """
 
         self.filepath = file_path
+        self._check_filepath()
 
     # private ---------
+
+    def _check_filepath(self):
+        """
+        Checks if the directory for the data exists and creates it otherwise.
+        """
+        directory, file = os.path.split(self.filepath)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
 
     def _saturation_curve(self, x: float, scale: float, slope: float):
         """
