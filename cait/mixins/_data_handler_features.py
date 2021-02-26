@@ -162,6 +162,8 @@ class FeaturesMixin(object):
                 use_idx = list(range(len(events[0])))
 
             for c in range(self.nmbr_channels):
+                print('')
+                print('Calculating SEV for Channel {}'.format(c))
                 std_evs.append(generate_standard_event(events=events[c, use_idx, :],
                                                        main_parameters=mainpar[c, use_idx, :],
                                                        labels=labels[c],
