@@ -22,7 +22,7 @@
    tutorials/05calibration
    tutorials/06labeling
    tutorials/07classification
-   tutorials/08plt_classification
+   tutorials/08ptl_classification
    tutorials/09regression
    tutorials/10bandfit
 

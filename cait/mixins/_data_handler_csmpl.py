@@ -113,22 +113,22 @@ class CsmplMixin(object):
                     del stream['trigger_time_s']
                 stream.create_dataset(name='trigger_time_s',
                                       shape=(aligned_triggers.shape),
-                                      dtype=float)
+                                      dtype=int)
                 if "trigger_time_mus" in stream:
                     print('overwrite old trigger_time_mus')
                     del stream['trigger_time_mus']
                 stream.create_dataset(name='trigger_time_mus',
                                       shape=(aligned_triggers.shape),
-                                      dtype=float)
+                                      dtype=int)
 
                 # get start second from sql
                 file_start = get_starttime(path_sql=path_sql,
                                            csmpl_channel=csmpl_channels[0],
                                            sql_file_label=sql_file_label)
 
-                stream['trigger_time_s'][...] = np.floor(aligned_triggers[c] + file_start)
-                stream['trigger_time_mus'][...] = 1e6 * (
-                        aligned_triggers[c] + file_start - np.floor(aligned_triggers[c] + file_start))
+                stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start, dtype='int32')
+                stream['trigger_time_mus'][...] = np.array(1e6 * (
+                        aligned_triggers + file_start - np.floor(aligned_triggers + file_start)), dtype='int32')
 
             print('DONE')
 
@@ -270,7 +270,7 @@ class CsmplMixin(object):
                 del write_events['hours']
             write_events.create_dataset(name='hours',
                                         data=trigger_hours)
-            if "trigger_time_stamp_high" in stream:
+            if "trigger_time_s" in stream:
                 if "time_s" in write_events:
                     del write_events['time_s']
                 if "time_mus" in write_events:
@@ -397,10 +397,10 @@ class CsmplMixin(object):
 
             hours -= offset_hours
 
-            # calc the time stamp low and high
+            # calc the time stamp seconds and mus
 
-            time_s = np.floor(file_start + hours * 3600)
-            time_mus = 1e6 * (hours * 3600 - np.floor(hours * 3600))
+            time_s = np.array(file_start + hours * 3600, dtype='int32')
+            time_mus = np.array(1e6 * (hours * 3600 - np.floor(hours * 3600)), dtype='int32')
 
             # write to file
 

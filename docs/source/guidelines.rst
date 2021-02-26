@@ -58,7 +58,7 @@ A software project with multiple contributors from various levels of experience 
 Debugging
 =========
 
-A usefull tool for  debugging code is the library [**IPython pdb**](https://pypi.org/project/ipdb/) (_short: ipdb_).
+A usefull tool for  debugging code is the library **IPython pdb** (https://pypi.org/project/ipdb/).
 This library exports functions to access the IPython debugger, which features tab completion, syntax highlighting, better tracebacks, better introspection with the same interface as the pdb module.
 
 .. code:: console

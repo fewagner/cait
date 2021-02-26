@@ -98,6 +98,7 @@ def simulate_events(path_h5,
             else:
                 raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
         else:  # do reuse baselines
+            reuse_counter = 0
             bl_rms = np.array(h5f['noise']['fit_rms'])
             nmbr_bl_total = len(bl_rms[0])
             counter = 0
@@ -115,6 +116,8 @@ def simulate_events(path_h5,
 
                 counter += 1
                 if counter >= nmbr_bl_total:
+                    print('Nmbr resets to start of Baseline dataset: {}'.format(reuse_counter))
+                    reuse_counter += 1
                     counter = 0
                     idx_lists.append(np.array(take_idx))
                     take_idx = []

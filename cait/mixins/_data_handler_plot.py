@@ -36,6 +36,7 @@ class PlotMixin(object):
                  sample_length=0.04,
                  show=True,
                  save_path=None,
+                 name_appendix='',
                  dpi=150):
         """
         Plot the standardevent of all channels
@@ -48,8 +49,8 @@ class PlotMixin(object):
         """
 
         with h5py.File(self.path_h5, 'r') as f:
-            sev = f[type]['event']
-            sev_fitpar = f[type]['fitpar']
+            sev = f[type + name_appendix]['event']
+            sev_fitpar = f[type + name_appendix]['fitpar']
 
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
@@ -73,7 +74,7 @@ class PlotMixin(object):
                     plt.ylabel('Amplitude (V)')
                     plt.legend()
                     if title is None:
-                        plt.title('Channel ' + str(ch) + ' ' + type)
+                        plt.title('Channel ' + str(ch) + ' ' + type + name_appendix)
                     else:
                         plt.title(title)
 
@@ -92,7 +93,7 @@ class PlotMixin(object):
                 plt.ylabel('Amplitude (V)')
                 plt.legend()
                 if title is None:
-                    plt.title('Channel ' + str(channel) + ' ' + type)
+                    plt.title('Channel ' + str(channel) + ' ' + type + name_appendix)
                 else:
                     plt.title(title)
 
@@ -136,7 +137,8 @@ class PlotMixin(object):
                 plt.plot(t, sev, zorder=10, linewidth=3, label='Standardevent')
             else:
                 plt.plot(t, sev, color='red', zorder=10, linewidth=3, alpha=0.5, label='Standardevent')
-                plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, color='black', alpha=0.7, zorder=10, label='Parametric Fit')
+                plt.plot(t, pulse_template(t, *sev_fitpar), linewidth=2, color='black', alpha=0.7, zorder=10,
+                         label='Parametric Fit')
             make_grid()
             plt.legend()
             plt.xlabel('Time (ms)')
@@ -229,7 +231,7 @@ class PlotMixin(object):
 
             if down is not None:
                 first = np.array([freq[0]])
-                freq = np.mean(freq[1:].reshape(int(len(freq)/down), down), axis=1)
+                freq = np.mean(freq[1:].reshape(int(len(freq) / down), down), axis=1)
                 freq = np.concatenate((first, freq), axis=0)
 
             # plot
@@ -262,6 +264,73 @@ class PlotMixin(object):
                 plt.savefig(save_path)
             if show:
                 plt.show(block=block)
+
+    def show_efficiency(self,
+                        channel=0,
+                        cut_flag=None,
+                        which_quantity='true_ph',
+                        bins=100,
+                        title=None,
+                        xlabel=None,
+                        ylabel=None,
+                        show=True,
+                        xran=None,
+                        yran=None,
+                        block=False,
+                        save_path=None,
+                        dpi=150,
+                        range=None,
+                        ):
+        # TODO
+
+        with h5py.File(self.path_h5, 'r+') as hf5:
+            if which_quantity == 'true_ph':
+                vals = hf5['events']['true_ph'][channel]
+            elif which_quantity == 'ph':
+                vals = hf5['events']['mainpar'][channel, :, 0]  # zero is the pulse height
+            elif which_quantity == 'of':
+                vals = hf5['events']['of_ph'][channel]
+            elif which_quantity == 'sef':
+                vals = hf5['events']['sev_fit_par'][channel, :, 0]  # zero is the fitted height
+            elif which_quantity == 'recoil_energy':
+                vals = hf5['events']['recoil_energy'][channel]
+            else:
+                raise NotImplementedError('Only methods ph, of and sef are implemented!')
+
+        all, bins = np.histogram(vals, bins=bins, range=range)
+        surviving, _ = np.histogram(vals[cut_flag], bins=bins)
+        efficiency = surviving/all
+
+        if np.any(all == 0):
+            raise ValueError(
+                'Attention, one of the bins in your uncut efficiency events is zero! Reduce number of bins or hand more events.')
+
+        use_cait_style(dpi=dpi)
+        plt.close()
+        plt.hist(bins[:-1] + (bins[1] - bins[0])/2,  # this gives the mean values of all bins, which do each appear once
+                 bins=bins,
+                 weights=efficiency,  # by this we weight the bins counts (all 1) to the actual efficiency
+                 zorder=10)
+        make_grid()
+        if xlabel is None:
+            plt.xlabel('True Pulse Height')
+        else:
+            plt.xlabel(xlabel)
+        if ylabel is None:
+            plt.ylabel('Survival Probability')
+        else:
+            plt.ylabel(ylabel)
+        if title is not None:
+            plt.title(title)
+        plt.xlim(xran)
+        plt.ylim(yran)
+        if save_path is not None:
+            plt.savefig(save_path)
+        if show:
+            plt.show(block=block)
+
+        return efficiency, all, bins
+
 
     # plot histogram of some value
     def show_values(self,

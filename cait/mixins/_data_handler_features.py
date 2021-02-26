@@ -79,6 +79,7 @@ class FeaturesMixin(object):
                  use_labels=False,
                  correct_label=None,
                  use_idx=None,
+                 name_appendix='',
                  pulse_height_interval=None,
                  left_right_cutoff=None,
                  rise_time_interval=None,
@@ -148,15 +149,15 @@ class FeaturesMixin(object):
 
             if correct_label is None:
                 if type == 'events':
-                    sev = h5f.require_group('stdevent')
+                    sev = h5f.require_group('stdevent' + name_appendix)
                     correct_label = 1
                 elif type == 'testpulses':
-                    sev = h5f.require_group('stdevent_tp')
+                    sev = h5f.require_group('stdevent_tp' + name_appendix)
                     correct_label = 2
                 else:
                     raise NotImplementedError('Type must be events or testpulses!')
             else:
-                sev = h5f.require_group('stdevent_{}'.format(correct_label))
+                sev = h5f.require_group('stdevent' + name_appendix)
 
             if use_idx is None:
                 use_idx = list(range(len(events[0])))

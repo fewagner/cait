@@ -10,9 +10,27 @@ is however excluded from  Git, so don't worry about messing up the folder struct
 Please execute the tutorial files **in the given order**, they partially depend on data and features that were generated in
 some preceding notebook.
 
-As Cait is right now not tested on many different systems, but depend on several underlying packages, we include in the
-following the output of 'pip freeze' on the system where we developed Cait. This includes the version numbers of all
-dependences, in case we forgot to include something in the requirements properly:
+.. note::
+    **Script Execution**
+
+    If cait is executed within a Python script rather that with IPython (e.g. Jupyter Notebooks), the main routine has to start with:
+
+        if __name__ == '__main__':
+
+    The need for the explicit main routine specification is common for multithreading in Python.
+
+We like to use and recommend a tool like **HDFView** or **VITables** to view the content of the HDF5 files,
+that are used by Cait to store data.
+
+Environment configuration
+=========================
+
+As Cait is right now not tested on many different systems, but depends on several underlying packages, we include in the
+following the output of 'pip freeze' on the system where we developed large parts of Cait. This includes the version
+numbers of all dependencies, in case we forgot to include a package in the requirements properly. If this is the case,
+please open an issue in the Cait GitLab repository.
+
+.. code:: bash
 
     $ (venv) felix@Felixs-MacBook-Pro cait % pip freeze
     absl-py==0.11.0

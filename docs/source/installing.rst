@@ -52,7 +52,7 @@ As a developer of the Cait Library, you don't want to generate a new wheel file 
 
     $ pip install -e .
 
-pip editable option, that includes changes right away. It is also possible to install directly from the git repository, for this there are many tutorials available, e.g. [this one](https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/).
+pip editable option, that includes changes right away. It is also possible to install directly from the git repository, for this there are many tutorials available, e.g. https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/.
 
 Wheel files (for contributors)
 ====================================
@@ -73,7 +73,7 @@ Installation over Git
 ====================================
 
 The easiest way to install this library is to install it directly from git.
-Following [this reference](https://pip.pypa.io/en/latest/reference/pip_install/#git) we only have to
+Following [ https://pip.pypa.io/en/latest/reference/pip_install/#git ] we only have to
 execute the two commands:
 
 .. code:: console
