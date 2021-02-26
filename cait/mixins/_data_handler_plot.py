@@ -177,7 +177,7 @@ class PlotMixin(object):
 
                 for i, ch in enumerate(self.channel_names):
                     plt.subplot(self.nmbr_channels, 1, i + 1)
-                    plt.loglog(f['noise']['freq'], f['noise']['nps'][i], color=self.colors[i], zorder=10, linewidth=3)
+                    plt.loglog(np.array(f['noise']['freq']), np.array(f['noise']['nps'][i]), color=self.colors[i], zorder=10, linewidth=3)
                     make_grid()
                     if title is None:
                         plt.title('Channel ' + str(ch) + ' NPS')
@@ -187,7 +187,7 @@ class PlotMixin(object):
                 plt.xlabel('Frequency (Hz)')
 
             else:
-                plt.loglog(f['noise']['freq'], f['noise']['nps'][channel], color=self.colors[channel], zorder=10,
+                plt.loglog(np.array(f['noise']['freq']), np.array(f['noise']['nps'][channel]), color=self.colors[channel], zorder=10,
                            linewidth=3)
                 make_grid()
                 if title is None:
@@ -242,7 +242,7 @@ class PlotMixin(object):
 
                 for i, ch in enumerate(self.channel_names):
                     plt.subplot(self.nmbr_channels, 1, i + 1)
-                    plt.loglog(freq, of[i], color=self.colors[i], zorder=10, linewidth=3)
+                    plt.loglog(np.array(freq), np.array(of[i]), color=self.colors[i], zorder=10, linewidth=3)
                     make_grid()
                     plt.ylabel('Amplitude (a.u.)')
                     if title is None:
@@ -251,7 +251,7 @@ class PlotMixin(object):
                         plt.title(title)
                 plt.xlabel('Frequency (Hz)')
             else:
-                plt.loglog(freq, of[channel], color=self.colors[channel], zorder=10, linewidth=3)
+                plt.loglog(np.array(freq), np.array(of[channel]), color=self.colors[channel], zorder=10, linewidth=3)
                 make_grid()
                 plt.xlabel('Frequency (Hz)')
                 plt.ylabel('Amplitude (a.u.)')
