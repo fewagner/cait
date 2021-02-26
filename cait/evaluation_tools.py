@@ -734,7 +734,7 @@ class EvaluationTools:
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
             return self.label_nbrs
 
-    def __get_train_pred_in_color(self, pred_method, verb=False):
+    def __get_train_labels_in_color(self, pred_method, verb=False):
         return [self.labels_color_map[i] for i in self.__get_train_label_nbrs(verb=verb)]
 
     def __get_test_labels_in_color(self, verb=False):
