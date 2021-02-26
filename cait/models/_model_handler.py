@@ -4,6 +4,7 @@
 
 import pickle
 
+
 # -----------------------------------------------------
 # ML MODULE
 # -------------------------------------------------
@@ -13,8 +14,8 @@ class ModelHandler:
     Wrapper class to store ML models and scalers
     """
 
-    def __init__(self, run, module, model_type, record_length, nmbr_channels,
-                 sample_frequency=25000, down=1,
+    def __init__(self, model_type, run: str = '01', module: str = 'Test', record_length: int = 16384,
+                 sample_frequency: int = 25000, nmbr_channels=2, down: int = 1,
                  model1=None, model2=None, model3=None,
                  classes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]):
         """
@@ -57,7 +58,6 @@ class ModelHandler:
 
         print('MLModel Instance created.')
 
-
     def add_model(self, channel, model, down=1):
         """
         TODO
@@ -79,7 +79,6 @@ class ModelHandler:
         # add the model
         self.models[channel] = model
 
-
     def get_model(self, channel):
         """
         TODO
@@ -90,7 +89,6 @@ class ModelHandler:
         :rtype:
         """
         return self.models[channel]
-
 
     def add_scaler(self, scaler, channel):
         """
@@ -105,7 +103,6 @@ class ModelHandler:
         """
         self.scalers[channel] = scaler
         print('Added scaler for channel {}.'.format(channel))
-
 
     def save(self, path, name_app=None):
         """
@@ -122,6 +119,6 @@ class ModelHandler:
         self.info = input('Write info about this instance: ')
         path_model = '{}/{}_run{}_{}'.format(path, self.model_type, self.run, self.module)
         if name_app is not None:
-            path_model += '_{}'.format(name_app)
+            path_model += '{}'.format(name_app)
         pickle.dump(self, open(path_model, 'wb'), pickle.HIGHEST_PROTOCOL)
         print('Save Model to {}.'.format(path_model))
