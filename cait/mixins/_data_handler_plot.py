@@ -15,6 +15,9 @@ from ..styles._plt_styles import use_cait_style, make_grid
 # -----------------------------------------------------------
 
 def _str_empty(value):
+    """
+    Return an empty string if the argument is None, otherwise return it as string.
+    """
     if value is None:
         return ''
     else:
@@ -39,7 +42,10 @@ class PlotMixin(object):
                  name_appendix='',
                  dpi=150):
         """
-        Plot the standardevent of all channels
+        Plot the standardevent of all channels.
+
+        TODO
+
         :param type: string, either stdevent for events or stdevent_tp for testpulses
         :param show_fit: bool, if True then also plot the parametric fit
         :param block: bool, if False the matplotlib generated figure window does not block
@@ -114,6 +120,8 @@ class PlotMixin(object):
         """
         Plot an exceptional standardevent of one channel
 
+        TODO
+
         :param naming: string, the naming of the event, must match the group in the h5 data set,
             e.g. "carrier" --> group name "stdevent_carrier"
         :param show_fit: bool, if True then also plot the parametric fit
@@ -163,6 +171,9 @@ class PlotMixin(object):
                  dpi=150):
         """
         Plot the Noise Power Spectrum of all channels
+
+        TODO
+
         :param block: bool, if False the matplotlib generated figure window does not block
             the futher code execution
         :return: -
@@ -213,6 +224,9 @@ class PlotMixin(object):
                 dpi=150):
         """
         Plot the Optimum Filter of all channels
+
+        TODO
+
         :param block: bool, if False the matplotlib generated figure window does not block
             the futher code execution
         :return: -
@@ -281,7 +295,40 @@ class PlotMixin(object):
                         dpi=150,
                         range=None,
                         ):
-        # TODO
+        """
+        TODO
+
+        :param channel:
+        :type channel:
+        :param cut_flag:
+        :type cut_flag:
+        :param which_quantity:
+        :type which_quantity:
+        :param bins:
+        :type bins:
+        :param title:
+        :type title:
+        :param xlabel:
+        :type xlabel:
+        :param ylabel:
+        :type ylabel:
+        :param show:
+        :type show:
+        :param xran:
+        :type xran:
+        :param yran:
+        :type yran:
+        :param block:
+        :type block:
+        :param save_path:
+        :type save_path:
+        :param dpi:
+        :type dpi:
+        :param range:
+        :type range:
+        :return:
+        :rtype:
+        """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
             if which_quantity == 'true_ph':
@@ -353,6 +400,8 @@ class PlotMixin(object):
                     dpi=150):
         """
         Shows a histogram of some values from the HDF5 file
+
+        TODO
 
         :param group: string, The group index that is used in the hdf5 file,
             typically either events, testpulses or noise
@@ -431,6 +480,8 @@ class PlotMixin(object):
                      dpi=150):
         """
         Shows a scatter plot of some values from the HDF5 file
+
+        TODO
 
         :param groups: list of string, The group index that is used in the hdf5 file,
             typically either events, testpulses or noise; first list element applies to data on x,
@@ -515,6 +566,8 @@ class PlotMixin(object):
                   dpi=150):
         """
         Show a histogram of main parameter values
+
+        TODO
 
         :param which_mp: string, possible are: ['pulse_height', 't_zero', 't_rise', 't_max', 't_decaystart', 't_half', 't_end',
             'offset', 'linear_drift', 'quadratic_drift']
@@ -613,6 +666,8 @@ class PlotMixin(object):
                 dpi=150):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
+
+        TODO
 
         :param x_channel: int, the number of the channel that PHs are on the x axis
         :param y_channel: int, the number of the channel that PHs are on the y axis
@@ -725,6 +780,8 @@ class PlotMixin(object):
                         dpi=150):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
+
+        TODO
 
         :param show_fit: bool, if true show the fitted logistics curve
         :param channel: int, the channel for that we want to plot the saturation curve

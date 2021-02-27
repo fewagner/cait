@@ -38,7 +38,6 @@
    documentation/cuts
    documentation/data
    documentation/datasets
-   documentation/evaluation
    documentation/features
    documentation/filter
    documentation/fit

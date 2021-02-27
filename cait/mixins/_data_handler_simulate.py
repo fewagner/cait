@@ -48,6 +48,8 @@ class SimulateMixin(object):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
 
+        TODO
+
         :param path_sim: string, the full path where to store the simulated data set
         :param size_events: int, the number of events to simulate; if >0 we need a sev in the hdf5
         :param size_tp: int, the number of testpulses to simulate; if >0 we need a tp-sev in the hdf5

@@ -18,43 +18,51 @@ class CsmplMixin(object):
     """
 
     def include_csmpl_triggers(self,
-                               csmpl_paths,  # list of all paths for the channels
-                               thresholds,  # in V
-                               trigger_block=None,
-                               take_samples=-1,
-                               start_time=0,
-                               of=None,
-                               path_sql=None,
-                               csmpl_channels=None,
-                               sql_file_label=None,
-                               down=1
+                               csmpl_paths: list,  # list of all paths for the channels
+                               thresholds: list,  # in V
+                               trigger_block:int=None,
+                               take_samples:int=None,
+                               of:list=None,
+                               path_sql:str=None,
+                               csmpl_channels:list=None,
+                               sql_file_label:str=None,
+                               down:int=1
                                ):
         """
+        Trigger *.csmpl files of a detector module and include them in the HDF5 set.
 
+        The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
+        same module. For determining the absolute time stamp of the triggers, we also need the SQL file that belongs to
+        the measurement. The absolute time stamp will be precise only to seconds, as it is only stored with this
+        precision in the SQL file. This is not a problem for out analysis, as all events within this files are down to
+        micro seconds precisely matched to each other.
 
-        :param csmpl_paths:
-        :type csmpl_paths:
-        :param thresholds:
-        :type thresholds:
-        :param trigger_block:
-        :type trigger_block:
-        :param take_samples:
-        :type take_samples:
-        :param start_time:
-        :type start_time:
-        :param of:
-        :type of:
-        :param path_sql:
-        :type path_sql:
-        :param csmpl_channels:
-        :type csmpl_channels:
-        :param filenames:
-        :type filenames:
-        :param down:
-        :type down:
-        :return:
-        :rtype:
+        :param csmpl_paths: The full paths for the csmpl files of all channels.
+        :type csmpl_paths: list of strings
+        :param thresholds: The trigger tresholds for all channels in Volt.
+        :type thresholds: list of floats
+        :param trigger_block: The number of samples for that the trigger is blocked after a trigger. If None, it is
+            the length of a record window.
+        :type trigger_block: int or None
+        :param take_samples: The number of samples that we trigger from the stream file. Standard argument is None, which
+            means all samples are triggered.
+        :type take_samples: int or None
+        :param of: The optimum filter transfer functions for all channels.
+        :type of: list of arrays
+        :param path_sql: The path to the SQL database that contains the start of file timestamp.
+        :type path_sql: string
+        :param csmpl_channels: The CDAQ channels that we are triggering. The channels numbers are usually appended to
+            the file name of the CSMPL files and written in the SQL database.
+        :type csmpl_channels: list of ints
+        :param sql_file_label: In the SQL database, we need to access the start time of file with the corresponding
+            label of the file. The label can be looked up in the SQL file.
+        :type sql_file_label: string
+        :param down: The downsampling factor for triggering.
+        :type down: int
         """
+
+        if take_samples is None:
+            take_samples = -1
 
         if trigger_block is None:
             trigger_block = self.record_length
@@ -83,7 +91,7 @@ class CsmplMixin(object):
                                      take_samples=take_samples,
                                      record_length=self.record_length,
                                      sample_length=1 / self.sample_frequency,
-                                     start_hours=start_time,
+                                     start_hours=0,
                                      trigger_block=trigger_block,
                                      down=down,
                                      )
@@ -134,7 +142,12 @@ class CsmplMixin(object):
 
 
     def include_nps(self, nps):
-        # TODO
+        """
+        Include the Noise Power Spectrum to the HDF5 file.
+
+        :param nps: The optimum filter transfer function.
+        :type nps: array of shape (channels, samples/2 + 1)
+        """
         with h5py.File(self.path_h5, 'r+') as f:
             noise = f.require_group(name='noise')
             if 'nps' in noise:
@@ -145,7 +158,16 @@ class CsmplMixin(object):
 
 
     def include_sev(self, sev, fitpar, mainpar):
-        # TODO
+        """
+        Include the Standard Event to a HDF5 file.
+
+        :param sev: The standard events of all channels.
+        :type sev: array with shape (channels, samples)
+        :param fitpar: The Proebst pulse shape fit parameters for all standard events.
+        :type fitpar: array with shape (channels, 6)
+        :param mainpar: The main parameters of all standard events.
+        :type mainpar: array with shape (channels, 10)
+        """
         with h5py.File(self.path_h5, 'r+') as f:
             stdevent = f.require_group(name='stdevent')
             if 'event' in stdevent:
@@ -164,7 +186,16 @@ class CsmplMixin(object):
 
 
     def include_of(self, of_real, of_imag, down=1):
-        # TODO
+        """
+        Include the optimum filter transfer function into the HDF5 file.
+
+        :param of_real: The real part of the transfer function.
+        :type of_real: array of shape (channels, samples/2 + 1)
+        :param of_imag: The imaginary part of the transfer function.
+        :type of_imag: array of shape (channels, samples/2 + 1)
+        :param down: The downsample rate of the transfer function.
+        :type down: int
+        """
         with h5py.File(self.path_h5, 'r+') as f:
             optimumfilter = f.require_group(name='optimumfilter')
             if down > 1:
@@ -197,8 +228,32 @@ class CsmplMixin(object):
                                  min_tpa=0.001,
                                  min_cpa=10.1,
                                  down=1):
+        """
+        Include the triggered events from the CSMPL files.
 
-        # write to new file: triggered events, time trig events, timestamps tpa and mainpar tp, nps, of, stdeven inkl fit and main par,
+        It is recommended to exclude the testpulses. This means, we exclude them from the events group and put them
+        separately in the testpulses and control pulses groups.
+
+        :param csmpl_paths: The full paths for the csmpl files of all channels.
+        :type csmpl_paths: list of strings
+        :param max_time_diff: The maximal time difference between a trigger and a test pulse time stamp such that the
+            trigger is still counted as test pulse.
+        :type max_time_diff: float
+        :param exclude_tp: If true, we separate the test pulses from the triggered events and put them in individual
+            groups.
+        :type exclude_tp: bool
+        :param sample_duration: The duration of a sample in seconds.
+        :type sample_duration: float
+        :param datatype: The datatype of the stored events.
+        :type datatype: string
+        :param min_tpa: TPA values below this are not counted as testpulses.
+        :type min_tpa: float
+        :param min_cpa: TPA values above this are counted as control pulses.
+        :type min_cpa: float
+        :param down: The events get stored downsampled by this factor.
+        :type down: int
+        """
+
         # open read file
         with h5py.File(self.path_h5, 'r+') as h5f:
             if "events" in h5f:
@@ -365,6 +420,28 @@ class CsmplMixin(object):
                             triggerdelay=2081024,
                             samplediv=2,
                             sample_length=0.00004):
+        """
+        Include the test pulse time stamps in the HDF5 data set.
+
+        :param path_teststamps: The path to the TEST_STAMPS file.
+        :type path_teststamps: string
+        :param path_dig_stamps: The path to the DIG_STAMPS file.
+        :type path_dig_stamps: string
+        :param path_sql: The path to the SQL database that contains the start of file timestamp.
+        :type path_sql: string
+        ::param csmpl_channels: The CDAQ channels that we are triggering. The channels numbers are usually appended to
+            the file name of the CSMPL files and written in the SQL database.
+        :type csmpl_channels: list of ints
+        :param sql_file_label: In the SQL database, we need to access the start time of file with the corresponding
+            label of the file. The label can be looked up in the SQL file.
+        :type sql_file_label: string
+        :param triggerdelay: The number of samples recorded in one bankswitch.
+        :type triggerdelay: int
+        :param samplediv: The oversampling rate by the CDAQ compared to the saved sample rate.
+        :type samplediv: int
+        :param sample_length: The duration of a sample in seconds.
+        :type sample_length: float
+        """
 
         # open file stream
         with h5py.File(self.path_h5, 'r+') as h5f:
