@@ -2,6 +2,8 @@
 cait
 ****
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/6808df46-6564-4c7f-9563-a18257b38a81/deploy-status)](https://app.netlify.com/sites/ecstatic-goodall-d4878a/deploys)
+
 Cait (Cryogenic Artificial Intelligence Tools) is a Python 3 software package for the machine learning based analysis
 of raw data from cryogenic dark matter experiments. In the current version, it is tailored to the needs of the CRESST
 experiment, but also suitable for the COSINUS and NUCLEUS experiment.
