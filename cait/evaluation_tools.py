@@ -27,6 +27,14 @@ from .styles._plt_styles import use_cait_style, make_grid
 
 
 class EvaluationTools:
+    """
+    The Class EvaluationTools provides a easier way to handle the data.
+    Especially for hdf5-files as widely used in this library.
+    Besides that it also provides a easy way to organize predictions as well
+    as visualize the results via confusion matrix and TSNE or PCA plots to depict high dimensional data.
+    How it is used is best seen in the tutorial 'Machine Learning-based Event Selection'.
+    """
+
     save_plot_dir = './'
     save_as = False
 
@@ -106,9 +114,15 @@ class EvaluationTools:
             self.label_nbrs = np.hstack([self.label_nbrs, label_nbrs])
         self.__add_labels_color_map()
 
-    def __add_labels_color_map(self):
+    def __add_labels_color_map(self,verb=False):
         self.labels_color_map = {}
-        for i, ln in enumerate(np.unique(self.get_label_nbrs('all'))):
+        possible_labels = np.unique(self.get_label_nbrs(what='all',verb=verb))
+        if self.predictions is not None:
+            for pm in self.predictions.keys():
+                possible_labels = np.hstack([possible_labels, np.unique(self.get_pred(pred_method=pm,verb=verb))])
+        
+        for i, ln in enumerate(np.unique(possible_labels)):
+        # for i, ln in enumerate(np.unique([self.get_label_nbrs(what='all')])):
             self.labels_color_map[ln] = self.color_order[i]
 
     def __add_labels(self, labels):
@@ -238,7 +252,7 @@ class EvaluationTools:
 
             # find the index of the current file in the list of files
             file_index = self.files.index(file)
-            # import ipdb; ipdb.set_trace()
+            
             if (type(which_data) is str) and (which_data == 'mainpar'):
                 self.__add_data(
                     np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
@@ -367,8 +381,8 @@ class EvaluationTools:
         """
         if len(pred) != len(self.label_nbrs):
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                             "The parameter 'pred' must have the same amoutn of entries ({}) as " +
-                             "events ({}).".format(len(pred), len(self.label_nbrs)))
+                             "The parameter 'pred' must have the same amoutn of entries ({}) as ".format(len(pred)) +
+                             "events ({}).".format(len(self.label_nbrs)))
 
         if self.predictions is None:
             self.predictions = dict([(pred_method, (true_labels, pred))])
@@ -378,7 +392,8 @@ class EvaluationTools:
             elif verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "A prediction method with the name '{}' allready exists.".format(pred_method))
-
+        
+        self.__add_labels_color_map(verb=verb)
         if verb:
             print('Added Predictions to instance.')
 
@@ -416,7 +431,7 @@ class EvaluationTools:
         self.test_size = test_size
         total_nbr = np.sum(self.events_per_file)
         event_num = np.arange(total_nbr)
-        event_num_train, event_num_test = train_test_split(
+        event_num_train, _ = train_test_split(
             event_num, test_size=test_size)
 
         self.is_train = np.isin(event_num, event_num_train)
@@ -450,14 +465,15 @@ class EvaluationTools:
         :param verb: boolean, default False, if True addtional output is printed to the console
         :return: list of colors (same color for the same labels)
         """
-        unique_label_dict = dict(
-            [(l, i) for i, l in enumerate(np.unique(label_nbrs))])
-        if len(unique_label_dict) > len(self.color_order):
-            if verb:
-                print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                      "Given label numbers contain more labels than supported colors.")
-            return None
-        return [self.color_order[unique_label_dict[l]] for l in label_nbrs]
+        # unique_label_dict = dict(
+        #     [(l, i) for i, l in enumerate(np.unique(label_nbrs))])
+        # if len(unique_label_dict) > len(self.color_order):
+        #     if verb:
+        #         print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+        #               "Given label numbers contain more labels than supported colors.")
+        #     return None
+        # return [self.color_order[unique_label_dict[l]] for l in label_nbrs]
+        return [self.labels_color_map[i] for i in label_nbrs]
 
     def convert_to_labels_colors(self, label_nbrs, return_legend=False, verb=False):
         """
@@ -517,7 +533,7 @@ class EvaluationTools:
         :rtype: tuple
         """
 
-        self.__check_test_set(verb=verb)
+        self.__check_train_set(verb=verb)
         return self.__get_test_event_nbrs(verb=verb), \
                self.__get_test_data(verb=verb), \
                self.__get_test_features(verb=verb), \
@@ -734,7 +750,7 @@ class EvaluationTools:
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
             return self.label_nbrs
 
-    def __get_train_labels_in_color(self, pred_method, verb=False):
+    def __get_train_labels_in_color(self, verb=False):
         return [self.labels_color_map[i] for i in self.__get_train_label_nbrs(verb=verb)]
 
     def __get_test_labels_in_color(self, verb=False):
@@ -862,6 +878,7 @@ class EvaluationTools:
                     print(console_colors.WARNING + "NOTE: " + console_colors.ENDC +
                           "The prediction method '{}' does not exist in the stored predictions.".format(pred_method))
                 return False
+
             if self.get_pred_true_labels(pred_method):
                 return [self.labels_color_map[i] for i in self.get_pred(pred_method, verb=verb)]
             else:
@@ -1010,7 +1027,7 @@ class EvaluationTools:
         def onclick(event):
             for i in range(nrows * ncols):
                 if event.inaxes == ax[i]:
-                    cont, ind = sc[i].contains(event)
+                    _, ind = sc[i].contains(event)
                     if ind['ind'].size > 1:
                         print('Select a single event.')
                     elif ind['ind'].size == 1:
@@ -1041,7 +1058,7 @@ class EvaluationTools:
             if event.key == 'm':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        cont, ind = sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
@@ -1072,13 +1089,12 @@ class EvaluationTools:
             elif event.key == 'p':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        cont, ind = sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
-                            import ipdb
-                            ipdb.set_trace()
+                            
 
         if self.save_as == False:
             print("-------------------------------------------------------------------------")
@@ -1214,7 +1230,7 @@ class EvaluationTools:
                 type(xy_comp[1]) != int and \
                 xy_comp[0] > 0 and \
                 xy_comp[1] > 0:
-            raise ValueError(console_colors.ERROR + "ERROR: " + console_colors.ENDC +
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "The parameter xy_comp has to be of shape '(<int>,<int>)'" +
                              "with the integer being > 0.")
 
@@ -1297,7 +1313,7 @@ class EvaluationTools:
         def onclick(event):
             for i in range(nrows * ncols):
                 if event.inaxes == ax[i]:
-                    cont, ind = sc[i].contains(event)
+                    _, ind = sc[i].contains(event)
                     if ind['ind'].size > 1:
                         print('Select a single event.')
                     elif ind['ind'].size == 1:
@@ -1328,7 +1344,7 @@ class EvaluationTools:
             if event.key == 'm':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        cont, ind = sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
@@ -1359,13 +1375,11 @@ class EvaluationTools:
             elif event.key == 'p':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        cont, ind = sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
-                            import ipdb
-                            ipdb.set_trace()
 
         if self.save_as == False:
             print(
@@ -1686,7 +1700,6 @@ class EvaluationTools:
                 bin_boundries[l][1][i] = np.mean(
                     data_dict_sorted[l][2][lower:upper])
 
-        # import ipdb; ipdb.set_trace()
         nrows = math.ceil(len(unique_label_nbrs) / ncols)
         fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
         for i, l in enumerate(unique_label_nbrs):
@@ -1764,9 +1777,7 @@ class EvaluationTools:
         max_height = self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-        max_max_height = np.max(max_height)
-        min_max_height = np.min(max_height)
-
+        
         unique_label_nbrs, unique_label_counts = np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
         data_dict_sorted = dict(
@@ -1802,7 +1813,6 @@ class EvaluationTools:
                 bin_boundries[l][1][i] = np.mean(
                     data_dict_sorted[l][2][lower:upper])
 
-        # import ipdb; ipdb.set_trace()
 
         l = 1  # events
         # nrows = math.ceil(len(unique_label_nbrs)/ncols)
@@ -1917,7 +1927,7 @@ class EvaluationTools:
 
         def onclick(event):
             if event.inaxes == ax:
-                cont, ind = cax.contains(event)
+                # cont, ind = cax.contains(event)
 
                 x = event.xdata
                 y = event.ydata
@@ -1932,14 +1942,14 @@ class EvaluationTools:
 
                 selection = np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
                                            self.get_pred(pred_method, what, verb) == selected_pred_nbr)
-                # import ipdb; ipdb.set_trace()
+
                 results = [
                     self.get_file_nbrs(what, verb)[selection],
                     self.get_event_nbrs(what, verb)[selection],
                     self.get_label_nbrs(what, verb)[selection],
                     self.get_pred(pred_method, what, verb)[selection]
                 ]
-                # import ipdb; ipdb.set_trace()
+
                 print("---------- Events labeled as {} ({}) but predicted as {} ----------".format(
                     self.labels[selected_label_nbr], selected_label_nbr, selected_pred_nbr))
                 for fn, en, ln, pn in zip(*results):
@@ -1959,7 +1969,6 @@ class EvaluationTools:
         fig.colorbar(cax)
 
         if ylabels_order != []:
-            # import ipdb; ipdb.set_trace()
             ax.set_yticks(np.arange(len(ylabels_order)))
             ax.set_yticklabels(ylabels_order)
 
@@ -2013,9 +2022,9 @@ class EvaluationTools:
         lenum = np.arange(lnbr.shape[0])
 
         if type(figsize) is not tuple:
-            fig, ax = plt.subplots()
+            _, ax = plt.subplots()
         else:
-            fig, ax = plt.subplots(figsize=figsize)
+            _, ax = plt.subplots(figsize=figsize)
 
         bars = plt.bar(lenum, lcnt)
         for i, b in enumerate(bars):
@@ -2027,7 +2036,7 @@ class EvaluationTools:
             height = rect.get_height()
             ax.text(rect.get_x() + rect.get_width() / 2, height + 15, i,
                     ha='center', va='bottom')
-        bottom, top = plt.ylim()
+        _, top = plt.ylim()
         plt.ylim(0, 1.1 * top)
 
         ax.set_ylabel("number of events")
