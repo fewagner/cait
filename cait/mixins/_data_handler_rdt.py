@@ -23,6 +23,7 @@ class RdtMixin(object):
                      ints_in_header=7):
         """
         Prints the channel numbers of a number of events in the rdt File, from the beginning
+
         :param path_rdt: string, full path to the rdt file e.g. "data/bcks/bck_001.rdt"
         :param read_events: int, number of events to read from file, if -1 read all events
         :param tpa_list: list, the tpas that are to read from the file, 0 -> events, -1 -> noise, 1 -> tp
@@ -101,6 +102,18 @@ class RdtMixin(object):
 
     # checkout con file
     def checkout_con(self, path_con, read_events=100, ints_in_header=7):
+        """
+        TODO
+
+        :param path_con:
+        :type path_con:
+        :param read_events:
+        :type read_events:
+        :param ints_in_header:
+        :type ints_in_header:
+        :return:
+        :rtype:
+        """
         record = np.dtype([('detector_nmbr', 'int32'),
                            ('pulse_height', 'float32'),
                            ('time_stamp_low', 'uint32'),
@@ -138,6 +151,16 @@ class RdtMixin(object):
 
     # checkout dig file
     def checkout_dig(self, path_dig, read_events=100):
+        """
+        TODO
+
+        :param path_dig:
+        :type path_dig:
+        :param read_events:
+        :type read_events:
+        :return:
+        :rtype:
+        """
         dig = np.dtype([
             ('stamp', np.uint64),
             ('bank', np.uint32),
@@ -155,6 +178,17 @@ class RdtMixin(object):
 
     # checkout test stamps file
     def checkout_test(self, path_test, read_events=100):
+        """
+        TDOO
+
+        :param path_test:
+        :type path_test:
+        :param read_events:
+        :type read_events:
+        :return:
+        :rtype:
+        """
+
         teststamp = np.dtype([
             ('stamp', np.uint64),
             ('tpa', np.float32),
@@ -183,6 +217,7 @@ class RdtMixin(object):
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file
+
         :param path_rdt: string, path to the rdt file e.g. "data/bcks/"
         :param fname: string, name of the file e.g. "bck_001"
         :param path_h5: string, path where the h5 file is saved e.g. "data/hdf5s%"
@@ -235,7 +270,24 @@ class RdtMixin(object):
 
     # include rdt infos to existing hdf5
     def include_rdt(self, path_data, fname, channels, ints_in_header=7, tpa_list=[0, 1, -1], event_dtype='float32'):
-        # TODO
+        """
+        TODO
+
+        :param path_data:
+        :type path_data:
+        :param fname:
+        :type fname:
+        :param channels:
+        :type channels:
+        :param ints_in_header:
+        :type ints_in_header:
+        :param tpa_list:
+        :type tpa_list:
+        :param event_dtype:
+        :type event_dtype:
+        :return:
+        :rtype:
+        """
         print('Accessing RDT File ...')
 
         metainfo, pulse = \
@@ -313,6 +365,16 @@ class RdtMixin(object):
         print('Done.')
 
     def include_con_file(self, path_con_file, ints_in_header=7):
+        """
+        TODO
+
+        :param path_con_file:
+        :type path_con_file:
+        :param ints_in_header:
+        :type ints_in_header:
+        :return:
+        :rtype:
+        """
 
         print('Accessing CON File...')
 

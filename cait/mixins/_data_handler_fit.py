@@ -30,11 +30,13 @@ class FitMixin(object):
     def calc_parametric_fit(self, path_h5=None, type='events', processes=4):
         """
         Calculate the Parameteric Fit for the Events in an HDF5 File.
-        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
 
+        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
+        :type
         :param type: string, either events or testpulses
+        :type
         :param processes: int, the number of processes to use for the calculation
-        :return: -
+        :type
         """
 
         if type not in ['events', 'testpulses']:
@@ -79,18 +81,37 @@ class FitMixin(object):
             h5f[type]['fitpar'][:, idx, :] = fitpar_event
 
     # apply sev fit
-    def apply_sev_fit(self, type='events', only_channels=None, order_bl_polynomial=3, sample_length=0.04, down=1,
+    def apply_sev_fit(self, type='events', only_channels=None, sample_length=0.04, down=1, order_bl_polynomial = 3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
                       verb=False, processes=4, events_to_fit=None, name_appendix=''):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
 
-        :param type: string, either events or testpulses
-        :param order_bl_polynomial: int, either 0,1,2 or 3 - the order of the polynomial assumed for baseline
-        :param sample_length: float, 1000/sample_frequency of the time series of the events
-        :param down: int, power of 2, the downsample factor for the fit
-        :return: -
+        :param type: Name of the group in the HDF5 set, either events or testpulses.
+        :type type: string
+        :param only_channels: Only these channels are fitted, the others are left as is or filled with zeros.
+        :type only_channels: list of ints
+        :param order_bl_polynomial: Either 0,1,2 or 3 - the order of the polynomial assumed for baseline.
+        :type order_bl_polynomial: int
+        :param sample_length: The length of a sample in milliseconds.
+        :type sample_length: float
+        :param down: The downsample factor for the fit, has to be a power of 2.
+        :type down: int
+        :param t0_bounds: The lower and upper bounds in milliseconds for the onset position.
+        :type t0_bounds: 2-tuple of ints
+        :param truncation_level: The pulse height Volt value at that the detector saturation starts.
+        :type truncation_level: list of nmbr_channel floats
+        :param interval_restriction_factor: Indices not inside this interval are ignored from the fit.
+        :type interval_restriction_factor: 2-tuple of ints
+        :param verb: Verbal feedback about the progress.
+        :type verb: bool
+        :param processes: The number of workers for the fit.
+        :type processes: int
+        :param events_to_fit: The number of events in the dataset to fit.
+        :type events_to_fit: int
+        :param name_appendix: This gets appendend to the dataset name in the HDF5 set.
+        :type name_appendix: string
         """
 
         print('Calculating SEV Fit.')
@@ -161,8 +182,12 @@ class FitMixin(object):
         """
         Calcualted the fit coefficients with a cubic polynomial on the noise baselines.
 
-        :param verb: bool, if True the code provides verbal feedback about the progress
-        :return: -
+        :param type: The group name in the HDF5 set, should be noise.
+        :type type: string
+        :param down: The baselines are downsampled by this factor before the fit.
+        :type down: int
+        :param verb: Tf True the code provides verbal feedback about the progress
+        :type verb: bool
         """
 
         print('Calculating Baseline Coefficients.')
@@ -204,14 +229,12 @@ class FitMixin(object):
                         channel=0,
                         only_idx=None):
         """
-        Fit a logistics curve to the testpulse amplitudes vs their pulse heights
+        Fit a logistics curve to the testpulse amplitudes vs their pulse heights.
 
-        :param channel: the channel for that we calcualte the saturation
+        :param channel: The channel for that we calculate the saturation.
         :type channel: int
-        :param only_idx: only these indices are used in the fit of the saturation
+        :param only_idx: Only these indices are used in the fit of the saturation.
         :type only_idx: list of ints
-        :return: -
-        :rtype: -
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:

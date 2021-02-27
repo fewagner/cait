@@ -34,10 +34,16 @@ class FeaturesMixin(object):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
-        :param type: string, either events or testpulses
-        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
-        :param processes: int, the number of processes to use for the calculation
-        :return: -
+        :param type: The group in the HDF5 set, either events or testpulses.
+        :param type: string
+        :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
+        :param path_h5: string or None
+        :param processes: The number of processes to use for the calculation.
+        :param processes: int
+        :param down: The events get downsampled by this factor for the calculation of main parameters.
+        :param down: int
+        :param: max_bounds: The interval of indices to which we restrict the maximum search for the pulse height.
+        :param: max_bounds: tuple of two ints
         """
 
         if not path_h5:
@@ -94,31 +100,49 @@ class FeaturesMixin(object):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
 
-        :param type: string, either "events" or "testpulses"
-        :param use_labels: bool, if True a labels file must be included in the hdf5 file,
-            then only the events labeled as events or testpulses are included in the calculation
-        :param correct_label: int, the label to be used for the sev generation
-        :param use_idx: list of ints, only these indices are included for the sev generation
-        :param pulse_height_interval: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
-            and lower bound for the pulse heights to include into the creation of the SEV
-        :param left_right_cutoff: list of NMBR_CHANNELS floats, the maximal abs value of the linear slope of events
-            to be included in the Sev calculation; based on the sample index as x-values
-        :param rise_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
-            and lower bound for the rise time to include into the creation of the SEV;
-            based on the sample index as x-values
-        :param decay_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals), the upper
-            and lower bound for the decay time to include into the creation of the SEV;
-            based on the sample index as x-values
-        :param onset_interval:  list of NMBR_CHANNELS lists of length 2 (intervals), the upper
-            and lower bound for the onset time to include into the creation of the SEV;
-            based on the sample index as x-values
-        :param remove_offset: bool, if True the offset is removed before the events are superposed for the
-            sev calculation; highly recommended!
-        :param verb: bool, if True some verbal feedback is output about the progress of the method
-        :param scale_fit_height: bool, if True the parametric fit to the sev is normalized to height 1 after
-            the fit is done
-        :param sample_length: float, the length of one sample in milliseconds
-        :return: -
+        :param type: The group name in the HDF5 set, either "events" or "testpulses".
+        :type type: string
+        :param use_labels: Tf True a labels file must be included in the hdf5 file,
+            then only the events labeled as events or testpulses are included in the calculation.
+        :type use_labels: bool
+        :param correct_label: The label to be used for the sev generation.
+        :type correct_label: int
+        :param use_idx: Only these indices are included for the sev generation.
+        :type use_idx: list of ints
+        :param name_appendix: This gets appended to the group name stdevent in the HDF5 set.
+        :type name_appendix: string
+        :param pulse_height_interval: The upper and lower bound for the pulse heights to include into the creation
+            of the SEV.
+        :type pulse_height_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
+        :param left_right_cutoff: The maximal abs value of the linear slope of events
+            to be included in the Sev calculation. The slope is calculated with respect to the sample index as x-values.
+        :type left_right_cutoff: list of NMBR_CHANNELS floats
+        :param rise_time_interval: The upper
+            and lower bound for the rise time to include into the creation of the SEV.
+            based on the sample index as x-values.
+        :type rise_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
+        :param decay_time_interval: The upper
+            and lower bound for the decay time to include into the creation of the SEV.
+            Based on the sample index as x-values.
+        :type decay_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
+        :param onset_interval:  The upper
+            and lower bound for the onset time to include into the creation of the SEV.
+            Based on the sample index as x-values.
+        :type onset_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
+        :param remove_offset: Tf True the offset is removed before the events are superposed for the
+            sev calculation. Highly recommended!
+        :type remove_offset: bool
+        :param verb: If True some verbal feedback is output about the progress of the method.
+        :type verb: bool
+        :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
+            the fit is done.
+        :type scale_fit_height: bool
+        :param sample_length: The length of one sample in milliseconds.
+        :type sample_length: float
+        :param t0_start: The start values for t0 in the fit.
+        :type t0_start: 2-tupel of floats
+        :param opt_start: If true, a pre-fit is applied to find optimal start values.
+        :type opt_start: bool
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -223,9 +247,10 @@ class FeaturesMixin(object):
 
     def calc_of(self, down=1):
         """
-        Calculate the Optimum Filer from the NPS and the SEV
+        Calculate the Optimum Filer from the NPS and the SEV.
 
-        :return: -
+        :param down: The downsample factor of the optimal filter transfer function.
+        :type down: int
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -272,12 +297,14 @@ class FeaturesMixin(object):
     # apply the optimum filter
     def apply_of(self, type='events', chunk_size=10000, hard_restrict=False):
         """
-        Calculates the height of events or testpulses after applying the optimum filter
+        Calculates the height of events or testpulses after applying the optimum filter.
 
-        :param type: string, either events of testpulses
-        :param chunk_size: int, the size how many events are processes simultaneoursly to avoid memory error
-        :param hard_restrict: bool, if True, the maximum search is restricted to 20-30% of the record window.
-        :return: -
+        :param type: The group name in the HDF5 set, either events of testpulses.
+        :type type: string
+        :param chunk_size: The size how many events are processes simultaneously to avoid memory error.
+        :type chunk_size: int
+        :param hard_restrict: If True, the maximum search is restricted to 20-30% of the record window.
+        :type hard_restrict: bool
         """
 
         print('Calculating OF Heights.')
@@ -327,34 +354,49 @@ class FeaturesMixin(object):
         """
         Calculate an exceptional Standard Event for a Class in the HDF5 File, for only one specific channel.
 
-        :param naming: string, pick a name for the type of event
-        :param channel: int, the number of the channel in the hdf5 file
-        :param type: string, either "events" or "testpulses"
-        :param use_prediction_instead_label: bool, if True then instead of the labels the predictions are used
-        :param model: string or None, if set this is the name of the model whiches predictions are in the
-            h5 file, e.g. "RF" --> look for "RF_predictions"
-        :param correct_label: int or None, if not None use only events with this label
-        :param use_idx: list of ints or None, if set then only these indices are used for the sev creation
-        :param pulse_height_interval: list of length 2 (interval), the upper
-            and lower bound for the pulse heights to include into the creation of the SEV
-        :param left_right_cutoff: float, the maximal abs value of the linear slope of events
-            to be included in the Sev calculation; based on the sample index as x-values
-        :param rise_time_interval: lists of length 2 (interval), the upper
-            and lower bound for the rise time to include into the creation of the SEV;
-            based on the sample index as x-values
-        :param decay_time_interval: list of length 2 (interval), the upper
-            and lower bound for the decay time to include into the creation of the SEV;
-            based on the sample index as x-values
-        :param onset_interval:  list of length 2 (interval), the upper
-            and lower bound for the onset time to include into the creation of the SEV;
-            based on the sample index as x-values
-        :param remove_offset: bool, if True the offset is removed before the events are superposed for the
-            sev calculation; highly recommended!
-        :param verb: bool, if True some verbal feedback is output about the progress of the method
-        :param scale_fit_height: bool, if True the parametric fit to the sev is normalized to height 1 after
-            the fit is done
-        :param sample_length: float, the length of one sample in milliseconds
-        :return: -
+        :param naming: Pick a name for the type of event, e.g. 'carrier'.
+        :type naming: string
+        :param naming: The number of the channel in the hdf5 file.
+        :type naming: int
+        :param type: The group name in the HDF5 set, either "events" or "testpulses".
+        :type type: string
+        :param use_prediction_instead_label: If True then instead of the labels the predictions are used.
+        :type use_prediction_instead_label: bool
+        :param model: If set this is the name of the model whiches predictions are in the
+            h5 file, e.g. "RF" --> look for "RF_predictions".
+        :type string or None
+        :param correct_label: Use only events with this label.
+        :type correct_label: int or None
+        :param use_idx: If set then only these indices are used for the sev creation.
+        :type use_idx: list of ints or None
+        :param pulse_height_interval: The upper
+            and lower bound for the pulse heights to include into the creation of the SEV.
+        :type pulse_height_interval: list of length 2 (interval)
+        :param left_right_cutoff: The maximal abs value of the linear slope of events
+            to be included in the Sev calculation. Based on the sample index as x-values.
+        :type left_right_cutoff: float
+        :param rise_time_interval: The upper
+            and lower bound for the rise time to include into the creation of the SEV.
+            Based on the sample index as x-values.
+        :type rise_time_interval: lists of length 2 (interval)
+        :param decay_time_interval: The upper
+            and lower bound for the decay time to include into the creation of the SEV.
+            Based on the sample index as x-values.
+        :type decay_time_interval: list of length 2 (interval)
+        :param onset_interval: The upper
+            and lower bound for the onset time to include into the creation of the SEV.
+            Based on the sample index as x-values.
+        :type onset_interval: list of length 2 (interval)
+        :param remove_offset: If True the offset is removed before the events are superposed for the
+            sev calculation. Highly recommended!
+        :type remove_offset: bool
+        :param verb: If True, some verbal feedback is output about the progress of the method.
+        :type verb: bool
+        :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
+            the fit is done.
+        :type scale_fit_height: bool
+        :param sample_length: The length of one sample in milliseconds.
+        :type sample_length: float
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -439,10 +481,14 @@ class FeaturesMixin(object):
     def calc_nps(self, use_labels=False, down=1, percentile=50):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
-        that are labeled as noise (label == 3)
-        :param use_labels: bool, if True only baselines that are labeled as noise are included
-        :param down: int, a factor by that the baselines are downsampled before the calculation - must be 2^x
-        :return: -
+        that are labeled as noise (label == 3).
+
+        :param use_labels: If True only baselines that are labeled as noise are included.
+        :type use_labels: bool
+        :param down: A factor by that the baselines are downsampled before the calculation - must be 2^x.
+        :type down: int
+        :param percentile: The lower percentile of the fit errors of the baselines that we include in the calculation.
+        :type percentile: int
         """
         print('Calculate NPS.')
 
@@ -481,10 +527,12 @@ class FeaturesMixin(object):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 
-        :param type: string, either events or testpulses
-        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
-        :param down: int, the downsample rate before calculating the parameters
-        :return: -
+        :param type: The group name within the HDF5 file, either events or testpulses.
+        :type type: string
+        :param path_h5: An alternative full path to the hdf5 file, e.g. "data/bck_001.h5".
+        :type path_h5: string
+        :param down: The downsample rate before calculating the parameters.
+        :type down: int
         """
 
         if not path_h5:
@@ -529,14 +577,20 @@ class FeaturesMixin(object):
 
     def apply_pca(self, nmbr_components=2, type='events', down=1, batchsize=500, fit_idx=None):
         """
-        TODO
+        Apply a principal component analysis to the data matrix and store projections, reconstruction error and
+        components.
 
-        :param nmbr_components:
-        :type nmbr_components:
-        :param type:
-        :type type:
-        :return:
-        :rtype:
+        :param nmbr_components: The number of components we want to store and project to.
+        :type nmbr_components: int
+        :param type: The group name in the HDF5 file, either 'events' or 'testpulses'.
+        :type type: string
+        :param down: We downsample the events by this factor.
+        :type down: int
+        :param batchsize: In the incremental PCA calculate an estimation of the eigenvectors on subsets of the data set
+            with the size batchsize.
+        :type batchsize: int
+        :param fit_idx: We use only these indices for the fit, but calculate projections for all events.
+        :type fit_idx: list of ints
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
