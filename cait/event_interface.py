@@ -135,7 +135,7 @@ class EventInterface:
             raise ValueError(
                 'List of channels must vale length {}.'.format(self.nmbr_channels))
 
-        path_h5 = path + '/{}{}.h5'.format(fname, app)
+        path_h5 = path + '{}{}.h5'.format(fname, app)
         self.path_h5 = path_h5
 
         with h5py.File(path_h5, 'r+') as f:
