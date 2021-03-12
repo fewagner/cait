@@ -18,7 +18,6 @@ setup(
                       'pickle-mixin',
                       'numpy',
                       'matplotlib',
-                      'pandas',
                       'scipy',
                       'numba',
                       'sklearn',
