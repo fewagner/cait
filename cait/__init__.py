@@ -18,5 +18,8 @@ __all__ = ['EventInterface',
            'simulate',
            'trigger',
            'bandfit',
-           'styles'
+           'styles',
+           'cuts',
+           'calibration',
+           'mixins',
            ]

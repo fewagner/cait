@@ -22,6 +22,15 @@ some preceding notebook.
 We like to use and recommend a tool like **HDFView** or **VITables** to view the content of the HDF5 files,
 that are used by Cait to store data.
 
+Running on a Server
+=========================
+
+Large scale data processing is typically not done locally but on a remote server. In case we have no X forwarding available
+for the remote server, we can still use Jupyter Notebooks for easily accessible visualizations. A very simple, 3-step description
+how to run a notebook on a server, but get the output in you local browser, can be found on this homepage:
+https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook/
+
+
 Environment configuration
 =========================
 
