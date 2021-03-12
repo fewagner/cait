@@ -286,7 +286,8 @@ def get_record_window(path,
     :rtype:
     """
 
-    offset = bytes_per_sample * time_to_sample(start_time, sample_duration=0.00004)
+    offset = bytes_per_sample * time_to_sample(start_time, sample_duration=sample_duration)
+    offset = np.maximum(offset, 0)
 
     event = np.fromfile(path,
                         offset=int(offset),
