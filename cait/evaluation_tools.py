@@ -119,15 +119,11 @@ class EvaluationTools:
         possible_labels = np.unique(self.get_label_nbrs(what='all', verb=verb))
         if self.predictions is not None:
             for pm in self.predictions.keys():
-<<<<<<< HEAD
                 possible_labels = np.hstack(
                     [possible_labels, np.unique(self.get_pred(pred_method=pm, verb=verb))])
-=======
-                possible_labels = np.hstack([possible_labels, np.unique(self.get_pred(pred_method=pm,verb=verb))])
->>>>>>> 564cf6b3e19586298ff1e77b15aeb1146813f91f
 
         for i, ln in enumerate(np.unique(possible_labels)):
-            # for i, ln in enumerate(np.unique([self.get_label_nbrs(what='all')])):
+        # for i, ln in enumerate(np.unique([self.get_label_nbrs(what='all')])):
             self.labels_color_map[ln] = self.color_order[i]
 
     def __add_labels(self, labels):
@@ -381,7 +377,7 @@ class EvaluationTools:
         Adds a new prediction method with labels to the predictions property.
 
         :param pred_method: string, the name of the model that made the predictions
-        :param pred: list of int, contains the predicted labels for the events
+        :param path: list of int, contains the predicted labels for the events
         :param true_labels: boolean, default False, set to True when predicted labels correspond to actual label numbers (as in superviced learning methods)
         :param verb: boolean, default False, if True addtional output is printed to the console
         """
@@ -408,7 +404,7 @@ class EvaluationTools:
         Saves the predictions as a CSV file
 
         :param pred_method: string, the name of the model that made the predictions
-        :param path: string, path to the folder that should contain the predictions, e.g. 'predictions/' leads to correct directory
+        :param path: string, path to the folder that should contain the predictions
         :param fname: string, the name of the file, e.g. "bck_001"
         :param channel: int, the number of the channel in the module, e.g. Phonon 0, Light 1
         :param verb: boolean, default False, if True  additional ouput is printed
@@ -416,11 +412,9 @@ class EvaluationTools:
         if self.predictions is None:
             raise AttributeError('Add predictions first!')
 
-        np.savetxt(path + pred_method + '_predictions_' + fname +
-                   '_events_Ch' + str(channel) + '.csv',
+        np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]),
-                   fmt='%i',
-                   delimiter='\n')  # the index 1 should access the pred
+                   fmt='%i', delimiter='\n')  # the index 1 should access the pred
 
         print('Saved Predictions as CSV file.')
 
@@ -1102,10 +1096,6 @@ class EvaluationTools:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
-<<<<<<< HEAD
-=======
-
->>>>>>> 564cf6b3e19586298ff1e77b15aeb1146813f91f
 
         if self.save_as == False:
             print(
@@ -1797,10 +1787,6 @@ class EvaluationTools:
         max_height = self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 564cf6b3e19586298ff1e77b15aeb1146813f91f
         unique_label_nbrs, unique_label_counts = np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
         data_dict_sorted = dict(
@@ -1918,8 +1904,6 @@ class EvaluationTools:
 
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
-            # import ipdb; ipdb.set_trace()
-
         else:
             xlabels_order = np.unique(self.get_pred(
                 pred_method, what, verb=verb)).tolist()
@@ -2023,7 +2007,7 @@ class EvaluationTools:
         plt.xlabel('Predicted Labels')
         plt.ylabel('Labels')
         if (fig_title):
-            plt.title('{} - Confusion Matrix'.format(pred_method))
+            plt.title('{} - Confutionmatrix'.format(pred_method))
         fig.tight_layout()
         plt.tight_layout()
         if self.save_as == False:
