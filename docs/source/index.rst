@@ -8,7 +8,7 @@
    installing
    about
    contributing
-   guidelines
+   ../../CONTRIBUTING.rst
    tipps
 
 .. toctree::

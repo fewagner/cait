@@ -5,16 +5,37 @@ import numpy as np
 
 # function
 
-def write_xy_file(filepath, xdata, ydata, title, xaxis, yaxis):
-    # TODO
+def write_xy_file(filepath, data, title, axis):
+    """
+
+
+    :param filepath:
+    :type filepath:
+    :param data:
+    :type data:
+    :param title:
+    :type title:
+    :param axis:
+    :type axis:
+    """
     print('Start write.')
+
+    dims = len(data)
+    nmbr_values = len(data[0])
+
+    if len(axis) != dims:
+        raise KeyError('Number of dimensions of data array does not match number axis!')
 
     file = open(filepath, 'w')
     file.write(title + '\n')
-    file.write(xaxis + '\n')
-    file.write(yaxis + '\n')
-    for x, y in zip(xdata, ydata):
-        file.write("{} \t{} \n".format(x, y))
+    for s in axis:
+        file.write(s + '\n')
+    for i in range(nmbr_values):
+        for j in range(dims):
+            if j < dims - 1:
+                file.write("{} \t".format(data[j][i]))
+            else:
+                file.write("{} \n".format(data[j][i]))
     file.close()
 
     print('File written.')

@@ -30,7 +30,6 @@ class PolyModel:
         self.dydx = np.polyder(self.y, m=1)
 
     def y_pred(self, x):
-
         y = self.y(x)
         if len(x.shape) == 0:
             x = np.array([x])
@@ -169,19 +168,19 @@ def energy_calibration_linear(evhs,
         use_cait_style(dpi=dpi)
         # plot the regressions
         plt.close()
-        plt.scatter(tp_hours, tphs, s=1, marker='.', color='blue', zorder=10)
+        plt.scatter(tp_hours, tphs, s=5, marker='.', color='blue', zorder=10)
         for i, iv in enumerate(intervals):
             t = np.linspace(iv[0], iv[1], 100)
             for m in range(len(all_linear_tpas[i])):
                 lower, y, upper = all_regs[i][m].y_sigma(t)
                 plt.plot(t, y, color='red', linewidth=2, zorder=15)
                 plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
+                plt.axvline(iv[1], color='green', linewidth=1, zorder=15)
         make_grid()
         plt.ylim([0, start_saturation])
         plt.xlabel('Hours (h)')
         plt.ylabel('Pulse Height (V)')
         plt.show()
-
 
         # plot the polynomials
         plt.close()
@@ -202,23 +201,25 @@ def energy_calibration_linear(evhs,
             plt.plot(h, y, color='red', linewidth=2, zorder=15)
             plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
             plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
-            plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
+            plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
         make_grid()
         plt.ylim([0, y[-1]])
         plt.ylabel('Testpulse Amplitude (V)')
         plt.xlabel('Pulse Height (V)')
         plt.show()
 
-    # for each event in the interpolation intervals define a ph/tpa factor, for other events take closes TP time value
+    # for each event in the interpolation intervals define a ph/tpa factor, for other events take closest TP time value
     # this is a polynomial fit (order 5 or so) of the the ph/tpa values for fixed tpas
 
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
     for e in range(len(evhs)):
-        if e%500 == 0:
-            print('Calculating Recoil Energies: {:.3} %'.format(100*e/len(evhs)))
+        if e % 500 == 0:
+            print('Calculating Recoil Energies: {:.3} %'.format(100 * e / len(evhs)))
         for i, iv in enumerate(intervals):
-            if (i == 0 and ev_hours[e] <= iv[0]) or (ev_hours[e] > iv[0] and ev_hours[e] <= iv[1]):
+            if (i == 0 and ev_hours[e] <= iv[0]) or (  # events befor the first interval
+                    ev_hours[e] > iv[0] and ev_hours[e] <= iv[1]) or (  # events inside an interval
+                    i == len(intervals) - 1 and ev_hours[e] > iv[1]):  # events after the last interval
                 x_data, x_sigma = [], []
                 for s in all_regs[i]:
                     xl, x, xu = s.y_sigma(ev_hours[e])

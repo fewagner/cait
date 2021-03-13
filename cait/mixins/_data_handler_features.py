@@ -596,7 +596,7 @@ class FeaturesMixin(object):
         with h5py.File(self.path_h5, 'r+') as f:
 
             def downsample(X):
-                X_down = np.empty([len(X), int(len(X[0])/down)])
+                X_down = np.empty([len(X), int(len(X[0]) / down)])
                 for i, x in enumerate(X):
                     X_down[i] = np.mean(x.reshape(int(X.shape[1] / down), down), axis=1)
                 return X_down
@@ -660,3 +660,32 @@ class FeaturesMixin(object):
                     transformed[i] = 1
                     comp = pca.inverse_transform(transformed.reshape(1, -1))
                     pca_components[c, i, :] = comp.reshape(-1).repeat(down, axis=0)
+
+    def apply_logical_cut(self, cut_flag: list, naming: str, channel: int, type: str = 'events',
+                          delete_old: bool = False):
+        """
+        Save the cut flag of a logical cut within the HDF5 file.
+
+        :param cut_flag: The cut flag that we want to save.
+        :type cut_flag: list of bools
+        :param naming: The naming of the dataset to save.
+        :type naming: string
+        :param channel: The channel for that the cut flag is meant.
+        :type channel: int
+        :param type: The naming of the group in the HDF5 file, in that we want to save the cut flag, e.g. 'events'.
+        :type type: string
+        :param delete_old: If true, the old dataset of this name in the group 'type' gets deleted.
+        :type delete_old: bool
+        """
+
+        with h5py.File(self.path_h5, 'r+') as f:
+
+            if delete_old:
+                if naming in f[type]:
+                    print('Delete old {} dataset'.format(naming))
+                    del f[type][naming]
+
+            cut_dataset = f[type].require_dataset(name=naming,
+                                                  shape=(self.nmbr_channels, len(cut_flag)),
+                                                  dtype=bool)
+            cut_dataset[channel, ...] = cut_flag

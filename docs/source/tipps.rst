@@ -17,6 +17,8 @@ documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
 
 Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.cfg´.
 
+.. code::
+
     Bootstrap: docker
     From: ubuntu:20.10
 
@@ -46,6 +48,8 @@ Second, you need a container configuration file. One that worked for us is given
 
 Last, you need to type correct commands for the container creation. We put them together in a script:
 
+.. code:: bash
+
     #!/bin/sh
 
     CONTAINER=ubuntu2010.simg
@@ -54,7 +58,9 @@ Last, you need to type correct commands for the container creation. We put them 
 
 You can then always start the container by typing the following command in the same directory. We like to keep it in a script as well.
 
-    singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.simg
+.. code:: console
+
+    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.simg
 
 Please look into the Singularity manual for details of above command. You might have to adapt several paths, according to
 your system. E.g. with the -B flag, you can bin directories from the server within the the container, you will need this for accessing data.
@@ -94,3 +100,14 @@ Adding the line
     import ipdb; ipdb.set_trace()
 
 any where in your code halts the execution and lets insert and execute additional lines.
+
+Reload Modules in Notebook
+============================
+
+If we make changes in a module, e.g. when debugging function in Cait, we usually have to restart the Kernel of a
+Jupyter Notebook to load the changes in the module. But we can also use the IPython cell magic commands, to do so. Run
+the following command in any cell, to load all changes in Cait:
+
+.. code:: python
+
+    %reload_ext cait
