@@ -53,5 +53,5 @@ We want you ...
 ===============
 
 ... to contribute! Cait is in a very early stage of development and we are happy about any contributions. To coordinate 
-efforts, please get in touch with felix.wagner@oeaw.ac.at such that we can include your
+efforts, please get in touch with felix.wagner(at)oeaw.ac.at such that we can include your
 features in the upcoming release. If you have any troubles with the current release, please open an issue in the Bug Report.

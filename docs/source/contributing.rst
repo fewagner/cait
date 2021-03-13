@@ -8,7 +8,7 @@ Core developers (alphabetical list):
 
 - Daniel Bartolot
 - Damir Rizvanovic
-- Felix Wagner (development coordination, felix.wagner@oeaw.ac.at)
+- Felix Wagner (development coordination, felix.wagner(at)oeaw.ac.at)
 
 Contributors (alphabetical list):
 

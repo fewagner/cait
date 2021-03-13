@@ -54,21 +54,6 @@ As a developer of the Cait Library, you don't want to generate a new wheel file 
 
 pip editable option, that includes changes right away. It is also possible to install directly from the git repository, for this there are many tutorials available, e.g. https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/.
 
-Wheel files (for contributors)
-====================================
-
-If you contribute to the code and push your changes, please also update the wheel file and push it. The wheel file can be updated with calling
-
-.. code:: console
-
-    $ python setup.py bdist_wheel
-
-in the directory that contains the setup.py file. For this you will need the wheel package:
-
-.. code:: console
-
-    $ pip install wheel
-
 Installation over Git
 ====================================
 

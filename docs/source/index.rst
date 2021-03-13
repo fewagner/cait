@@ -9,6 +9,7 @@
    about
    contributing
    guidelines
+   tipps
 
 .. toctree::
    :caption: Tutorials

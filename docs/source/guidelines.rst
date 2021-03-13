@@ -42,7 +42,7 @@ The **docs** folder contains the documentation, written in restructured text, au
 
 The **.gitignore** file excludes all files that are too large for git or specific for each user: data, virtual environment, ...
 
-The **setup.py** file contains information for the package: dependencies, version number, ...
+The **setup.py** file contains information for the installation of the package: dependencies, version number, ...
 
 Code Guidelines
 ==================
@@ -77,20 +77,17 @@ While the core developers sometimes do small fixes directly on the development b
 
 Please keep as close as possible to this procedure. Keep your changes on the feature branch as close to the issue you defined to work on as possible. Merge the feature branch as soon as possible in the development branch, to avoid merge conflicts due to a drifted apart code base.
 
-Tipps for Debugging
-===========================
+Wheel files
+==================
 
-A usefull tool for  debugging code is the library **IPython pdb** (https://pypi.org/project/ipdb/).
-This library exports functions to access the IPython debugger, which features tab completion, syntax highlighting, better tracebacks, better introspection with the same interface as the pdb module.
+If you contribute to the code and push your changes, please also update the wheel file and push it. The wheel file can be updated with calling
 
 .. code:: console
 
-    $ pip install ipdb
+    $ python setup.py bdist_wheel
 
-Adding the line
+in the directory that contains the setup.py file. For this you will need the wheel package:
 
-.. code:: python
+.. code:: console
 
-    import ipdb; ipdb.set_trace()
-
-any where in your code halts the execution and lets insert and execute additional lines.
+    $ pip install wheel
