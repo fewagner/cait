@@ -114,13 +114,14 @@ class EvaluationTools:
             self.label_nbrs = np.hstack([self.label_nbrs, label_nbrs])
         self.__add_labels_color_map()
 
-    def __add_labels_color_map(self,verb=False):
+    def __add_labels_color_map(self, verb=False):
         self.labels_color_map = {}
-        possible_labels = np.unique(self.get_label_nbrs(what='all',verb=verb))
+        possible_labels = np.unique(self.get_label_nbrs(what='all', verb=verb))
         if self.predictions is not None:
             for pm in self.predictions.keys():
-                possible_labels = np.hstack([possible_labels, np.unique(self.get_pred(pred_method=pm,verb=verb))])
-        
+                possible_labels = np.hstack(
+                    [possible_labels, np.unique(self.get_pred(pred_method=pm, verb=verb))])
+
         for i, ln in enumerate(np.unique(possible_labels)):
         # for i, ln in enumerate(np.unique([self.get_label_nbrs(what='all')])):
             self.labels_color_map[ln] = self.color_order[i]
@@ -252,7 +253,7 @@ class EvaluationTools:
 
             # find the index of the current file in the list of files
             file_index = self.files.index(file)
-            
+
             if (type(which_data) is str) and (which_data == 'mainpar'):
                 self.__add_data(
                     np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
@@ -270,7 +271,8 @@ class EvaluationTools:
                 if not (tmp_which_data.shape[0] == np.array(ds['events/labels'][channel, use_idx]).shape[0]):
                     raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
                                      "Given 'which_data' must be of size {} but is of size {}".format(
-                                         np.array(ds['events/labels'][channel, use_idx]).shape[0],
+                                         np.array(ds['events/labels']
+                                                  [channel, use_idx]).shape[0],
                                          tmp_which_data.shape[0]))
                 self.__add_data(tmp_which_data)
 
@@ -392,7 +394,7 @@ class EvaluationTools:
             elif verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "A prediction method with the name '{}' allready exists.".format(pred_method))
-        
+
         self.__add_labels_color_map(verb=verb)
         if verb:
             print('Added Predictions to instance.')
@@ -503,7 +505,7 @@ class EvaluationTools:
         2. data
         3. features
         4. file_nbrs
-        5. label_nbrs   
+        5. label_nbrs
 
         :param verb: enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -525,7 +527,7 @@ class EvaluationTools:
         2. data
         3. features
         4. file_nbrs
-        5. label_nbrs   
+        5. label_nbrs
 
         :param verb: enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -799,7 +801,7 @@ class EvaluationTools:
     def get_pred(self, pred_method, what='all', verb=False):
         """
         Getter-function which returns the prediction of a method.
-        The prediction has to be added at first and can be selected by providing the same abbreviation while adding it. 
+        The prediction has to be added at first and can be selected by providing the same abbreviation while adding it.
         The selection is done via the pred_method parameter.
 
         :param pred_method: Parameter to select the prediction from a certain prediction method, which must be the same string as when added.
@@ -853,7 +855,7 @@ class EvaluationTools:
     def get_pred_in_color(self, pred_method, what='all', verb=False):
         """
         Getter-function which returns the color coded prediction of a method.
-        The prediction has to be added at first and can be selected by providing the same abbreviation while adding it. 
+        The prediction has to be added at first and can be selected by providing the same abbreviation while adding it.
         The selection is done via the pred_method parameter.
 
         :param pred_method: Parameter to select the prediction from a certain prediction method get color coded, which must be the same string as when added.
@@ -1094,15 +1096,18 @@ class EvaluationTools:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
-                            
 
         if self.save_as == False:
-            print("-------------------------------------------------------------------------")
+            print(
+                "-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
-            print('When clicking on a single event a window with its timeseries is opened.')
-            print("Hovering over a a single event and pressing 'm' also opnes the timeseries")
+            print(
+                'When clicking on a single event a window with its timeseries is opened.')
+            print(
+                "Hovering over a a single event and pressing 'm' also opnes the timeseries")
             print("of this event and adds the calculated mainparameters to the plot.")
-            print('-------------------------------------------------------------------------')
+            print(
+                '-------------------------------------------------------------------------')
 
         # -------- PLOT --------
         # TSNE
@@ -1550,7 +1555,8 @@ class EvaluationTools:
 
         if self.save_as != False:
             # plt.savefig('{}labels_dist.pgf'.format(self.save_plot_dir))
-            plt.savefig('{}labels_dist.{}'.format(self.save_plot_dir, self.save_as))
+            plt.savefig('{}labels_dist.{}'.format(
+                self.save_plot_dir, self.save_as))
         else:
             plt.show()
         plt.close()
@@ -1592,7 +1598,8 @@ class EvaluationTools:
             fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
             ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
-                    label=['{}'.format(self.labels[events_nbr]), '{}'.format(self.labels[saturated_nbr])],
+                    label=['{}'.format(self.labels[events_nbr]), '{}'.format(
+                        self.labels[saturated_nbr])],
                     bins=bins,
                     histtype='barstacked')
 
@@ -1606,9 +1613,11 @@ class EvaluationTools:
                 ax.set_yscale('log')
             if self.save_as != False:
                 if ylog:
-                    plt.savefig('{}evt_sat_hist-ylog.{}'.format(self.save_plot_dir, self.save_as))
+                    plt.savefig(
+                        '{}evt_sat_hist-ylog.{}'.format(self.save_plot_dir, self.save_as))
                 else:
-                    plt.savefig('{}evt_sat_hist.{}'.format(self.save_plot_dir, self.save_as))
+                    plt.savefig('{}evt_sat_hist.{}'.format(
+                        self.save_plot_dir, self.save_as))
             else:
                 plt.show()
             plt.close()
@@ -1725,7 +1734,8 @@ class EvaluationTools:
         # plt.show()
         plt.tight_layout()
         if self.save_as != False:
-            plt.savefig('{}correctly_labeled_per_v.{}'.format(self.save_plot_dir, self.save_as))
+            plt.savefig('{}correctly_labeled_per_v.{}'.format(
+                self.save_plot_dir, self.save_as))
         else:
             plt.show()
         plt.close()
@@ -1777,7 +1787,6 @@ class EvaluationTools:
         max_height = self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-        
         unique_label_nbrs, unique_label_counts = np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
         data_dict_sorted = dict(
@@ -1812,7 +1821,6 @@ class EvaluationTools:
                     data_dict_sorted[l][0][lower:upper])
                 bin_boundries[l][1][i] = np.mean(
                     data_dict_sorted[l][2][lower:upper])
-
 
         l = 1  # events
         # nrows = math.ceil(len(unique_label_nbrs)/ncols)
@@ -1884,13 +1892,23 @@ class EvaluationTools:
                              "Prediction method {} is not in the predictions dictionary.\n".format(pred_method) +
                              "Valid options are: {}".format(self.predictions.keys()))
 
-        ylabels_order = [self.labels[l] + " ({})".format(l)
-                         for l in np.unique(self.get_label_nbrs(what, verb=verb))]
+
+        if self.get_pred_true_labels(pred_method):
+            ylabels_order = [self.labels[l] + " ({})".format(l)
+                for l in np.unique(np.hstack(
+                            [np.unique(self.get_pred(pred_method, what, verb=verb)),
+                             np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
+        else:
+            ylabels_order = [self.labels[l] + " ({})".format(l)
+                for l in np.unique(self.get_label_nbrs(what, verb=verb))]
 
         if self.get_pred_true_labels(pred_method):
             xlabels_order = ylabels_order
+            # import ipdb; ipdb.set_trace()
+
         else:
-            xlabels_order = np.unique(self.get_pred(pred_method, what, verb=verb)).tolist()
+            xlabels_order = np.unique(self.get_pred(
+                pred_method, what, verb=verb)).tolist()
 
         diff = len(ylabels_order) - len(xlabels_order)
         for i in range(abs(diff)):
@@ -1917,8 +1935,10 @@ class EvaluationTools:
         if self.get_pred_true_labels(pred_method):
             true_label_nbrs = self.get_label_nbrs(what, verb=verb)
         else:
-            cm_conv_labels = dict([(n, i) for i, n in enumerate(np.unique(self.get_label_nbrs(what, verb=verb)))])
-            true_label_nbrs = [cm_conv_labels[l] for l in self.get_label_nbrs(what, verb=verb)]
+            cm_conv_labels = dict([(n, i) for i, n in enumerate(
+                np.unique(self.get_label_nbrs(what, verb=verb)))])
+            true_label_nbrs = [cm_conv_labels[l]
+                for l in self.get_label_nbrs(what, verb=verb)]
 
         cm = confusion_matrix(true_label_nbrs,
                               self.get_pred(pred_method, what, verb=verb))
@@ -1934,11 +1954,14 @@ class EvaluationTools:
                 i = int(y + 0.5)
                 j = int(x + 0.5)
 
-                selected_label_nbr = np.unique(self.get_label_nbrs(verb=verb))[i]
+                selected_label_nbr = np.unique(
+                    self.get_label_nbrs(verb=verb))[i]
                 if self.get_pred_true_labels(pred_method):
-                    selected_pred_nbr = np.unique(self.get_label_nbrs(verb=verb))[j]
+                    selected_pred_nbr = np.unique(
+                        self.get_label_nbrs(verb=verb))[j]
                 else:
-                    selected_pred_nbr = np.unique(self.get_pred(pred_method, verb=verb))[j]
+                    selected_pred_nbr = np.unique(
+                        self.get_pred(pred_method, verb=verb))[j]
 
                 selection = np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
                                            self.get_pred(pred_method, what, verb) == selected_pred_nbr)
@@ -1999,6 +2022,8 @@ class EvaluationTools:
                 '{}confMat-{}.{}'.format(self.save_plot_dir, pred_method, self.save_as))
 
         plt.close()
+
+
 
     def plot_labels_distribution(self, figsize=None):
         """
