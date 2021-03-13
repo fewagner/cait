@@ -296,9 +296,9 @@ def get_record_window(path,
 
     event = convert_to_V(event)
 
-    # handling end of file and fill up with zeros
+    # handling end of file and fill up with small random values to avoid division by zero
     if len(event) < record_length:
-        new_event = np.zeros(record_length)
+        new_event = np.random.normal(scale=1e-5, size=record_length)
         new_event[:len(event)] = event
         event = np.copy(new_event)
         del new_event
