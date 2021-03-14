@@ -121,7 +121,7 @@ class MainParameters():
     def plotParameters(self,
                        down=1,
                        offset_in_samples=0,
-                       color = 'r', zorder=10):
+                       color = 'r', zorder=10, fig=None):
         """
         Plots the main parameters on overlaid to an event
 
@@ -151,9 +151,15 @@ class MainParameters():
             self.offset + 0.368 * self.pulse_height]
 
         if zorder == 0:
-            plt.scatter(x_values, y_values, color=color)
+            if fig is None:
+                fig.scatter(x_values, y_values, color=color)
+            else:
+                plt.scatter(x_values, y_values, color=color)
         else:
-            plt.scatter(x_values, y_values, color=color, zorder=zorder)
+            if fig is None:
+                fig.scatter(x_values, y_values, color=color, zorder=zorder)
+            else:
+                plt.scatter(x_values, y_values, color=color, zorder=zorder)
 
 
     def get_differences(self):

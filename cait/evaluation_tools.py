@@ -7,6 +7,8 @@ import h5py
 import numpy as np
 import math
 
+import multiprocessing
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
@@ -20,6 +22,7 @@ from .evaluation._color import console_colors, mpl_default_colors
 from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
 from .styles._plt_styles import use_cait_style, make_grid
 
+from .features._mp import *
 
 # -----------------------------------------------------------
 # CLASS
@@ -930,6 +933,46 @@ class EvaluationTools:
 
     # ################### PLOT ###################
 
+    def plot_event(self, index, what='all', plot_mainpar=False, text=None, verb=False):
+
+        if verb:
+            print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                  "index='{}'.".format(index))
+
+        if what not in ['all', 'test', 'train']:
+            what='all'
+            if verb:
+                print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                      "If the value of 'what' is not 'train' or 'test' then all are shown.")
+
+
+        event=self.get_events(what)[index]
+        if plot_mainpar:
+            event_mainpar=calc_main_parameters(event)
+
+        fig= plt.figure()
+        ax = fig.add_subplot(111)
+        # import ipdb; ipdb.set_trace()
+        ax.plot(event, linewidth=1, zorder=-1)
+        if plot_mainpar:
+            event_mainpar.plotParameters(fig=fig)
+
+        ax.set_ylim(ax.get_ylim())
+
+        if plot_mainpar:
+            ax.hlines(y=event_mainpar.offset, xmin=ax.get_xlim()[
+                       0], xmax=ax.get_xlim()[1], linestyles='--', alpha=0.2)
+        ax.vlines(x=int(event.shape[0] / 4), ymin=ax.get_ylim()
+                   [0], ymax=ax.get_ylim()[1], linestyles='--', alpha=0.2)
+
+        if text is not None:
+            ax.set_title(text)
+
+        fig.tight_layout()
+
+        fig.show()
+
+
     def plt_pred_with_tsne(self, pred_methods, what='all', plt_labels=True,
                            figsize=None, perplexity=30, as_cols=False, rdseed=None,
                            dot_size=5, verb=False):
@@ -951,7 +994,7 @@ class EvaluationTools:
             np.random.seed(seed=rdseed)  # fixing random seed
 
         if type(dot_size) != int:
-            dot_size = 5
+            dot_size=5
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Value of 'dot_size' has to be of type int. It is set to 5.")
 
@@ -961,7 +1004,7 @@ class EvaluationTools:
                       "'pred_methods' has to of type list or string.")
 
         if type(pred_methods) is str:
-            pred_methods = [pred_methods]
+            pred_methods=[pred_methods]
 
         for m in pred_methods:
             if m not in self.predictions.keys():
@@ -969,22 +1012,22 @@ class EvaluationTools:
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
 
-        nrows = len(pred_methods)
-        ncols = 1
-        subtitles = [''] * nrows
+        nrows=len(pred_methods)
+        ncols=1
+        subtitles=[''] * nrows
 
         if plt_labels:
-            subtitles = ['Labels'] + pred_methods
-            nrows = nrows + 1  # take the true labels into account
+            subtitles=['Labels'] + pred_methods
+            nrows=nrows + 1  # take the true labels into account
 
         # switch rows and cols
         if as_cols:
-            temp = nrows
-            nrows = ncols
-            ncols = temp
+            temp=nrows
+            nrows=ncols
+            ncols=temp
 
         if what not in ['all', 'test', 'train']:
-            what = 'all'
+            what='all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
@@ -993,29 +1036,29 @@ class EvaluationTools:
 
         def update_annot(ind):
             for i in range(nrows * ncols):
-                pos = sc[i].get_offsets()[ind['ind'][0]]
-                annot[i].xy = pos
+                pos=sc[i].get_offsets()[ind['ind'][0]]
+                annot[i].xy=pos
                 if ind['ind'].size == 1:
-                    id = ind['ind'][0]
+                    id=ind['ind'][0]
 
-                    text = "{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
+                    text="{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
                                            self.get_event_nbrs(what)[id])
                     if plt_labels:
-                        text = text + \
+                        text=text + \
                                ", {}".format(
                                    self.labels[self.get_label_nbrs(what, verb=verb)[id]])
                 else:
-                    text = "{}".format(
+                    text="{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
         def hover(event):
             for i in range(nrows * ncols):
-                vis = annot[i].get_visible()
+                vis=annot[i].get_visible()
                 if event.inaxes == ax[i]:
                     # cont: bool, whether it contains something or not
-                    cont, ind = sc[i].contains(event)
+                    cont, ind=sc[i].contains(event)
                     # print(ind)
                     if cont:
                         update_annot(ind)
@@ -1029,49 +1072,43 @@ class EvaluationTools:
         def onclick(event):
             for i in range(nrows * ncols):
                 if event.inaxes == ax[i]:
-                    _, ind = sc[i].contains(event)
+                    _, ind=sc[i].contains(event)
                     if ind['ind'].size > 1:
                         print('Select a single event.')
                     elif ind['ind'].size == 1:
-                        id = ind['ind'][0]
+                        id=ind['ind'][0]
 
-                        text = "{}, {}".format(
+                        text="{}, {}".format(
                             self.files[self.get_file_nbrs(what, verb=verb)[
                                 id]].split('/')[-1].split('-')[0],
                             self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
-                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
+                            text=text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
                                                              self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(what, verb=verb)[id],
                             self.files[self.get_file_nbrs(what, verb=verb)[id]]))
-                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
-                                                                                        self.get_event_nbrs(
-                                                                                            what, verb=verb)[id],
-                                                                                        self.files[
-                                                                                            self.get_file_nbrs(what,
-                                                                                                               verb=verb)[
-                                                                                                id]], text)
-                        print(instr)
-                        os.system(instr)
+
+                        self.plot_event(id, what, False, text, verb)
+
 
         def on_key(event):
             if event.key == 'm':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind = sc[i].contains(event)
+                        _, ind=sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id = ind['ind'][0]
+                            id=ind['ind'][0]
 
-                            text = "{}, {}".format(
+                            text="{}, {}".format(
                                 self.files[self.get_file_nbrs(what, verb=verb)[
                                     id]].split('/')[-1].split('-')[0],
                                 self.get_event_nbrs(what, verb=verb)[id])
                             if plt_labels:
-                                text = text + ", {} = {}".format(
+                                text=text + ", {} = {}".format(
                                     self.labels[self.get_label_nbrs(
                                         what, verb=verb)[id]],
                                     self.get_label_nbrs(what, verb=verb)[id])
@@ -1079,23 +1116,17 @@ class EvaluationTools:
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
                                 self.get_event_nbrs(what, verb=verb)[id],
                                 self.files[self.get_file_nbrs(what, verb=verb)[id]]))
-                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
-                                                                                               self.get_event_nbrs(
-                                                                                                   what, verb=verb)[
-                                                                                                   id], self.files[
-                                                                                                   self.get_file_nbrs(
-                                                                                                       what,
-                                                                                                       verb=verb)[id]],
-                                                                                               text)
-                            os.system(instr)
+
+                            self.plot_event(id, what, True, text, verb)
+
             elif event.key == 'p':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind = sc[i].contains(event)
+                        _, ind=sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id = ind['ind'][0]
+                            id=ind['ind'][0]
 
         if self.save_as == False:
             print(
@@ -1111,7 +1142,7 @@ class EvaluationTools:
 
         # -------- PLOT --------
         # TSNE
-        princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
+        princcomp=TSNE(n_components=2, perplexity=perplexity).fit_transform(
             self.get_features(what, verb=verb))
 
         plt.close()
@@ -1125,36 +1156,36 @@ class EvaluationTools:
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
-            fig, ax = plt.subplots(
+            fig, ax=plt.subplots(
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
         else:
-            fig, ax = plt.subplots(
+            fig, ax=plt.subplots(
                 # nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
 
-        annot = [None] * nrows * ncols
-        sc = [None] * nrows * ncols
+        annot=[None] * nrows * ncols
+        sc=[None] * nrows * ncols
 
         if nrows * ncols == 1:
-            ax = [ax]
+            ax=[ax]
 
-        start_i = 0
+        start_i=0
         if plt_labels:
-            start_i = 1
+            start_i=1
             ax[0].set_title(subtitles[0])
-            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
+            _, _, leg=self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
             if self.save_as != False:
-                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
-                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
-            pop = [None] * leg.shape[1]
+            pop=[None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
-                pop[i] = mpl.patches.Patch(
+                pop[i]=mpl.patches.Patch(
                     color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
@@ -1162,14 +1193,14 @@ class EvaluationTools:
             ax[i].set_title(subtitles[i])
 
             if self.save_as != False:
-                sc[i] = ax[i].scatter(princcomp[:, 0],
+                sc[i]=ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
             else:
-                sc[i] = ax[i].scatter(princcomp[:, 0],
+                sc[i]=ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
@@ -1177,7 +1208,7 @@ class EvaluationTools:
                                       alpha=0.7)
 
         for i in range(nrows * ncols):
-            annot[i] = ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+            annot[i]=ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
                                       bbox=dict(boxstyle="round", fc="w"),
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
@@ -1240,7 +1271,7 @@ class EvaluationTools:
                              "with the integer being > 0.")
 
         if type(dot_size) != int:
-            dot_size = 5
+            dot_size=5
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Value of 'dot_size' has to be of type int. It is set to 5.")
 
@@ -1250,7 +1281,7 @@ class EvaluationTools:
                       "'pred_methods' has to of type list or string.")
 
         if type(pred_methods) is str:
-            pred_methods = [pred_methods]
+            pred_methods=[pred_methods]
 
         for m in pred_methods:
             if m not in self.predictions.keys():
@@ -1258,22 +1289,22 @@ class EvaluationTools:
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
 
-        nrows = len(pred_methods)
-        ncols = 1
-        subtitles = [''] * nrows
+        nrows=len(pred_methods)
+        ncols=1
+        subtitles=[''] * nrows
 
         if plt_labels:
-            subtitles = ['Labels'] + pred_methods
-            nrows = nrows + 1  # take the true labels into account
+            subtitles=['Labels'] + pred_methods
+            nrows=nrows + 1  # take the true labels into account
 
         # switch rows and cols
         if as_cols:
-            temp = nrows
-            nrows = ncols
-            ncols = temp
+            temp=nrows
+            nrows=ncols
+            ncols=temp
 
         if what not in ['all', 'test', 'train']:
-            what = 'all'
+            what='all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
@@ -1282,29 +1313,29 @@ class EvaluationTools:
 
         def update_annot(ind):
             for i in range(nrows * ncols):
-                pos = sc[i].get_offsets()[ind['ind'][0]]
-                annot[i].xy = pos
+                pos=sc[i].get_offsets()[ind['ind'][0]]
+                annot[i].xy=pos
                 if ind['ind'].size == 1:
-                    id = ind['ind'][0]
+                    id=ind['ind'][0]
 
-                    text = "{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
+                    text="{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
                                            self.get_event_nbrs(what)[id])
                     if plt_labels:
-                        text = text + \
+                        text=text + \
                                ", {}".format(
                                    self.labels[self.get_label_nbrs(what, verb=verb)[id]])
                 else:
-                    text = "{}".format(
+                    text="{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
         def hover(event):
             for i in range(nrows * ncols):
-                vis = annot[i].get_visible()
+                vis=annot[i].get_visible()
                 if event.inaxes == ax[i]:
                     # cont: bool, whether it contains something or not
-                    cont, ind = sc[i].contains(event)
+                    cont, ind=sc[i].contains(event)
                     # print(ind)
                     if cont:
                         update_annot(ind)
@@ -1318,73 +1349,60 @@ class EvaluationTools:
         def onclick(event):
             for i in range(nrows * ncols):
                 if event.inaxes == ax[i]:
-                    _, ind = sc[i].contains(event)
+                    _, ind=sc[i].contains(event)
                     if ind['ind'].size > 1:
                         print('Select a single event.')
                     elif ind['ind'].size == 1:
-                        id = ind['ind'][0]
+                        id=ind['ind'][0]
 
-                        text = "{}, {}".format(
+                        text="{}, {}".format(
                             self.files[self.get_file_nbrs(what, verb=verb)[
                                 id]].split('/')[-1].split('-')[0],
                             self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
-                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
+                            text=text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
                                                              self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(what, verb=verb)[id],
                             self.files[self.get_file_nbrs(what, verb=verb)[id]]))
-                        instr = "python3 pltSingleEvent.py {} {} '{}' -T '{}' &".format(self.pl_channel,
-                                                                                        self.get_event_nbrs(
-                                                                                            what, verb=verb)[id],
-                                                                                        self.files[
-                                                                                            self.get_file_nbrs(what,
-                                                                                                               verb=verb)[
-                                                                                                id]], text)
-                        print(instr)
-                        os.system(instr)
+
+                        self.plot_event(id, what, False, text, verb)
+
 
         def on_key(event):
             if event.key == 'm':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind = sc[i].contains(event)
+                        _, ind=sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id = ind['ind'][0]
+                            id=ind['ind'][0]
 
-                            text = "{}, {}".format(
+                            text="{}, {}".format(
                                 self.files[self.get_file_nbrs(what, verb=verb)[
                                     id]].split('/')[-1].split('-')[0],
                                 self.get_event_nbrs(what, verb=verb)[id])
                             if plt_labels:
-                                text = text + ", {} = {}".format(
+                                text=text + ", {} = {}".format(
                                     self.labels[self.get_label_nbrs(
                                         what, verb=verb)[id]],
                                     self.get_label_nbrs(what, verb=verb)[id])
-
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
-                                self.get_event_nbrs(what, verb=verb)[id],
-                                self.files[self.get_file_nbrs(what, verb=verb)[id]]))
-                            instr = "python3 pltSingleEvent.py {} {} '{}' -m -T '{}' &".format(self.pl_channel,
-                                                                                               self.get_event_nbrs(
-                                                                                                   what, verb=verb)[
-                                                                                                   id], self.files[
-                                                                                                   self.get_file_nbrs(
-                                                                                                       what,
-                                                                                                       verb=verb)[id]],
-                                                                                               text)
-                            os.system(instr)
+                                  self.get_event_nbrs(what, verb=verb)[id],
+                                  self.files[self.get_file_nbrs(what, verb=verb)[id]]))
+
+                            self.plot_event(id, what, True, text, verb)
+
             elif event.key == 'p':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind = sc[i].contains(event)
+                        _, ind=sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id = ind['ind'][0]
+                            id=ind['ind'][0]
 
         if self.save_as == False:
             print(
@@ -1400,9 +1418,9 @@ class EvaluationTools:
 
         # -------- PLOT --------
         # PCA
-        pca = PCA(n_components=np.max(xy_comp))
-        princcomp = pca.fit_transform(self.get_features(what, verb=verb))
-        princcomp = princcomp[:, [xy_comp[0] - 1, xy_comp[1] - 1]]
+        pca=PCA(n_components=np.max(xy_comp))
+        princcomp=pca.fit_transform(self.get_features(what, verb=verb))
+        princcomp=princcomp[:, [xy_comp[0] - 1, xy_comp[1] - 1]]
 
         plt.close()
         if figsize is None:
@@ -1415,35 +1433,35 @@ class EvaluationTools:
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
-            fig, ax = plt.subplots(
+            fig, ax=plt.subplots(
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
         else:
-            fig, ax = plt.subplots(
+            fig, ax=plt.subplots(
                 nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
 
-        annot = [None] * nrows * ncols
-        sc = [None] * nrows * ncols
+        annot=[None] * nrows * ncols
+        sc=[None] * nrows * ncols
 
         if nrows * ncols == 1:
-            ax = [ax]
+            ax=[ax]
 
-        start_i = 0
+        start_i=0
         if plt_labels:
-            start_i = 1
+            start_i=1
             ax[0].set_title(subtitles[0])
-            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
+            _, _, leg=self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
             if self.save_as != False:
-                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
-                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
-            pop = [None] * leg.shape[1]
+            pop=[None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
-                pop[i] = mpl.patches.Patch(
+                pop[i]=mpl.patches.Patch(
                     color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
@@ -1451,14 +1469,14 @@ class EvaluationTools:
             ax[i].set_title(subtitles[i])
 
             if self.save_as != False:
-                sc[i] = ax[i].scatter(princcomp[:, 0],
+                sc[i]=ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
             else:
-                sc[i] = ax[i].scatter(princcomp[:, 0],
+                sc[i]=ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
@@ -1466,7 +1484,7 @@ class EvaluationTools:
                                       alpha=0.7)
 
         for i in range(nrows * ncols):
-            annot[i] = ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+            annot[i]=ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
                                       bbox=dict(boxstyle="round", fc="w"),
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
@@ -1512,17 +1530,17 @@ class EvaluationTools:
         :param bins:        - optional, default auto : bins for the histograms.
         :param verb:        - optional, default False : ouputs additional information.
         """
-        max_height = self.get_mainpar(
+        max_height=self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
 
-        max_max_height = np.max(max_height)
-        min_max_height = np.min(max_height)
+        max_max_height=np.max(max_height)
+        min_max_height=np.min(max_height)
 
-        unique_label_nbrs = np.unique(self.get_label_nbrs(verb=verb))
-        max_height_per_label = dict(
+        unique_label_nbrs=np.unique(self.get_label_nbrs(verb=verb))
+        max_height_per_label=dict(
             [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
-        nrows = math.ceil(len(unique_label_nbrs) / ncols)
+        nrows=math.ceil(len(unique_label_nbrs) / ncols)
 
         plt.close()
         if figsize is None:
@@ -1531,11 +1549,11 @@ class EvaluationTools:
             use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
                            autolayout=False, dpi=None)
 
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
+        fig, ax=plt.subplots(nrows=nrows, ncols=ncols)
 
         for i, l in enumerate(unique_label_nbrs):
-            j = i % ncols
-            k = int(i / ncols)
+            j=i % ncols
+            k=int(i / ncols)
             # print("i ({}); j ({}); k ({})".format(i,j,k))
             if k * ncols + j > i:
                 break
@@ -1546,8 +1564,8 @@ class EvaluationTools:
         plt.tight_layout()
         if extend_plot:
             for i, l in enumerate(unique_label_nbrs):
-                j = i % ncols
-                k = int(i / ncols)
+                j=i % ncols
+                k=int(i / ncols)
                 # print("i ({}); j ({}); k ({})".format(i,j,k))
                 if k * ncols + j > i:
                     break
@@ -1582,20 +1600,20 @@ class EvaluationTools:
             set_mpl_backend_pgf()
             mpl.use('pdf')
 
-        max_height = self.get_mainpar(
+        max_height=self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
 
-        unique_label_nbrs = np.unique(self.get_label_nbrs(verb=verb))
-        max_height_per_label = dict(
+        unique_label_nbrs=np.unique(self.get_label_nbrs(verb=verb))
+        max_height_per_label=dict(
             [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
-        events_nbr = list(self.labels.keys())[list(
+        events_nbr=list(self.labels.keys())[list(
             self.labels.values()).index('Event_Pulse')]
-        saturated_nbr = list(self.labels.keys())[list(
+        saturated_nbr=list(self.labels.keys())[list(
             self.labels.values()).index('Strongly_Saturated_Event_Pulse')]
 
         if events_nbr and saturated_nbr in max_height_per_label:
-            fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
+            fig, ax=plt.subplots(figsize=figsize, tight_layout=True)
 
             ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
                     label=['{}'.format(self.labels[events_nbr]), '{}'.format(
@@ -1668,52 +1686,52 @@ class EvaluationTools:
                       "correct labels are supported by this function.")
             return
 
-        max_height = self.get_mainpar(what, verb=verb)[
+        max_height=self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-        max_max_height = np.max(max_height)
-        min_max_height = np.min(max_height)
+        max_max_height=np.max(max_height)
+        min_max_height=np.min(max_height)
 
-        unique_label_nbrs, unique_label_counts = np.unique(
+        unique_label_nbrs, unique_label_counts=np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
-        data_dict_sorted = dict(
+        data_dict_sorted=dict(
             [(l, ([None] * c, [None] * c, [None] * c)) for l, c in zip(unique_label_nbrs, unique_label_counts)])
 
-        pos_counter = dict([(l, 0) for l in unique_label_nbrs])
+        pos_counter=dict([(l, 0) for l in unique_label_nbrs])
 
         for h, tl, pl in sorted(
                 zip(max_height, self.get_label_nbrs(what, verb=verb), self.get_pred(pred_method, what, verb=verb))):
-            data_dict_sorted[tl][0][pos_counter[tl]] = h
-            data_dict_sorted[tl][1][pos_counter[tl]] = pl
+            data_dict_sorted[tl][0][pos_counter[tl]]=h
+            data_dict_sorted[tl][1][pos_counter[tl]]=pl
             pos_counter[tl] += 1
 
         for l in unique_label_nbrs:
-            pl = np.array(data_dict_sorted[l][1])
-            pl[pl != l] = 0
-            pl[pl == l] = 1
+            pl=np.array(data_dict_sorted[l][1])
+            pl[pl != l]=0
+            pl[pl == l]=1
             # pl = pl/pl.shape[0]
             # pl = np.cumsum(pl).tolist()
             for i, c in enumerate(pl):
-                data_dict_sorted[l][2][i] = c
+                data_dict_sorted[l][2][i]=c
 
-        bin_boundries = {}
+        bin_boundries={}
         for l in unique_label_nbrs:
-            bins = math.ceil(len(data_dict_sorted[l][2]) / bin_size)
-            bin_boundries[l] = ([None] * bins, [None] * bins)
+            bins=math.ceil(len(data_dict_sorted[l][2]) / bin_size)
+            bin_boundries[l]=([None] * bins, [None] * bins)
             for i in range(bins):
-                upper = (i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
+                upper=(i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
                     data_dict_sorted[l][2])
-                lower = i * bin_size
-                bin_boundries[l][0][i] = np.mean(
+                lower=i * bin_size
+                bin_boundries[l][0][i]=np.mean(
                     data_dict_sorted[l][0][lower:upper])
-                bin_boundries[l][1][i] = np.mean(
+                bin_boundries[l][1][i]=np.mean(
                     data_dict_sorted[l][2][lower:upper])
 
-        nrows = math.ceil(len(unique_label_nbrs) / ncols)
-        fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
+        nrows=math.ceil(len(unique_label_nbrs) / ncols)
+        fig, ax=plt.subplots(nrows=nrows, ncols=ncols)
         for i, l in enumerate(unique_label_nbrs):
-            j = i % ncols
-            k = int(i / ncols)
+            j=i % ncols
+            k=int(i / ncols)
             if k * ncols + j > i:
                 break
             ax[k][j].set_title(self.labels[l])
@@ -1784,50 +1802,50 @@ class EvaluationTools:
                       "correct labels are supported by this function.")
             return
 
-        max_height = self.get_mainpar(what, verb=verb)[
+        max_height=self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-        unique_label_nbrs, unique_label_counts = np.unique(
+        unique_label_nbrs, unique_label_counts=np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
-        data_dict_sorted = dict(
+        data_dict_sorted=dict(
             [(l, ([None] * c, [None] * c, [None] * c)) for l, c in zip(unique_label_nbrs, unique_label_counts)])
 
-        pos_counter = dict([(l, 0) for l in unique_label_nbrs])
+        pos_counter=dict([(l, 0) for l in unique_label_nbrs])
 
         for h, tl, pl in sorted(
                 zip(max_height, self.get_label_nbrs(what, verb=verb), self.get_pred(pred_method, what, verb=verb))):
-            data_dict_sorted[tl][0][pos_counter[tl]] = h
-            data_dict_sorted[tl][1][pos_counter[tl]] = pl
+            data_dict_sorted[tl][0][pos_counter[tl]]=h
+            data_dict_sorted[tl][1][pos_counter[tl]]=pl
             pos_counter[tl] += 1
 
         for l in unique_label_nbrs:
-            pl = np.array(data_dict_sorted[l][1])
-            pl[pl != l] = 0
-            pl[pl == l] = 1
+            pl=np.array(data_dict_sorted[l][1])
+            pl[pl != l]=0
+            pl[pl == l]=1
             # pl = pl/pl.shape[0]
             # pl = np.cumsum(pl).tolist()
             for i, c in enumerate(pl):
-                data_dict_sorted[l][2][i] = c
+                data_dict_sorted[l][2][i]=c
 
-        bin_boundries = {}
+        bin_boundries={}
         for l in unique_label_nbrs:
-            bins = math.ceil(len(data_dict_sorted[l][2]) / bin_size)
-            bin_boundries[l] = ([None] * bins, [None] * bins)
+            bins=math.ceil(len(data_dict_sorted[l][2]) / bin_size)
+            bin_boundries[l]=([None] * bins, [None] * bins)
             for i in range(bins):
-                upper = (i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
+                upper=(i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
                     data_dict_sorted[l][2])
-                lower = i * bin_size
-                bin_boundries[l][0][i] = np.mean(
+                lower=i * bin_size
+                bin_boundries[l][0][i]=np.mean(
                     data_dict_sorted[l][0][lower:upper])
-                bin_boundries[l][1][i] = np.mean(
+                bin_boundries[l][1][i]=np.mean(
                     data_dict_sorted[l][2][lower:upper])
 
-        l = 1  # events
+        l=1  # events
         # nrows = math.ceil(len(unique_label_nbrs)/ncols)
         if figsize is None:
-            fig, ax = plt.subplots(nrows=1, ncols=1)
+            fig, ax=plt.subplots(nrows=1, ncols=1)
         else:
-            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize)
+            fig, ax=plt.subplots(nrows=1, ncols=1, figsize=figsize)
         ax.set_title(self.labels[l])
         # ax[k][j].hist(data_dict_sorted[l][0],
         #               bins=bin_boundries[l][0])
@@ -1894,51 +1912,51 @@ class EvaluationTools:
 
 
         if self.get_pred_true_labels(pred_method):
-            ylabels_order = [self.labels[l] + " ({})".format(l)
+            ylabels_order=[self.labels[l] + " ({})".format(l)
                 for l in np.unique(np.hstack(
                             [np.unique(self.get_pred(pred_method, what, verb=verb)),
                              np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
         else:
-            ylabels_order = [self.labels[l] + " ({})".format(l)
+            ylabels_order=[self.labels[l] + " ({})".format(l)
                 for l in np.unique(self.get_label_nbrs(what, verb=verb))]
 
         if self.get_pred_true_labels(pred_method):
-            xlabels_order = ylabels_order
+            xlabels_order=ylabels_order
         else:
-            xlabels_order = np.unique(self.get_pred(
+            xlabels_order=np.unique(self.get_pred(
                 pred_method, what, verb=verb)).tolist()
 
-        diff = len(ylabels_order) - len(xlabels_order)
+        diff=len(ylabels_order) - len(xlabels_order)
         for i in range(abs(diff)):
             if diff > 0:  # len(ylabels_order)>len(xlabels_order)
                 xlabels_order.append(chr(ord('a') + i))
             elif diff < 0:  # len(ylabels_order)<len(xlabels_order)
                 ylabels_order.append(chr(ord('a') + i))
 
-        pred_labels = self.get_pred(pred_method, what, verb=verb)
+        pred_labels=self.get_pred(pred_method, what, verb=verb)
         if not self.get_pred_true_labels(pred_method):
-            pred_labels_dict = dict(
+            pred_labels_dict=dict(
                 [(pl, tl) for tl, pl in zip(np.unique(self.get_label_nbrs(what, verb=verb)), xlabels_order)])
-            pred_labels = [pred_labels_dict[l] for l in pred_labels]
+            pred_labels=[pred_labels_dict[l] for l in pred_labels]
 
         if self.get_pred_true_labels(pred_method) and force_xlabelnbr:
-            xlabels_order = [l.split(')')[0] for l in [l.split(
+            xlabels_order=[l.split(')')[0] for l in [l.split(
                 '(')[-1] for l in xlabels_order]]
 
         if type(xlabels_order) is np.ndarray:
-            xlabels_order = xlabels_order.tolist()
+            xlabels_order=xlabels_order.tolist()
         if type(ylabels_order) is np.ndarray:
-            ylabels_order = ylabels_order.tolist()
+            ylabels_order=ylabels_order.tolist()
 
         if self.get_pred_true_labels(pred_method):
-            true_label_nbrs = self.get_label_nbrs(what, verb=verb)
+            true_label_nbrs=self.get_label_nbrs(what, verb=verb)
         else:
-            cm_conv_labels = dict([(n, i) for i, n in enumerate(
+            cm_conv_labels=dict([(n, i) for i, n in enumerate(
                 np.unique(self.get_label_nbrs(what, verb=verb)))])
-            true_label_nbrs = [cm_conv_labels[l]
+            true_label_nbrs=[cm_conv_labels[l]
                 for l in self.get_label_nbrs(what, verb=verb)]
 
-        cm = confusion_matrix(true_label_nbrs,
+        cm=confusion_matrix(true_label_nbrs,
                               self.get_pred(pred_method, what, verb=verb))
         if verb:
             print(cm)
@@ -1947,24 +1965,24 @@ class EvaluationTools:
             if event.inaxes == ax:
                 # cont, ind = cax.contains(event)
 
-                x = event.xdata
-                y = event.ydata
-                i = int(y + 0.5)
-                j = int(x + 0.5)
+                x=event.xdata
+                y=event.ydata
+                i=int(y + 0.5)
+                j=int(x + 0.5)
 
-                selected_label_nbr = np.unique(
+                selected_label_nbr=np.unique(
                     self.get_label_nbrs(verb=verb))[i]
                 if self.get_pred_true_labels(pred_method):
-                    selected_pred_nbr = np.unique(
+                    selected_pred_nbr=np.unique(
                         self.get_label_nbrs(verb=verb))[j]
                 else:
-                    selected_pred_nbr = np.unique(
+                    selected_pred_nbr=np.unique(
                         self.get_pred(pred_method, verb=verb))[j]
 
-                selection = np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
+                selection=np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
                                            self.get_pred(pred_method, what, verb) == selected_pred_nbr)
 
-                results = [
+                results=[
                     self.get_file_nbrs(what, verb)[selection],
                     self.get_event_nbrs(what, verb)[selection],
                     self.get_label_nbrs(what, verb)[selection],
@@ -1980,13 +1998,13 @@ class EvaluationTools:
                 print()
 
         if type(figsize) is not tuple:
-            fig = plt.figure()
+            fig=plt.figure()
         else:
-            fig = plt.figure(figsize=figsize)
+            fig=plt.figure(figsize=figsize)
 
-        ax = fig.add_subplot(111)
+        ax=fig.add_subplot(111)
 
-        cax = ax.matshow(cm, cmap='plasma', alpha=0.7)
+        cax=ax.matshow(cm, cmap='plasma', alpha=0.7)
         fig.colorbar(cax)
 
         if ylabels_order != []:
@@ -2041,40 +2059,41 @@ class EvaluationTools:
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
-        lnbr, lcnt = np.unique(self.label_nbrs, return_counts=True)
-        lenum = np.arange(lnbr.shape[0])
+        lnbr, lcnt=np.unique(self.label_nbrs, return_counts=True)
+        lenum=np.arange(lnbr.shape[0])
 
         if type(figsize) is not tuple:
-            _, ax = plt.subplots()
+            _, ax=plt.subplots()
         else:
-            _, ax = plt.subplots(figsize=figsize)
+            _, ax=plt.subplots(figsize=figsize)
 
-        bars = plt.bar(lenum, lcnt)
+        bars=plt.bar(lenum, lcnt)
         for i, b in enumerate(bars):
             b.set_color(self.color_order[i])
         plt.xticks(lenum, lnbr)
 
-        rects = ax.patches
+        rects=ax.patches
         for rect, i in zip(rects, lcnt):
-            height = rect.get_height()
+            height=rect.get_height()
             ax.text(rect.get_x() + rect.get_width() / 2, height + 15, i,
                     ha='center', va='bottom')
-        _, top = plt.ylim()
+        _, top=plt.ylim()
         plt.ylim(0, 1.1 * top)
 
         ax.set_ylabel("number of events")
         ax.set_xlabel("labels")
 
-        pop = [None] * len(lnbr)
+        pop=[None] * len(lnbr)
         for i, j in enumerate(lnbr):
-            pop[i] = mpl.patches.Patch(color=self.color_order[i],
+            pop[i]=mpl.patches.Patch(color=self.color_order[i],
                                        label="{} ({})".format(self.labels[j], j))
         ax.legend(handles=pop, framealpha=0.3,
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
 
         plt.gcf().subplots_adjust(right=0.5)
         if self.save_as != False:
-            plt.savefig('{}labels_dist.{}'.format(self.save_plot_dir, self.save_as))
+            plt.savefig('{}labels_dist.{}'.format(
+                self.save_plot_dir, self.save_as))
         else:
             plt.show()
         plt.close()
