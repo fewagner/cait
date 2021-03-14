@@ -6,6 +6,7 @@ import numpy as np
 from ..fit._templates import baseline_template_quad, baseline_template_cubic
 from scipy.optimize import curve_fit
 from scipy.stats import norm, uniform
+from tqdm.notebook import tqdm
 
 # -----------------------------------------------------------
 # FUNCTIONS
@@ -45,8 +46,7 @@ def noise_function(nps):
 
 def get_cc_noise(nmbr_noise,
                  nps,
-                 lamb=0.01,
-                 verb=False):
+                 lamb=0.01):
     """
     Simulation of a noise baseline, according to Carretoni Cremonesi: arXiv:1006.3289
 
@@ -54,7 +54,6 @@ def get_cc_noise(nmbr_noise,
     :param nps: 1D array of odd size, Noise power spectrum of the baselines,
         e.g. generated with scipy.fft.rfft()
     :param lamb: integer > 0, parameter of the method (overlap between )
-    :param verb: bool, verbal feedback about progress of code
     :return: 2D array of size (nmbr_noise, 2*(len(nps)-1)), the simulated baselines
     """
 
@@ -65,9 +64,7 @@ def get_cc_noise(nmbr_noise,
 
     noise = np.zeros((nmbr_noise, T))
 
-    for i in range(nmbr_noise):
-        if verb and i%10==0:
-            print('Baselines simulated: ', i)
+    for i in tqdm(range(nmbr_noise)):
         t = 0
         while t < T:
             noise[i] += norm.rvs(scale=a) * np.roll(noise_function(nps), t)

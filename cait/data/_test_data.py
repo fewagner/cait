@@ -130,6 +130,7 @@ class TestData():
         self.ph_deviations = np.random.normal(loc=1, scale=relative_ph_sigma,
                                               size=self.nmbr_events)
         self.is_carrier = np.random.randint(1 + int(include_carriers), size=self.nmbr_events, dtype=bool)
+        self.is_carrier[self.all_tpas > 0.001] = 0
         self.from_source = np.random.randint(2, size=self.nmbr_events, dtype=bool)
         self.from_source[self.is_carrier] = False
         self.event_heights = []

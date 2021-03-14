@@ -80,8 +80,7 @@ def simulate_baselines(path_h5,
     for c in range(nmbr_channels):
         baselines[c] = polynomials[c] + get_cc_noise(nmbr_noise=size,
                                                      nps=nps[c],
-                                                     lamb=lamb,
-                                                     verb=True)
+                                                     lamb=lamb)
     h5f.close()
     if verb:
         print('Baseline Simulation done.')

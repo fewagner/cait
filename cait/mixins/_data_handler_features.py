@@ -245,16 +245,18 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_of(self, down=1):
+    def calc_of(self, down:int=1, name_appendix:str=''):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
         :param down: The downsample factor of the optimal filter transfer function.
         :type down: int
+        :param name_appendix: A string that is appended to the group name stdevent and optimumfilter.
+        :type name_appendix: string
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
-            stdevent_pulse = np.array([h5f['stdevent']['event'][i]
+            stdevent_pulse = np.array([h5f['stdevent' + name_appendix]['event'][i]
                                        for i in range(self.nmbr_channels)])
             mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
 
@@ -270,7 +272,7 @@ class FeaturesMixin(object):
             of = np.array([optimal_transfer_function(
                 stdevent_pulse[i], mean_nps[i]) for i in range(self.nmbr_channels)])
 
-            optimumfilter = h5f.require_group('optimumfilter')
+            optimumfilter = h5f.require_group('optimumfilter' + name_appendix)
             if down > 1:
                 optimumfilter.require_dataset('optimumfilter_real_down{}'.format(down),
                                               dtype='f',
@@ -295,12 +297,17 @@ class FeaturesMixin(object):
             print('OF updated.')
 
     # apply the optimum filter
-    def apply_of(self, type='events', chunk_size=10000, hard_restrict=False):
+    def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
+                 chunk_size=10000, hard_restrict=False,  down=1):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
         :param type: The group name in the HDF5 set, either events of testpulses.
         :type type: string
+        :param name_appendix_group: A string that is appended to the stdevent group in the HDF5 set.
+        :type name_appendix_group: string
+        :param name_appendix_set: A string that is appended to the of_ph set in the HDF5 set.
+        :type name_appendix_set: string
         :param chunk_size: The size how many events are processes simultaneously to avoid memory error.
         :type chunk_size: int
         :param hard_restrict: If True, the maximum search is restricted to 20-30% of the record window.
@@ -311,13 +318,10 @@ class FeaturesMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as f:
             events = f[type]['event']
-            sev = np.array(f['stdevent']['event'])
+            sev = np.array(f['stdevent' + name_appendix_group]['event'])
             nps = np.array(f['noise']['nps'])
-            of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=complex)
-            of.real = f['optimumfilter']['optimumfilter_real']
-            of.imag = f['optimumfilter']['optimumfilter_imag']
 
-            f[type].require_dataset(name='of_ph',
+            f[type].require_dataset(name='of_ph' + name_appendix_set,
                                     shape=(self.nmbr_channels, len(events[0])),
                                     dtype='float')
 
@@ -326,12 +330,13 @@ class FeaturesMixin(object):
             while counter + chunk_size < nmbr_events:
                 for c in range(self.nmbr_channels):
                     of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                           hard_restrict=hard_restrict)
-                    f[type]['of_ph'][c, counter:counter + chunk_size] = of_ph
+                                           hard_restrict=hard_restrict, down=down)
+                    f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
             for c in range(self.nmbr_channels):
-                of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c], hard_restrict=hard_restrict)
-                f[type]['of_ph'][c, counter:nmbr_events] = of_ph
+                of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                                       hard_restrict=hard_restrict, down=down)
+                f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
