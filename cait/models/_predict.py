@@ -1,4 +1,5 @@
 import h5py
+from tqdm.notebook import tqdm
 
 
 def nn_predict(h5_path,
@@ -29,9 +30,25 @@ def nn_predict(h5_path,
                                  dtype=float)
 
         count = 0
-        while count < nmbr_events - chunk_size:
-            print('Events predicted: {}%'.format(100 * count / nmbr_events))
+        with tqdm(total=nmbr_events) as pbar:
+            while count < nmbr_events - chunk_size:
+                print('Events predicted: {}%'.format(100 * count / nmbr_events))
 
+                # make input data
+                x = {}
+                for k in keys:
+                    x[k + '_ch' + str(feature_channel)] = f_handle[group_name][k][feature_channel,
+                                                          count:count + chunk_size]  # array of shape: (nmbr_events, nmbr_features)
+
+                # make predictions
+                prediction = model.predict(x).numpy()
+                if no_channel_idx_in_pred:
+                    data[prediction_name][count:count + chunk_size] = prediction.reshape(-1)
+                else:
+                    data[prediction_name][feature_channel, count:count + chunk_size] = prediction.reshape(-1)
+
+                count += chunk_size
+                pbar.update(chunk_size)
             # make input data
             x = {}
             for k in keys:
@@ -40,24 +57,11 @@ def nn_predict(h5_path,
 
             # make predictions
             prediction = model.predict(x).numpy()
+
             if no_channel_idx_in_pred:
-                data[prediction_name][count:count + chunk_size] = prediction.reshape(-1)
+                data[prediction_name][count:] = prediction.reshape(-1)
             else:
-                data[prediction_name][feature_channel, count:count + chunk_size] = prediction.reshape(-1)
-
-            count += chunk_size
-        # make input data
-        x = {}
-        for k in keys:
-            x[k + '_ch' + str(feature_channel)] = f_handle[group_name][k][feature_channel,
-                                                  count:count + chunk_size]  # array of shape: (nmbr_events, nmbr_features)
-
-        # make predictions
-        prediction = model.predict(x).numpy()
-
-        if no_channel_idx_in_pred:
-            data[prediction_name][count:] = prediction.reshape(-1)
-        else:
-            data[prediction_name][feature_channel, count:] = prediction.reshape(-1)
+                data[prediction_name][feature_channel, count:] = prediction.reshape(-1)
+            pbar.update(chunk_size)
 
         print('{} written to file {}.'.format(prediction_name, h5_path))

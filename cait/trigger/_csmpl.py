@@ -9,6 +9,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 import sqlite3
 from time import time, strptime, mktime
+from tqdm.notebook import tqdm
 
 
 # functions
@@ -140,7 +141,6 @@ def get_max_index(stream,  # memmap array
 
 def trigger_csmpl(paths,
                   trigger_tres,
-                  start_timestamp=0,
                   transfer_function=None,
                   record_length=16384,
                   overlap=None,
@@ -158,8 +158,6 @@ def trigger_csmpl(paths,
     :type paths:
     :param trigger_tres:
     :type trigger_tres:
-    :param start_timestamp:
-    :type start_timestamp:
     :param transfer_function:
     :type transfer_function:
     :param record_length:
@@ -203,32 +201,22 @@ def trigger_csmpl(paths,
         if take_samples < 0:
             take_samples = length_stream
 
-        # total_nmbr_events = len(stream) / record_length
-        print('TOTAL LENGTH STREAM: ', len(stream))
+        print('TOTAL LENGTH STREAM: ', length_stream)
 
         # ---------------------------------------------------------------
         # TRIGGER ALGO
         # ---------------------------------------------------------------
 
-        counter = np.copy(record_length)
-        block = 0
-
-        while counter < take_samples - record_length:
-            if block >= record_length - overlap:
-                block -= record_length - 2 * overlap
-                counter += record_length - 2 * overlap
-            else:
-                trig, height = get_max_index(stream=stream,  # memmap array
-                                             counter=counter,  # in samples
-                                             record_length=record_length,
-                                             overlap=overlap,  # in samples
-                                             block=block,  # in samples
-                                             transfer_function=transfer_function,
-                                             down=down,
-                                             )
-                if height > trigger_tres:
-                    # resample in case higher trigger is in record window
-                    counter += (trig - overlap) - 1
+        with tqdm(total=take_samples - record_length) as pbar:
+            pbar.update(record_length)
+            counter = np.copy(record_length)
+            block = 0
+            while counter < take_samples - record_length:
+                pbar.update(record_length - 2 * overlap)
+                if block >= record_length - overlap:
+                    block -= record_length - 2 * overlap
+                    counter += record_length - 2 * overlap
+                else:
                     trig, height = get_max_index(stream=stream,  # memmap array
                                                  counter=counter,  # in samples
                                                  record_length=record_length,
@@ -237,21 +225,31 @@ def trigger_csmpl(paths,
                                                  transfer_function=transfer_function,
                                                  down=down,
                                                  )
+                    if height > trigger_tres:
+                        # resample in case higher trigger is in record window
+                        counter += (trig - overlap) - 1
+                        pbar.update((trig - overlap) - 1)
+                        trig, height = get_max_index(stream=stream,  # memmap array
+                                                     counter=counter,  # in samples
+                                                     record_length=record_length,
+                                                     overlap=overlap,  # in samples
+                                                     block=block,  # in samples
+                                                     transfer_function=transfer_function,
+                                                     down=down,
+                                                     )
 
-                    triggers.append(start_hours + sample_to_time(counter + trig))
-                    if return_info:
-                        trigger_heights.append(height)
-                        record_starts.append(start_hours + sample_to_time(counter))
-                        blocks.append(block)
-                    block += trig + trigger_block
-                    if len(triggers) % 100 == 0:
-                        print('nmbr triggers: {}, finished: {:.2f}%'.format(len(triggers), 100 * counter / take_samples))
+                        triggers.append(start_hours + sample_to_time(counter + trig))
+                        if return_info:
+                            trigger_heights.append(height)
+                            record_starts.append(start_hours + sample_to_time(counter))
+                            blocks.append(block)
+                        block += trig + trigger_block
 
-                # increment
-                counter += record_length - 2 * overlap
-                block -= record_length - 2 * overlap
-                if block < 0:
-                    block = 0
+                    # increment
+                    counter += record_length - 2 * overlap
+                    block -= record_length - 2 * overlap
+                    if block < 0:
+                        block = 0
         # increment
         start_hours += (length_stream - 1) * sample_length
     print('#######################################')

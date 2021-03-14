@@ -83,18 +83,24 @@ def filter_event(event, transfer_function):
     return event_filtered
 
 
-def get_amplitudes(events_array, stdevent, nps, hard_restrict=False):
+def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1):
     """
-    this function determines the amplitudes of several events with optimal sig-noise-ratio
+    This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
     :param events_array: 2D array (nmbr_events, rec_length), the events to determine ph
     :param stdevent: 1D array, the standardevent
     :param nps: 1D array, length N/2 + 1, the noise power spectrum
+    :param hard_restrict: bool, The maximum search is restricted to 20-30% of the record window.
+    :param down: int, a factor by which the events and filter is downsampled before application
     :return: 1D array size (nmbr_events), the phs after of filtering
     """
 
     length = len(events_array[0])
     events_array = events_array - np.mean(events_array[:, :int(length / 8), np.newaxis], axis=1)
+
+    if down > 1:
+        length = int(length/down)
+        events_array = np.mean(events_array.reshape(len(events_array), length, down), axis=2)
 
     # calc transition function
     transition_function = optimal_transfer_function(stdevent, nps)

@@ -8,42 +8,11 @@ from scipy import odr
 from sklearn.ensemble import GradientBoostingRegressor
 from scipy.interpolate import interp1d
 from ..styles._plt_styles import use_cait_style, make_grid
+from tqdm.notebook import tqdm
+from ._energy_calibration_linear import PolyModel
 
 
 # functions
-
-class PolyModel:
-    def __init__(self, xd, yd, x_sigma=None, y_sigma=None, order=5):
-        # todo https://docs.scipy.org/doc/scipy/reference/odr.html !!
-        self.xd = xd
-        self.yd = yd
-        self.x_sigma = x_sigma
-        self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
-        self.y_sigma = y_sigma
-        self.order = order
-        self.poly_model = odr.polynomial(order)
-        self.fix = np.ones(order + 1)
-        self.fix[0] = 0
-        self.data = odr.RealData(self.xd, self.yd, sx=x_sigma, sy=y_sigma)
-        self.odr = odr.ODR(data=self.data, model=self.poly_model)
-        self.out = self.odr.run()
-        self.y = np.poly1d(self.out.beta[::-1])
-        self.dydx = np.polyder(self.y, m=1)
-
-    def y_pred(self, x):
-        y = self.y(x)
-        if len(x.shape) == 0:
-            x = np.array([x])
-        x_mat = np.array([x ** (i) for i in range(self.order + 1)]).T
-
-        # process covarianvce matrix and derivatives
-        d = np.dot(np.dot(x_mat, self.out.cov_beta), np.transpose(x_mat))
-        d = np.diag(d)
-
-        lower, upper = y - np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x)**2 + self.out.res_var * d), \
-                       y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x)**2 + self.out.res_var * d)
-        return lower, y, upper
-
 
 def energy_calibration_tree(evhs,
                             ev_hours,
@@ -165,9 +134,7 @@ def energy_calibration_tree(evhs,
 
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
-    for e in range(len(evhs)):
-        if e%500 == 0:
-            print('Calculating Recoil Energies: {:.3} %'.format(100*e/len(evhs)))
+    for e in tqdm(range(len(evhs))):
         x_data, x_sigma = [], []
         for l, m, u in zip(lower_regs, mean_regs, upper_regs):
             xl, x, xu = l.predict(ev_hours[e].reshape(-1, 1)), m.predict(ev_hours[e].reshape(-1, 1)), u.predict(

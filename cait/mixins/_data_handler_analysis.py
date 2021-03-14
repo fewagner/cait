@@ -124,7 +124,7 @@ class AnalysisMixin(object):
 
                     print('Resolution channel {}: {:.3} mV (mean {:.3} V, calculated with {})'.format(c, resolutions[
                         c] * 1000,
-                                                                                                        mus[c], naming))
+                                                                                                      mus[c], naming))
         return np.array(resolutions), np.array(mus)
 
     def calc_rate_cut(self, interval: float = 10, significance: float = 3, min: float = 0, max: float = 60):
@@ -273,6 +273,10 @@ class AnalysisMixin(object):
                          linear_with_uncertainty: bool = False,
                          tree: bool = False,
                          poly_order: int = 5,
+                         only_channels: list = None,
+                         method: str = 'ph',
+                         name_appendix_ev: str = '',
+                         name_appendix_tp: str = '',
                          ):
         """
         Calculates the calibrated energies of all events with uncertainties.
@@ -320,6 +324,15 @@ class AnalysisMixin(object):
         :param poly_order: The order of the polynomial that we fit to describe the TPA/PH relation. This should be
             between 3 and 5.
         :type poly_order: int
+        :param only_channels: If set, the calibration is done only on the channels that are handed here.
+        :type only_channels: list of ints or None
+        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter) or 'sef' (standard event fit).
+            Test pulse heights and event heights are then estimated with this method for the calibration.
+        :type method: string
+        :param name_appendix_ev: This is appended to the event pulse height estimation method, e.g. '_down16'.
+        :type name_appendix_ev: string
+        :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
+        :type name_appendix_tp: string
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
         ...                     cpe_factor=[9.5, 9.5],
@@ -359,10 +372,20 @@ class AnalysisMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as f:
 
-            evhs = np.array(f['events']['mainpar'][:, :, 0])
-            ev_hours = np.array(f['events']['hours'])
+            if method == 'ph':
+                evhs = np.array(f['events']['mainpar' + name_appendix_ev][:, :, 0])
+                tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
+            elif method == 'of':
+                evhs = np.array(f['events']['of_ph' + name_appendix_ev])
+                tphs = np.array(f['testpulses']['of_ph' + name_appendix_tp])
+            elif method == 'sef':
+                evhs = np.array(f['events']['sev_fit_par' + name_appendix_ev][:, :, 0])
+                tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
+            else:
+                raise KeyError('Pulse Height Estimation method not implemented, try ph, of or sef.')
+
             tpas = np.array(f['testpulses']['testpulseamplitude'])
-            tphs = np.array(f['testpulses']['mainpar'][:, :, 0])
+            ev_hours = np.array(f['events']['hours'])
             tp_hours = np.array(f['testpulses']['hours'])
 
             if only_stable:
@@ -380,7 +403,10 @@ class AnalysisMixin(object):
                                             shape=(self.nmbr_channels, len(ev_hours)),
                                             dtype=float)
 
-            for channel in range(self.nmbr_channels):
+            if only_channels is None:
+                only_channels = list(range(self.nmbr_channels))
+
+            for channel in only_channels:
                 print('Energy Calibration for Channel ', channel)
                 if linear_with_uncertainty:
                     f['events']['recoil_energy'][channel, ...], \

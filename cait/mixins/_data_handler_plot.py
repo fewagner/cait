@@ -219,6 +219,7 @@ class PlotMixin(object):
                 title=None,
                 block=True,
                 show=True,
+                group_name_appendix='',
                 save_path=None,
                 down=None,
                 dpi=150):
@@ -234,11 +235,11 @@ class PlotMixin(object):
         with h5py.File(self.path_h5, 'r') as f:
 
             if down is None:
-                of = np.array(f['optimumfilter']['optimumfilter_real']) + \
-                     1j * np.array(f['optimumfilter']['optimumfilter_imag'])
+                of = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real']) + \
+                     1j * np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_imag'])
             else:
-                of = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)]) + \
-                     1j * np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
+                of = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real_down{}'.format(down)]) + \
+                     1j * np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_imag_down{}'.format(down)])
             of = np.abs(of) ** 2
 
             freq = f['noise']['freq']
@@ -777,7 +778,10 @@ class PlotMixin(object):
                         block=False,
                         show=True,
                         save_path=None,
-                        dpi=150):
+                        dpi=150,
+                        method: str = 'ph',
+                        name_appendix_tp: str = '',
+                        ):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
 
@@ -789,8 +793,11 @@ class PlotMixin(object):
         :type only_idx: list of ints
         :param s: float, radius of the markers in the scatter plot
         :param marker: string, the matplotlib marker in the scatter plot
-        :return: -
-        :rtype: -
+        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter) or 'sef' (standard event fit).
+            Test pulse heights and event heights are then estimated with this method.
+        :type method: string
+        :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
+        :type name_appendix_tp: string
         """
 
         with h5py.File(self.path_h5, 'r') as f_h5:
@@ -799,7 +806,14 @@ class PlotMixin(object):
                 only_idx = list(range(len(f_h5['testpulses']['testpulseamplitude'])))
 
             tpa = f_h5['testpulses']['testpulseamplitude']
-            ph = f_h5['testpulses']['mainpar'][channel, only_idx, 0]
+            if method == 'ph':
+                ph = f_h5['testpulses']['mainpar' + name_appendix_tp][channel, only_idx, 0]
+            elif method == 'of':
+                ph = f_h5['testpulses']['of_ph' + name_appendix_tp][channel, only_idx]
+            elif method == 'sef':
+                ph = f_h5['testpulses']['sev_fit_par' + name_appendix_tp][channel, only_idx, 0]
+            else:
+                raise KeyError('Pulse Height Estimation method not implemented, try ph, of or sef.')
 
             x = np.linspace(0, np.max(tpa))
 

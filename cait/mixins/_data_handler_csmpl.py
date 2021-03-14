@@ -6,7 +6,7 @@ import numpy as np
 import h5py
 from ..trigger._csmpl import trigger_csmpl, get_record_window, align_triggers, sample_to_time, \
     exclude_testpulses, get_starttime, get_test_stamps
-
+from tqdm.notebook import tqdm
 
 # -----------------------------------------------------------
 # CLASS
@@ -345,9 +345,7 @@ class CsmplMixin(object):
             for c in range(self.nmbr_channels):
 
                 print('Channel ', c)
-                for i in range(len(trigger_hours)):
-                    if i % 1000 == 0:
-                        print('Get Event Nmbr ', i)
+                for i in tqdm(range(len(trigger_hours))):
                     write_events['event'][c, i, :], _ = get_record_window(path=csmpl_paths[c],
                                                                           start_time=trigger_hours[
                                                                                          i] * 3600 - sample_to_time(
@@ -374,9 +372,7 @@ class CsmplMixin(object):
                 for c in range(self.nmbr_channels):
 
                     print('Channel ', c)
-                    for i in range(len(this_hours)):
-                        if i % 1000 == 0:
-                            print('Calc Pulse Nmbr ', i)
+                    for i in tqdm(range(len(this_hours))):
 
                         tp_ev[c, i, :], _ = get_record_window(path=csmpl_paths[c],
                                                              start_time= this_hours[i]* 3600 - sample_to_time(
@@ -397,9 +393,7 @@ class CsmplMixin(object):
                 for c in range(self.nmbr_channels):
 
                     print('Channel ', c)
-                    for i in range(len(this_hours)):
-                        if i % 1000 == 0:
-                            print('Calc Pulse Nmbr ', i)
+                    for i in tqdm(range(len(this_hours))):
                         cp_array, _ = get_record_window(path=csmpl_paths[c],
                                                         start_time=this_hours[i] * 3600 - sample_to_time(
                                                             self.record_length / 4,

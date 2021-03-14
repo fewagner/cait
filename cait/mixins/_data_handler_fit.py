@@ -11,7 +11,7 @@ from ..fit._templates import baseline_template_cubic, sev_fit_template
 from scipy.optimize import curve_fit
 from ..fit._bl_fit import get_rms
 from ..fit._saturation import logistic_curve
-import tqdm
+from tqdm.notebook import tqdm
 
 # -----------------------------------------------------------
 # CLASS
@@ -83,7 +83,7 @@ class FitMixin(object):
     # apply sev fit
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=0.04, down=1, order_bl_polynomial = 3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
-                      verb=False, processes=4, events_to_fit=None, name_appendix=''):
+                      verb=False, processes=4, name_appendix='', group_name_appendix=''):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -108,10 +108,10 @@ class FitMixin(object):
         :type verb: bool
         :param processes: The number of workers for the fit.
         :type processes: int
-        :param events_to_fit: The number of events in the dataset to fit.
-        :type events_to_fit: int
         :param name_appendix: This gets appendend to the dataset name in the HDF5 set.
         :type name_appendix: string
+        :param group_name_appendix: This is appendend to the group name of the stdevent in the HDF5 set.
+        :type group_name_appendix: string
         """
 
         print('Calculating SEV Fit.')
@@ -125,7 +125,7 @@ class FitMixin(object):
         # open the dataset
         with h5py.File(self.path_h5, 'r+') as f:
             events = f[type]['event']
-            sev_par = np.array(f['stdevent']['fitpar'])
+            sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
             # apply fit for all channels, save parameters
@@ -141,10 +141,10 @@ class FitMixin(object):
 
                     # fit all
                     with Pool(processes) as p:
-                        par[c, ...] = list(tqdm.tqdm(p.imap(fit_model.fit_cubic, events[c]), total=events_to_fit))
+                        par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, events[c]), total=len(events[c])))
 
             # write sev fit results to file
-            set_fitpar = f['events'].require_dataset(name='sev_fit_par{}'.format(name_appendix),
+            set_fitpar = f[type].require_dataset(name='sev_fit_par{}'.format(name_appendix),
                                         shape=par.shape,
                                         dtype='float')
             set_fitpar.attrs.create(name='pulse_height', data=0)
@@ -153,7 +153,7 @@ class FitMixin(object):
             set_fitpar.attrs.create(name='linear_coefficient', data=3)
             set_fitpar.attrs.create(name='quadratic_coefficient', data=4)
             set_fitpar.attrs.create(name='cubic_coefficient', data=5)
-            set_fitrms = f['events'].require_dataset(name='sev_fit_rms{}'.format(name_appendix),
+            set_fitrms = f[type].require_dataset(name='sev_fit_rms{}'.format(name_appendix),
                                         shape=(self.nmbr_channels, len(events[0])),
                                         dtype='float')
             for c in range(self.nmbr_channels):
@@ -178,7 +178,7 @@ class FitMixin(object):
 
             print('Done.')
 
-    def calc_bl_coefficients(self, type='noise', down=1, verb=False):
+    def calc_bl_coefficients(self, type='noise', down=1):
         """
         Calcualted the fit coefficients with a cubic polynomial on the noise baselines.
 
@@ -186,8 +186,6 @@ class FitMixin(object):
         :type type: string
         :param down: The baselines are downsampled by this factor before the fit.
         :type down: int
-        :param verb: Tf True the code provides verbal feedback about the progress
-        :type verb: bool
         """
 
         print('Calculating Baseline Coefficients.')
@@ -209,9 +207,7 @@ class FitMixin(object):
                 t = np.mean(t.reshape(int(len(t) / down), down), axis=1)
 
             for c in range(self.nmbr_channels):
-                for i in range(nmbr_bl):
-                    if verb and i % 100 == 0:
-                        print('Calculating Baseline for Channel {}: {:4.2f} %'.format(c, i * 100 / nmbr_bl))
+                for i in tqdm(range(nmbr_bl)):
                     # fit template to every bl
                     ev = events['event'][c, i]
                     if down > 1:

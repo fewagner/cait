@@ -7,6 +7,7 @@ from scipy.stats import linregress, t, norm
 from scipy import odr
 from scipy.interpolate import interp1d
 from ..styles._plt_styles import use_cait_style, make_grid
+from tqdm.notebook import tqdm
 
 
 # functions
@@ -39,8 +40,7 @@ class PolyModel:
         d = np.dot(np.dot(x_mat, self.out.cov_beta), np.transpose(x_mat))
         d = np.diag(d)
 
-        lower, upper = y - np.sqrt(
-            np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d), \
+        lower, upper = y - np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d), \
                        y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d)
         return lower, y, upper
 
@@ -101,6 +101,7 @@ def energy_calibration_linear(evhs,
                               plot=False,
                               poly_order=5,
                               dpi=150,
+                              plot_only_first_poly=True
                               ):
     """
     TODO
@@ -170,6 +171,8 @@ def energy_calibration_linear(evhs,
         plt.close()
         plt.scatter(tp_hours, tphs, s=5, marker='.', color='blue', zorder=10)
         for i, iv in enumerate(intervals):
+            if i == 0:
+                plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
             t = np.linspace(iv[0], iv[1], 100)
             for m in range(len(all_linear_tpas[i])):
                 lower, y, upper = all_regs[i][m].y_sigma(t)
@@ -183,8 +186,8 @@ def energy_calibration_linear(evhs,
         plt.show()
 
         # plot the polynomials
-        plt.close()
         for i, iv in enumerate(intervals):
+            plt.close()
             x_data, x_sigma = [], []
             plot_timestamp = (iv[1] - iv[0]) / 2
             print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
@@ -202,20 +205,21 @@ def energy_calibration_linear(evhs,
             plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
             plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
             plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
-        make_grid()
-        plt.ylim([0, y[-1]])
-        plt.ylabel('Testpulse Amplitude (V)')
-        plt.xlabel('Pulse Height (V)')
-        plt.show()
+            make_grid()
+            plt.ylim([0, y[-1]])
+            plt.ylabel('Testpulse Amplitude (V)')
+            plt.xlabel('Pulse Height (V)')
+            plt.show()
+
+            if plot_only_first_poly:
+                break
 
     # for each event in the interpolation intervals define a ph/tpa factor, for other events take closest TP time value
     # this is a polynomial fit (order 5 or so) of the the ph/tpa values for fixed tpas
 
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
-    for e in range(len(evhs)):
-        if e % 500 == 0:
-            print('Calculating Recoil Energies: {:.3} %'.format(100 * e / len(evhs)))
+    for e in tqdm(range(len(evhs))):
         for i, iv in enumerate(intervals):
             if (i == 0 and ev_hours[e] <= iv[0]) or (  # events befor the first interval
                     ev_hours[e] > iv[0] and ev_hours[e] <= iv[1]) or (  # events inside an interval
