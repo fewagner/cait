@@ -110,7 +110,7 @@ class DataHandler(SimulateMixin,
         This function is usually called right after the initialization of a new object. If the intance has already done
         the conversion from *.rdt to *.h5, the path is already set automatically and the call is obsolete.
 
-        :param path_h5: Directory that contains the H5 file.
+        :param path_h5: The path to the directory that contains the H5 file, e.g. "data/" --> file name "data/bck_001-P_Ch01-L_Ch02.csv".
         :type path_h5: string
         :param fname: The name of the H5 file.
         :type fname: string
@@ -128,8 +128,7 @@ class DataHandler(SimulateMixin,
                     app += '-{}_Ch{}'.format(i + 1, c)
 
         # check if the channel number matches the file, otherwise error
-        self.path_h5 = "{}/{}{}.h5".format(path_h5,
-                                           fname, app)
+        self.path_h5 = "{}{}{}.h5".format(path_h5, fname, app)
         self.path_directory = path_h5
         self.fname = fname
 
@@ -141,7 +140,7 @@ class DataHandler(SimulateMixin,
         Include the *.csv file with the labels into the HDF5 File.
 
         :param path_labels: Path to the folder that contains the csv file.
-            E.g. "data" looks for labels in "data/labels_bck_0XX_<type>".
+            E.g. "data/" looks for labels in "data/labels_bck_0XX_<type>".
         :type path_labels: string
         :param type: The group name in the HDF5 file of the events, typically "events" or "testpulses".
         :type type: string
@@ -164,8 +163,8 @@ class DataHandler(SimulateMixin,
         if not path_h5:
             path_h5 = self.path_h5
 
-        path_labels = '{}/labels_{}_{}.csv'.format(
-            path_labels, self.fname, type)
+        path_labels = '{}labels_{}_{}.csv'.format(path_labels, self.fname,
+                                                  type)
 
         with h5py.File(path_h5, 'r+') as h5f:
 
