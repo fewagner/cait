@@ -415,7 +415,7 @@ class EvaluationTools:
         if self.predictions is None:
             raise AttributeError('Add predictions first!')
 
-        np.savetxt(path + '/' + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
+        np.savetxt(path + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]),
                    fmt='%i', delimiter='\n')  # the index 1 should access the pred
 
@@ -2025,7 +2025,7 @@ class EvaluationTools:
         plt.xlabel('Predicted Labels')
         plt.ylabel('Labels')
         if (fig_title):
-            plt.title('{} - Confutionmatrix'.format(pred_method))
+            plt.title('{} - Confusion Matrix'.format(pred_method))
         fig.tight_layout()
         plt.tight_layout()
         if self.save_as == False:
