@@ -115,7 +115,7 @@ def generate_standard_event(events,
     if scale_fit_height:
         t = (np.arange(0, len(standardevent), dtype=float) - len(standardevent) / 4) * sample_length
         fit_max = np.max(pulse_template(t, *par))
-        print('Parameter: ', par)
+        print('Parameters [t0, An, At, tau_n, tau_in, tau_t]:\n', par)
         if not np.isclose(fit_max, 0):
             par[1] /= fit_max
             par[2] /= fit_max
