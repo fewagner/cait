@@ -380,7 +380,7 @@ class EvaluationTools:
         Adds a new prediction method with labels to the predictions property.
 
         :param pred_method: string, the name of the model that made the predictions
-        :param path: list of int, contains the predicted labels for the events
+        :param pred: list of int, contains the predicted labels for the events
         :param true_labels: boolean, default False, set to True when predicted labels correspond to actual label numbers (as in superviced learning methods)
         :param verb: boolean, default False, if True addtional output is printed to the console
         """
@@ -407,7 +407,7 @@ class EvaluationTools:
         Saves the predictions as a CSV file
 
         :param pred_method: string, the name of the model that made the predictions
-        :param path: string, path to the folder that should contain the predictions
+        :param path: string, path to the folder that should contain the predictions, e.g. 'predictions/' leads to correct directory
         :param fname: string, the name of the file, e.g. "bck_001"
         :param channel: int, the number of the channel in the module, e.g. Phonon 0, Light 1
         :param verb: boolean, default False, if True  additional ouput is printed
