@@ -1212,6 +1212,11 @@ class EvaluationTools:
                                       bbox=dict(boxstyle="round", fc="w"),
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
+            ax[i].tick_params(left=False,
+                            bottom=False,
+                            labelleft=False,
+                            labelbottom=False)
+
 
         fig.tight_layout()
         plt.tight_layout()
