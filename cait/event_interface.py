@@ -370,8 +370,9 @@ class EventInterface:
                     of_real = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)])
                     of_imag = np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
                     print('here down')
-                except:
-                    raise KeyError('Please calculate the OF with according downsampling rate.')
+                except KeyError:
+                    raise KeyError(
+                        'Please calculate the OF with according downsampling rate.')
             else:
                 of_real = np.array(f['optimumfilter']['optimumfilter_real'])
                 of_imag = np.array(f['optimumfilter']['optimumfilter_imag'])
@@ -565,10 +566,15 @@ class EventInterface:
 
             # optimum filter
             if self.show_filtered:
-                for c in range(self.nmbr_channels):
-                    offset = np.mean(event[c, :int(len(event[c]) / 8)])
-                    event[c] = filter_event(event[c] - offset,
-                                            self.of[c]) + offset
+                try:
+                    for c in range(self.nmbr_channels):
+                        offset = np.mean(event[c, :int(len(event[c]) / 8)])
+                        event[c] = filter_event(event[c] - offset,
+                                                self.of[c]) + offset
+                except ValueError:
+                    raise ValueError(
+                        'The downsmpling rate of the loaded OF and the Events needs to be the same!')
+
                 appendix = 'Filtered'
 
             # derivative
