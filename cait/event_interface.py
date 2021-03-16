@@ -11,7 +11,6 @@ from .filter._of import filter_event
 from .fit._templates import sev_fit_template
 from .styles._plt_styles import use_cait_style, make_grid
 
-
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -49,9 +48,14 @@ class EventInterface:
     HDF5 File loaded.
     >>> ei.create_labels_csv(path='./')
     """
-
-    def __init__(self, module: str = 'Test', run: str = '01', record_length: int = 16384,
-                 sample_frequency: int = 25000, nmbr_channels: int = 2, down: int = 1, dpi: int = None):
+    def __init__(self,
+                 module: str = 'Test',
+                 run: str = '01',
+                 record_length: int = 16384,
+                 sample_frequency: int = 25000,
+                 nmbr_channels: int = 2,
+                 down: int = 1,
+                 dpi: int = None):
         self.nmbr_channels = nmbr_channels
         self.module = module
         self.run = run
@@ -76,7 +80,9 @@ class EventInterface:
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
         else:
-            self.channel_names = ['Channel {}'.format(i) for i in range(nmbr_channels)]
+            self.channel_names = [
+                'Channel {}'.format(i) for i in range(nmbr_channels)
+            ]
         self.xlim = None
         self.ylim = None
         self.dpi = dpi
@@ -88,7 +94,8 @@ class EventInterface:
     # ------------------------------------------------------------
 
     # Load in the hdf5 dataset
-    def load_h5(self, path: str,
+    def load_h5(self,
+                path: str,
                 fname: str,
                 channels: list,
                 appendix=True,
@@ -127,13 +134,14 @@ class EventInterface:
             self.which_to_label = which_to_label
         else:
             raise ValueError(
-                'which_to_label must be a list and contain at least one of events, testpulses, noise.')
+                'which_to_label must be a list and contain at least one of events, testpulses, noise.'
+            )
 
         self.fname = fname
 
         if not len(channels) == self.nmbr_channels:
-            raise ValueError(
-                'List of channels must vale length {}.'.format(self.nmbr_channels))
+            raise ValueError('List of channels must vale length {}.'.format(
+                self.nmbr_channels))
 
         path_h5 = path + '{}{}.h5'.format(fname, app)
         self.path_h5 = path_h5
@@ -190,7 +198,8 @@ class EventInterface:
                     [self.nmbr_channels, self.nmbrs[type]])
                 np.savetxt(self.path_csv_labels + type + '.csv',
                            self.labels[type],
-                           fmt='%i', delimiter='\n')
+                           fmt='%i',
+                           delimiter='\n')
 
         except NameError:
             print('Error! Load a h5 file first.')
@@ -255,14 +264,19 @@ class EventInterface:
             else:
                 np.savetxt(self.path_csv_labels + type + '.csv',
                            np.array(f[type]['labels']),
-                           fmt='%i', delimiter='\n')
-                print('Labels from HDF5 exported to {}{}.'.format(self.path_csv_labels, type))
+                           fmt='%i',
+                           delimiter='\n')
+                print('Labels from HDF5 exported to {}{}.'.format(
+                    self.path_csv_labels, type))
 
     # ------------------------------------------------------------
     # PREDICTIONS HANDLING
     # ------------------------------------------------------------
 
-    def load_predictions_csv(self, path: str, model: str, type: str = 'events'):
+    def load_predictions_csv(self,
+                             path: str,
+                             model: str,
+                             type: str = 'events'):
         """
         Load a CSV file with predictions from a machine learning model for the given HDF5 dataset.
 
@@ -329,15 +343,17 @@ class EventInterface:
             else:
                 np.savetxt(self.path_csv_predictions + type + '.csv',
                            np.array(f[type]['{}_predictions'.format(model)]),
-                           fmt='%i', delimiter='\n')
-                print('{} Predictions from HDF5 exported to {}{}.'.format(model, self.path_csv_predictions, type))
+                           fmt='%i',
+                           delimiter='\n')
+                print('{} Predictions from HDF5 exported to {}{}.'.format(
+                    model, self.path_csv_predictions, type))
 
     # ------------------------------------------------------------
     # FEATURE HANDLING
     # ------------------------------------------------------------
 
     # Load OF
-    def load_of(self):
+    def load_of(self, down: int = 1,):
         """
         Add the optimal transfer function from the HDF5 file.
 
@@ -349,8 +365,17 @@ class EventInterface:
         Added the optimal transfer function.
         """
         with h5py.File(self.path_h5, 'r+') as f:
-            of_real = np.array(f['optimumfilter']['optimumfilter_real'])
-            of_imag = np.array(f['optimumfilter']['optimumfilter_imag'])
+            if down != 1:
+                try:
+                    of_real = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)])
+                    of_imag = np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
+                    print('here down')
+                except:
+                    raise KeyError('Please calculate the OF with according downsampling rate.')
+            else:
+                of_real = np.array(f['optimumfilter']['optimumfilter_real'])
+                of_imag = np.array(f['optimumfilter']['optimumfilter_imag'])
+
             self.of = of_real + 1j * of_imag
             print('Added the optimal transfer function.')
 
@@ -372,10 +397,12 @@ class EventInterface:
         self.name_appendix = name_appendix  # save this for loading of the parameters when viewing
         with h5py.File(self.path_h5, 'r+') as f:
             sev_par = np.array(f['stdevent']['fitpar'])
-            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+            t = (np.arange(0, self.record_length, dtype=float) -
+                 self.record_length / 4) * sample_length
             self.fit_models = []
             for c in range(self.nmbr_channels):
-                self.fit_models.append(sev_fit_template(pm_par=sev_par[c], t=t))
+                self.fit_models.append(sev_fit_template(pm_par=sev_par[c],
+                                                        t=t))
 
             print('Added the sev fit parameters.')
 
@@ -383,7 +410,11 @@ class EventInterface:
     # LABEL AND VIEWER INTERFACE
     # ------------------------------------------------------------
 
-    def _plot_mp(self, main_par, down: int = 1, color: str = 'r', offset_in_samples: int = 0):
+    def _plot_mp(self,
+                 main_par,
+                 down: int = 1,
+                 color: str = 'r',
+                 offset_in_samples: int = 0):
         """
         Function to plot the main parameters, typically accessed by the labeling tool internally.
 
@@ -408,12 +439,11 @@ class EventInterface:
                     (t_half - offset_in_samples) / down,
                     (t_end - offset_in_samples) / down]
 
-        y_values = [offset + 0.1 * pulse_height,
-                    offset + 0.8 * pulse_height,
-                    offset + pulse_height,
-                    offset + 0.9 * pulse_height,
-                    offset + 0.736 * pulse_height,
-                    offset + 0.368 * pulse_height]
+        y_values = [
+            offset + 0.1 * pulse_height, offset + 0.8 * pulse_height,
+            offset + pulse_height, offset + 0.9 * pulse_height,
+            offset + 0.736 * pulse_height, offset + 0.368 * pulse_height
+        ]
 
         plt.scatter(x_values, y_values, color=color, zorder=15)
 
@@ -446,7 +476,8 @@ class EventInterface:
                         self.window_size = int(self.record_length / down)
                         print('Downsample rate set to {}.'.format(self.down))
                     else:
-                        print('Downsample rate has to be integer (power of 2).')
+                        print(
+                            'Downsample rate has to be integer (power of 2).')
                 except ValueError:
                     print('Downsample rate has to be integer (power of 2).')
 
@@ -526,18 +557,19 @@ class EventInterface:
             event = np.array(f[type]['event'][:, idx, :])
             appendix = ''
 
+            # downsample first
+            if not self.down == 1:
+                event = event.reshape(self.nmbr_channels, self.window_size,
+                                      self.down)
+                event = np.mean(event, axis=2)
+
             # optimum filter
             if self.show_filtered:
                 for c in range(self.nmbr_channels):
                     offset = np.mean(event[c, :int(len(event[c]) / 8)])
-                    event[c] = filter_event(event[c] - offset, self.of[c]) + offset
+                    event[c] = filter_event(event[c] - offset,
+                                            self.of[c]) + offset
                 appendix = 'Filtered'
-
-            # downsample
-            if not self.down == 1:
-                event = event.reshape(self.nmbr_channels,
-                                      self.window_size, self.down)
-                event = np.mean(event, axis=2)
 
             # derivative
             if self.show_derivative:
@@ -549,8 +581,8 @@ class EventInterface:
             if self.show_triangulation:
                 elements = []
                 for i in range(self.nmbr_channels):
-                    elements.append(get_elements(
-                        event[i], std_thres=self.std_thres[i]))
+                    elements.append(
+                        get_elements(event[i], std_thres=self.std_thres[i]))
 
             # mp
             if self.show_mp:
@@ -559,7 +591,8 @@ class EventInterface:
             # sev
             if self.sev:
                 sev_fit = []
-                fp = f['events']['sev_fit_par{}'.format(self.name_appendix)][:, idx, :]
+                fp = f['events']['sev_fit_par{}'.format(
+                    self.name_appendix)][:, idx, :]
                 for c in range(self.nmbr_channels):
                     offset = np.mean(event[c, :int(len(event[c]) / 8)])
                     sev_fit.append(self.fit_models[c].wrap_sec(*fp[c]))
@@ -582,9 +615,12 @@ class EventInterface:
 
                 plt.subplot(self.nmbr_channels, 1, i + 1)
                 plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
-                plt.plot(event[i], label=self.channel_names[i], color=colors[i], zorder=10)
-                plt.title('Index {}, {} {}'.format(idx,
-                                                   self.channel_names[i], appendix))
+                plt.plot(event[i],
+                         label=self.channel_names[i],
+                         color=colors[i],
+                         zorder=10)
+                plt.title('Index {}, {} {}'.format(idx, self.channel_names[i],
+                                                   appendix))
 
                 # triangulation
                 if self.show_triangulation:
@@ -592,8 +628,9 @@ class EventInterface:
 
                 # main parameters
                 if self.show_mp:
-                    self._plot_mp(
-                        main_par[i], color=anti_colors[i], down=self.down)
+                    self._plot_mp(main_par[i],
+                                  color=anti_colors[i],
+                                  down=self.down)
 
                 # sev
                 if self.sev:
@@ -656,7 +693,7 @@ class EventInterface:
         print('20 ... Sharp Light Event')
         print('99 ... unknown/other')
 
-    def _ask_for_label(self, idx:int, which:str='phonon'):
+    def _ask_for_label(self, idx: int, which: str = 'phonon'):
         """
         Takes and processes an user input to the viewer/labeling tool.
 
@@ -664,8 +701,7 @@ class EventInterface:
         :param which: string, the naming of the channel, e.g. phonon/light
         :return: int > 0 or option code (int < 0) if the user input was one of the option flag
         """
-        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx)'.format(
-            idx, which))
+        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx)' .format(idx, which))
 
         while True:
             user_input = input('{}: '.format(which))
@@ -674,8 +710,7 @@ class EventInterface:
                 if label > 0:
                     return label
                 else:
-                    print(
-                        'Enter Integer > 0 or q end, b back, n next, o options, i idx')
+                    print('Enter Integer > 0 or q end, b back, n next, o options, i idx' )
             except ValueError:
                 if user_input == 'q':
                     return -1
@@ -691,7 +726,7 @@ class EventInterface:
                     print(
                         'Enter Integer > 0 or q end, b back, n next, o options, i idx')
 
-    def _ask_for_idx(self, length:int):
+    def _ask_for_idx(self, length: int):
         """
         Gets an index from the user to which we want to jump.
 
@@ -712,11 +747,11 @@ class EventInterface:
                 print('Enter valid index!')
 
     def start(self,
-                       start_from_idx:int=0,
-                       print_label_list:bool=True,
-                       label_only_class:int=None,
-                       label_only_prediction:int=None,
-                       model:str=None):
+              start_from_idx: int = 0,
+              print_label_list: bool = True,
+              label_only_class: int = None,
+              label_only_prediction: int = None,
+              model: str = None):
         """
         Starts the label/view interface.
 
@@ -810,6 +845,7 @@ class EventInterface:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
                                        self.labels[type],
-                                       fmt='%i', delimiter='\n')
+                                       fmt='%i',
+                                       delimiter='\n')
 
                 idx += 1
