@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 import matplotlib.pyplot as plt
 import math
+from .evaluation._color import console_colors
 from .features._fem import get_elements, plot_S1
 from .filter._of import filter_event
 from .fit._templates import sev_fit_template
@@ -368,8 +369,8 @@ class EventInterface:
             if down != 1:
                 try:
                     of_real = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)])
-                    of_imag = np.array(f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
-                    print('here down')
+                    of_imag = np.array(
+                        f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
                 except KeyError:
                     raise KeyError(
                         'Please calculate the OF with according downsampling rate.')
@@ -572,8 +573,8 @@ class EventInterface:
                         event[c] = filter_event(event[c] - offset,
                                                 self.of[c]) + offset
                 except ValueError:
-                    raise ValueError(
-                        'The downsmpling rate of the loaded OF and the Events needs to be the same!')
+                    raise ValueError(console_colors.FAIL + 'ERROR: ' + console_colors.ENDC +
+                                     'The downsampling rate of the loaded OF and the Events needs to be the same!')
 
                 appendix = 'Filtered'
 
