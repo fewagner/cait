@@ -4,9 +4,12 @@
 
 import numpy as np
 import h5py
+from ..features._mp import calc_main_parameters
 from ..trigger._csmpl import trigger_csmpl, get_record_window, align_triggers, sample_to_time, \
     exclude_testpulses, get_starttime, get_test_stamps
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
+from ..fit._pm_fit import fit_pulse_shape
+from ..fit._templates import pulse_template
 
 # -----------------------------------------------------------
 # CLASS
@@ -157,7 +160,15 @@ class CsmplMixin(object):
         print('NPS written.')
 
 
-    def include_sev(self, sev, fitpar, mainpar):
+    def include_sev(self,
+                    sev,
+                    fitpar=None,
+                    mainpar=None,
+                    scale_fit_height=True,
+                    sample_length=0.04,
+                    t0_start=None,
+                    opt_start=False,
+                    ):
         """
         Include the Standard Event to a HDF5 file.
 
@@ -168,20 +179,71 @@ class CsmplMixin(object):
         :param mainpar: The main parameters of all standard events.
         :type mainpar: array with shape (channels, 10)
         """
+
+        std_evs = []
+
+        for c in range(self.nmbr_channels):
+
+            std_evs.append([])
+
+            std_evs[c].append(sev[c])
+
+            if fitpar is None:
+                if t0_start is None:
+                    t0_start = -3
+                std_evs[c].append(fit_pulse_shape(sev[c], sample_length=sample_length, t0_start=t0_start[c], opt_start=opt_start))
+
+                if scale_fit_height:
+                    t = (np.arange(0, len(sev[c]), dtype=float) - len(sev[c]) / 4) * sample_length
+                    fit_max = np.max(pulse_template(t, *std_evs[c][1]))
+                    print('Parameters [t0, An, At, tau_n, tau_in, tau_t]:\n', std_evs[c][1])
+                    if not np.isclose(fit_max, 0):
+                        std_evs[c][1][1] /= fit_max
+                        std_evs[c][1][2] /= fit_max
+            else:
+                std_evs[c].append(fitpar[c])
+
+        if mainpar is None:
+            mainpar = np.array([calc_main_parameters(x[0]).getArray() for x in std_evs])
+
         with h5py.File(self.path_h5, 'r+') as f:
+
             stdevent = f.require_group(name='stdevent')
-            if 'event' in stdevent:
-                del stdevent['event']
-            if 'fitpar' in stdevent:
-                del stdevent['fitpar']
-            if 'mainpar' in stdevent:
-                del stdevent['mainpar']
-            stdevent.create_dataset(name='event',
-                                    data=sev)
-            stdevent.create_dataset(name='fitpar',
-                                    data=fitpar)
-            stdevent.create_dataset(name='mainpar',
-                                    data=mainpar)
+
+            stdevent.require_dataset('event',
+                                shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
+                                dtype='f')
+            stdevent['event'][...] = np.array([x[0] for x in std_evs])
+            stdevent.require_dataset('fitpar',
+                                shape=(self.nmbr_channels, len(std_evs[0][1])),
+                                dtype='f')
+            stdevent['fitpar'][...] = np.array([x[1] for x in std_evs])
+
+            # description of the fitparameters (data=column_in_fitpar)
+            stdevent['fitpar'].attrs.create(name='t_0', data=0)
+            stdevent['fitpar'].attrs.create(name='A_n', data=1)
+            stdevent['fitpar'].attrs.create(name='A_t', data=2)
+            stdevent['fitpar'].attrs.create(name='tau_n', data=3)
+            stdevent['fitpar'].attrs.create(name='tau_in', data=4)
+            stdevent['fitpar'].attrs.create(name='tau_t', data=5)
+
+            stdevent.require_dataset('mainpar',
+                                shape=mainpar.shape,
+                                dtype='f')
+
+            stdevent['mainpar'][...] = mainpar
+
+            # description of the mainpar (data=col_in_mainpar)
+            stdevent['mainpar'].attrs.create(name='pulse_height', data=0)
+            stdevent['mainpar'].attrs.create(name='t_zero', data=1)
+            stdevent['mainpar'].attrs.create(name='t_rise', data=2)
+            stdevent['mainpar'].attrs.create(name='t_max', data=3)
+            stdevent['mainpar'].attrs.create(name='t_decaystart', data=4)
+            stdevent['mainpar'].attrs.create(name='t_half', data=5)
+            stdevent['mainpar'].attrs.create(name='t_end', data=6)
+            stdevent['mainpar'].attrs.create(name='offset', data=7)
+            stdevent['mainpar'].attrs.create(name='linear_drift', data=8)
+            stdevent['mainpar'].attrs.create(name='quadratic_drift', data=9)
         print('SEV written.')
 
 
@@ -221,13 +283,14 @@ class CsmplMixin(object):
 
     def include_triggered_events(self,
                                  csmpl_paths,
-                                 max_time_diff=0.03, # in sec
+                                 max_time_diff=0.5, # in sec
                                  exclude_tp=True,
                                  sample_duration=0.00004,
                                  datatype='float32',
-                                 min_tpa=0.001,
+                                 min_tpa=0.0001,
                                  min_cpa=10.1,
-                                 down=1):
+                                 down=1,
+                                 noninteractive=False):
         """
         Include the triggered events from the CSMPL files.
 
@@ -256,7 +319,7 @@ class CsmplMixin(object):
 
         # open read file
         with h5py.File(self.path_h5, 'r+') as h5f:
-            if "events" in h5f:
+            if "events" in h5f and not noninteractive:
                 val = None
                 while val != 'y':
                     val = input("An events group exists in this file. Overwrite? y/n")
@@ -288,11 +351,11 @@ class CsmplMixin(object):
                 if "hours" in write_controlpulses:
                     del write_controlpulses["hours"]
                 write_testpulses.create_dataset(name="hours",
-                                                data=tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)])
+                                                data=tp_hours[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
                 write_testpulses.create_dataset(name="testpulseamplitude",
-                                                data=tpas[np.logical_and(tpas > min_tpa, tpas < min_cpa)])
+                                                data=tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
                 write_controlpulses.create_dataset(name="hours",
-                                                   data=tp_hours[tpas > min_cpa])
+                                                   data=tp_hours[tpas >= min_cpa])
                 if "tp_time_s" in stream:
                     if "time_s" in write_testpulses:
                         del write_testpulses["time_s"]
@@ -303,17 +366,17 @@ class CsmplMixin(object):
                     if "time_mus" in write_controlpulses:
                         del write_controlpulses["time_mus"]
                     write_testpulses.create_dataset(name="time_s",
-                                                    data=tp_s[np.logical_and(tpas > min_tpa, tpas < min_cpa)])
+                                                    data=tp_s[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
                     write_testpulses.create_dataset(name="time_mus",
-                                                    data=tp_mus[np.logical_and(tpas > min_tpa, tpas < min_cpa)])
+                                                    data=tp_mus[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
                     write_controlpulses.create_dataset(name="time_s",
-                                                       data=tp_s[tpas > min_cpa])
+                                                       data=tp_s[tpas >= min_cpa])
                     write_controlpulses.create_dataset(name="time_mus",
-                                                       data=tp_mus[tpas > min_cpa])
+                                                       data=tp_mus[tpas >= min_cpa])
 
                 print('Exclude Testpulses.')
                 flag = exclude_testpulses(trigger_hours=trigger_hours,
-                                          tp_hours=tp_hours[tpas > min_tpa],
+                                          tp_hours=tp_hours[tpas >= min_tpa],
                                           max_time_diff=max_time_diff)
 
                 trigger_hours = trigger_hours[flag]
@@ -411,9 +474,12 @@ class CsmplMixin(object):
 
 
     def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, sql_file_label,
-                            triggerdelay=2081024,
-                            samplediv=2,
-                            sample_length=0.00004):
+                            # triggerdelay=2081024,
+                            # samplediv=2,
+                            clock=10000000,
+                            # event_rate=25000,
+                            fix_offset=True,
+                            ):
         """
         Include the test pulse time stamps in the HDF5 data set.
 
@@ -446,27 +512,29 @@ class CsmplMixin(object):
                                        csmpl_channel=csmpl_channels[0],
                                        sql_file_label=sql_file_label)
 
-            # determine the offset of the trigger time stamps from the digitizer stamps
-
-            dig = np.dtype([
-                ('stamp', np.uint64),
-                ('bank', np.uint32),
-                ('bank2', np.uint32),
-            ])
-
-            diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
-            dig_s = diq_stamps['stamp'] / 400  # the digitizer stamps are oversampled
-            one_bank = (triggerdelay / samplediv)  # the number of samples after which one dig stamp is written
-            offset_hours = np.abs(
-                one_bank - dig_s[0]) * sample_length / 3600  # the dig stamp is delayed by offset_hours
-
             # read the test pulse time stamps from the test_stamps file
 
             hours, tpas, _ = get_test_stamps(path=path_teststamps, channels=[0])
 
-            # remove the offset
+            if fix_offset:
 
-            hours -= offset_hours
+                # determine the offset of the trigger time stamps from the digitizer stamps
+
+                dig = np.dtype([
+                    ('stamp', np.uint64),
+                    ('bank', np.uint32),
+                    ('bank2', np.uint32),
+                ])
+
+                diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+                dig_samples = diq_stamps['stamp']
+                offset_hours = (dig_samples[1] - 2*dig_samples[0]) / clock / 3600  # the dig stamp is delayed by offset_hours
+
+                # remove the offset and throw all below zero away
+
+                hours += offset_hours
+                tpas = tpas[hours > 0]
+                hours = hours[hours > 0]
 
             # calc the time stamp seconds and mus
 

@@ -6,7 +6,7 @@ import numpy as np
 from ..fit._templates import baseline_template_quad, baseline_template_cubic
 from scipy.optimize import curve_fit
 from scipy.stats import norm, uniform
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 # -----------------------------------------------------------
 # FUNCTIONS

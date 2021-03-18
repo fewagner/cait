@@ -7,7 +7,7 @@ from scipy.stats import linregress, t, norm
 from scipy import odr
 from scipy.interpolate import interp1d
 from ..styles._plt_styles import use_cait_style, make_grid
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 
 # functions

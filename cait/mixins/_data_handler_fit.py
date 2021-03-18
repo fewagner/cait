@@ -11,7 +11,7 @@ from ..fit._templates import baseline_template_cubic, sev_fit_template
 from scipy.optimize import curve_fit
 from ..fit._bl_fit import get_rms
 from ..fit._saturation import logistic_curve
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 # -----------------------------------------------------------
 # CLASS

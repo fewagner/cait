@@ -9,7 +9,7 @@ from scipy import signal
 import matplotlib.pyplot as plt
 import sqlite3
 from time import time, strptime, mktime
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 
 # functions
@@ -315,7 +315,10 @@ def plot_csmpl(path,
                sample_duration=0.00004,
                hours=False,
                plot_stamps=None,
-               dpi=300,
+               dpi=None,
+               teststamp_path=None,
+               clock=10e6,
+               sec_offset=0,
                ):
     """
     TODO
@@ -340,6 +343,22 @@ def plot_csmpl(path,
 
     if record_length is None and end_time is None:
         raise KeyError("Either record_length or sample_duration must be specified!")
+
+    if teststamp_path is not None:
+        if plot_stamps is not None:
+            raise KeyError("You can not print test stamps from a file and hand additional any!")
+
+        teststamp = np.dtype([
+            ('stamp', np.uint64),
+            ('tpa', np.float32),
+            ('tpch', np.uint32),
+        ])
+
+        stamps = np.fromfile(teststamp_path, dtype=teststamp)
+
+        plot_stamps = stamps['stamp'] / clock - sec_offset
+        if hours:
+            plot_stamps /= 3600
 
     bytes_per_sample = 2  # short integer values
     if hours:
@@ -376,7 +395,7 @@ def plot_csmpl(path,
     print('Plot.')
     plt.close()
     use_cait_style(dpi=dpi)
-    plt.plot(time, event)
+    plt.plot(time, event, zorder=15)
     if plot_stamps is not None:
         for s in plot_stamps:
             if s > time[0] and s < time[-1]:
@@ -448,7 +467,8 @@ def align_triggers(triggers,  # in seconds
 
 def exclude_testpulses(trigger_hours,
                        tp_hours,
-                       max_time_diff=0.03,  # in seconds
+                       max_time_diff=0.5,  # in seconds
+                       in_seconds=True,
                        ):
     """
     TODO
@@ -463,14 +483,20 @@ def exclude_testpulses(trigger_hours,
     :rtype:
     """
 
-    flag = np.array([True for i in range(len(trigger_hours))])
-    max_hours_diff = max_time_diff / 3600
+    flag = np.ones(len(trigger_hours), dtype=bool)
+    if in_seconds:
+        max_hours_diff = max_time_diff / 3600
+    else:
+        max_hours_diff = max_time_diff  # this is not actually hours then ...
 
     for val in tp_hours:
-        # TODO something is wroong here
         idx = find_nearest(array=trigger_hours, value=val)
         if np.abs(trigger_hours[idx] - val) < max_hours_diff:
             flag[idx] = False
+
+    # also exclude all events after and before tps
+    flag[trigger_hours < tp_hours[0]] = 0
+    flag[trigger_hours > tp_hours[-1]] = 0
 
     return flag
 
@@ -478,7 +504,7 @@ def exclude_testpulses(trigger_hours,
 def get_test_stamps(path,
                     channels=None,
                     control_pulses=None,
-                    event_rate=int(2.5e4),
+                    clock=10000000,
                     min_cpa=10.1):
     """
     TODO
@@ -503,7 +529,7 @@ def get_test_stamps(path,
 
     stamps = np.fromfile(path, dtype=teststamp)
 
-    hours = stamps['stamp'] / 400 / event_rate / 3600
+    hours = stamps['stamp'] / clock / 3600
     tpas = stamps['tpa']
     testpulse_channels = stamps['tpch']
 

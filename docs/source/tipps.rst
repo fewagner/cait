@@ -100,14 +100,3 @@ Adding the line
     import ipdb; ipdb.set_trace()
 
 any where in your code halts the execution and lets insert and execute additional lines.
-
-Reload Modules in Notebook
-============================
-
-If we make changes in a module, e.g. when debugging function in Cait, we usually have to restart the Kernel of a
-Jupyter Notebook to load the changes in the module. But we can also use the IPython cell magic commands, to do so. Run
-the following command in any cell, to load all changes in Cait:
-
-.. code:: python
-
-    %reload_ext cait

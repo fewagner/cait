@@ -478,8 +478,7 @@ class TestData():
 
         stamps = np.empty(self.nmbr_bankswitches, dtype=dig)
         for b in range(self.nmbr_bankswitches):
-            st = b * self.bankswitch_samples + np.abs(
-                self.bankswitch_samples - self.cdaq_offset)  # the dig stamps are in 10MHz samples
+            st = (b + 1) * self.bankswitch_samples - self.cdaq_offset  # the dig stamps are in 10MHz samples
             st = np.floor(st * self.clock / self.sample_frequency)
             stamps['stamp'][b] = st
             stamps['bank'][b] = 0
@@ -506,8 +505,7 @@ class TestData():
 
         stamps = np.empty(self.nmbr_events, dtype=teststamp)
         for e in range(self.nmbr_events):
-            stamps['stamp'][e] = (e + 1) * self.pulser_interval_samples + \
-                                 self.cdaq_offset  # the dig stamps are in 10MHz samples
+            stamps['stamp'][e] = (e + 1) * self.pulser_interval_samples - self.cdaq_offset  # the dig stamps are in 10MHz samples
             stamps['stamp'][e] = np.floor(stamps['stamp'][e] * self.clock / self.sample_frequency)
             stamps['tpa'][e] = self.all_tpas[e]
             stamps['tpch'][e] = 0

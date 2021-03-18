@@ -8,7 +8,7 @@ from scipy import odr
 from sklearn.ensemble import GradientBoostingRegressor
 from scipy.interpolate import interp1d
 from ..styles._plt_styles import use_cait_style, make_grid
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 from ._energy_calibration_linear import PolyModel
 
 

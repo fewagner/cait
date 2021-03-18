@@ -9,4 +9,6 @@ __all__=['MovingAverageTrigger',
          'get_record_window',
          'plot_csmpl',
          'get_starttime',
+         'find_nearest',
+         'exclude_testpulses',
          ]

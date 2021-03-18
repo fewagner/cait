@@ -1,5 +1,5 @@
 import h5py
-from tqdm.notebook import tqdm
+from tqdm.auto import tqdm
 
 
 def nn_predict(h5_path,
@@ -32,7 +32,6 @@ def nn_predict(h5_path,
         count = 0
         with tqdm(total=nmbr_events) as pbar:
             while count < nmbr_events - chunk_size:
-                print('Events predicted: {}%'.format(100 * count / nmbr_events))
 
                 # make input data
                 x = {}

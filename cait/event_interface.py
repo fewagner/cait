@@ -416,7 +416,8 @@ class EventInterface:
                  main_par,
                  down: int = 1,
                  color: str = 'r',
-                 offset_in_samples: int = 0):
+                 offset_in_samples: int = 0,
+                 xlim: tuple =None):
         """
         Function to plot the main parameters, typically accessed by the labeling tool internally.
 
@@ -442,12 +443,21 @@ class EventInterface:
                     (t_end - offset_in_samples) / down]
 
         y_values = [
-            offset + 0.1 * pulse_height, offset + 0.8 * pulse_height,
-            offset + pulse_height, offset + 0.9 * pulse_height,
-            offset + 0.736 * pulse_height, offset + 0.368 * pulse_height
+            offset + 0.1 * pulse_height,
+            offset + 0.8 * pulse_height,
+            offset + pulse_height,
+            offset + 0.9 * pulse_height,
+            offset + 0.736 * pulse_height,
+            offset + 0.368 * pulse_height
         ]
+        x_values = np.array(x_values)
+        y_values = np.array(y_values)
 
-        plt.scatter(x_values, y_values, color=color, zorder=15)
+        if xlim is not None:
+            mask = (x_values >= np.array(xlim[0])) & (x_values <= np.array(xlim[1]))
+            plt.scatter(x_values[mask], y_values[mask], color=color, zorder=15)
+        else:
+            plt.scatter(x_values, y_values, color=color, zorder=15)
 
     # Access options of label interface
     def _viewer_options(self):
@@ -620,31 +630,41 @@ class EventInterface:
 
             for i in range(self.nmbr_channels):
 
+                x = np.arange(0, len(event[i]), 1)
+
+                if self.xlim is not None:
+                    mask = x[np.logical_and(x >= np.array(self.xlim[0]),
+                                          x <= np.array(self.xlim[1]))]
+                else:
+                    mask = x
+
                 plt.subplot(self.nmbr_channels, 1, i + 1)
                 plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
-                plt.plot(event[i],
+                plt.plot(x[mask],
+                         event[i][mask],
                          label=self.channel_names[i],
                          color=colors[i],
                          zorder=10)
-                plt.title('Index {}, {} {}'.format(idx, self.channel_names[i],
+                plt.title('Index {}, {} {}'.format(idx,
+                                                   self.channel_names[i],
                                                    appendix))
 
                 # triangulation
                 if self.show_triangulation:
-                    plot_S1(event[i], elements[i], color=anti_colors[i])
+                    plot_S1(event[i], elements[i], color=anti_colors[i], xlim=self.xlim)
 
                 # main parameters
                 if self.show_mp:
                     self._plot_mp(main_par[i],
                                   color=anti_colors[i],
-                                  down=self.down)
+                                  down=self.down,
+                                  xlim=self.xlim)
 
                 # sev
                 if self.sev:
-                    plt.plot(sev_fit[i], color='orange', zorder=15)
+                    plt.plot(x[mask], sev_fit[i][mask], color='orange', zorder=15)
 
                 make_grid()
-                plt.xlim(self.xlim)
                 plt.ylim(self.ylim)
 
             plt.show(block=False)
