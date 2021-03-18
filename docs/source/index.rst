@@ -10,6 +10,7 @@
    contributing
    ../../CONTRIBUTING.rst
    tipps
+   magic
 
 .. toctree::
    :caption: Tutorials
