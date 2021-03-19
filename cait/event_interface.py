@@ -74,6 +74,7 @@ class EventInterface:
         self.only_wrong = False
         self.show_filtered = False
         self.sev = False
+        self.subtract_offset = False
         self.labels = {}
         self.predictions = {}
         self.model_names = {}
@@ -354,7 +355,7 @@ class EventInterface:
     # ------------------------------------------------------------
 
     # Load OF
-    def load_of(self, down: int = 1,):
+    def load_of(self, down: int = 1, group_name_appendix: str = ''):
         """
         Add the optimal transfer function from the HDF5 file.
 
@@ -368,20 +369,20 @@ class EventInterface:
         with h5py.File(self.path_h5, 'r+') as f:
             if down != 1:
                 try:
-                    of_real = np.array(f['optimumfilter']['optimumfilter_real_down{}'.format(down)])
+                    of_real = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real_down{}'.format(down)])
                     of_imag = np.array(
-                        f['optimumfilter']['optimumfilter_imag_down{}'.format(down)])
+                        f['optimumfilter' + group_name_appendix]['optimumfilter_imag_down{}'.format(down)])
                 except KeyError:
                     raise KeyError(
                         'Please calculate the OF with according downsampling rate.')
             else:
-                of_real = np.array(f['optimumfilter']['optimumfilter_real'])
-                of_imag = np.array(f['optimumfilter']['optimumfilter_imag'])
+                of_real = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real'])
+                of_imag = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_imag'])
 
             self.of = of_real + 1j * of_imag
             print('Added the optimal transfer function.')
 
-    def load_sev_par(self, name_appendix='', sample_length=0.04):
+    def load_sev_par(self, name_appendix='', sample_length=0.04, group_name_appendix: str = ''):
         """
         Add the sev fit parameters from the HDF5 file.
 
@@ -398,7 +399,7 @@ class EventInterface:
 
         self.name_appendix = name_appendix  # save this for loading of the parameters when viewing
         with h5py.File(self.path_h5, 'r+') as f:
-            sev_par = np.array(f['stdevent']['fitpar'])
+            sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) -
                  self.record_length / 4) * sample_length
             self.fit_models = []
@@ -417,7 +418,8 @@ class EventInterface:
                  down: int = 1,
                  color: str = 'r',
                  offset_in_samples: int = 0,
-                 xlim: tuple =None):
+                 xlim: tuple = None,
+                 offset_sub: float = 0):
         """
         Function to plot the main parameters, typically accessed by the labeling tool internally.
 
@@ -451,7 +453,7 @@ class EventInterface:
             offset + 0.368 * pulse_height
         ]
         x_values = np.array(x_values)
-        y_values = np.array(y_values)
+        y_values = np.array(y_values) - offset_sub
 
         if xlim is not None:
             mask = (x_values >= np.array(xlim[0])) & (x_values <= np.array(xlim[1]))
@@ -473,6 +475,7 @@ class EventInterface:
         print('sev ... show fitted standardevent')
         print('xlim ... set the x limit')
         print('ylim ... set the y limit')
+        print('sub ... subtract offset')
         print('q ... quit options menu')
 
         while True:
@@ -535,6 +538,10 @@ class EventInterface:
                 user_input2 = input('Set y upper limit: ')
                 ub = float(user_input2)
                 self.ylim = (lb, ub)
+
+            elif user_input == 'sub':
+                self.subtract_offset = not self.subtract_offset
+                print('Subtract offset set to: ', self.subtract_offset)
 
             # quit
             elif user_input == 'q':
@@ -607,12 +614,14 @@ class EventInterface:
 
             # sev
             if self.sev:
-                sev_fit = []
-                fp = f['events']['sev_fit_par{}'.format(
-                    self.name_appendix)][:, idx, :]
-                for c in range(self.nmbr_channels):
-                    offset = np.mean(event[c, :int(len(event[c]) / 8)])
-                    sev_fit.append(self.fit_models[c].wrap_sec(*fp[c]))
+                try:
+                    sev_fit = []
+                    fp = f[type]['sev_fit_par{}'.format(
+                        self.name_appendix)][:, idx, :]
+                    for c in range(self.nmbr_channels):
+                        sev_fit.append(self.fit_models[c].wrap_sec(*fp[c]))
+                except AttributeError:
+                    raise AttributeError('No name_appendix attribute, did you load the SEV fit parameters?')
 
             # def colors
             if self.nmbr_channels == 1:
@@ -630,6 +639,11 @@ class EventInterface:
 
             for i in range(self.nmbr_channels):
 
+                if self.subtract_offset:
+                    offset = np.mean(event[i, :int(len(event[i]) / 8)])
+                else:
+                    offset = 0
+
                 x = np.arange(0, len(event[i]), 1)
 
                 if self.xlim is not None:
@@ -641,7 +655,7 @@ class EventInterface:
                 plt.subplot(self.nmbr_channels, 1, i + 1)
                 plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
                 plt.plot(x[mask],
-                         event[i][mask],
+                         event[i][mask] - offset,
                          label=self.channel_names[i],
                          color=colors[i],
                          zorder=10)
@@ -651,18 +665,19 @@ class EventInterface:
 
                 # triangulation
                 if self.show_triangulation:
-                    plot_S1(event[i], elements[i], color=anti_colors[i], xlim=self.xlim)
+                    plot_S1(event[i], elements[i], color=anti_colors[i], xlim=self.xlim, offset=offset)
 
                 # main parameters
                 if self.show_mp:
                     self._plot_mp(main_par[i],
                                   color=anti_colors[i],
                                   down=self.down,
-                                  xlim=self.xlim)
+                                  xlim=self.xlim,
+                                  offset_sub=offset)
 
                 # sev
                 if self.sev:
-                    plt.plot(x[mask], sev_fit[i][mask], color='orange', zorder=15)
+                    plt.plot(x[mask], sev_fit[i][mask] - offset, color='orange', zorder=15)
 
                 make_grid()
                 plt.ylim(self.ylim)

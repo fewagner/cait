@@ -24,7 +24,7 @@ def interpol(x, b, a, yb, ya):
     return (yb - ya) / (b - a) * (x - a) + ya
 
 
-def plot_S1(this_event, elements, color='r', xlim=None):
+def plot_S1(this_event, elements, color='r', xlim=None, offset=0):
     """
     Plot the function projected to S1 elements, i.e. piecewise affine
 
@@ -38,7 +38,7 @@ def plot_S1(this_event, elements, color='r', xlim=None):
     x_val.append(elements[-1][1] - 1)
     y_val.append(this_event[elements[-1][1] - 1])
     x_val = np.array(x_val)
-    y_val = np.array(y_val)
+    y_val = np.array(y_val) - offset
     if xlim is None:
         plt.plot(x_val, y_val, color=color, zorder=15)
         plt.scatter(x_val, y_val, color=color)
