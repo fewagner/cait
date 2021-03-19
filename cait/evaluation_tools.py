@@ -946,6 +946,8 @@ class EvaluationTools:
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
 
 
+        use_cait_style()
+
         event=self.get_events(what)[index]
         if plot_mainpar:
             event_mainpar=calc_main_parameters(event)
@@ -1917,12 +1919,12 @@ class EvaluationTools:
 
 
         if self.get_pred_true_labels(pred_method):
-            ylabels_order=[self.labels[l] + " ({})".format(l)
+            ylabels_order=[self.labels[l] + " ({})".format(int(l))
                 for l in np.unique(np.hstack(
                             [np.unique(self.get_pred(pred_method, what, verb=verb)),
                              np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
         else:
-            ylabels_order=[self.labels[l] + " ({})".format(l)
+            ylabels_order=[self.labels[l] + " ({})".format(int(l))
                 for l in np.unique(self.get_label_nbrs(what, verb=verb))]
 
         if self.get_pred_true_labels(pred_method):
@@ -1995,7 +1997,7 @@ class EvaluationTools:
                 ]
 
                 print("---------- Events labeled as {} ({}) but predicted as {} ----------".format(
-                    self.labels[selected_label_nbr], selected_label_nbr, selected_pred_nbr))
+                    int(self.labels[selected_label_nbr]), int(selected_label_nbr), int(selected_pred_nbr)))
                 for fn, en, ln, pn in zip(*results):
                     print("'{}' \t Event_nbr:{:>4} \t Label:{:>3}, \t Prediction:{:>3}".format(self.files[fn], en, ln,
                                                                                                pn))
