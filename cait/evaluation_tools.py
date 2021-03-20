@@ -415,6 +415,10 @@ class EvaluationTools:
         if self.predictions is None:
             raise AttributeError('Add predictions first!')
 
+        if path == '':
+            path = './'
+        if path[-1] != '/':
+            path = path + '/'
         np.savetxt(path + pred_method + '_predictions_' + fname + '_events_Ch' + str(channel) + '.csv',
                    np.array(self.predictions[pred_method][1]),
                    fmt='%i', delimiter='\n')  # the index 1 should access the pred

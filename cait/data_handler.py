@@ -119,6 +119,11 @@ class DataHandler(SimulateMixin,
 
         >>> dh.set_filepath(path_h5='./', fname='test_001')
         """
+        if path_h5 == '':
+            path_h5 = './'
+        if path_h5[-1] != '/':
+            path_h5 = path_h5 + '/'
+
         app = ''
         if appendix:
             if self.nmbr_channels == 2:
@@ -163,6 +168,10 @@ class DataHandler(SimulateMixin,
         if not path_h5:
             path_h5 = self.path_h5
 
+        if path_labels == '':
+            path_labels = './'
+        if path_labels[-1] != '/':
+            path_labels = path_labels + '/'
         path_labels = '{}labels_{}_{}.csv'.format(path_labels, self.fname,
                                                   type)
 
@@ -247,6 +256,10 @@ class DataHandler(SimulateMixin,
         else:
             app = ''
 
+        if path_predictions == '':
+            path_predictions = './'
+        if path_predictions[-1] != '/':
+            path_predictions = path_predictions + '/'
         path_predictions = '{}{}_predictions_{}_{}{}.csv'.format(
             path_predictions, model, self.fname, type, app)
 

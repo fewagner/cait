@@ -145,6 +145,10 @@ class EventInterface:
             raise ValueError('List of channels must vale length {}.'.format(
                 self.nmbr_channels))
 
+        if path == '':
+            path = './'
+        if path[-1] != '/':
+            path = path + '/'
         path_h5 = path + '{}{}.h5'.format(fname, app)
         self.path_h5 = path_h5
 
@@ -191,6 +195,10 @@ class EventInterface:
         :type path: string
         """
 
+        if path == '':
+            path = './'
+        if path[-1] != '/':
+            path = path + '/'
         self.path_csv_labels = path + \
                                'labels_{}_'.format(self.fname)
 
@@ -224,6 +232,10 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
+        if path == '':
+            path = './'
+        if path[-1] != '/':
+            path = path + '/'
         self.path_csv_labels = path + \
                                'labels_{}_'.format(self.fname)
 
@@ -257,6 +269,10 @@ class EventInterface:
             if not type in self.valid_types:
                 raise ValueError('Type should be events, testpulses or noise.')
 
+            if path == '':
+                path = './'
+            if path[-1] != '/':
+                path = path + '/'
             self.path_csv_labels = path + \
                                    'labels_{}_'.format(self.fname)
 
@@ -297,6 +313,10 @@ class EventInterface:
         if not type in self.valid_types:
             raise ValueError('Type should be events, testpulses or noise.')
 
+        if path == '':
+            path = './'
+        if path[-1] != '/':
+            path = path + '/'
         self.path_csv_predictions = path + \
                                     '{}_predictions_{}_'.format(model, self.fname)
 
@@ -336,6 +356,10 @@ class EventInterface:
             if not type in self.valid_types:
                 raise ValueError('Type should be events, testpulses or noise.')
 
+            if path == '':
+                path = './'
+            if path[-1] != '/':
+                path = path + '/'
             self.path_csv_predictions = path + \
                                         '{}_predictions_{}_'.format(model, self.fname)
 
