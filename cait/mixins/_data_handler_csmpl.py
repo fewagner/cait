@@ -20,6 +20,94 @@ class CsmplMixin(object):
     A Mixin Class to the DataHandler Class with methods for the triggering of *.csmpl files.
     """
 
+    def include_ctrigger_stamps(self,
+                                paths,
+                                name_appendix='',
+                                take_samples: int = None,
+                                trigger_block:int=None,
+                                path_sql: str = None,
+                                csmpl_channels: list = None,
+                                sql_file_label: str = None,
+                                ):
+
+        if take_samples is None:
+            take_samples = -1
+
+        if trigger_block is None:
+            trigger_block = self.record_length
+
+        if path_sql is not None and (csmpl_channels is None or sql_file_label is None):
+            raise KeyError(
+                'If you want to read start time from SQL database, you must provide the csmpl_channels and sql_file_label!')
+
+
+        dt = np.dtype([('ch', 'int64', (1,)),
+                       ('tstamp', 'uint64', (1,)),
+                       ('ftstamp', 'uint64', (1,)),
+                       ('amp', 'float64', (1,)),
+                       ('iamp', 'float64', (1,)),
+                       ('rms', 'float64', (1,)),
+                       ('tdelay', 'int64', (1,)),
+                       ])
+
+        time = []
+
+        for p in paths:
+
+            x = np.fromfile(file=p,
+                            dtype=dt,
+                            count=-1)
+
+            time.append(x['tstamp'] / 10e6)
+
+        # fix the number of triggers
+        if len(paths) > 1:
+            print('ALIGN TRIGGERS')
+            aligned_triggers = align_triggers(triggers=time,  # in seconds
+                                              trigger_block=trigger_block,
+                                              sample_duration=1 / self.sample_frequency,
+                                              )
+        else:
+            aligned_triggers = time[0].reshape(1, -1)
+
+        with h5py.File(self.path_h5, 'a') as h5f:
+
+            stream = h5f.require_group(name='stream')
+            # write them to file
+            print('ADD DATASETS TO HDF5')
+            if "trigger_hours{}".format(name_appendix) in stream:
+                print('overwrite old trigger_hours{}'.format(name_appendix))
+                del stream['trigger_hours{}'.format(name_appendix)]
+            stream.create_dataset(name='trigger_hours' + name_appendix,
+                                  data=aligned_triggers / 3600)
+
+            if path_sql is not None:
+                # get file handle
+                if "trigger_time_s{}".format(name_appendix) in stream:
+                    print('overwrite old trigger_time_s{}'.format(name_appendix))
+                    del stream['trigger_time_s{}'.format(name_appendix)]
+                stream.create_dataset(name='trigger_time_s' + name_appendix,
+                                      shape=(aligned_triggers.shape),
+                                      dtype=int)
+                if "trigger_time_mus{}".format(name_appendix) in stream:
+                    print('overwrite old trigger_time_mus{}'.format(name_appendix))
+                    del stream['trigger_time_mus{}'.format(name_appendix)]
+                stream.create_dataset(name='trigger_time_mus{}'.format(name_appendix),
+                                      shape=(aligned_triggers.shape),
+                                      dtype=int)
+
+                # get start second from sql
+                file_start = get_starttime(path_sql=path_sql,
+                                           csmpl_channel=csmpl_channels[0],
+                                           sql_file_label=sql_file_label)
+
+                stream['trigger_time_s{}'.format(name_appendix)][...] = np.array(aligned_triggers + file_start, dtype='int32')
+                stream['trigger_time_mus{}'.format(name_appendix)][...] = np.array(1e6 * (
+                        aligned_triggers + file_start - np.floor(aligned_triggers + file_start)), dtype='int32')
+
+            print('DONE')
+
+
     def include_csmpl_triggers(self,
                                csmpl_paths: list,  # list of all paths for the channels
                                thresholds: list,  # in V
@@ -108,6 +196,8 @@ class CsmplMixin(object):
                                                   trigger_block=trigger_block,
                                                   sample_duration=1 / self.sample_frequency,
                                                   )
+            else:
+                aligned_triggers = time[0].reshape(1, -1)
 
             # write them to file
             print('ADD DATASETS TO HDF5')
@@ -168,6 +258,7 @@ class CsmplMixin(object):
                     sample_length=0.04,
                     t0_start=None,
                     opt_start=False,
+                    group_name_appendix='',
                     ):
         """
         Include the Standard Event to a HDF5 file.
@@ -208,7 +299,7 @@ class CsmplMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as f:
 
-            stdevent = f.require_group(name='stdevent')
+            stdevent = f.require_group(name='stdevent' + group_name_appendix)
 
             stdevent.require_dataset('event',
                                 shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
@@ -247,7 +338,7 @@ class CsmplMixin(object):
         print('SEV written.')
 
 
-    def include_of(self, of_real, of_imag, down=1):
+    def include_of(self, of_real, of_imag, down=1, group_name_appendix=''):
         """
         Include the optimum filter transfer function into the HDF5 file.
 
@@ -259,7 +350,7 @@ class CsmplMixin(object):
         :type down: int
         """
         with h5py.File(self.path_h5, 'r+') as f:
-            optimumfilter = f.require_group(name='optimumfilter')
+            optimumfilter = f.require_group(name='optimumfilter' + group_name_appendix)
             if down > 1:
                 if 'optimumfilter_real_down{}'.format(down) in optimumfilter:
                     del optimumfilter['optimumfilter_real_down{}'.format(down)]
@@ -286,6 +377,7 @@ class CsmplMixin(object):
                                  max_time_diff=0.5, # in sec
                                  exclude_tp=True,
                                  sample_duration=0.00004,
+                                 name_appendix='',
                                  datatype='float32',
                                  min_tpa=0.0001,
                                  min_cpa=10.1,
@@ -328,10 +420,10 @@ class CsmplMixin(object):
                             "Events group exists already in the H5 file. Create new file to not overwrite.")
 
             stream = h5f['stream']
-            trigger_hours = np.array(stream['trigger_hours'])
-            if "trigger_time_s" in stream:
-                trigger_s = np.array(stream['trigger_time_s'])
-                trigger_mus = np.array(stream['trigger_time_mus'])
+            trigger_hours = np.array(stream['trigger_hours{}'.format(name_appendix)])
+            if "trigger_time_s{}".format(name_appendix) in stream:
+                trigger_s = np.array(stream['trigger_time_s{}'.format(name_appendix)])
+                trigger_mus = np.array(stream['trigger_time_mus{}'.format(name_appendix)])
             if exclude_tp:
                 tp_hours = np.array(h5f['stream']['tp_hours'])
                 tpas = np.array(h5f['stream']['tpa'])
@@ -380,7 +472,7 @@ class CsmplMixin(object):
                                           max_time_diff=max_time_diff)
 
                 trigger_hours = trigger_hours[flag]
-                if "trigger_time_s" in stream:
+                if "trigger_time_s{}".format(name_appendix) in stream:
                     trigger_s = trigger_s[flag]
                     trigger_mus = trigger_mus[flag]
 
@@ -388,7 +480,7 @@ class CsmplMixin(object):
                 del write_events['hours']
             write_events.create_dataset(name='hours',
                                         data=trigger_hours)
-            if "trigger_time_s" in stream:
+            if "trigger_time_s{}".format(name_appendix) in stream:
                 if "time_s" in write_events:
                     del write_events['time_s']
                 if "time_mus" in write_events:

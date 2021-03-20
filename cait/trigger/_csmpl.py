@@ -315,10 +315,12 @@ def plot_csmpl(path,
                sample_duration=0.00004,
                hours=False,
                plot_stamps=None,
+               plot_stamps_second=None,
                dpi=None,
                teststamp_path=None,
                clock=10e6,
                sec_offset=0,
+               save_path=None,
                ):
     """
     TODO
@@ -399,13 +401,19 @@ def plot_csmpl(path,
     if plot_stamps is not None:
         for s in plot_stamps:
             if s > time[0] and s < time[-1]:
-                plt.axvline(x=s, color='grey', alpha=0.5)
+                plt.axvline(x=s, color='grey', alpha=0.6, linewidth=2.5)
+    if plot_stamps_second is not None:
+        for s in plot_stamps_second:
+            if s > time[0] and s < time[-1]:
+                plt.axvline(x=s, color='red', alpha=0.4, linewidth=1.5)
     make_grid()
     if hours:
         plt.xlabel('Time (h)')
     else:
         plt.xlabel('Time (s)')
     plt.ylabel('Amplitude (V)')
+    if save_path is not None:
+        plt.savefig(save_path)
     plt.show()
 
 
