@@ -9,7 +9,7 @@
    about
    contributing
    ../../CONTRIBUTING.rst
-   tipps
+   tips
    magic
 
 .. toctree::

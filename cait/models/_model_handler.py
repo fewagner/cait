@@ -15,9 +15,7 @@ class ModelHandler:
     """
 
     def __init__(self, model_type, run: str = '01', module: str = 'Test', record_length: int = 16384,
-                 sample_frequency: int = 25000, nmbr_channels=2, down: int = 1,
-                 model1=None, model2=None, model3=None,
-                 classes=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]):
+                 sample_frequency: int = 25000, nmbr_channels=2):
         """
         TODO
 
@@ -47,18 +45,18 @@ class ModelHandler:
         self.run = run
         self.module = module
         self.model_type = model_type
-        self.down = down
         self.record_length = record_length
         self.sample_frequency = sample_frequency
-        self.models = [model1, model2, model3]
+        self.models = {}
         self.nmbr_channels = nmbr_channels
-        self.scalers = [None, None, None]
-        self.classes = classes
+        self.scalers = {}
         self.info = ''
 
         print('MLModel Instance created.')
 
-    def add_model(self, channel, model, down=1):
+    # setters
+
+    def add_model(self, channel, model):
         """
         TODO
 
@@ -72,23 +70,8 @@ class ModelHandler:
         :rtype:
         """
 
-        # check if downsample rate matches
-        if down != self.down:
-            raise ValueError('Downsample rate must match.')
-
         # add the model
         self.models[channel] = model
-
-    def get_model(self, channel):
-        """
-        TODO
-
-        :param channel:
-        :type channel:
-        :return:
-        :rtype:
-        """
-        return self.models[channel]
 
     def add_scaler(self, scaler, channel):
         """
@@ -103,6 +86,30 @@ class ModelHandler:
         """
         self.scalers[channel] = scaler
         print('Added scaler for channel {}.'.format(channel))
+
+    # getters
+
+    def get_model(self, channel):
+        """
+        TODO
+
+        :param channel:
+        :type channel:
+        :return:
+        :rtype:
+        """
+        return self.models[channel]
+
+    def get_scaler(self, channel):
+        """
+        TODO
+
+        :param channel:
+        :type channel:
+        :return:
+        :rtype:
+        """
+        return self.scalers[channel]
 
     def save(self, path, name_app=None):
         """

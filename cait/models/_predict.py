@@ -1,17 +1,27 @@
 import h5py
 from tqdm.auto import tqdm
+import pickle
+import cait as ai
 
 
-def nn_predict(h5_path,
-               model,
-               feature_channel,
-               group_name='events',
-               prediction_name='prediction',
-               keys=['event'],
-               chunk_size=50,
-               no_channel_idx_in_pred=False,
+def nn_predict(h5_path: str,
+               feature_channel: int,
+               model: object = None,
+               ptl_module: object = None,
+               ptl_ckp_path: str = None,
+               group_name: str = 'events',
+               prediction_name: str = 'prediction',
+               keys: list = ['event'],
+               chunk_size: int = 50,
+               no_channel_idx_in_pred: bool = False,
                ):
     # TODO
+
+    if model is None and (ptl_module is None or ptl_ckp_path is None):
+        raise KeyError('You need provide either model or ptl_module path and ptl_model_path!')
+
+    if model is None:
+        model = ptl_module.load_from_checkpoint(ptl_ckp_path)
 
     with h5py.File(h5_path, 'r+') as f_handle:
 
@@ -64,3 +74,91 @@ def nn_predict(h5_path,
             pbar.update(chunk_size)
 
         print('{} written to file {}.'.format(prediction_name, h5_path))
+
+
+def mh_predict(h5_path: str,
+               feature_channel: int,
+               type:str = 'events',
+               model_type: str = 'model',
+               model_handler: object = None,
+               mh_path: str = None,
+               which_data: str = 'mainpar',
+               ):
+    # TODO
+
+    if model_handler is None and mh_path is None:
+        raise KeyError("You need provide either model_handler or mh_path!")
+
+    if model_handler is None:
+        model_handler = pickle.load(open(mh_path, 'rb+'))
+
+    et_pred = ai.EvaluationTools()
+
+    et_pred.add_events_from_file(file=h5_path,
+                                 channel=feature_channel,
+                                 which_data=which_data,
+                                 )
+
+    et_pred.set_scaler(model_handler.get_scaler(feature_channel))
+
+    predictions = model_handler.get_model(feature_channel).predict(et_pred.features)
+
+    with h5py.File(h5_path, 'r+') as f_handle:
+
+        nmbr_channels = len(f_handle[type]['mainpar'])
+        nmbr_events = len(f_handle[type]['mainpar'][0])
+
+        data = f_handle[type]
+
+        data.require_dataset(
+            "{}_predictions".format(model_type),
+            shape=(nmbr_channels, nmbr_events),
+            dtype=float)
+        data["{}_predictions".format(model_type)][feature_channel, ...] = predictions
+
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='unlabeled', data=0)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Event_Pulse', data=1)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Test/Control_Pulse', data=2)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Noise', data=3)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Squid_Jump', data=4)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Spike', data=5)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Early_or_late_Trigger', data=6)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Pile_Up', data=7)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Carrier_Event', data=8)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Strongly_Saturated_Event_Pulse', data=9)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Strongly_Saturated_Test/Control_Pulse', data=10)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Decaying_Baseline', data=11)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Temperature_Rise', data=12)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Stick_Event', data=13)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Sawtooth_Cycle', data=14)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Human_Disturbance', data=15)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Large_Sawtooth', data=16)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Cosinus_Tail', data=17)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Light_only_Event', data=18)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Ring_Light_Event', data=19)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='Sharp_Light_Event', data=20)
+        data["{}_predictions".format(model_type)].attrs.create(
+            name='unknown/other', data=99)
+
+        print('Added {} Predictions.'.format(model_type))

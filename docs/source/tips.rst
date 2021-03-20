@@ -1,5 +1,5 @@
 ****************
-Tipps and Tricks
+Tips and Tricks
 ****************
 
 Here we put together some tipps for usage and development of Cait, that we found useful. We hope they help you in you work!
@@ -82,6 +82,10 @@ Large scale data processing is typically not done locally but on a remote server
 for the remote server, we can still use Jupyter Notebooks for easily accessible visualizations. A very simple, 3-step description
 how to run a notebook on a server, but get the output in you local browser, can be found on this homepage:
 https://ljvmiranda921.github.io/notebook/2018/01/31/running-a-jupyter-notebook/
+
+In case you run on a server with SLURM (e.g. the CLIP in Vienna), here is a tutorial for how to start the jupyter notebook
+with SLURM:
+https://alexanderlabwhoi.github.io/post/2019-03-08_jpn-slurm/
 
 Debugging
 =============

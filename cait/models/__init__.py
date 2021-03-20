@@ -7,4 +7,6 @@ from ._model_handler import *
 __all__ = ['LSTMModule',
            'RNNModule',
            'TransformerModule',
-           'nn_predict']
+           'nn_predict',
+           'mh_predict',
+           ]
