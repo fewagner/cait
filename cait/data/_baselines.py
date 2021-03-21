@@ -107,6 +107,7 @@ def calculate_mean_nps(baselines,
     if clean:
 
         if rms_baselines is None:
+            print('Fitting baselines.')
 
             # choose baseline template
             if order_polynom == 2:
@@ -136,6 +137,9 @@ def calculate_mean_nps(baselines,
 
             # baselines_polynomials = np.array(baselines_polynomials)
             rms_baselines = np.array(rms_baselines)
+
+        else:
+            print('Using fitted baselines.')
 
         rms_means = np.array(np.percentile(rms_baselines, percentile))
 
