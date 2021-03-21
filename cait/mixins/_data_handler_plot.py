@@ -168,6 +168,8 @@ class PlotMixin(object):
                  block=True,
                  show=True,
                  save_path=None,
+                 xran=None,
+                 yran=None,
                  dpi=150):
         """
         Plot the Noise Power Spectrum of all channels
@@ -207,6 +209,12 @@ class PlotMixin(object):
                     plt.title(title)
                 plt.ylabel('Amplitude (a.u.)')
                 plt.xlabel('Frequency (Hz)')
+
+            if xran is not None:
+                plt.xlim(xran)
+
+            if yran is not None:
+                plt.ylim(yran)
 
             if save_path is not None:
                 plt.savefig(save_path)
