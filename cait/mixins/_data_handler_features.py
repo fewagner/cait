@@ -505,7 +505,14 @@ class FeaturesMixin(object):
                 bl = baselines[c]
                 if use_labels:
                     bl = bl[labels[c] == 3]  # 3 is noise label
-                mean_nps.append(calculate_mean_nps(bl, down=down, percentile=percentile)[0])
+                if 'fit_rms' in h5f['noise']:
+                    rms_baselines = h5f['noise']['fit_rms'][c]
+                else:
+                    rms_baselines = None
+                mean_nps.append(calculate_mean_nps(bl,
+                                                   down=down,
+                                                   percentile=percentile,
+                                                   rms_baselines=rms_baselines)[0])
 
             mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
             frequencies = np.fft.rfftfreq(self.record_length, d=1. / self.sample_frequency * down)
