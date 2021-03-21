@@ -212,7 +212,6 @@ class PlotMixin(object):
 
             if xran is not None:
                 plt.xlim(xran)
-
             if yran is not None:
                 plt.ylim(yran)
 
@@ -230,6 +229,8 @@ class PlotMixin(object):
                 group_name_appendix='',
                 save_path=None,
                 down=None,
+                xran=None,
+                yran=None,
                 dpi=150):
         """
         Plot the Optimum Filter of all channels
@@ -282,6 +283,11 @@ class PlotMixin(object):
                     plt.title('Channel ' + str(channel) + ' OF')
                 else:
                     plt.title(title)
+
+            if xran is not None:
+                plt.xlim(xran)
+            if yran is not None:
+                plt.ylim(yran)
 
             if save_path is not None:
                 plt.savefig(save_path)
