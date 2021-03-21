@@ -2001,7 +2001,7 @@ class EvaluationTools:
                 ]
 
                 print("---------- Events labeled as {} ({}) but predicted as {} ----------".format(
-                    int(self.labels[selected_label_nbr]), int(selected_label_nbr), int(selected_pred_nbr)))
+                    self.labels[int(selected_label_nbr)], int(selected_label_nbr), int(selected_pred_nbr)))
                 for fn, en, ln, pn in zip(*results):
                     print("'{}' \t Event_nbr:{:>4} \t Label:{:>3}, \t Prediction:{:>3}".format(self.files[fn], en, ln,
                                                                                                pn))
