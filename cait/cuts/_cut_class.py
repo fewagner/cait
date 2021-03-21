@@ -24,6 +24,10 @@ class LogicalCut:
         self.cut_flag = initial_condition
         self.all_idx = np.arange(len(initial_condition))
 
+    def __len__(self):
+        # TODO
+        return len(self.get_idx())
+
     def add_condition(self, condition):
         """
         TODO

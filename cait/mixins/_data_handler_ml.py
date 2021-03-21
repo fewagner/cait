@@ -79,7 +79,7 @@ class MachineLearningMixin(object):
                 if fit_idx is None:
                     X = f[type]['event'][c]
                 else:
-                    X = f[type]['event'][c, :fit_idx]
+                    X = f[type]['event'][c, fit_idx]
                 pipe.fit(X)
 
                 print('Explained Variance: ', pipe['PCA'].explained_variance_ratio_)
