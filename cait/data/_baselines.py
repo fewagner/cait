@@ -97,7 +97,7 @@ def calculate_mean_nps(baselines,
     # dpwnsample the baselines
     if down > 1:
         baselines = np.mean(baselines.reshape(len(baselines),
-                                              len(baselines[0])/down,
+                                              int(len(baselines[0])/down),
                                               down), axis=2)
 
     record_length = len(baselines[0])
