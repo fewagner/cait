@@ -126,7 +126,8 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                         g.create_dataset(set, data=f[group][set])
 
         # write the original file names to group
-        nmbr_merged = len(m[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]])
+        nmbr_merged = len(a[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]]) + len(
+            b[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]])
         nmbr_a = len(a[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]])
 
         orig = m.require_group('origin')
