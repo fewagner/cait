@@ -3,6 +3,7 @@
 import h5py
 import numpy as np
 import os
+import itertools
 
 
 # function
@@ -125,11 +126,24 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                             print('creating ...')
                         g.create_dataset(set, data=f[group][set])
 
-        # write the original file names to group
-        nmbr_merged = len(a[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]]) + len(
-            b[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]])
-        nmbr_a = len(a[groups_to_merge[0]][sets_to_merge[1]][concatenate_axis[1]])
+        # extract the nmbr of events from both files
+        for g, (s, c) in itertools.product(groups_to_merge, zip(sets_to_merge, concatenate_axis)):
+            try:
+                if c == 0:
+                    nmbr_merged = len(a[g][s]) + len(b[g][s])
+                    nmbr_a = len(a[g][s])
+                elif c == 1:
+                    nmbr_merged = len(a[g][s][0]) + len(b[g][s][0])
+                    nmbr_a = len(a[g][s][0])
+                else:
+                    raise IndexError
+                if nmbr_merged == 0 or nmbr_a == 0:
+                    raise IndexError
+                break
+            except IndexError:
+                pass
 
+        # write the original file names to group
         orig = m.require_group('origin')
         string_dt = h5py.special_dtype(vlen=str)
         orig.require_dataset('filename',
