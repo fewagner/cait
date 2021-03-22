@@ -87,6 +87,12 @@ In case you run on a server with SLURM (e.g. the CLIP in Vienna), here is a tuto
 with SLURM:
 https://alexanderlabwhoi.github.io/post/2019-03-08_jpn-slurm/
 
+Contents of HDF5 Files
+=========================
+
+There are several tools to view the contents of HDF5 files. For local work or if X-forwarding is available, we recommend
+HDFView and VITables. If the contents must be listed directly in the command line, we recommend h5dump and h5ls.
+
 Debugging
 =============
 
