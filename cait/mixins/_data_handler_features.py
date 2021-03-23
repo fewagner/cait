@@ -585,7 +585,11 @@ class FeaturesMixin(object):
             events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
 
-    def apply_logical_cut(self, cut_flag: list, naming: str, channel: int, type: str = 'events',
+    def apply_logical_cut(self,
+                          cut_flag: list,
+                          naming: str,
+                          channel: int,
+                          type: str = 'events',
                           delete_old: bool = False):
         """
         Save the cut flag of a logical cut within the HDF5 file.
@@ -613,3 +617,40 @@ class FeaturesMixin(object):
                                                   shape=(self.nmbr_channels, len(cut_flag)),
                                                   dtype=bool)
             cut_dataset[channel, ...] = cut_flag
+
+        print('Applied logical cut.')
+
+    def include_cut_values(self,
+                           cut_values: list,
+                           naming: str,
+                           channel: int,
+                           type: str = 'events',
+                           delete_old: bool = False):
+        """
+        TODO
+
+        :param cut_values:
+        :type cut_values:
+        :param naming:
+        :type naming:
+        :param channel:
+        :type channel:
+        :param type:
+        :type type:
+        :param delete_old:
+        :type delete_old:
+        """
+
+        with h5py.File(self.path_h5, 'r+') as f:
+
+            if delete_old:
+                if naming in f[type]:
+                    print('Delete old {} dataset'.format(naming))
+                    del f[type][naming]
+
+            cut_dataset = f[type].require_dataset(name=naming,
+                                                  shape=(self.nmbr_channels, len(cut_values)),
+                                                  dtype=float)
+            cut_dataset[channel, ...] = cut_values
+
+        print('Included cut values.')
