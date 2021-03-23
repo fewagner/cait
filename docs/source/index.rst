@@ -11,6 +11,7 @@
    ../../CONTRIBUTING.rst
    tips
    magic
+   bandfit
 
 .. toctree::
    :caption: Tutorials

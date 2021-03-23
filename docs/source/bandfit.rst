@@ -8,6 +8,8 @@ this we include here some suitable values for some detectors. Values for new det
 CRESST, Det A
 ==============
 
+.. code:: python
+
     names_module_independent = ["np_decay", "np_fract", "L0", "L1", "sigma_l0", "S1", # these are just for information
                                 "S2", "el_amp", "el_decay", "el_width",  # do not put as argument to method!
                                 "sigma_p0", "sigma_p1", "E_p0", "E_p1", "E_fr", "E_dc",
@@ -50,11 +52,13 @@ CRESST, Det A
                     [54.6522, 11.2899],
                     [19.2077, 2.79869]]
 
-    lbounds_nuclear = [[0.0, 2.5], [0.0, 7.9], [0.0, 10.6], [0.0, 11.1], [0.0, 2.7]]
+    lbounds_gamma = [[0.0, 2.5], [0.0, 7.9], [0.0, 10.6], [0.0, 11.1], [0.0, 2.7]]
 
-    ubounds_nuclear = [[50.0, 2.7], [50.0, 8.1], [50.0, 11.0], [100.0, 11.4], [50.0, 2.9]]
+    ubounds_gamma = [[50.0, 2.7], [50.0, 8.1], [50.0, 11.0], [100.0, 11.4], [50.0, 2.9]]
 
-    fixed_nuclear = [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1]]
+    fixed_gamma = [[1, 1], [1, 1], [1, 1], [1, 1], [1, 1]]
 
 CRESST, TUM 40
 ================
+
+Coming soon...
