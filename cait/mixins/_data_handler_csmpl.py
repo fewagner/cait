@@ -197,7 +197,7 @@ class CsmplMixin(object):
                                                   sample_duration=1 / self.sample_frequency,
                                                   )
             else:
-                aligned_triggers = time[0].reshape(1, -1)
+                aligned_triggers = time[0]
 
             # write them to file
             print('ADD DATASETS TO HDF5')

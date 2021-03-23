@@ -15,7 +15,7 @@ we experienced problems with scp command and uncompressed containers in the past
 First you need a singularity installation on your machine, you can find instructions on their
 documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
 
-Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.cfg´.
+Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.def´.
 
 .. code::
 
@@ -46,7 +46,9 @@ Second, you need a container configuration file. One that worked for us is given
 
         This is an example for an ubuntu container to run Cait.
 
-Last, you need to type correct commands for the container creation. We put them together in a script:
+Last, you need to type correct commands for the container creation. We put them together in a script, which is below.
+Be aware of the sandbox flag, that makes installation of additional packages inside the container possible, but might
+lead to issues with copying the container.
 
 .. code:: bash
 
@@ -60,20 +62,12 @@ You can then always start the container by typing the following command in the s
 
 .. code:: console
 
-    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.simg
+    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.sif
 
 Please look into the Singularity manual for details of above command. You might have to adapt several paths, according to
 your system. E.g. with the -B flag, you can bin directories from the server within the the container, you will need this for accessing data.
 In this example, the data we want to access is in /mnt/ and /remote/. However, sometimes the binding is incompatible with the --writeable
 flag, which makes the installation of additional packages possible. In this case, you need to start either with --writeable or with the mounted folder.
-
-Virtual Terminal
-=========================
-
-In case you are working on a server and experience troubles due to an instable internet connection, or need to run scripts and shutdown
-your machine while they are running, you can use a virtual terminal multiplexer. We like to use ´screen´ (https://linuxize.com/post/how-to-use-linux-screen/).
-You can start screen on the server, before executing your scripty or starting up your Jupyter kernel. The screen session keeps running,
-even if you disconnect the ssh connection to the server. At any later point, you can reattach to the screen session and continue working or watch outputs of your scripts.
 
 Notebooks on a Server
 =========================
@@ -87,11 +81,26 @@ In case you run on a server with SLURM (e.g. the CLIP in Vienna), here is a tuto
 with SLURM:
 https://alexanderlabwhoi.github.io/post/2019-03-08_jpn-slurm/
 
+Virtual Terminal
+=========================
+
+In case you are working on a server and experience troubles due to an instable internet connection, or need to run scripts and shutdown
+your machine while they are running, you can use a virtual terminal multiplexer. We like to use ´screen´ (https://linuxize.com/post/how-to-use-linux-screen/).
+You can start screen on the server, before executing your scripty or starting up your Jupyter kernel. The screen session keeps running,
+even if you disconnect the ssh connection to the server. At any later point, you can reattach to the screen session and continue working or watch outputs of your scripts.
+
 Contents of HDF5 Files
 =========================
 
 There are several tools to view the contents of HDF5 files. For local work or if X-forwarding is available, we recommend
 HDFView and VITables. If the contents must be listed directly in the command line, we recommend h5dump and h5ls.
+
+Remote Visualization
+=========================
+
+Many server clusters provide a remote visualization service for Jupyter Notebooks, eg. the MPCDF (https://rvs.mpcdf.mpg.de/)
+and the CLIP (https://jupyterhub.vbc.ac.at/hub/home, VPN needed). We like to use these services for all interactive work
+ (creation of SEV, Filter, ...) and scripts for long-lasting jobs (triggering, fit and feature pipelines, ...).
 
 Debugging
 =============

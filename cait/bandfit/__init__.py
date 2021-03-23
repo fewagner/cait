@@ -1,4 +1,4 @@
-from ._bands import *
-from ._spectra import *
+from ._bandfit import *
 
-__all__ = ['LimitCalculation']
+__all__ = ['Bandfit',
+           ]
