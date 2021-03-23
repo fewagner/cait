@@ -102,7 +102,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
 
                         # get shape
                         shape_a = a[group][set].shape
-                        shape_b = a[group][set].shape
+                        shape_b = b[group][set].shape
                         shape_m = np.copy(shape_a)
                         shape_m[concatenate_axis[i]] += shape_b[concatenate_axis[i]]
 
