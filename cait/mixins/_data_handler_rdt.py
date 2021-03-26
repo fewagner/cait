@@ -446,8 +446,8 @@ class RdtMixin(object):
                                                           dtype=float)
             cp_hours[...] = hours
             cp_ph = f['controlpulses'].require_dataset(name='pulse_height',
-                                                          shape=(self.nmbr_channels, nmbr_cp),
-                                                          dtype=float)
+                                                       shape=(self.nmbr_channels, nmbr_cp),
+                                                       dtype=float)
 
             for i, c in enumerate(self.channels):
                 cond = data['detector_nmbr'] == c
@@ -482,7 +482,7 @@ class RdtMixin(object):
         record = np.dtype([('time_s', 'int64'),
                            ('time_mus', 'int64'),
                            ] +
-                          [(n.decode(), 'float32') for n in mon_par_names])
+                          [(n.decode().replace('/', ' per '), 'float32') for n in mon_par_names])
 
         mon_pars = np.fromfile(path_mon, dtype=record, count=-1, offset=mon_head.nbytes + mon_par_names.nbytes)
 
