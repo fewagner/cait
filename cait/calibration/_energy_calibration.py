@@ -28,6 +28,8 @@ def energy_calibration(evhs,
     """
     TODO
 
+    Attention! This function is deprecated!
+
     :param evhs:
     :type evhs:
     :param ev_hours:
@@ -49,6 +51,8 @@ def energy_calibration(evhs,
     :return:
     :rtype:
     """
+
+    raise Warning('This function is deprecated, please use energy_calibration_linear or energy_calibration_tree!')
 
     unique_tpas = np.unique(tpas)
     unique_tpas = unique_tpas[np.logical_not(np.in1d(unique_tpas, exclude_tpas))]

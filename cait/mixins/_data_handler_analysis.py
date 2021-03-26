@@ -8,6 +8,7 @@ from collections import Counter
 from scipy.stats import norm
 from ..cuts import rate_cut, testpulse_stability, controlpulse_stability
 from ..calibration import energy_calibration, light_yield_correction, energy_calibration_linear, energy_calibration_tree
+from tqdm.auto import tqdm
 
 
 # -----------------------------------------------------------
@@ -152,13 +153,24 @@ class AnalysisMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5:
             hours = np.array(h5['events']['hours'])
+            hours_cp = np.array(h5['controlpulses']['hours'])
+            hours_tp = np.array(h5['testpulses']['hours'])
 
-            flag = rate_cut(hours * 60, interval, significance, min, max)
+            flag_ev, flag_cp, flag_tp = rate_cut(hours * 60, hours_cp, hours_tp,
+                                                 interval, significance, min, max)
 
             h5['events'].require_dataset(name='rate_cut',
-                                         shape=(flag.shape),
+                                         shape=(flag_ev.shape),
                                          dtype=bool)
-            h5['events']['rate_cut'][...] = flag
+            h5['events']['rate_cut'][...] = flag_ev
+            h5['controlpulses'].require_dataset(name='rate_cut',
+                                                shape=(flag_cp.shape),
+                                                dtype=bool)
+            h5['controlpulses']['rate_cut'][...] = flag_cp
+            h5['testpulses'].require_dataset(name='rate_cut',
+                                             shape=(flag_tp.shape),
+                                             dtype=bool)
+            h5['testpulses']['rate_cut'][...] = flag_tp
 
     def calc_controlpulse_stability(self, channel: int, significance: float = 3, max_gap: float = 0.5, lb: float = 0,
                                     ub: float = 100):
@@ -399,7 +411,13 @@ class AnalysisMixin(object):
                                         shape=(self.nmbr_channels, len(ev_hours)),
                                         dtype=float)
             if linear_with_uncertainty or tree:
+                f['events'].require_dataset(name='tpa_equivalent',
+                                            shape=(self.nmbr_channels, len(ev_hours)),
+                                            dtype=float)
                 f['events'].require_dataset(name='recoil_energy_sigma',
+                                            shape=(self.nmbr_channels, len(ev_hours)),
+                                            dtype=float)
+                f['events'].require_dataset(name='tpa_equivalent_sigma',
                                             shape=(self.nmbr_channels, len(ev_hours)),
                                             dtype=float)
 
@@ -410,45 +428,49 @@ class AnalysisMixin(object):
                 print('Energy Calibration for Channel ', channel)
                 if linear_with_uncertainty:
                     f['events']['recoil_energy'][channel, ...], \
-                    f['events']['recoil_energy_sigma'][channel, ...] = energy_calibration_linear(evhs=evhs[channel],
-                                                                                                 ev_hours=ev_hours,
-                                                                                                 tphs=tphs[
-                                                                                                     channel, stable[
-                                                                                                         channel]],
-                                                                                                 tpas=tpas[
-                                                                                                     stable[channel]],
-                                                                                                 tp_hours=tp_hours[
-                                                                                                     stable[channel]],
-                                                                                                 start_saturation=
-                                                                                                 starts_saturation[
-                                                                                                     channel],
-                                                                                                 max_dist=max_dist,
-                                                                                                 cpe_factor=cpe_factor[
-                                                                                                     channel],
-                                                                                                 exclude_tpas=exclude_tpas,
-                                                                                                 plot=plot,
-                                                                                                 poly_order=poly_order
-                                                                                                 )
+                    f['events']['recoil_energy_sigma'][channel, ...], \
+                    f['events']['tpa_equivalent'][channel, ...], \
+                    f['events']['tpa_equivalent_sigma'][channel, ...] = energy_calibration_linear(evhs=evhs[channel],
+                                                                                                  ev_hours=ev_hours,
+                                                                                                  tphs=tphs[
+                                                                                                      channel, stable[
+                                                                                                          channel]],
+                                                                                                  tpas=tpas[
+                                                                                                      stable[channel]],
+                                                                                                  tp_hours=tp_hours[
+                                                                                                      stable[channel]],
+                                                                                                  start_saturation=
+                                                                                                  starts_saturation[
+                                                                                                      channel],
+                                                                                                  max_dist=max_dist,
+                                                                                                  cpe_factor=cpe_factor[
+                                                                                                      channel],
+                                                                                                  exclude_tpas=exclude_tpas,
+                                                                                                  plot=plot,
+                                                                                                  poly_order=poly_order
+                                                                                                  )
                 elif tree:
                     f['events']['recoil_energy'][channel, ...], \
-                    f['events']['recoil_energy_sigma'][channel, ...] = energy_calibration_tree(evhs=evhs[channel],
-                                                                                               ev_hours=ev_hours,
-                                                                                               tphs=tphs[
-                                                                                                   channel, stable[
-                                                                                                       channel]],
-                                                                                               tpas=tpas[
-                                                                                                   stable[channel]],
-                                                                                               tp_hours=tp_hours[
-                                                                                                   stable[channel]],
-                                                                                               start_saturation=
-                                                                                               starts_saturation[
-                                                                                                   channel],
-                                                                                               cpe_factor=cpe_factor[
-                                                                                                   channel],
-                                                                                               exclude_tpas=exclude_tpas,
-                                                                                               plot=plot,
-                                                                                               poly_order=poly_order
-                                                                                               )
+                    f['events']['recoil_energy_sigma'][channel, ...], \
+                    f['events']['tpa_equivalent'][channel, ...], \
+                    f['events']['tpa_equivalent_sigma'][channel, ...] = energy_calibration_tree(evhs=evhs[channel],
+                                                                                                ev_hours=ev_hours,
+                                                                                                tphs=tphs[
+                                                                                                    channel, stable[
+                                                                                                        channel]],
+                                                                                                tpas=tpas[
+                                                                                                    stable[channel]],
+                                                                                                tp_hours=tp_hours[
+                                                                                                    stable[channel]],
+                                                                                                start_saturation=
+                                                                                                starts_saturation[
+                                                                                                    channel],
+                                                                                                cpe_factor=cpe_factor[
+                                                                                                    channel],
+                                                                                                exclude_tpas=exclude_tpas,
+                                                                                                plot=plot,
+                                                                                                poly_order=poly_order
+                                                                                                )
                 else:
                     f['events']['recoil_energy'][channel, ...] = energy_calibration(evhs=evhs[channel],
                                                                                     ev_hours=ev_hours,
@@ -498,3 +520,67 @@ class AnalysisMixin(object):
                     phonon_energy=recoil_energy[channel],
                     light_energy=recoil_energy[light_channel],
                     scintillation_efficiency=scintillation_efficiency)
+
+    def exposure(self,
+                 detector_mass=None,  # in g
+                 max_dist=0.1,  # in hours
+                 tp_exclusion_interval=1):  # in seconds
+        """
+        TODO
+
+        :param detector_mass:
+        :type detector_mass:
+        :return:
+        :rtype:
+        """
+
+        with h5py.File(self.path_h5, 'r+') as f:
+
+            hours_tp = f['testpulses']['hours']
+            hours_cp = f['controlpulses']['hours']
+            rate_cp = f['controlpulses']['rate_cut']
+            stability_cp = f['controlpulses']['controlpuls_stability']
+
+            good_intervals = []
+            dead_time = 0
+            buffer_cond = False
+
+            print('\n Calc Live Time.')
+            # calc live time from stability and rate flags
+            for i in tqdm(range(1, len(hours_cp))):
+                if hours_cp[i] - hours_cp[i - 1] < max_dist:  # check if gap too large
+
+                    cond = rate_cp[i]
+                    for c in range(self.nmbr_channels):
+                        cond = np.logical_and(cond, stability_cp[c, i])
+
+                    if cond:
+                        good_intervals.append((hours_cp[i - 1], hours_cp[i]))
+                        dead_time += tp_exclusion_interval / 3600
+                        if buffer_cond:
+                            good_intervals.append((hours_cp[i - 2], hours_cp[i - 1]))
+                            dead_time += tp_exclusion_interval / 3600
+                            buffer_cond = False
+                    elif not buffer_cond:
+                        buffer_cond = True
+                    else:
+                        buffer_cond = False
+                else:
+                    buffer_cond = False
+
+            print('\n Exclude Test Pulses.')
+            # exclude the record windows of testpulses
+            tp_flag = np.ones(len(hours_tp), dtype=bool)
+            for (l, u) in tqdm(good_intervals):
+                tp_flag[np.logical_and(hours_tp > l, hours_tp < u)] = False
+
+            dead_time += np.sum(tp_flag) * tp_exclusion_interval / 3600
+
+            good_hours = np.sum([u - l for (l, u) in good_intervals]) - dead_time
+
+        print('Good Measurement Time: {:.3f}/{:.3f} hours, {:.3f}%.'.format(good_hours,
+                                                                 good_intervals[-1][1],
+                                                                 100 * good_hours / good_intervals[-1][1]))
+        print('Dead Time: {:.3f} hours'.format(dead_time))
+        if detector_mass is not None:
+            print('Exposure: {:.6f} kg * days.'.format(good_hours / 24 * detector_mass / 1000))

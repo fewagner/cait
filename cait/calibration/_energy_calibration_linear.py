@@ -219,6 +219,8 @@ def energy_calibration_linear(evhs,
 
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
+    tpa_equivalent = np.zeros(len(evhs))
+    tpa_equivalent_sigma = np.zeros(len(evhs))
     for e in tqdm(range(len(evhs))):
         for i, iv in enumerate(intervals):
             if (i == 0 and ev_hours[e] <= iv[0]) or (  # events befor the first interval
@@ -235,6 +237,8 @@ def energy_calibration_linear(evhs,
 
                 energies[e] = cpe_factor * y
                 energies_sigma[e] = cpe_factor * (yu - yl)
+                tpa_equivalent[e] = y
+                tpa_equivalent_sigma[e] = yu - yl
                 break
 
-    return energies, energies_sigma
+    return energies, energies_sigma, tpa_equivalent, tpa_equivalent_sigma

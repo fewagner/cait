@@ -134,6 +134,8 @@ def energy_calibration_tree(evhs,
 
     energies = np.zeros(len(evhs))
     energies_sigma = np.zeros(len(evhs))
+    tpa_equivalent = np.zeros(len(evhs))
+    tpa_equivalent_sigma = np.zeros(len(evhs))
     for e in tqdm(range(len(evhs))):
         x_data, x_sigma = [], []
         for l, m, u in zip(lower_regs, mean_regs, upper_regs):
@@ -149,5 +151,7 @@ def energy_calibration_tree(evhs,
 
         energies[e] = cpe_factor * y
         energies_sigma[e] = cpe_factor * (yu - yl)
+        tpa_equivalent[e] = y
+        tpa_equivalent_sigma[e] = yu - yl
 
-    return energies, energies_sigma
+    return energies, energies_sigma, tpa_equivalent, tpa_equivalent_sigma
