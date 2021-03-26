@@ -40,8 +40,8 @@ CRESST, Det A
              [1, 1, 1, 0, 0],
              [1, 1, 1, 0, 0]]
 
-    names_gamma = [["FG_1_C", "FG_1_M"],
-                   ["FG_2_C", "FG_2_M"],
+    names_gamma = [["FG_1_C", "FG_1_M"],  # these are just for information
+                   ["FG_2_C", "FG_2_M"],  # do not put as argument to method!
                    ["FG_3_C", "FG_3_M"],
                    ["FG_4_C", "FG_4_M"],
                    ["FG_5_C", "FG_5_M"]]

@@ -204,6 +204,40 @@ class RdtMixin(object):
         for i in range(read_events):
             print(stamps[i])
 
+    def checkout_mon(self, path_mon, read_events=5):
+        """
+        TODO
+
+        :param path_mon:
+        :type path_mon:
+        :param read_events:
+        :type read_events:
+        :return:
+        :rtype:
+        """
+
+        header = np.dtype([('file_version', '|S12'),
+                           ('time_s', 'int64'),
+                           ('time_mus', 'int64'),
+                           ('nmbr_par', 'int32'),
+                           ])
+
+        mon_head = np.fromfile(path_mon, dtype=header, count=1)
+        print(mon_head)
+
+        mon_par_names = np.fromfile(path_mon, dtype='|S48', count=mon_head[0]['nmbr_par'], offset=mon_head.nbytes)
+
+        record = np.dtype([('time_s', 'int64'),
+                           ('time_mus', 'int64'),
+                           ] +
+                          [(n.decode(), 'float32') for n in mon_par_names])
+
+        mon_pars = np.fromfile(path_mon, dtype=record, count=read_events, offset=mon_head.nbytes + mon_par_names.nbytes)
+
+        print('Nmr records: ', len(mon_pars))
+        print('Names: ', record.names)
+        print('Read Pars: ', mon_pars)
+
 
     # Converts a bck to a hdf5 for one module with 2 or 3 channels
     def convert_dataset(self, path_rdt,
@@ -214,6 +248,7 @@ class RdtMixin(object):
                         processes=4,
                         event_dtype='float32',
                         ints_in_header=7,
+                        lazy_loading=True,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file
@@ -247,6 +282,7 @@ class RdtMixin(object):
                              event_dtype=event_dtype,
                              ints_in_header=ints_in_header,
                              sample_frequency=self.sample_frequency,
+                             lazy_loading=lazy_loading,
                              )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -269,7 +305,8 @@ class RdtMixin(object):
         print('Filepath and -name saved.')
 
     # include rdt infos to existing hdf5
-    def include_rdt(self, path_data, fname, channels, ints_in_header=7, tpa_list=[0, 1, -1], event_dtype='float32'):
+    def include_rdt(self, path_data, fname, channels, ints_in_header=7, tpa_list=[0, 1, -1],
+                    event_dtype='float32', lazy_loading=True):
         """
         TODO
 
@@ -296,6 +333,7 @@ class RdtMixin(object):
                           channels=channels,
                           store_as_int=False,
                           ints_in_header=ints_in_header,
+                          lazy_loading=lazy_loading
                           )
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -418,3 +456,44 @@ class RdtMixin(object):
                 cp_ph[i, ...] = data['pulse_height'][cond]
 
         print('CON File included.')
+
+    def checkout_mon(self, path_mon):
+        """
+        TODO
+
+        :param path_mon:
+        :type path_mon:
+        :param read_events:
+        :type read_events:
+        :return:
+        :rtype:
+        """
+
+        header = np.dtype([('file_version', '|S12'),
+                           ('time_s', 'int64'),
+                           ('time_mus', 'int64'),
+                           ('nmbr_par', 'int32'),
+                           ])
+
+        mon_head = np.fromfile(path_mon, dtype=header, count=1)
+        print(mon_head)
+
+        mon_par_names = np.fromfile(path_mon, dtype='|S48', count=mon_head[0]['nmbr_par'], offset=mon_head.nbytes)
+
+        record = np.dtype([('time_s', 'int64'),
+                           ('time_mus', 'int64'),
+                           ] +
+                          [(n.decode(), 'float32') for n in mon_par_names])
+
+        mon_pars = np.fromfile(path_mon, dtype=record, count=-1, offset=mon_head.nbytes + mon_par_names.nbytes)
+
+        # create file handles
+        with h5py.File(self.path_h5, 'r+') as f:
+            mon = f.require_group('Monitor')
+            for name in record.names:
+                if name in mon:
+                    del mon[name]
+                f.create_dataset(name=name,
+                                 data=mon_pars[name])
+
+        print('MON File Included.')

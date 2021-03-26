@@ -59,7 +59,7 @@ def convert_to_int(event, bits=16, max=10, min=-10, offset=0):
 
 
 def read_rdt_file(fname, path, channels,
-                  remove_offset=False, store_as_int=False, ints_in_header=7):
+                  remove_offset=False, store_as_int=False, ints_in_header=7, lazy_loading=True):
     """
     Reads a given given hdf5 file and filters out a specific phonon and light
     channel as well as chosen testpulse amplitudes.
@@ -122,55 +122,58 @@ def read_rdt_file(fname, path, channels,
                        ('samples', 'i2', record_length),
                        ])
 
-    with open("{}{}.rdt".format(path, fname), "rb") as f:
+    #with open("{}{}.rdt".format(path, fname), "rb") as f:
         # read whole file
-        recs = np.fromfile(f, dtype=record)
+    if not lazy_loading:
+        recs = np.fromfile("{}{}.rdt".format(path, fname), dtype=record)
+    else:
+        recs = np.memmap("{}{}.rdt".format(path, fname), dtype=record)
 
-        # check if all events belong together in the channels
-        good_recs = [[] for i in range(nmbr_channels)]
+    # check if all events belong together in the channels
+    good_recs = [[] for i in range(nmbr_channels)]
 
-        length_recs = len(recs)
-        print('Total Records in File: ', length_recs)
+    length_recs = len(recs)
+    print('Total Records in File: ', length_recs)
 
-        if nmbr_channels > 1:
-            for i in range(length_recs):
-                if i >= length_recs - nmbr_channels:
-                    break
-                cond = recs[i]['detector_nmbr'] == channels[0]
-                for j, c in enumerate(channels[1:]):
-                    cond = np.logical_and(cond, recs[i + j + 1]['detector_nmbr'] == c)
-                if cond:
-                    for j in range(nmbr_channels):
-                        good_recs[j].append(i + j)
-        else:  # exceptional handling for case of just one channel
-            for i in range(length_recs):
-                if recs[i]['detector_nmbr'] == channels[0]:
-                    good_recs[0].append(i)
+    if nmbr_channels > 1:
+        for i in range(length_recs):
+            if i >= length_recs - nmbr_channels:
+                break
+            cond = recs[i]['detector_nmbr'] == channels[0]
+            for j, c in enumerate(channels[1:]):
+                cond = np.logical_and(cond, recs[i + j + 1]['detector_nmbr'] == c)
+            if cond:
+                for j in range(nmbr_channels):
+                    good_recs[j].append(i + j)
+    else:  # exceptional handling for case of just one channel
+        for i in range(length_recs):
+            if recs[i]['detector_nmbr'] == channels[0]:
+                good_recs[0].append(i)
 
-        nmbr_good_recs = len(good_recs[0])
-        print('Event Counts: ', nmbr_good_recs)
+    nmbr_good_recs = len(good_recs[0])
+    print('Event Counts: ', nmbr_good_recs)
 
-        # write to normal arrays
-        metainfo = np.empty([nmbr_channels, nmbr_good_recs, 14], dtype=float)
-        dvms = np.empty([nmbr_channels, nmbr_good_recs, dvm_channels], dtype=float)
+    # write to normal arrays
+    metainfo = np.empty([nmbr_channels, nmbr_good_recs, 14], dtype=float)
+    dvms = np.empty([nmbr_channels, nmbr_good_recs, dvm_channels], dtype=float)
+    if not store_as_int:
+        pulse = np.empty([nmbr_channels, nmbr_good_recs, record_length], dtype=float)
+    else:
+        pulse = np.empty([nmbr_channels, nmbr_good_recs, record_length], dtype='int16')
+
+    for c in range(nmbr_channels):
+        for i, d in enumerate(record.descr):
+            name = d[0]
+            if name == 'delay_ch_tp' and ints_in_header != 7:
+                continue
+            metainfo[c, :, i] = recs[good_recs[c]][name].reshape(-1)
+            if i >= 13:
+                break
+        dvms[c] = recs[good_recs[c]]['dvm_channels']
         if not store_as_int:
-            pulse = np.empty([nmbr_channels, nmbr_good_recs, record_length], dtype=float)
+            pulse[c] = convert_to_V(recs[good_recs[c]]['samples'])
         else:
-            pulse = np.empty([nmbr_channels, nmbr_good_recs, record_length], dtype='int16')
-
-        for c in range(nmbr_channels):
-            for i, d in enumerate(record.descr):
-                name = d[0]
-                if name == 'delay_ch_tp' and ints_in_header != 7:
-                    continue
-                metainfo[c, :, i] = recs[good_recs[c]][name].reshape(-1)
-                if i >= 13:
-                    break
-            dvms[c] = recs[good_recs[c]]['dvm_channels']
-            if not store_as_int:
-                pulse[c] = convert_to_V(recs[good_recs[c]]['samples'])
-            else:
-                pulse[c] = recs[good_recs[c]]['samples']
+            pulse[c] = recs[good_recs[c]]['samples']
 
     if remove_offset and not store_as_int:
         pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :int(record_length / 8)], axis=2).T).T

@@ -34,6 +34,7 @@ def gen_dataset_from_rdt(path_rdt,
                          event_dtype='float32',
                          ints_in_header=7,
                          sample_frequency=25000,
+                         lazy_loading=True
                          ):
     """
     Generates a HDF5 File from an RDT File, optionally MP, Fit, SEV Calculation
@@ -65,6 +66,7 @@ def gen_dataset_from_rdt(path_rdt,
                       channels=channels,
                       store_as_int=False,
                       ints_in_header=ints_in_header,
+                      lazy_loading=lazy_loading,
                       )
 
     # ipdb.set_trace()
