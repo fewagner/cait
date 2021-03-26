@@ -242,7 +242,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_of(self, down:int=1, name_appendix:str=''):
+    def calc_of(self, down: int = 1, name_appendix: str = ''):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
@@ -295,7 +295,7 @@ class FeaturesMixin(object):
 
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False,  down=1):
+                 chunk_size=10000, hard_restrict=False, down=1):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -584,7 +584,6 @@ class FeaturesMixin(object):
             events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
             events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
-
     def apply_logical_cut(self,
                           cut_flag: list,
                           naming: str,
@@ -620,12 +619,12 @@ class FeaturesMixin(object):
 
         print('Applied logical cut.')
 
-    def include_cut_values(self,
-                           cut_values: list,
-                           naming: str,
-                           channel: int,
-                           type: str = 'events',
-                           delete_old: bool = False):
+    def include_values(self,
+                       values: list,
+                       naming: str,
+                       channel: int,
+                       type: str = 'events',
+                       delete_old: bool = False):
         """
         TODO
 
@@ -649,8 +648,8 @@ class FeaturesMixin(object):
                     del f[type][naming]
 
             cut_dataset = f[type].require_dataset(name=naming,
-                                                  shape=(self.nmbr_channels, len(cut_values)),
+                                                  shape=(self.nmbr_channels, len(values)),
                                                   dtype=float)
-            cut_dataset[channel, ...] = cut_values
+            cut_dataset[channel, ...] = values
 
         print('Included cut values.')
