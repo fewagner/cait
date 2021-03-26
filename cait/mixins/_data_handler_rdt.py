@@ -488,7 +488,7 @@ class RdtMixin(object):
 
         # create file handles
         with h5py.File(self.path_h5, 'r+') as f:
-            mon = f.require_group('Monitor')
+            mon = f.require_group('monitor')
             for name in record.names:
                 if name in mon:
                     del mon[name]
