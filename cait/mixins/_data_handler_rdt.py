@@ -457,7 +457,7 @@ class RdtMixin(object):
 
         print('CON File included.')
 
-    def checkout_mon(self, path_mon):
+    def include_mon(self, path_mon):
         """
         TODO
 
@@ -476,7 +476,6 @@ class RdtMixin(object):
                            ])
 
         mon_head = np.fromfile(path_mon, dtype=header, count=1)
-        print(mon_head)
 
         mon_par_names = np.fromfile(path_mon, dtype='|S48', count=mon_head[0]['nmbr_par'], offset=mon_head.nbytes)
 
@@ -493,7 +492,7 @@ class RdtMixin(object):
             for name in record.names:
                 if name in mon:
                     del mon[name]
-                f.create_dataset(name=name,
+                mon.create_dataset(name=name,
                                  data=mon_pars[name])
 
         print('MON File Included.')

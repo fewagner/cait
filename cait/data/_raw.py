@@ -127,7 +127,7 @@ def read_rdt_file(fname, path, channels,
     if not lazy_loading:
         recs = np.fromfile("{}{}.rdt".format(path, fname), dtype=record)
     else:
-        recs = np.memmap("{}{}.rdt".format(path, fname), dtype=record)
+        recs = np.memmap("{}{}.rdt".format(path, fname), dtype=record, mode='r')
 
     # check if all events belong together in the channels
     good_recs = [[] for i in range(nmbr_channels)]
