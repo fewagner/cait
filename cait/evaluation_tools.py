@@ -1429,9 +1429,11 @@ class EvaluationTools:
 
         # -------- PLOT --------
         # PCA
-        pca=PCA(n_components=np.max(xy_comp))
+        pca=PCA(n_components=np.max(xy_comp)+1)
         princcomp=pca.fit_transform(self.get_features(what, verb=verb))
-        princcomp=princcomp[:, [xy_comp[0] - 1, xy_comp[1] - 1]]
+        princcomp=princcomp[:, (xy_comp[0], xy_comp[1])]
+        print('Explained Variance: ', pca.explained_variance_ratio_)
+        print('Singular Values: ', pca.singular_values_)
 
         plt.close()
         if figsize is None:
