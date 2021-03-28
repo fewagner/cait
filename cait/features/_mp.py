@@ -367,7 +367,7 @@ def calc_additional_parameters(event,
 
     # Max and Min
     max = np.max(event_smoothed)
-    min = np.max(event_smoothed)
+    min = np.min(event_smoothed)
 
     # Variance and Mean of first 1 / 8 and last 1 / 8
     var_start = np.var(event_smoothed[:int(length_event_smoothed/8)])
