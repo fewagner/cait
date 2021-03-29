@@ -4,14 +4,18 @@
 
 import h5py
 import numpy as np
+import matplotlib.pyplot as plt
 from functools import partial
 from multiprocessing import Pool
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import baseline_template_cubic, sev_fit_template
 from scipy.optimize import curve_fit
 from ..fit._bl_fit import get_rms
+from ..fit._noise import noise_trigger_template, get_noise_parameters_binned
 from ..fit._saturation import logistic_curve
+from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
+
 
 # -----------------------------------------------------------
 # CLASS
@@ -81,7 +85,7 @@ class FitMixin(object):
             h5f[type]['fitpar'][:, idx, :] = fitpar_event
 
     # apply sev fit
-    def apply_sev_fit(self, type='events', only_channels=None, sample_length=0.04, down=1, order_bl_polynomial = 3,
+    def apply_sev_fit(self, type='events', only_channels=None, sample_length=0.04, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
                       verb=False, processes=4, name_appendix='', group_name_appendix=''):
         """
@@ -145,8 +149,8 @@ class FitMixin(object):
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='sev_fit_par{}'.format(name_appendix),
-                                        shape=par.shape,
-                                        dtype='float')
+                                                 shape=par.shape,
+                                                 dtype='float')
             set_fitpar.attrs.create(name='pulse_height', data=0)
             set_fitpar.attrs.create(name='onset', data=1)
             set_fitpar.attrs.create(name='constant_coefficient', data=2)
@@ -154,8 +158,8 @@ class FitMixin(object):
             set_fitpar.attrs.create(name='quadratic_coefficient', data=4)
             set_fitpar.attrs.create(name='cubic_coefficient', data=5)
             set_fitrms = f[type].require_dataset(name='sev_fit_rms{}'.format(name_appendix),
-                                        shape=(self.nmbr_channels, len(events[0])),
-                                        dtype='float')
+                                                 shape=(self.nmbr_channels, len(events[0])),
+                                                 dtype='float')
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
                     set_fitpar[c, ...] = par[c]
@@ -171,7 +175,7 @@ class FitMixin(object):
                         #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
                         # elif order_bl_polynomial == 3:
                         set_fitrms[c, i] = np.mean((events[c, i][
-                                                                    fit_model.low:fit_model.up] - fit_model.wrap_sec(
+                                                    fit_model.low:fit_model.up] - fit_model.wrap_sec(
                             *par[c, i])[fit_model.low:fit_model.up]) ** 2)
                         # else:
                         #     raise KeyError('Order Polynomial must be 0,1,2,3!')
@@ -249,3 +253,102 @@ class FitMixin(object):
             sat['fitpar'][channel, ...] = par
 
         print('Saturation saved.')
+
+    def estimate_trigger_threshold(self,
+                                   channel,
+                                   detector_mass,
+                                   allowed_noise_triggers=1,
+                                   method='of',
+                                   bins=100,
+                                   yran=(1, 10e4),
+                                   xran=None,
+                                   xran_hist=None,
+                                   ul=30, # in mV
+                                   ll=0,  # in mV
+                                   cut_flag=None,
+                                   plot=True,
+                                   title=None,
+                                   sample_length=4e-5,  # in seconds
+                                   record_length=16384,  # in samples
+                                   interval_restriction=0.75,
+                                   ):
+        # TODO
+
+        print('Estimating Trigger Threshold.')
+
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            if method == 'of':
+                phs = h5f['noise']['of_ph'][channel]
+            elif method == 'ph':
+                phs = h5f['noise']['mainpar'][channel, :, 0]
+            else:
+                raise NotImplementedError('This method is not implemented.')
+            phs = np.array(phs) * 1000  # to mV
+        if cut_flag is not None:
+            phs = phs[cut_flag]
+
+        # make histogram of events heights
+        counts_hist, bins_hist = np.histogram(phs, bins=bins, range=(ll, ul), density=True)
+
+        nmbr_baselines = len(phs)
+        print('Nmbr baseline: ', nmbr_baselines)
+        d, sigma = get_noise_parameters_binned(counts=counts_hist,
+                                               bins=bins_hist,
+                                               )
+        # d, sigma = get_noise_parameters(x_max=phs, baseline_resolution=baseline_resolution)
+        print('Fitted Noise Trigger Template Parameters: d {},  sigma {:.3} mV'.format(d, sigma))
+
+        # calc the exposure in kg days
+        exposure = record_length * sample_length * detector_mass / 3600 / 24 * interval_restriction
+
+        # get the noise trigger rate
+        num = 1000
+        h = (ul - ll)/num
+        x_grid = np.linspace(start=ll, stop=ul, num=num)
+        ph_distribution = noise_trigger_template(x_max=x_grid, d=d, sigma=sigma)
+        noise_trigger_rate = np.array([h*np.sum(ph_distribution[i:]) for i in range(len(ph_distribution))])
+        ph_distribution /= exposure
+        noise_trigger_rate /= exposure
+
+        # calc the threshold
+        threshold = x_grid[noise_trigger_rate < allowed_noise_triggers][0]
+        print('Threshold for {} Noise Trigger per kg day: {:.3} mV'.format(allowed_noise_triggers, threshold))
+
+
+        if plot:
+
+            # plot the counts
+            plt.close()
+            use_cait_style()
+            plt.hist(bins_hist[:-1], bins_hist, weights=counts_hist / exposure,
+                     zorder=8, alpha=0.8, label='Counts')
+            plt.plot(x_grid, ph_distribution, linewidth=2, zorder=12, color='black', label='Fit Model')
+            make_grid()
+            if title is not None:
+                plt.title(title)
+            if xran_hist is not None:
+               plt.xlim(xran_hist)
+            plt.legend()
+            plt.xlabel('Pulse Height (mV)')
+            plt.ylabel('Counts (1 / kg days mV)')
+            plt.show()
+
+            # plot the threshold
+            plt.close()
+            use_cait_style()
+            plt.plot(x_grid, noise_trigger_rate, linewidth=2, zorder=16, color='black', label='Noise Trigger Rate')
+            plt.vlines(x=threshold, ymin=yran[0], ymax=allowed_noise_triggers, color='tab:red',
+                        linewidth=2, zorder=20, label='{} / kg days'.format(allowed_noise_triggers))
+            plt.hlines(y=allowed_noise_triggers, xmin=0, xmax=threshold, color='tab:red',
+                        linewidth=2, zorder=20)
+            make_grid()
+            plt.ylim(yran)
+            if xran is not None:
+               plt.xlim(xran)
+            plt.yscale('log')
+            if title is not None:
+                plt.title(title)
+            plt.legend()
+            plt.xlabel('Threshold (mV)')
+            plt.ylabel('Noise Trigger Rate (1 / kg days)')
+            plt.show()
