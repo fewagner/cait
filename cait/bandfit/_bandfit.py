@@ -199,7 +199,7 @@ class Bandfit():
 
         print('Files loaded.')
 
-    def minimize(self, method='Nelder-Mead'):
+    def minimize(self, method='Nelder-Mead', verb=True):
         """
         TODO
 
@@ -213,7 +213,10 @@ class Bandfit():
         lboundsred = reduceparvalues(self.lbounds, self.fixed)
         uboundsred = reduceparvalues(self.ubounds, self.fixed)
 
-        print('{}   {}'.format('Iter', 'f(X)'))
+        info = {}
+        if verb:
+            print('{}   {}'.format('Iter', 'f(X)'))
+            info['Nfeval'] = 0
 
         if method == 'Nelder-Mead':
             minresult = scipy.optimize.minimize(wrappernoint,
@@ -221,7 +224,7 @@ class Bandfit():
                                                 args=(self.values, self.fixed, self.lbounds, self.ubounds,
                                                       self.xy, self.cateffarr, self.region_of_interest,
                                                       self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
-                                                      self.nmbr_inelastic, {'Nfeval':0}),
+                                                      self.nmbr_inelastic, info),
                                                 method='Nelder-Mead',
                                                 options={#'maxiter': 1e100,
                                                          'maxiter': 2e4,
@@ -236,7 +239,7 @@ class Bandfit():
                                                               args=(self.values, self.fixed, self.lbounds, self.ubounds,
                                                                     self.xy, self.cateffarr, self.region_of_interest,
                                                                     self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
-                                                                    self.nmbr_inelastic, {'Nfeval':0}),
+                                                                    self.nmbr_inelastic, info),
                                                               strategy='randtobest1bin',
                                                               workers=-1,
                                                               maxiter=1000,
