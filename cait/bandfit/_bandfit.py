@@ -224,9 +224,9 @@ class Bandfit():
                                                       self.nmbr_inelastic, {'Nfeval':0}),
                                                 method='Nelder-Mead',
                                                 options={#'maxiter': 1e100,
-                                                         'maxiter': 1e4,
+                                                         'maxiter': 2e4,
                                                          #'maxfev': 1e100,
-                                                         'maxfev': 1e4,
+                                                         'maxfev': 2e4,
                                                          'xatol': 1e-10,
                                                          'fatol': 1e-10,
                                                          'adaptive': True})
@@ -248,6 +248,8 @@ class Bandfit():
 
         print('Likelihood optimization complete.')
         print(minresult, "\n")
+
+        self.minresult = minresult.x
 
     def plot_bck(self,
                  binwidth=0.05,

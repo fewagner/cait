@@ -8,7 +8,7 @@ from scipy.integrate import quad
 from typing import Union, Iterable
 from tqdm.auto import tqdm
 from math import erf
-
+from ..styles import use_cait_style, make_grid
 
 # functions
 
@@ -295,12 +295,18 @@ class Limit():
 
         if plot:
             print('Plot the limit.')
+            plt.close()
+            use_cait_style()
             plt.plot(x, y)
+            make_grid()
             plt.xscale('log')
             plt.yscale('log')
             plt.xlabel("$m_\chi$ [GeV c${^-2}$]")
             plt.ylabel("$\sigma_0$ [cm$^{-2}$]")
             plt.show()
+
+        self.x = x
+        self.limit = y
 
         return x, y
 
@@ -312,12 +318,15 @@ class Limit():
         """
         Plot the expected WIMP energy distribution.
         """
+        plt.close()
+        use_cait_style()
         x = np.linspace(.1, 5., 100)
-        for m in wimp_masses:
+        for i, m in enumerate(wimp_masses):
             y = [expected_interaction_rate(e, m, 16) for e in x]
-            plt.plot(x, y, label="$m_\chi$ = {} GeV".format(m))
-        plt.xlabel("E [keV]")
-        plt.ylabel("dR/dE [kg$^{-1}$ d$^{-1}$ keV$^{-1}$]")
+            plt.plot(x, y, label="$m_\chi$ = {} GeV".format(m), zorder=10 + 2*i)
+        make_grid()
+        plt.xlabel("Recoil Energy (keV)")
+        plt.ylabel("dR/dE (kg$^{-1}$ d$^{-1}$ keV$^{-1}$)")
         plt.legend()
         plt.show()
 
@@ -329,16 +338,19 @@ class Limit():
         """
         x = np.linspace(.1, 20., 1000)
 
-        for m in wimp_masses:
+        plt.close()
+        use_cait_style()
+        for i, m in enumerate(wimp_masses):
             y = [expected_recoil_rate(e,
                                       m,
                                       self.component_mass,
                                       self.component_nucleons,
                                       self.component_efficiencies,
                                       self.exposure) for e in x]
-            plt.plot(x, y, label="$m_\chi$ = {:.1} GeV".format(m))
-        plt.xlabel("E [keV]")
-        plt.ylabel("dN/dE [keV$^{-1}$]")
+            plt.plot(x, y, label="$m_\chi$ = {:.1} GeV".format(m), zorder=10 + 2*i)
+        make_grid()
+        plt.xlabel("Recoil Energy (keV)")
+        plt.ylabel("dN/dE (keV$^{-1}$)")
         plt.legend()
         plt.show()
 
@@ -349,9 +361,12 @@ class Limit():
         """
         Plot the observed recoil histogram.
         """
-        plt.hist(self.detector_AR, bins=bins)
-        plt.xlabel("E [keV]")
-        plt.ylabel("counts")
+        plt.close()
+        use_cait_style()
+        plt.hist(self.detector_AR, bins=bins, zorder=15)
+        make_grid()
+        plt.xlabel("Recoil Energy (keV)")
+        plt.ylabel("Counts")
         plt.title(title)
         plt.show()
 

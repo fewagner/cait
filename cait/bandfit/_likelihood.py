@@ -538,8 +538,9 @@ def wrappernoint(p, parvalues, fixedvalues, lbounds, ubounds, xy, cuteffarr, roi
         retval += scipy.integrate.simpson(iofarr[uniquei], uniquex)
 
     # display information
-    if info['Nfeval'] % 500 == 0:
-        print('{}   {}'.format(info['Nfeval'], retval))
-    info['Nfeval'] += 1
+    if 'Nfeval' in info:
+        if info['Nfeval'] % 500 == 0:
+            print('{}   {}'.format(info['Nfeval'], retval))
+        info['Nfeval'] += 1
 
     return retval
