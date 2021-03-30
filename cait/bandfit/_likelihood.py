@@ -527,7 +527,7 @@ def wrapperpool(p, parvalues, fixedvalues, lbounds, ubounds, xy, cuteffarr, roi,
     return loglikpool(parvalues, lbounds, ubounds, xy, cuteffarr, roi, nn, ng, nb, ni)
 
 
-def wrappernoint(p, parvalues, fixedvalues, lbounds, ubounds, xy, cuteffarr, roi, nn, ng, nb, ni):
+def wrappernoint(p, parvalues, fixedvalues, lbounds, ubounds, xy, cuteffarr, roi, nn, ng, nb, ni, info):
     """
     Wrapper for the likelihood function to fill into minimizer, uses pool multiprocessing, works with numba.
     """
@@ -535,6 +535,11 @@ def wrappernoint(p, parvalues, fixedvalues, lbounds, ubounds, xy, cuteffarr, roi
     retval, iofarr, tf = logliknoint(parvalues, lbounds, ubounds, xy, cuteffarr, roi, nn, ng, nb, ni)
     if tf:
         uniquex, uniquei = np.unique(xy[:, 0], return_index=True, axis=None)
-        return retval + scipy.integrate.simpson(iofarr[uniquei], uniquex)
-    else:
-        return retval
+        retval += scipy.integrate.simpson(iofarr[uniquei], uniquex)
+
+    # display information
+    if info['Nfeval'] % 500 == 0:
+        print('{}   {}'.format(info['Nfeval'], retval))
+    info['Nfeval'] += 1
+
+    return retval

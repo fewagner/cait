@@ -299,7 +299,7 @@ class FitMixin(object):
         print('Fitted Noise Trigger Template Parameters: d {},  sigma {:.3} mV'.format(d, sigma))
 
         # calc the exposure in kg days
-        exposure = record_length * sample_length * detector_mass / 3600 / 24 * interval_restriction
+        trigger_window = record_length * sample_length * detector_mass / 3600 / 24 * interval_restriction
 
         # get the noise trigger rate
         num = 1000
@@ -307,8 +307,8 @@ class FitMixin(object):
         x_grid = np.linspace(start=ll, stop=ul, num=num)
         ph_distribution = noise_trigger_template(x_max=x_grid, d=d, sigma=sigma)
         noise_trigger_rate = np.array([h*np.sum(ph_distribution[i:]) for i in range(len(ph_distribution))])
-        ph_distribution /= exposure
-        noise_trigger_rate /= exposure
+        ph_distribution /= trigger_window
+        noise_trigger_rate /= trigger_window
 
         # calc the threshold
         threshold = x_grid[noise_trigger_rate < allowed_noise_triggers][0]
@@ -320,7 +320,7 @@ class FitMixin(object):
             # plot the counts
             plt.close()
             use_cait_style()
-            plt.hist(bins_hist[:-1], bins_hist, weights=counts_hist / exposure,
+            plt.hist(bins_hist[:-1], bins_hist, weights=counts_hist / trigger_window,
                      zorder=8, alpha=0.8, label='Counts')
             plt.plot(x_grid, ph_distribution, linewidth=2, zorder=12, color='black', label='Fit Model')
             make_grid()

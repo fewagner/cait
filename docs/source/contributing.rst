@@ -12,6 +12,7 @@ Core developers (alphabetical list):
 
 Contributors (alphabetical list):
 
+- Jens Burkhart
 - Matthias Kettner
 - Pascal Schanner
 - Daniel Schmiedmayer

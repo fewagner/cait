@@ -213,15 +213,21 @@ class Bandfit():
         lboundsred = reduceparvalues(self.lbounds, self.fixed)
         uboundsred = reduceparvalues(self.ubounds, self.fixed)
 
+        print('{}   {}'.format('Iter', 'f(X)'))
+
         if method == 'Nelder-Mead':
             minresult = scipy.optimize.minimize(wrappernoint,
                                                 x0=valuesred,
                                                 args=(self.values, self.fixed, self.lbounds, self.ubounds,
                                                       self.xy, self.cateffarr, self.region_of_interest,
                                                       self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
-                                                      self.nmbr_inelastic),
+                                                      self.nmbr_inelastic, {'Nfeval':0}),
                                                 method='Nelder-Mead',
-                                                options={'maxiter': 1e100, 'maxfev': 1e100, 'xatol': 1e-10,
+                                                options={#'maxiter': 1e100,
+                                                         'maxiter': 1e4,
+                                                         #'maxfev': 1e100,
+                                                         'maxfev': 1e4,
+                                                         'xatol': 1e-10,
                                                          'fatol': 1e-10,
                                                          'adaptive': True})
         elif method == 'differential_evolution':
@@ -230,7 +236,7 @@ class Bandfit():
                                                               args=(self.values, self.fixed, self.lbounds, self.ubounds,
                                                                     self.xy, self.cateffarr, self.region_of_interest,
                                                                     self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
-                                                                    self.nmbr_inelastic),
+                                                                    self.nmbr_inelastic, {'Nfeval':0}),
                                                               strategy='randtobest1bin',
                                                               workers=-1,
                                                               maxiter=1000,
