@@ -100,7 +100,7 @@ def expected_interaction_rate(e_recoil: Union[int, float],
 
     pre_factor = .5 * (speed_light ** 4) / (1.e12 * e_charge) * 1.e-40 * 86400. * (a_nucleons ** 2) / (m_chi * (mu_p ** 2))
 
-    dN_per_dE = pre_factor * (a_nucleons ** 2)
+    dN_per_dE = pre_factor  # * (a_nucleons ** 2)
     dN_per_dE *= rho_chi
     dN_per_dE *= (F(e_recoil, m_N, a_nucleons) ** 2)
     dN_per_dE *= I(m_N, speed_light, e_recoil, mu_N)
