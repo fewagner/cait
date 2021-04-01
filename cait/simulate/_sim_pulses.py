@@ -62,25 +62,52 @@ def simulate_events(path_h5,
                 2D array of size (nmbr channels, size), the true pulse heights,
                 1D array (size), the onsets of the events)
     """
-    h5f = h5py.File(path_h5, 'r')
-    t = (np.arange(0, record_length, dtype=float) - record_length / 4) * sample_length
-    nmbr_thrown = 0
+    with h5py.File(path_h5, 'r') as h5f:
+        t = (np.arange(0, record_length, dtype=float) - record_length / 4) * sample_length
+        nmbr_thrown = 0
 
-    # get baselines
-    print('Get Baselines.')
-    if fake_noise:
-        sim_events, _ = simulate_baselines(path_h5=path_h5,
-                                           size=size,
-                                           rms_thresholds=rms_thresholds,
-                                           lamb=lamb,
-                                           verb=True)
-    else:
-        take_idx = []
-        if not reuse_bl:
-            if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
-                bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
+        # get baselines
+        print('Get Baselines.')
+        if fake_noise:
+            sim_events, _ = simulate_baselines(path_h5=path_h5,
+                                               size=size,
+                                               rms_thresholds=rms_thresholds,
+                                               lamb=lamb,
+                                               verb=True)
+
+            hours, time_s, time_mus = None, None, None
+
+        else:
+            take_idx = []
+            if not reuse_bl:
+                if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
+                    bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
+                    counter = 0
+                    while len(take_idx) < size:  # clean the baselines
+                        take_it = True
+                        for c in range(nmbr_channels):
+                            if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
+                                take_it = False
+
+                        if take_it:
+                            take_idx.append(counter)
+                        else:
+                            nmbr_thrown += 1
+
+                        counter += 1
+
+                    take_idx = np.array(take_idx) + use_bl_from_idx
+                    sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
+                else:
+                    raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
+            else:  # do reuse baselines
+                reuse_counter = 0
+                bl_rms = np.array(h5f['noise']['fit_rms'])
+                nmbr_bl_total = len(bl_rms[0])
                 counter = 0
-                while len(take_idx) < size:  # clean the baselines
+                stop_condition = 0
+                idx_lists = []
+                while stop_condition < size:
                     take_it = True
                     for c in range(nmbr_channels):
                         if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
@@ -88,112 +115,100 @@ def simulate_events(path_h5,
 
                     if take_it:
                         take_idx.append(counter)
-                    else:
-                        nmbr_thrown += 1
+                        stop_condition += 1
 
                     counter += 1
+                    if counter >= nmbr_bl_total:
+                        print('Nmbr resets to start of Baseline dataset: {}'.format(reuse_counter))
+                        reuse_counter += 1
+                        counter = 0
+                        idx_lists.append(np.array(take_idx))
+                        take_idx = []
+                idx_lists.append(take_idx)
 
-                take_idx = np.array(take_idx) + use_bl_from_idx
-                sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
-            else:
-                raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
-        else:  # do reuse baselines
-            reuse_counter = 0
-            bl_rms = np.array(h5f['noise']['fit_rms'])
-            nmbr_bl_total = len(bl_rms[0])
-            counter = 0
-            stop_condition = 0
-            idx_lists = []
-            while stop_condition < size:
-                take_it = True
-                for c in range(nmbr_channels):
-                    if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
-                        take_it = False
+                sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
+                hours = np.concatenate([np.array(h5f['noise']['hours'][il]) for il in idx_lists], axis=0)
+                time_s = np.concatenate([np.array(h5f['noise']['time_s'][il]) for il in idx_lists], axis=0)
+                time_mus = np.concatenate([np.array(h5f['noise']['time_mus'][il]) for il in idx_lists], axis=0)
 
-                if take_it:
-                    take_idx.append(counter)
-                    stop_condition += 1
+                # sim_events = np.array(h5f['noise']['event'][:, idx_lists, :])
+                # hours = np.array(h5f['noise']['hours'][:, idx_lists, :])
+                # time_s = np.array(h5f['noise']['time_s'][:, idx_lists, :])
+                # time_mus = np.array(h5f['noise']['time_mus'][:, idx_lists, :])
 
-                counter += 1
-                if counter >= nmbr_bl_total:
-                    print('Nmbr resets to start of Baseline dataset: {}'.format(reuse_counter))
-                    reuse_counter += 1
-                    counter = 0
-                    idx_lists.append(np.array(take_idx))
-                    take_idx = []
-            idx_lists.append(take_idx)
-            sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
+                # sim_events = h5f['noise']['event'][:, idx_lists, :]
+                # hours = h5f['noise']['hours'][idx_lists]
+                # time_s = h5f['noise']['time_s'][idx_lists]
+                # time_mus = h5f['noise']['time_mus'][idx_lists]
 
-    # get pulse heights
-    print('Get Pulse Heights.')
-    phs = np.zeros((nmbr_channels, size))
-    for c in range(nmbr_channels):
-        if discrete_ph is None:
-            phs[c] = uniform.rvs(size=size, loc=ph_intervals[c][0], scale=ph_intervals[c][1] - ph_intervals[c][0])
-        else:
-            phs[c] = np.random.choice(discrete_ph[0], size)
-
-    # get t0's
-    t0s = uniform.rvs(loc=t0_interval[0], scale=t0_interval[1] - t0_interval[0], size=size)
-
-    # add pulses
-    print('Add Pulses to Baselines.')
-    if type == 'events':
-        used_exept_sevs = 0  # this counts to get the exceptional event at correct index
+        # get pulse heights
+        print('Get Pulse Heights.')
+        phs = np.zeros((nmbr_channels, size))
         for c in range(nmbr_channels):
-            if exceptional_sev_naming is None:
-                par = h5f['stdevent']['fitpar'][c]
+            if discrete_ph is None:
+                phs[c] = uniform.rvs(size=size, loc=ph_intervals[c][0], scale=ph_intervals[c][1] - ph_intervals[c][0])
             else:
-                if c in channels_exceptional_sev:
-                    if len(channels_exceptional_sev) == 1:
-                        par = h5f[exceptional_sev_naming]['fitpar']  # has no channels
-                    else:
-                        par = h5f[exceptional_sev_naming]['fitpar'][used_exept_sevs]
-                        used_exept_sevs += 1
-                else:
+                phs[c] = np.random.choice(discrete_ph[0], size)
+
+        # get t0's
+        t0s = uniform.rvs(loc=t0_interval[0], scale=t0_interval[1] - t0_interval[0], size=size)
+
+        # add pulses
+        print('Add Pulses to Baselines.')
+        if type == 'events':
+            used_exept_sevs = 0  # this counts to get the exceptional event at correct index
+            for c in range(nmbr_channels):
+                if exceptional_sev_naming is None:
                     par = h5f['stdevent']['fitpar'][c]
-            for e in range(size):
-                if ps_dev and c == 0:  # so far this only works for the phonon channel
-                    if phs[c, e] != 0:
-                        par = generate_ps_par(phs[c, e].reshape([-1]))
-                        par[0] += t0s[e]
-                        pulse = pulse_template(t, *par)
-                        pulse = pulse/np.max(pulse)
-                        sim_events[c, e] += phs[c, e] * pulse
                 else:
-                    use_par = np.copy(par)
-                    use_par[0] += t0s[e]
-                    sim_events[c, e] += phs[c, e] * pulse_template(t, *use_par)
+                    if c in channels_exceptional_sev:
+                        if len(channels_exceptional_sev) == 1:
+                            par = h5f[exceptional_sev_naming]['fitpar']  # has no channels
+                        else:
+                            par = h5f[exceptional_sev_naming]['fitpar'][used_exept_sevs]
+                            used_exept_sevs += 1
+                    else:
+                        par = h5f['stdevent']['fitpar'][c]
+                for e in range(size):
+                    if ps_dev and c == 0:  # so far this only works for the phonon channel
+                        if phs[c, e] != 0:
+                            par = generate_ps_par(phs[c, e].reshape([-1]))
+                            par[0] += t0s[e]
+                            pulse = pulse_template(t, *par)
+                            pulse = pulse/np.max(pulse)
+                            sim_events[c, e] += phs[c, e] * pulse
+                    else:
+                        use_par = np.copy(par)
+                        use_par[0] += t0s[e]
+                        sim_events[c, e] += phs[c, e] * pulse_template(t, *use_par)
 
-    elif type == 'testpulses':
-        one_true_ph = phs[0]
-        if saturation:
-            one_true_ph /= scale_factor(*h5f['saturation']['fitpar'][0])
-        for c in range(nmbr_channels):
-            phs[c] = one_true_ph
+        elif type == 'testpulses':
+            one_true_ph = phs[0]
             if saturation:
+                one_true_ph /= scale_factor(*h5f['saturation']['fitpar'][0])
+            for c in range(nmbr_channels):
+                phs[c] = one_true_ph
+                if saturation:
+                    log_fitpar = h5f['saturation']['fitpar'][c]
+                    phs[c] *= scale_factor(*log_fitpar)
+                for e in range(size):
+                    par = h5f['stdevent_tp']['fitpar'][c]
+                    sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
+
+        elif type == 'noise':
+            pass
+        else:
+            raise KeyError('type must be events, testpulses or noise!')
+
+        # add saturation
+        if saturation:
+            for c in range(nmbr_channels):
                 log_fitpar = h5f['saturation']['fitpar'][c]
-                phs[c] *= scale_factor(*log_fitpar)
-            for e in range(size):
-                par = h5f['stdevent_tp']['fitpar'][c]
-                sim_events[c, e] += phs[c, e] * pulse_template(t + t0s[e], *par)
+                for e in range(size):
+                    event = sim_events[c, e]
+                    offset = np.mean(event[:int(record_length / 8)])
+                    ev_no_offset = event - offset
+                    ev_sat = scaled_logistic_curve(ev_no_offset, *log_fitpar)
+                    sim_events[c, e] = ev_sat + offset
 
-    elif type == 'noise':
-        pass
-    else:
-        raise KeyError('type must be events, testpulses or noise!')
-
-    # add saturation
-    if saturation:
-        for c in range(nmbr_channels):
-            log_fitpar = h5f['saturation']['fitpar'][c]
-            for e in range(size):
-                event = sim_events[c, e]
-                offset = np.mean(event[:int(record_length / 8)])
-                ev_no_offset = event - offset
-                ev_sat = scaled_logistic_curve(ev_no_offset, *log_fitpar)
-                sim_events[c, e] = ev_sat + offset
-
-    h5f.close()
-
-    return sim_events, phs, t0s, nmbr_thrown
+    return sim_events, phs, t0s, nmbr_thrown, hours, time_s, time_mus

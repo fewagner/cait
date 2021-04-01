@@ -3,91 +3,11 @@
 import numpy as np
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from scipy.stats import linregress, t, norm
-from scipy import odr
-from scipy.interpolate import interp1d
 from ..styles._plt_styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
-
+from ._pulser_model import LinearModel, PolyModel
 
 # functions
-
-class PolyModel:
-    def __init__(self, xd, yd, x_sigma=None, y_sigma=None, order=5):
-        # todo https://docs.scipy.org/doc/scipy/reference/odr.html !!
-        self.xd = xd
-        self.yd = yd
-        self.x_sigma = x_sigma
-        self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
-        self.y_sigma = y_sigma
-        self.order = order
-        self.poly_model = odr.polynomial(order)
-        self.fix = np.ones(order + 1)
-        self.fix[0] = 0
-        self.data = odr.RealData(self.xd, self.yd, sx=x_sigma, sy=y_sigma)
-        self.odr = odr.ODR(data=self.data, model=self.poly_model)
-        self.out = self.odr.run()
-        self.y = np.poly1d(self.out.beta[::-1])
-        self.dydx = np.polyder(self.y, m=1)
-
-    def y_pred(self, x):
-        y = self.y(x)
-        if len(x.shape) == 0:
-            x = np.array([x])
-        x_mat = np.array([x ** (i) for i in range(self.order + 1)]).T
-
-        # process covarianvce matrix and derivatives
-        d = np.dot(np.dot(x_mat, self.out.cov_beta), np.transpose(x_mat))
-        d = np.diag(d)
-
-        lower, upper = y - np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d), \
-                       y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d)
-        return lower, y, upper
-
-
-class LinearModel:
-    def __init__(self, xd, yd):
-        self.xd = xd
-        self.yd = yd
-        self.a, self.b, self.r, self.p, self.err = linregress(self.xd, self.yd)
-        self.n = self.xd.size
-        self.sd = np.sqrt(1. / (self.n - 2.) * np.sum((self.yd - self.a * self.xd - self.b) ** 2))
-        self.sxd = np.sum((self.xd - self.xd.mean()) ** 2)
-        self.sum_errs = np.sum((self.yd - self.y(self.xd)) ** 2)
-        self.stdev = np.sqrt(1 / (len(self.yd) - 2) * self.sum_errs)
-
-    def y(self, x):
-        return x * self.a + self.b
-
-    def confidence_interval(self, x, conf=0.95):
-        alpha = 1. - conf
-
-        y = self.y(x)
-        sx = (x - self.xd.mean()) ** 2
-
-        q = t.ppf(1. - alpha / 2, self.n - 2)  # quantile
-        dy = q * self.sd * np.sqrt(1. / self.n + sx / self.sxd)
-        yl = y - dy
-        yu = y + dy
-
-        return yl, y, yu
-
-    def y_sigma(self, x):
-        yl, y, yu = self.confidence_interval(x, conf=0.68)
-
-        lower, upper = y - np.sqrt((y - yl) ** 2 + self.stdev ** 2), y + np.sqrt((y - yu) ** 2 + self.stdev ** 2)
-        return lower, y, upper
-
-    def prediction_interval(self, x, pi=.68):
-        y = self.y(x)
-
-        one_minus_pi = 1 - pi
-        ppf_lookup = 1 - (one_minus_pi / 2)
-        z_score = norm.ppf(ppf_lookup)
-        interval = z_score * self.stdev  # generate prediction interval lower and upper bound
-        lower, upper = y - interval, y + interval
-        return lower, y, upper
-
 
 def energy_calibration_linear(evhs,
                               ev_hours,
@@ -104,28 +24,7 @@ def energy_calibration_linear(evhs,
                               plot_only_first_poly=True
                               ):
     """
-    TODO
-
-    :param evhs:
-    :type evhs:
-    :param ev_hours:
-    :type ev_hours:
-    :param tphs:
-    :type tphs:
-    :param tpas:
-    :type tpas:
-    :param tp_hours:
-    :type tp_hours:
-    :param linear_tpa_range:
-    :type linear_tpa_range:
-    :param max_dist:
-    :type max_dist:
-    :param cpe_factor:
-    :type cpe_factor:
-    :param smoothing_factor:
-    :type smoothing_factor:
-    :return:
-    :rtype:
+    Attention! This function is depricated!
     """
 
     unique_tpas = np.unique(tpas)

@@ -1,12 +1,8 @@
 # imports
 
 import numpy as np
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from scipy.stats import linregress, t, norm
-from scipy import odr
 from sklearn.ensemble import GradientBoostingRegressor
-from scipy.interpolate import interp1d
 from ..styles._plt_styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
 from ._energy_calibration_linear import PolyModel
@@ -27,28 +23,7 @@ def energy_calibration_tree(evhs,
                             dpi=150,
                             ):
     """
-    TODO
-
-    :param evhs:
-    :type evhs:
-    :param ev_hours:
-    :type ev_hours:
-    :param tphs:
-    :type tphs:
-    :param tpas:
-    :type tpas:
-    :param tp_hours:
-    :type tp_hours:
-    :param linear_tpa_range:
-    :type linear_tpa_range:
-    :param max_dist:
-    :type max_dist:
-    :param cpe_factor:
-    :type cpe_factor:
-    :param smoothing_factor:
-    :type smoothing_factor:
-    :return:
-    :rtype:
+    Attention! This function is depricated!
     """
 
     unique_tpas = np.unique(tpas)

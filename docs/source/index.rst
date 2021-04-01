@@ -28,6 +28,7 @@
    tutorials/08ptl_classification
    tutorials/09regression
    tutorials/10bandfit
+   tutorials/11limit
 
 .. toctree::
    :caption: Documentation
@@ -44,6 +45,7 @@
    documentation/features
    documentation/filter
    documentation/fit
+   documentation/limit
    documentation/models
    documentation/simulate
    documentation/styles

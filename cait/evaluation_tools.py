@@ -304,7 +304,7 @@ class EvaluationTools:
                 self.__add_label_nbrs(['unlabeled'] * nbr_events_added)
                 self.__add_labels([('unlabeled', 0)])
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                      "In the provided hdf5 file are no label_nbrs available an therefore are set to 'unlabeled'.")
+                      "In the provided hdf5 file are no label_nbrs available and therefore are set to 'unlabeled'.")
 
             # add a numbering to each event to which file it belongs
             self.__add_file_nbrs(np.full(nbr_events_added, file_index))

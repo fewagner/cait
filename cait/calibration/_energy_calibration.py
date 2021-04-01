@@ -135,19 +135,3 @@ def energy_calibration(evhs,
                 break
 
     return energies
-
-
-def light_yield_correction(phonon_energy, light_energy, scintillation_efficiency):
-    """
-    TODO
-
-    :param phonon_energy:
-    :type phonon_energy:
-    :param light_energy:
-    :type light_energy:
-    :param scintillation_efficiency:
-    :type scintillation_efficiency:
-    :return:
-    :rtype:
-    """
-    return scintillation_efficiency * light_energy + (1 - scintillation_efficiency) * phonon_energy

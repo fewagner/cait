@@ -11,6 +11,7 @@ from tqdm.auto import tqdm
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -24,7 +25,7 @@ class CsmplMixin(object):
                                 paths,
                                 name_appendix='',
                                 take_samples: int = None,
-                                trigger_block:int=None,
+                                trigger_block: int = None,
                                 path_sql: str = None,
                                 csmpl_channels: list = None,
                                 sql_file_label: str = None,
@@ -40,7 +41,6 @@ class CsmplMixin(object):
             raise KeyError(
                 'If you want to read start time from SQL database, you must provide the csmpl_channels and sql_file_label!')
 
-
         dt = np.dtype([('ch', 'int64', (1,)),
                        ('tstamp', 'uint64', (1,)),
                        ('ftstamp', 'uint64', (1,)),
@@ -53,7 +53,6 @@ class CsmplMixin(object):
         time = []
 
         for p in paths:
-
             x = np.fromfile(file=p,
                             dtype=dt,
                             count=-1)
@@ -101,23 +100,23 @@ class CsmplMixin(object):
                                            csmpl_channel=csmpl_channels[0],
                                            sql_file_label=sql_file_label)
 
-                stream['trigger_time_s{}'.format(name_appendix)][...] = np.array(aligned_triggers + file_start, dtype='int32')
+                stream['trigger_time_s{}'.format(name_appendix)][...] = np.array(aligned_triggers + file_start,
+                                                                                 dtype='int32')
                 stream['trigger_time_mus{}'.format(name_appendix)][...] = np.array(1e6 * (
                         aligned_triggers + file_start - np.floor(aligned_triggers + file_start)), dtype='int32')
 
             print('DONE')
 
-
     def include_csmpl_triggers(self,
                                csmpl_paths: list,  # list of all paths for the channels
                                thresholds: list,  # in V
-                               trigger_block:int=None,
-                               take_samples:int=None,
-                               of:list=None,
-                               path_sql:str=None,
-                               csmpl_channels:list=None,
-                               sql_file_label:str=None,
-                               down:int=1
+                               trigger_block: int = None,
+                               take_samples: int = None,
+                               of: list = None,
+                               path_sql: str = None,
+                               csmpl_channels: list = None,
+                               sql_file_label: str = None,
+                               down: int = 1
                                ):
         """
         Trigger *.csmpl files of a detector module and include them in the HDF5 set.
@@ -233,7 +232,6 @@ class CsmplMixin(object):
 
             print('DONE')
 
-
     def include_nps(self, nps):
         """
         Include the Noise Power Spectrum to the HDF5 file.
@@ -248,7 +246,6 @@ class CsmplMixin(object):
             noise.create_dataset(name='nps',
                                  data=nps)
         print('NPS written.')
-
 
     def include_sev(self,
                     sev,
@@ -282,7 +279,8 @@ class CsmplMixin(object):
             if fitpar is None:
                 if t0_start is None:
                     t0_start = -3
-                std_evs[c].append(fit_pulse_shape(sev[c], sample_length=sample_length, t0_start=t0_start[c], opt_start=opt_start))
+                std_evs[c].append(
+                    fit_pulse_shape(sev[c], sample_length=sample_length, t0_start=t0_start[c], opt_start=opt_start))
 
                 if scale_fit_height:
                     t = (np.arange(0, len(sev[c]), dtype=float) - len(sev[c]) / 4) * sample_length
@@ -302,12 +300,12 @@ class CsmplMixin(object):
             stdevent = f.require_group(name='stdevent' + group_name_appendix)
 
             stdevent.require_dataset('event',
-                                shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
-                                dtype='f')
+                                     shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
+                                     dtype='f')
             stdevent['event'][...] = np.array([x[0] for x in std_evs])
             stdevent.require_dataset('fitpar',
-                                shape=(self.nmbr_channels, len(std_evs[0][1])),
-                                dtype='f')
+                                     shape=(self.nmbr_channels, len(std_evs[0][1])),
+                                     dtype='f')
             stdevent['fitpar'][...] = np.array([x[1] for x in std_evs])
 
             # description of the fitparameters (data=column_in_fitpar)
@@ -319,8 +317,8 @@ class CsmplMixin(object):
             stdevent['fitpar'].attrs.create(name='tau_t', data=5)
 
             stdevent.require_dataset('mainpar',
-                                shape=mainpar.shape,
-                                dtype='f')
+                                     shape=mainpar.shape,
+                                     dtype='f')
 
             stdevent['mainpar'][...] = mainpar
 
@@ -336,7 +334,6 @@ class CsmplMixin(object):
             stdevent['mainpar'].attrs.create(name='linear_drift', data=8)
             stdevent['mainpar'].attrs.create(name='quadratic_drift', data=9)
         print('SEV written.')
-
 
     def include_of(self, of_real, of_imag, down=1, group_name_appendix=''):
         """
@@ -371,10 +368,9 @@ class CsmplMixin(object):
                                              data=of_imag)
         print('OF written.')
 
-
     def include_triggered_events(self,
                                  csmpl_paths,
-                                 max_time_diff=0.5, # in sec
+                                 max_time_diff=0.5,  # in sec
                                  exclude_tp=True,
                                  sample_duration=0.00004,
                                  name_appendix='',
@@ -414,7 +410,9 @@ class CsmplMixin(object):
             if "events" in h5f and not noninteractive:
                 val = None
                 while val != 'y':
-                    val = input("An events group exists in this file. Overwrite? y/n")
+                    val = input(
+                        "An events group exists in this file. Overwriting with a different number of events, e.g."
+                        "after retriggering, might lead to issues in feature calculations. Overwrite anyway? y/n")
                     if val == 'n':
                         raise FileExistsError(
                             "Events group exists already in the H5 file. Create new file to not overwrite.")
@@ -528,14 +526,13 @@ class CsmplMixin(object):
 
                     print('Channel ', c)
                     for i in tqdm(range(len(this_hours))):
-
                         tp_ev[c, i, :], _ = get_record_window(path=csmpl_paths[c],
-                                                             start_time= this_hours[i]* 3600 - sample_to_time(
-                                                                 self.record_length / 4,
-                                                                 sample_duration=sample_duration),
-                                                             record_length=self.record_length,
-                                                             sample_duration=sample_duration,
-                                                             down=down)
+                                                              start_time=this_hours[i] * 3600 - sample_to_time(
+                                                                  self.record_length / 4,
+                                                                  sample_duration=sample_duration),
+                                                              record_length=self.record_length,
+                                                              sample_duration=sample_duration,
+                                                              down=down)
 
                 # ------------
                 print('Calculate Control Pulse Heights.')
@@ -563,7 +560,6 @@ class CsmplMixin(object):
                         cphs[c, ...] = np.max(cp_array)
 
             print('DONE')
-
 
     def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, sql_file_label,
                             # triggerdelay=2081024,
@@ -609,7 +605,6 @@ class CsmplMixin(object):
             hours, tpas, _ = get_test_stamps(path=path_teststamps, channels=[0])
 
             if fix_offset:
-
                 # determine the offset of the trigger time stamps from the digitizer stamps
 
                 dig = np.dtype([
@@ -620,7 +615,8 @@ class CsmplMixin(object):
 
                 diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
                 dig_samples = diq_stamps['stamp']
-                offset_hours = (dig_samples[1] - 2*dig_samples[0]) / clock / 3600  # the dig stamp is delayed by offset_hours
+                offset_hours = (dig_samples[1] - 2 * dig_samples[
+                    0]) / clock / 3600  # the dig stamp is delayed by offset_hours
 
                 # remove the offset and throw all below zero away
 
