@@ -88,6 +88,7 @@ class EventInterface:
         self.xlim = None
         self.ylim = None
         self.dpi = dpi
+        self.show_time = False
 
         print('Event Interface Instance created.')
 
@@ -500,6 +501,7 @@ class EventInterface:
         print('xlim ... set the x limit')
         print('ylim ... set the y limit')
         print('sub ... subtract offset')
+        print('time ... plot time instead of sample index')
         print('q ... quit options menu')
 
         while True:
@@ -566,6 +568,10 @@ class EventInterface:
             elif user_input == 'sub':
                 self.subtract_offset = not self.subtract_offset
                 print('Subtract offset set to: ', self.subtract_offset)
+
+            elif user_input == 'time':
+                self.show_time = not self.show_time
+                print('Plot time instead of index set to: ', self.show_time)
 
             # quit
             elif user_input == 'q':
@@ -676,8 +682,14 @@ class EventInterface:
                 else:
                     mask = x
 
+                if self.show_time:
+                    x = (np.arange(0, len(event[i]), 1) - len(event[i]) / 4) * self.down / self.sample_frequency
+
                 plt.subplot(self.nmbr_channels, 1, i + 1)
-                plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
+                if not self.show_time:
+                    plt.axvline(x=self.window_size / 4, color='grey', alpha=0.6)
+                else:
+                    plt.axvline(x=0, color='grey', alpha=0.6)
                 plt.plot(x[mask],
                          event[i][mask] - offset,
                          label=self.channel_names[i],
@@ -689,15 +701,21 @@ class EventInterface:
 
                 # triangulation
                 if self.show_triangulation:
-                    plot_S1(event[i], elements[i], color=anti_colors[i], xlim=self.xlim, offset=offset)
+                    if not self.show_time:
+                        plot_S1(event[i], elements[i], color=anti_colors[i], xlim=self.xlim, offset=offset)
+                    else:
+                        print('Cannot show time and mp.')
 
                 # main parameters
                 if self.show_mp:
-                    self._plot_mp(main_par[i],
-                                  color=anti_colors[i],
-                                  down=self.down,
-                                  xlim=self.xlim,
-                                  offset_sub=offset)
+                    if not self.show_time:
+                        self._plot_mp(main_par[i],
+                                      color=anti_colors[i],
+                                      down=self.down,
+                                      xlim=self.xlim,
+                                      offset_sub=offset)
+                    else:
+                        print('Cannot show time and mp.')
 
                 # sev
                 if self.sev:
@@ -767,7 +785,7 @@ class EventInterface:
         :param which: string, the naming of the channel, e.g. phonon/light
         :return: int > 0 or option code (int < 0) if the user input was one of the option flag
         """
-        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx)' .format(idx, which))
+        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx, p for (de)activate label list)' .format(idx, which))
 
         while True:
             user_input = input('{}: '.format(which))
@@ -776,7 +794,7 @@ class EventInterface:
                 if label > 0:
                     return label
                 else:
-                    print('Enter Integer > 0 or q end, b back, n next, o options, i idx' )
+                    print('Enter Integer > 0 or q end, b back, n next, o options, i idx, p for (de)activate label list' )
             except ValueError:
                 if user_input == 'q':
                     return -1
@@ -788,9 +806,11 @@ class EventInterface:
                     return -4
                 elif user_input == 'i':
                     return -5
+                elif user_input == 'p':
+                    return -6
                 else:
                     print(
-                        'Enter Integer > 0 or q end, b back, n next, o options, i idx')
+                        'Enter Integer > 0 or q end, b back, n next, o options, i idx, p for (de)activate label list')
 
     def _ask_for_idx(self, length: int):
         """
@@ -907,6 +927,8 @@ class EventInterface:
                         elif user_input == -5:
                             idx = self._ask_for_idx(self.nmbrs[type]) - 1
                             break
+                        elif user_input == -6:
+                            print_label_list = not print_label_list
                         else:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
