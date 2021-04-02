@@ -295,7 +295,7 @@ class FeaturesMixin(object):
 
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False, down=1):
+                 chunk_size=10000, hard_restrict=False, down=1, window=False):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -327,12 +327,12 @@ class FeaturesMixin(object):
             while counter + chunk_size < nmbr_events:
                 for c in range(self.nmbr_channels):
                     of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                           hard_restrict=hard_restrict, down=down)
+                                           hard_restrict=hard_restrict, down=down, window=window)
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
             for c in range(self.nmbr_channels):
                 of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                       hard_restrict=hard_restrict, down=down)
+                                       hard_restrict=hard_restrict, down=down, window=window)
                 f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
 
     # calc stdevent carrier

@@ -4,6 +4,7 @@
 
 import numpy as np
 from numpy.fft import rfft, irfft
+from scipy import signal
 import numba as nb
 
 """
@@ -67,13 +68,15 @@ def optimal_transfer_function(stdevent, nps):
     return H / np.max(filtered_standardevent)
 
 
-def filter_event(event, transfer_function):
+def filter_event(event, transfer_function, window=False):
     """
     this function filters a single event
     :param event: 1D array of the one event that should be filtered, size N
     :param transition_function: the filter in fourier space, size N/2 +1 complex numpy array
     :return: 1D array length N, the filtered event
     """
+    if window:
+        event *= signal.windows.tukey(len(event), alpha=0.25)
 
     event_fft = rfft(event)  # do fft of event
     # do the filtering, multiplication in fourier space is convolution in time space
@@ -83,7 +86,7 @@ def filter_event(event, transfer_function):
     return event_filtered
 
 
-def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1):
+def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False):
     """
     This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
@@ -105,7 +108,7 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1):
     # calc transition function
     transition_function = optimal_transfer_function(stdevent, nps)
     # filter events
-    events_filtered = np.array([filter_event(event, transition_function) for event in events_array])
+    events_filtered = np.array([filter_event(event, transition_function, window=window) for event in events_array])
     # get maximal heights of filtered events
     if not hard_restrict:
         amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)

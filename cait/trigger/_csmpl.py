@@ -85,7 +85,8 @@ def get_max_index(stream,  # memmap array
                   overlap,  # in samples
                   block,  # in samples
                   transfer_function,  # if use down, this must already be downsampled
-                  down=1
+                  down=1,
+                  window=False,
                   ):
     """
     TODO
@@ -122,7 +123,7 @@ def get_max_index(stream,  # memmap array
     if transfer_function is None:
         filtered_record = signal.medfilt(record, 51)
     else:
-        filtered_record = filter_event(record, transfer_function=transfer_function)
+        filtered_record = filter_event(record, transfer_function=transfer_function, window=window)
     # get max
     if block > overlap:
         trig = np.argmax(filtered_record[block:-overlap])
@@ -150,6 +151,7 @@ def trigger_csmpl(paths,
                   trigger_block=16384,
                   return_info=False,
                   down=1,
+                  window=False,
                   ):
     """
     TODO
@@ -224,6 +226,7 @@ def trigger_csmpl(paths,
                                                  block=block,  # in samples
                                                  transfer_function=transfer_function,
                                                  down=down,
+                                                 window=window,
                                                  )
                     if height > trigger_tres:
                         # resample in case higher trigger is in record window
@@ -236,6 +239,7 @@ def trigger_csmpl(paths,
                                                      block=block,  # in samples
                                                      transfer_function=transfer_function,
                                                      down=down,
+                                                     window=window,
                                                      )
 
                         triggers.append(start_hours + sample_to_time(counter + trig))

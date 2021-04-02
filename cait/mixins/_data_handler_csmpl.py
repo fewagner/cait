@@ -116,7 +116,8 @@ class CsmplMixin(object):
                                path_sql: str = None,
                                csmpl_channels: list = None,
                                sql_file_label: str = None,
-                               down: int = 1
+                               down: int = 1,
+                               window=False,
                                ):
         """
         Trigger *.csmpl files of a detector module and include them in the HDF5 set.
@@ -184,6 +185,7 @@ class CsmplMixin(object):
                                      start_hours=0,
                                      trigger_block=trigger_block,
                                      down=down,
+                                     window=window,
                                      )
 
                 time.append(trig)
@@ -494,12 +496,15 @@ class CsmplMixin(object):
                 if 'event' in write_events:
                     del write_events['event']
                 write_events.create_dataset(name='event',
-                                            shape=(self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
+                                            shape=(
+                                                self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
                                             dtype=datatype)
             else:
                 write_events.require_dataset(name='event',
-                                            shape=(self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
-                                            dtype=datatype)
+                                             shape=(
+                                                 self.nmbr_channels, len(trigger_hours),
+                                                 int(self.record_length / down)),
+                                             dtype=datatype)
 
             print('Include the triggered events.')
             for c in range(self.nmbr_channels):
@@ -535,9 +540,9 @@ class CsmplMixin(object):
                                                             dtype=datatype)
                 else:
                     tp_ev = write_testpulses.require_dataset(name='event',
-                                                            shape=(self.nmbr_channels, len(this_hours),
-                                                                   int(self.record_length / down)),
-                                                            dtype=datatype)
+                                                             shape=(self.nmbr_channels, len(this_hours),
+                                                                    int(self.record_length / down)),
+                                                             dtype=datatype)
 
                 for c in range(self.nmbr_channels):
 
@@ -545,7 +550,8 @@ class CsmplMixin(object):
                     if origin is None:
                         iterable = range(len(this_hours))
                     else:
-                        iterable = np.array([st.decode() == origin for st in h5f['testpulses']['origin'][:]]).nonzero()[0]
+                        iterable = np.array([st.decode() == origin for st in h5f['testpulses']['origin'][:]]).nonzero()[
+                            0]
                     for i in tqdm(range(len(iterable))):
                         tp_ev[c, i, :], _ = get_record_window(path=csmpl_paths[c],
                                                               start_time=this_hours[i] * 3600 - sample_to_time(
@@ -672,3 +678,30 @@ class CsmplMixin(object):
             h5f['stream']['tp_time_mus'][...] = time_mus
 
         print('Test Stamps included.')
+
+    def include_noise_triggers(self,
+                               nmbr,
+                               min_distance=0.5,
+                               max_distance=60,
+                               record_window_length=16384/25000):
+        # TODO
+
+        # open file stream
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            trigger_stamps = h5f['stream']['trigger_hours']
+            test_stamps = h5f['stream']['tp_hours']
+
+            all_stamps = np.concatenate((trigger_stamps, test_stamps))
+            all_stamps.sort(kind='mergesort')
+            gaps = np.diff(all_stamps)
+            gaps_idx = np.arange(0, gaps, 1)
+            good_gaps_flag = np.logical_and(gaps > 2*min_distance + record_window_length,
+                                            gaps < max_distance)
+
+            from_gap = np.random.choice(gaps_idx[good_gaps_flag],
+                                              size=nmbr,
+                                              p=gaps/np.sum(gaps))
+
+            noise_triggers = []
+
+            #for

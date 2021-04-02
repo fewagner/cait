@@ -89,6 +89,7 @@ class EventInterface:
         self.ylim = None
         self.dpi = dpi
         self.show_time = False
+        self.window = False
 
         print('Event Interface Instance created.')
 
@@ -502,6 +503,7 @@ class EventInterface:
         print('ylim ... set the y limit')
         print('sub ... subtract offset')
         print('time ... plot time instead of sample index')
+        print('window ... include window in of filtering')
         print('q ... quit options menu')
 
         while True:
@@ -573,6 +575,10 @@ class EventInterface:
                 self.show_time = not self.show_time
                 print('Plot time instead of index set to: ', self.show_time)
 
+            elif user_input == 'window':
+                self.window = not self.window
+                print('Include window in OF plot set to: ', self.window)
+
             # quit
             elif user_input == 'q':
                 print('Quit options menu.')
@@ -618,7 +624,7 @@ class EventInterface:
                     for c in range(self.nmbr_channels):
                         offset = np.mean(event[c, :int(len(event[c]) / 8)])
                         event[c] = filter_event(event[c] - offset,
-                                                self.of[c]) + offset
+                                                self.of[c], window=self.window) + offset
                 except ValueError:
                     raise ValueError(console_colors.FAIL + 'ERROR: ' + console_colors.ENDC +
                                      'The downsampling rate of the loaded OF and the Events needs to be the same!')
@@ -929,6 +935,7 @@ class EventInterface:
                             break
                         elif user_input == -6:
                             print_label_list = not print_label_list
+                            break
                         else:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
