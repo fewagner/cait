@@ -705,3 +705,4 @@ class CsmplMixin(object):
             noise_triggers = []
 
             #for
+            # TODO Attention not finished!!
