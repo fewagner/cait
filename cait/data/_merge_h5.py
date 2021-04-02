@@ -9,11 +9,12 @@ import itertools
 # function
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
-                  groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses'],
+                  groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses', 'stream'],
                   sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset', 'of_ph', 'sev_fit_par', 'sev_fit_rms',
                                  'hours', 'labels', 'testpulseamplitude', 'time_s', 'time_mus', 'pulse_height',
-                                 'pca_error', 'pca_projection'],
-                  concatenate_axis=[1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1],
+                                 'pca_error', 'pca_projection', 'tp_hours', 'tp_time_mus', 'tp_time_s', 'tpa',
+                                 'trigger_hours', 'trigger_time_mus', 'trigger_time_s'],
+                  concatenate_axis=[1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
                   groups_from_a=[],
                   groups_from_b=[],
                   a_name='keep',
@@ -115,7 +116,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                                          dtype=data_type)
 
                         # write data to new file
-                        if continue_hours and set == 'hours':
+                        if continue_hours and set in ['hours', 'trigger_hours', 'tp_hours']:
                             g[set][:shape_a[0]] = a[group][set][:]
                             g[set][shape_a[0]:] = b[group][set][:] + second_file_hours
                         elif concatenate_axis[i] == 0:

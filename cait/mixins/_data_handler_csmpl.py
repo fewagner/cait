@@ -378,7 +378,8 @@ class CsmplMixin(object):
                                  min_tpa=0.0001,
                                  min_cpa=10.1,
                                  down=1,
-                                 noninteractive=False):
+                                 noninteractive=False,
+                                 origin=None):
         """
         Include the triggered events from the CSMPL files.
 
@@ -433,36 +434,37 @@ class CsmplMixin(object):
             write_events = h5f.require_group('events')
             if exclude_tp:
                 write_testpulses = h5f.require_group('testpulses')
-                write_controlpulses = h5f.require_group('controlpulses')
-                if "hours" in write_testpulses:
-                    del write_testpulses["hours"]
-                if "testpulseamplitude" in write_testpulses:
-                    del write_testpulses["testpulseamplitude"]
-                if "hours" in write_controlpulses:
-                    del write_controlpulses["hours"]
-                write_testpulses.create_dataset(name="hours",
-                                                data=tp_hours[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
-                write_testpulses.create_dataset(name="testpulseamplitude",
-                                                data=tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
-                write_controlpulses.create_dataset(name="hours",
-                                                   data=tp_hours[tpas >= min_cpa])
-                if "tp_time_s" in stream:
-                    if "time_s" in write_testpulses:
-                        del write_testpulses["time_s"]
-                    if "time_mus" in write_testpulses:
-                        del write_testpulses["time_mus"]
-                    if "time_s" in write_controlpulses:
-                        del write_controlpulses["time_s"]
-                    if "time_mus" in write_controlpulses:
-                        del write_controlpulses["time_mus"]
-                    write_testpulses.create_dataset(name="time_s",
-                                                    data=tp_s[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
-                    write_testpulses.create_dataset(name="time_mus",
-                                                    data=tp_mus[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
-                    write_controlpulses.create_dataset(name="time_s",
-                                                       data=tp_s[tpas >= min_cpa])
-                    write_controlpulses.create_dataset(name="time_mus",
-                                                       data=tp_mus[tpas >= min_cpa])
+                if origin is None:
+                    write_controlpulses = h5f.require_group('controlpulses')
+                    if "hours" in write_testpulses:
+                        del write_testpulses["hours"]
+                    if "testpulseamplitude" in write_testpulses:
+                        del write_testpulses["testpulseamplitude"]
+                    if "hours" in write_controlpulses:
+                        del write_controlpulses["hours"]
+                    write_testpulses.create_dataset(name="hours",
+                                                    data=tp_hours[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                    write_testpulses.create_dataset(name="testpulseamplitude",
+                                                    data=tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                    write_controlpulses.create_dataset(name="hours",
+                                                       data=tp_hours[tpas >= min_cpa])
+                    if "tp_time_s" in stream:
+                        if "time_s" in write_testpulses:
+                            del write_testpulses["time_s"]
+                        if "time_mus" in write_testpulses:
+                            del write_testpulses["time_mus"]
+                        if "time_s" in write_controlpulses:
+                            del write_controlpulses["time_s"]
+                        if "time_mus" in write_controlpulses:
+                            del write_controlpulses["time_mus"]
+                        write_testpulses.create_dataset(name="time_s",
+                                                        data=tp_s[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                        write_testpulses.create_dataset(name="time_mus",
+                                                        data=tp_mus[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                        write_controlpulses.create_dataset(name="time_s",
+                                                           data=tp_s[tpas >= min_cpa])
+                        write_controlpulses.create_dataset(name="time_mus",
+                                                           data=tp_mus[tpas >= min_cpa])
 
                 print('Exclude Testpulses.')
                 flag = exclude_testpulses(trigger_hours=trigger_hours,
@@ -474,31 +476,40 @@ class CsmplMixin(object):
                     trigger_s = trigger_s[flag]
                     trigger_mus = trigger_mus[flag]
 
-            if 'hours' in write_events:
-                del write_events['hours']
-            write_events.create_dataset(name='hours',
-                                        data=trigger_hours)
-            if "trigger_time_s{}".format(name_appendix) in stream:
-                if "time_s" in write_events:
-                    del write_events['time_s']
-                if "time_mus" in write_events:
-                    del write_events['time_mus']
-                write_events.create_dataset(name='time_s',
-                                            data=trigger_s)
-                write_events.create_dataset(name='time_mus',
-                                            data=trigger_mus)
+            if origin is None:
+                if 'hours' in write_events:
+                    del write_events['hours']
+                write_events.create_dataset(name='hours',
+                                            data=trigger_hours)
+                if "trigger_time_s{}".format(name_appendix) in stream:
+                    if "time_s" in write_events:
+                        del write_events['time_s']
+                    if "time_mus" in write_events:
+                        del write_events['time_mus']
+                    write_events.create_dataset(name='time_s',
+                                                data=trigger_s)
+                    write_events.create_dataset(name='time_mus',
+                                                data=trigger_mus)
 
-            if 'event' in write_events:
-                del write_events['event']
-            write_events.create_dataset(name='event',
-                                        shape=(self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
-                                        dtype=datatype)
+                if 'event' in write_events:
+                    del write_events['event']
+                write_events.create_dataset(name='event',
+                                            shape=(self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
+                                            dtype=datatype)
+            else:
+                write_events.require_dataset(name='event',
+                                            shape=(self.nmbr_channels, len(trigger_hours), int(self.record_length / down)),
+                                            dtype=datatype)
 
             print('Include the triggered events.')
             for c in range(self.nmbr_channels):
 
                 print('Channel ', c)
-                for i in tqdm(range(len(trigger_hours))):
+                if origin is None:
+                    iterable = range(len(trigger_hours))
+                else:
+                    iterable = np.array([st.decode() == origin for st in h5f['events']['origin'][:]]).nonzero()[0]
+                for i in tqdm(iterable):
                     write_events['event'][c, i, :], _ = get_record_window(path=csmpl_paths[c],
                                                                           start_time=trigger_hours[
                                                                                          i] * 3600 - sample_to_time(
@@ -513,19 +524,29 @@ class CsmplMixin(object):
                 # ------------
                 print('Include Testpulse Events.')
 
-                if 'event' in write_testpulses:
-                    del write_testpulses['event']
-                tp_ev = write_testpulses.create_dataset(name='event',
-                                                        shape=(self.nmbr_channels, len(
-                                                            tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)]),
-                                                               int(self.record_length / down)),
-                                                        dtype=datatype)
-
                 this_hours = tp_hours[np.logical_and(tpas > min_tpa, tpas < min_cpa)]
+
+                if origin is None:
+                    if 'event' in write_testpulses:
+                        del write_testpulses['event']
+                    tp_ev = write_testpulses.create_dataset(name='event',
+                                                            shape=(self.nmbr_channels, len(this_hours),
+                                                                   int(self.record_length / down)),
+                                                            dtype=datatype)
+                else:
+                    tp_ev = write_testpulses.require_dataset(name='event',
+                                                            shape=(self.nmbr_channels, len(this_hours),
+                                                                   int(self.record_length / down)),
+                                                            dtype=datatype)
+
                 for c in range(self.nmbr_channels):
 
                     print('Channel ', c)
-                    for i in tqdm(range(len(this_hours))):
+                    if origin is None:
+                        iterable = range(len(this_hours))
+                    else:
+                        iterable = np.array([st.decode() == origin for st in h5f['testpulses']['origin'][:]]).nonzero()[0]
+                    for i in tqdm(range(len(iterable))):
                         tp_ev[c, i, :], _ = get_record_window(path=csmpl_paths[c],
                                                               start_time=this_hours[i] * 3600 - sample_to_time(
                                                                   self.record_length / 4,
@@ -535,29 +556,30 @@ class CsmplMixin(object):
                                                               down=down)
 
                 # ------------
-                print('Calculate Control Pulse Heights.')
-                if 'pulse_height' in write_controlpulses:
-                    del write_controlpulses['pulse_height']
-                cphs = write_controlpulses.create_dataset(name="pulse_height",
-                                                          shape=(self.nmbr_channels, len(tp_hours[tpas > min_cpa])),
-                                                          dtype=float)
-                this_hours = tp_hours[tpas > min_cpa]
-                for c in range(self.nmbr_channels):
+                if origin is None:
+                    print('Calculate Control Pulse Heights.')
+                    if 'pulse_height' in write_controlpulses:
+                        del write_controlpulses['pulse_height']
+                    cphs = write_controlpulses.create_dataset(name="pulse_height",
+                                                              shape=(self.nmbr_channels, len(tp_hours[tpas > min_cpa])),
+                                                              dtype=float)
+                    this_hours = tp_hours[tpas > min_cpa]
+                    for c in range(self.nmbr_channels):
 
-                    print('Channel ', c)
-                    for i in tqdm(range(len(this_hours))):
-                        cp_array, _ = get_record_window(path=csmpl_paths[c],
-                                                        start_time=this_hours[i] * 3600 - sample_to_time(
-                                                            self.record_length / 4,
-                                                            sample_duration=sample_duration),
-                                                        record_length=self.record_length,
-                                                        sample_duration=sample_duration)
+                        print('Channel ', c)
+                        for i in tqdm(range(len(this_hours))):
+                            cp_array, _ = get_record_window(path=csmpl_paths[c],
+                                                            start_time=this_hours[i] * 3600 - sample_to_time(
+                                                                self.record_length / 4,
+                                                                sample_duration=sample_duration),
+                                                            record_length=self.record_length,
+                                                            sample_duration=sample_duration)
 
-                        # subtract offset
-                        cp_array -= np.mean(cp_array[:int(len(cp_array) / 8)])
+                            # subtract offset
+                            cp_array -= np.mean(cp_array[:int(len(cp_array) / 8)])
 
-                        # write the heights to file
-                        cphs[c, ...] = np.max(cp_array)
+                            # write the heights to file
+                            cphs[c, ...] = np.max(cp_array)
 
             print('DONE')
 
