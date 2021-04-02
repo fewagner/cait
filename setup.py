@@ -26,6 +26,7 @@ setup(
                       'torch',
                       'torchvision',
                       'pytorch-lightning',
+                      'ipywidgets',
                       'tqdm'],
     setup_requires=['pytest-runner'],
     tests_require=['pytest==4.4.1'],

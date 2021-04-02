@@ -320,7 +320,8 @@ class FitMixin(object):
             # plot the counts
             plt.close()
             use_cait_style()
-            plt.hist(bins_hist[:-1], bins_hist, weights=counts_hist / trigger_window,
+            xdata = bins[:-1] + (bins[1] - bins[0]) / 2
+            plt.hist(xdata, bins_hist, weights=counts_hist / trigger_window,
                      zorder=8, alpha=0.8, label='Counts')
             plt.plot(x_grid, ph_distribution, linewidth=2, zorder=12, color='black', label='Fit Model')
             make_grid()

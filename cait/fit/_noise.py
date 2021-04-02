@@ -3,6 +3,7 @@
 import numpy as np
 from scipy.special import erf
 from scipy.optimize import minimize, curve_fit
+import numba as nb
 
 
 # function
