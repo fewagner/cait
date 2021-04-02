@@ -52,22 +52,22 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
 
     with h5py.File(path_h5_a, 'r') as a, h5py.File(path_h5_b, 'r') as b, h5py.File(path_h5_merged, 'w') as m:
 
-        # extract the nmbr of events from both files
-        for g, (s, c) in itertools.product(groups_to_merge, zip(sets_to_merge, concatenate_axis)):
-            try:
-                if c == 0:
-                    nmbr_merged = len(a[g][s]) + len(b[g][s])
-                    nmbr_a = len(a[g][s])
-                elif c == 1:
-                    nmbr_merged = len(a[g][s][0]) + len(b[g][s][0])
-                    nmbr_a = len(a[g][s][0])
-                else:
-                    raise IndexError
-                if nmbr_merged == 0 or nmbr_a == 0:
-                    raise IndexError
-                break
-            except IndexError:
-                pass
+        # # extract the nmbr of events from both files
+        # for g, (s, c) in itertools.product(groups_to_merge, zip(sets_to_merge, concatenate_axis)):
+        #     try:
+        #         if c == 0:
+        #             nmbr_merged = len(a[g][s]) + len(b[g][s])
+        #             nmbr_a = len(a[g][s])
+        #         elif c == 1:
+        #             nmbr_merged = len(a[g][s][0]) + len(b[g][s][0])
+        #             nmbr_a = len(a[g][s][0])
+        #         else:
+        #             raise IndexError
+        #         if nmbr_merged == 0 or nmbr_a == 0:
+        #             raise IndexError
+        #         break
+        #     except IndexError:
+        #         pass
 
         # define hours gap
         if continue_hours:
@@ -126,17 +126,6 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                                 g[set][c, :shape_a[1]] = a[group][set][c, :]
                                 g[set][c, shape_a[1]:] = b[group][set][c, :]
 
-
-                        # if continue_hours and set == 'hours':
-                        #     data = np.concatenate((a[group][set],
-                        #                            b[group][set] + second_file_hours), axis=concatenate_axis[i])
-                        # else:
-                        #     data = np.concatenate((a[group][set],
-                        #                            b[group][set]), axis=concatenate_axis[i])
-
-                        # create set in hdf5
-                        #g.create_dataset(set, data=data)
-
                         # add the labels list
                         if set == 'labels':
                             g[set].attrs.create(name='unlabeled', data=0)
@@ -162,6 +151,34 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                             g[set].attrs.create(name='Sharp_Light_Event', data=20)
                             g[set].attrs.create(name='unknown/other', data=99)
 
+                if 'event' in a[group] and 'event' in b[group]:
+
+                    nmbr_a = len(a[group]['event'][0])
+                    nmbr_b = len(b[group]['event'][0])
+                    nmbr_m = nmbr_a + nmbr_b
+
+                    # write the original file names to dataset
+                    string_dt = h5py.special_dtype(vlen=str)
+                    orig = g.require_dataset('origin',
+                                         shape=(nmbr_m,),
+                                         dtype=string_dt)
+
+                    if a_name == 'keep':
+                        if 'origin' in a[group]:
+                            orig[:nmbr_a] = a[group]['origin']
+                        else:
+                            orig[:nmbr_a] = 'a'
+                    else:
+                        orig[:nmbr_a] = a_name
+
+                    if b_name == 'keep':
+                        if 'origin' in b[group]:
+                            orig[nmbr_a:] = b[group]['origin']
+                        else:
+                            orig[nmbr_a:] = 'b'
+                    else:
+                        orig[nmbr_a:] = b_name
+
         # take the groups from a and b
         for f, g_lists in zip([a, b], [groups_from_a, groups_from_b]):
             for group in g_lists:
@@ -174,29 +191,6 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                             print('SET: {}.'.format(set))
                             print('creating ...')
                         g.create_dataset(set, data=f[group][set])
-
-        # write the original file names to group
-        orig = m.require_group('origin')
-        string_dt = h5py.special_dtype(vlen=str)
-        orig.require_dataset('filename',
-                             shape=(nmbr_merged,),
-                             dtype=string_dt)
-
-        if a_name == 'keep':
-            if 'origin' in a:
-                orig['filename'][:nmbr_a] = a['origin']['filename']
-            else:
-                orig['filename'][:nmbr_a] = 'a'
-        else:
-            orig['filename'][:nmbr_a] = a_name
-
-        if b_name == 'keep':
-            if 'origin' in b:
-                orig['filename'][nmbr_a:] = b['origin']['filename']
-            else:
-                orig['filename'][nmbr_a:] = 'b'
-        else:
-            orig['filename'][nmbr_a:] = b_name
 
     if not keep_original_files:
         for p in [path_h5_a, path_h5_b]:

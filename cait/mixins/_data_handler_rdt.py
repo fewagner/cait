@@ -306,7 +306,7 @@ class RdtMixin(object):
 
     # include rdt infos to existing hdf5
     def include_rdt(self, path_data, fname, channels, ints_in_header=7, tpa_list=[0, 1, -1],
-                    event_dtype='float32', lazy_loading=True):
+                    event_dtype='float32', lazy_loading=True, origin=None):
         """
         TODO
 
@@ -347,15 +347,23 @@ class RdtMixin(object):
                 print('Adding {} triggered Events.'.format(nmbr_events))
 
                 events = h5f.require_group('events')
-                events.require_dataset('event', shape=pulse_event.shape, dtype=event_dtype)
-                events.require_dataset('hours', shape=metainfo_event[0, :, 10].shape, dtype=float)
-                events.require_dataset('time_s', shape=metainfo_event[0, :, 4].shape, dtype='int32')
-                events.require_dataset('time_mus', shape=metainfo_event[0, :, 5].shape, dtype='int32')
 
-                events['event'][...] = np.array(pulse_event, dtype=event_dtype)
-                events['hours'][...] = np.array(metainfo_event[0, :, 10])
-                events['time_s'][...] = np.array(metainfo_event[0, :, 4], dtype='int32')
-                events['time_mus'][...] = np.array(metainfo_event[0, :, 5], dtype='int32')
+                if origin is not None:
+                    idx = np.array([st.decode() == origin for st in events['origin'][:]]).nonzero()[0]
+                    events.require_dataset('event',
+                                           shape=(self.nmbr_channels, len(events['hours']), self.record_length),
+                                           dtype=event_dtype)
+                    events['event'][:, idx, :] = np.array(pulse_event, dtype=event_dtype)
+
+                else:
+                    events.require_dataset('event', shape=pulse_event.shape, dtype=event_dtype)
+                    events.require_dataset('hours', shape=metainfo_event[0, :, 10].shape, dtype=float)
+                    events.require_dataset('time_s', shape=metainfo_event[0, :, 4].shape, dtype='int32')
+                    events.require_dataset('time_mus', shape=metainfo_event[0, :, 5].shape, dtype='int32')
+                    events['event'][...] = np.array(pulse_event, dtype=event_dtype)
+                    events['hours'][...] = np.array(metainfo_event[0, :, 10])
+                    events['time_s'][...] = np.array(metainfo_event[0, :, 4], dtype='int32')
+                    events['time_mus'][...] = np.array(metainfo_event[0, :, 5], dtype='int32')
 
             # noise
             if -1.0 in tpa_list:
@@ -367,15 +375,23 @@ class RdtMixin(object):
                 print('Adding {} Noise Events.'.format(nmbr_noise))
 
                 noise = h5f.require_group('noise')
-                noise.require_dataset('event', shape=pulse_noise.shape, dtype=event_dtype)
-                noise.require_dataset('hours', shape=metainfo_noise[0, :, 10].shape, dtype=float)
-                noise.require_dataset('time_s', shape=metainfo_noise[0, :, 4].shape, dtype='int32')
-                noise.require_dataset('time_mus', shape=metainfo_noise[0, :, 5].shape, dtype='int32')
 
-                noise['event'][...] = np.array(pulse_noise, dtype=event_dtype)
-                noise['hours'][...] = np.array(metainfo_noise[0, :, 10])
-                noise['time_s'][...] = np.array(metainfo_noise[0, :, 4], dtype='int32')
-                noise['time_mus'][...] = np.array(metainfo_noise[0, :, 5], dtype='int32')
+                if origin is not None:
+                    idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
+                    noise.require_dataset('event',
+                                           shape=(self.nmbr_channels, len(noise['hours']), self.record_length),
+                                           dtype=event_dtype)
+                    noise['event'][:, idx, :] = np.array(pulse_noise, dtype=event_dtype)
+
+                else:
+                    noise.require_dataset('event', shape=pulse_noise.shape, dtype=event_dtype)
+                    noise.require_dataset('hours', shape=metainfo_noise[0, :, 10].shape, dtype=float)
+                    noise.require_dataset('time_s', shape=metainfo_noise[0, :, 4].shape, dtype='int32')
+                    noise.require_dataset('time_mus', shape=metainfo_noise[0, :, 5].shape, dtype='int32')
+                    noise['event'][...] = np.array(pulse_noise, dtype=event_dtype)
+                    noise['hours'][...] = np.array(metainfo_noise[0, :, 10])
+                    noise['time_s'][...] = np.array(metainfo_noise[0, :, 4], dtype='int32')
+                    noise['time_mus'][...] = np.array(metainfo_noise[0, :, 5], dtype='int32')
 
             # testpulses
             if any(el > 0 for el in tpa_list):
@@ -390,15 +406,23 @@ class RdtMixin(object):
                 print('Adding {} Testpulse Events.'.format(nmbr_tp))
 
                 testpulses = h5f.require_group('testpulses')
-                testpulses.require_dataset('event', shape=pulse_tp.shape, dtype=event_dtype)
-                testpulses.require_dataset('hours', shape=metainfo_tp[0, :, 10].shape, dtype=float)
-                testpulses.require_dataset('time_s', shape=metainfo_tp[0, :, 4].shape, dtype='int32')
-                testpulses.require_dataset('time_mus', shape=metainfo_tp[0, :, 5].shape, dtype='int32')
 
-                testpulses['event'][...] = np.array(pulse_tp, dtype=event_dtype)
-                testpulses['hours'][...] = np.array(metainfo_tp[0, :, 10])
-                testpulses['time_s'][...] = np.array(metainfo_tp[0, :, 4], dtype='int32')
-                testpulses['time_mus'][...] = np.array(metainfo_tp[0, :, 5], dtype='int32')
+                if origin is not None:
+                    idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
+                    testpulses.require_dataset('event',
+                                          shape=(self.nmbr_channels, len(testpulses['hours']), self.record_length),
+                                          dtype=event_dtype)
+                    testpulses['event'][:, idx, :] = np.array(pulse_tp, dtype=event_dtype)
+
+                else:
+                    testpulses.require_dataset('event', shape=pulse_tp.shape, dtype=event_dtype)
+                    testpulses.require_dataset('hours', shape=metainfo_tp[0, :, 10].shape, dtype=float)
+                    testpulses.require_dataset('time_s', shape=metainfo_tp[0, :, 4].shape, dtype='int32')
+                    testpulses.require_dataset('time_mus', shape=metainfo_tp[0, :, 5].shape, dtype='int32')
+                    testpulses['event'][...] = np.array(pulse_tp, dtype=event_dtype)
+                    testpulses['hours'][...] = np.array(metainfo_tp[0, :, 10])
+                    testpulses['time_s'][...] = np.array(metainfo_tp[0, :, 4], dtype='int32')
+                    testpulses['time_mus'][...] = np.array(metainfo_tp[0, :, 5], dtype='int32')
 
         print('Done.')
 
