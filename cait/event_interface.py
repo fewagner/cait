@@ -784,8 +784,7 @@ class EventInterface:
         print('20 ... Sharp Light Event')
         print('99 ... unknown/other')
 
-    def _ask_for_options(self):
-        user_input = input('')
+    def _ask_for_options(self,user_input):
         if user_input == 'q':
             return -1
         elif user_input == 'b':
@@ -822,7 +821,7 @@ class EventInterface:
                     print(
                         'Enter Integer > 0 or q end, b back, n next, o options, i idx, p for (de)activate label list')
             except ValueError:
-                self._ask_for_options()
+                return self._ask_for_options(user_input)
 
     def _ask_for_idx(self, length: int):
         """
