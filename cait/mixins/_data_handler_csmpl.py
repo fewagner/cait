@@ -770,20 +770,21 @@ class CsmplMixin(object):
 
         print('Done.')
 
-    # def include_noise_events(self,
-    #                          ,
-    #                          origin=None):
+    def include_noise_events(self,
+                             csmpl_paths,
+                             datatype='float32',
+                             origin=None):
     # TODO
-    #
-    #     with h5py.File(self.path_h5, 'r+') as h5f:
-    #
-    #         # get the time stamps
-    #
-    #         # make data sets
-    #         noise = h5f.require_group('noise')
-    #         events = noise.require_dataset(name='event',
-    #                                        shape=(self.nmbr_channels, ))
-    #
-    #         # get the record windows
-    #
-    #         #
+
+        with h5py.File(self.path_h5, 'r+') as h5f:
+
+            # get the time stamps
+
+            # make data sets
+            noise = h5f.require_group('noise')
+            events = noise.require_dataset(name='event',
+                                           shape=(self.nmbr_channels, ))
+
+            # get the record windows
+
+            #

@@ -98,6 +98,10 @@ def simulate_events(path_h5,
 
                     take_idx = np.array(take_idx) + use_bl_from_idx
                     sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
+                    hours = np.array(h5f['noise']['hours'][take_idx])
+                    time_s = np.array(h5f['noise']['time_s'][take_idx])
+                    time_mus = np.array(h5f['noise']['time_mus'][take_idx])
+
                 else:
                     raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
             else:  # do reuse baselines
