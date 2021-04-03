@@ -117,7 +117,8 @@ class CsmplMixin(object):
                                csmpl_channels: list = None,
                                sql_file_label: str = None,
                                down: int = 1,
-                               window=False,
+                               window=True,
+                               overlap=None,
                                ):
         """
         Trigger *.csmpl files of a detector module and include them in the HDF5 set.
@@ -186,6 +187,7 @@ class CsmplMixin(object):
                                      trigger_block=trigger_block,
                                      down=down,
                                      window=window,
+                                     overlap=overlap,
                                      )
 
                 time.append(trig)
@@ -683,8 +685,13 @@ class CsmplMixin(object):
                                nmbr,
                                min_distance=0.5,
                                max_distance=60,
-                               record_window_length=16384/25000):
+                               record_window_length=16384 / 25000,
+                               max_attempts=5):
         # TODO
+
+        min_distance /= 3600  # all in hours
+        max_distance /= 3600
+        record_window_length /= 3600
 
         # open file stream
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -694,15 +701,89 @@ class CsmplMixin(object):
             all_stamps = np.concatenate((trigger_stamps, test_stamps))
             all_stamps.sort(kind='mergesort')
             gaps = np.diff(all_stamps)
-            gaps_idx = np.arange(0, gaps, 1)
-            good_gaps_flag = np.logical_and(gaps > 2*min_distance + record_window_length,
+            gaps_idx = np.arange(start=0, stop=len(gaps), step=1)
+            good_gaps_flag = np.logical_and(gaps > 2 * min_distance + record_window_length,
                                             gaps < max_distance)
+            good_gaps_flag[0] = 0  # this prevents a bug in the loop later on
 
-            from_gap = np.random.choice(gaps_idx[good_gaps_flag],
-                                              size=nmbr,
-                                              p=gaps/np.sum(gaps))
+            noise_triggers = np.zeros(nmbr)
 
-            noise_triggers = []
+            pre_dist = record_window_length / 4 + min_distance
+            post_dist = record_window_length * 3 / 4 + min_distance
 
-            #for
-            # TODO Attention not finished!!
+            free_time = np.sum(gaps[good_gaps_flag])
+            probabilities = gaps[good_gaps_flag] / free_time
+
+            from_gap = np.zeros(nmbr)
+
+            print('Found {} suitable gaps in stream, with total time of {} h.'.format(np.sum(good_gaps_flag),
+                                                                                      free_time))
+
+            for i in tqdm(range(nmbr)):
+
+                attempts = 0
+
+                while attempts < max_attempts:
+
+                    idx = np.random.choice(gaps_idx[good_gaps_flag],
+                                           size=1,
+                                           p=probabilities)
+
+                    trig = np.random.uniform(low=all_stamps[idx] + pre_dist,
+                                             high=all_stamps[idx + 1] - post_dist)
+                    attempts += 1
+
+                    if all(np.abs(trig - noise_triggers[from_gap == idx]) > record_window_length):
+                        noise_triggers[i] = trig
+                        from_gap[i] = idx
+                        break
+
+            if all(noise_triggers != 0):
+                print('Success, include {} noise triggers.'.format(nmbr))
+            else:
+                print('Fail, include only {} noise triggers.'.format(np.sum(noise_triggers != 0)))
+
+            noise_triggers = noise_triggers[noise_triggers != 0]
+            noise_triggers.sort()
+
+            # match the s and mus stamps
+            first_tp_hours = test_stamps[0]
+            first_tp = h5f['stream']['tp_time_s'][0] + 10e-6 * h5f['stream']['tp_time_mus'][0]  # in sec
+
+            difference_s = (noise_triggers - first_tp_hours) * 3600
+            noise_trigger_s = np.floor(first_tp + difference_s)
+            noise_trigger_mus = np.floor(((first_tp + difference_s) % 1) * 1e6)
+
+            h5f['stream'].require_dataset(name='noise_hours',
+                                          shape=noise_triggers.shape,
+                                          dtype=float)
+            h5f['stream'].require_dataset(name='noise_time_s',
+                                          shape=noise_trigger_s.shape,
+                                          dtype=int)
+            h5f['stream'].require_dataset(name='noise_time_mus',
+                                          shape=noise_trigger_mus.shape,
+                                          dtype=int)
+
+            h5f['stream']['noise_hours'][...] = noise_triggers
+            h5f['stream']['noise_time_s'][...] = noise_trigger_s
+            h5f['stream']['noise_time_mus'][...] = noise_trigger_mus
+
+        print('Done.')
+
+    # def include_noise_events(self,
+    #                          ,
+    #                          origin=None):
+    # TODO
+    #
+    #     with h5py.File(self.path_h5, 'r+') as h5f:
+    #
+    #         # get the time stamps
+    #
+    #         # make data sets
+    #         noise = h5f.require_group('noise')
+    #         events = noise.require_dataset(name='event',
+    #                                        shape=(self.nmbr_channels, ))
+    #
+    #         # get the record windows
+    #
+    #         #

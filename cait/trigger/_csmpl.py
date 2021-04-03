@@ -183,7 +183,9 @@ def trigger_csmpl(paths,
     """
 
     if overlap is None:
-        overlap = int(record_length / 4)
+        overlap = int(record_length / 8)
+    else:
+        overlap = int(record_length * overlap)
 
     triggers = []
     if return_info:
@@ -405,7 +407,7 @@ def plot_csmpl(path,
     if plot_stamps is not None:
         for s in plot_stamps:
             if s > time[0] and s < time[-1]:
-                plt.axvline(x=s, color='grey', alpha=0.6, linewidth=2.5)
+                plt.axvline(x=s, color='black', alpha=0.6, linewidth=3.5)
     if plot_stamps_second is not None:
         for s in plot_stamps_second:
             if s > time[0] and s < time[-1]:

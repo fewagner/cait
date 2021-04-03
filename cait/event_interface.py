@@ -935,6 +935,7 @@ class EventInterface:
                             break
                         elif user_input == -6:
                             print_label_list = not print_label_list
+                            idx -= 1
                             break
                         else:
                             self.labels[type][i, idx] = user_input
