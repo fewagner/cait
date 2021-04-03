@@ -396,8 +396,7 @@ class EventInterface:
             if down != 1:
                 try:
                     of_real = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real_down{}'.format(down)])
-                    of_imag = np.array(
-                        f['optimumfilter' + group_name_appendix]['optimumfilter_imag_down{}'.format(down)])
+                    of_imag = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_imag_down{}'.format(down)])
                 except KeyError:
                     raise KeyError(
                         'Please calculate the OF with according downsampling rate.')
@@ -423,7 +422,8 @@ class EventInterface:
         Added the sev fit parameters.
         """
 
-        self.name_appendix = name_appendix  # save this for loading of the parameters when viewing
+        # save this for loading of the parameters when viewing
+        self.name_appendix = name_appendix
         with h5py.File(self.path_h5, 'r+') as f:
             sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) -
@@ -684,7 +684,7 @@ class EventInterface:
 
                 if self.xlim is not None:
                     mask = x[np.logical_and(x >= np.array(self.xlim[0]),
-                                          x <= np.array(self.xlim[1]))]
+                                            x <= np.array(self.xlim[1]))]
                 else:
                     mask = x
 
@@ -734,14 +734,15 @@ class EventInterface:
             # -------- END PLOTTING --------
 
             # labels
-            try:
-                label = self.labels[type][:, idx]
+            if len(self.labels) > 0:
+                try:
+                    label = self.labels[type][:, idx]
 
-                for i, nm in enumerate(self.channel_names):
-                    print('Label {}: {}'.format(nm, label[i]))
+                    for i, nm in enumerate(self.channel_names):
+                        print('Label {}: {}'.format(nm, label[i]))
 
-            except NameError:
-                print('No or incorrect Labels.')
+                except NameError:
+                    print('No or incorrect Labels.')
 
             # predictions
             if len(self.predictions) > 0:
@@ -783,6 +784,24 @@ class EventInterface:
         print('20 ... Sharp Light Event')
         print('99 ... unknown/other')
 
+    def _ask_for_options(self):
+        user_input = input('')
+        if user_input == 'q':
+            return -1
+        elif user_input == 'b':
+            return -2
+        elif user_input == 'n':
+            return -3
+        elif user_input == 'o':
+            return -4
+        elif user_input == 'i':
+            return -5
+        elif user_input == 'p':
+            return -6
+        else:
+            print(
+                'Enter q end, b back, n next, o options, i idx, p for (de)activate label list')
+
     def _ask_for_label(self, idx: int, which: str = 'phonon'):
         """
         Takes and processes an user input to the viewer/labeling tool.
@@ -800,23 +819,10 @@ class EventInterface:
                 if label > 0:
                     return label
                 else:
-                    print('Enter Integer > 0 or q end, b back, n next, o options, i idx, p for (de)activate label list' )
-            except ValueError:
-                if user_input == 'q':
-                    return -1
-                elif user_input == 'b':
-                    return -2
-                elif user_input == 'n':
-                    return -3
-                elif user_input == 'o':
-                    return -4
-                elif user_input == 'i':
-                    return -5
-                elif user_input == 'p':
-                    return -6
-                else:
                     print(
                         'Enter Integer > 0 or q end, b back, n next, o options, i idx, p for (de)activate label list')
+            except ValueError:
+                self._ask_for_options()
 
     def _ask_for_idx(self, length: int):
         """
@@ -843,7 +849,8 @@ class EventInterface:
               print_label_list: bool = True,
               label_only_class: int = None,
               label_only_prediction: int = None,
-              model: str = None):
+              model: str = None,
+              viewer_mode: bool = False):
         """
         Starts the label/view interface.
 
@@ -872,6 +879,8 @@ class EventInterface:
         :type label_only_prediction: int
         :param model: The naming of the model that made the predictions, e.g. 'RF' for Random Forest
         :type model: string
+        :param viewer_mode: Activates viewer mode. Labelling is not possible while in viewer mode.
+        :type viewer_mode: bool
         """
         if label_only_class:
             print('Start labeling from idx {}, label only class {}.'.format(
@@ -884,11 +893,23 @@ class EventInterface:
         else:
             print('Start labeling from idx {}.'.format(start_from_idx))
             # label_all_classes = True
-
-        try:
-            print('Labels autosave to {}.'.format(self.path_csv_labels))
-        except AttributeError:
-            print('Load or create labels file first!')
+        if not viewer_mode:
+            try:
+                print('Labels autosave to {}.'.format(self.path_csv_labels))
+            except:
+                while True:
+                    print("No Labels file! Do you want to start in viewer mode (y/n)?")
+                    viewer_mode = input()
+                    if viewer_mode.lower() == 'y':
+                        viewer_mode = True
+                        print('You have selected viewer mode!')
+                        print('Navigate through events by pressing b back or n next. All other options are also available.')
+                        break
+                    elif viewer_mode.lower() == 'n':
+                        AttributeError('Load or create labels file first!')
+                        exit()
+                    else:
+                        print('Please enter a valid input! Either y or n')
 
         for type in self.which_to_label:
 
@@ -908,12 +929,15 @@ class EventInterface:
 
                 if class_condition and prediction_condition:  # or label_all_classes:
 
-                    if print_label_list:
+                    if print_label_list and not viewer_mode:
                         self._print_labels()
                     self.show(idx, type)
 
                     for i, channel in enumerate(self.channel_names):
-                        user_input = self._ask_for_label(idx, channel)
+                        if not viewer_mode:
+                            user_input = self._ask_for_label(idx, channel)
+                        else:
+                            user_input = self._ask_for_options()
 
                         if user_input == -1:
                             print('End labeling.')
@@ -937,11 +961,14 @@ class EventInterface:
                             print_label_list = not print_label_list
                             idx -= 1
                             break
-                        else:
+                        elif not viewer_mode:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
-                                       self.labels[type],
-                                       fmt='%i',
-                                       delimiter='\n')
+                                    self.labels[type],
+                                    fmt='%i',
+                                    delimiter='\n')
+                        else:
+                            print('Only option keys are valid!')
+                            pass
 
                 idx += 1
