@@ -112,9 +112,9 @@ class EvaluationTools:
 
     def __add_label_nbrs(self, label_nbrs):
         if self.label_nbrs is None:
-            self.label_nbrs = label_nbrs
+            self.label_nbrs = np.array(label_nbrs, dtype=int)
         else:
-            self.label_nbrs = np.hstack([self.label_nbrs, label_nbrs])
+            self.label_nbrs = np.hstack([self.label_nbrs, np.array(label_nbrs, dtype=int)])
         self.__add_labels_color_map()
 
     def __add_labels_color_map(self, verb=False):
@@ -996,8 +996,12 @@ class EvaluationTools:
         :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
         :param verb:            - Optional, default False   : additional output is printed
         """
-        if type(rdseed) == None:
+        if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
+        elif rdseed is not None:
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
+                 "Seed has to be of type int.")
+
 
         if type(dot_size) != int:
             dot_size=5
@@ -1014,7 +1018,7 @@ class EvaluationTools:
 
         for m in pred_methods:
             if m not in self.predictions.keys():
-                raise ValueError(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
 
@@ -1266,6 +1270,9 @@ class EvaluationTools:
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
+        elif rdseed is not None:
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
+                           "Seed has to be of type int.")
 
         if type(xy_comp) != tuple and \
                 len(xy_comp) != 2 and \
@@ -1494,6 +1501,9 @@ class EvaluationTools:
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
 
+
+        fig.tight_layout()
+        plt.tight_layout()
         if self.save_as != False:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
@@ -1505,12 +1515,12 @@ class EvaluationTools:
                 # plt.savefig(
                 #     '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
                 plt.savefig(
-                    '{}tsne-{}.{}'.format(self.save_plot_dir, 'labels', self.save_as))
+                    '{}pca-{}.{}'.format(self.save_plot_dir, 'labels', self.save_as))
             else:
                 # plt.savefig(
                 #     '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
                 plt.savefig(
-                    '{}tsne-{}.{}'.format(self.save_plot_dir, '_'.join(pred_methods), self.save_as))
+                    '{}pca-{}.{}'.format(self.save_plot_dir, '_'.join(pred_methods), self.save_as))
         else:
             fig.canvas.mpl_connect('key_press_event', on_key)
             fig.canvas.mpl_connect("motion_notify_event", hover)
@@ -1680,7 +1690,7 @@ class EvaluationTools:
             return None
 
         if pred_method not in self.predictions.keys():
-            raise ValueError(console_colors.FAIL + "FAILED: " + console_colors.ENDC +
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "Prediction method {} is not in the predictions dictionary.\n".format(pred_method) +
                              "Valid options are: {}".format(self.predictions.keys()))
 
@@ -1796,7 +1806,7 @@ class EvaluationTools:
             return None
 
         if pred_method not in self.predictions.keys():
-            raise ValueError(console_colors.FAIL + "FAILED: " + console_colors.ENDC +
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                              "Prediction method {} is not in the predictions dictionary.\n".format(pred_method) +
                              "Valid options are: {}".format(self.predictions.keys()))
 
