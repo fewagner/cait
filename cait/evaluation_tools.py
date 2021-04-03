@@ -992,8 +992,8 @@ class EvaluationTools:
         :param figsize:         - Optional, default None    : sets figure size of plot.
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
         :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random. (Default 1)
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot. (Default 5)
+        :param rdseed:          - Optional, default None    : Random seed for numpy random.
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
         :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == None:
@@ -1135,16 +1135,12 @@ class EvaluationTools:
                             id=ind['ind'][0]
 
         if self.save_as == False:
-            print(
-                "-------------------------------------------------------------------------")
-            print('Hovering over an event shows you the event number.')
-            print(
-                'When clicking on a single event a window with its timeseries is opened.')
-            print(
-                "Hovering over a a single event and pressing 'm' also opnes the timeseries")
+            print("-------------------------------------------------------------------------")
+            print("Hovering over an event shows you the event number.")
+            print("When clicking on a single event a window with its timeseries is opened.")
+            print("Hovering over a a single event and pressing 'm' also opnes the timeseries")
             print("of this event and adds the calculated mainparameters to the plot.")
-            print(
-                '-------------------------------------------------------------------------')
+            print("-------------------------------------------------------------------------")
 
         # -------- PLOT --------
         # TSNE
@@ -1264,8 +1260,8 @@ class EvaluationTools:
         :param figsize:         - Optional, default None    : sets figure size of plot.
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
         :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random. (Default 1)
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot. (Default 5)
+        :param rdseed:          - Optional, default None    : Random seed for numpy random.
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
         :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
@@ -1416,16 +1412,12 @@ class EvaluationTools:
                             id=ind['ind'][0]
 
         if self.save_as == False:
-            print(
-                "-------------------------------------------------------------------------")
+            print("-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
-            print(
-                'When clicking on a single event a window with its timeseries is opened.')
-            print(
-                "Hovering over a a single event and pressing 'm' also opnes the timeseries")
+            print('When clicking on a single event a window with its timeseries is opened.')
+            print("Hovering over a a single event and pressing 'm' also opnes the timeseries")
             print('of this event and adds the calculated mainparameters to the plot.')
-            print(
-                '-------------------------------------------------------------------------')
+            print('-------------------------------------------------------------------------')
 
         # -------- PLOT --------
         # PCA
@@ -1778,13 +1770,13 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for events.
 
-        :param pred_method:     - Required : Name of the predictions method.
-        :param what:            - Optional, default all : test or train data or all.
-        :param bin_size:        - Optional, default 4 : bin size for calculating the average.
-        :param ncols:           - Optional, default 2 : number of plots side by side.
-        :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
-        :param figsize:         - optional, default None : changes the overall figure size.
-        :param verb:            - Optional, default False : if True additional information is printed on the console.
+        :param pred_method: - Required : Name of the predictions method.
+        :param what:        - Optional, default all : test or train data or all.
+        :param bin_size:    - Optional, default 4 : bin size for calculating the average.
+        :param ncols:       - Optional, default 2 : number of plots side by side.
+        :param extend_plot: - Optional, default False : if True x limits is set to the same for all subplots.
+        :param figsize:     - optional, default None : changes the overall figure size.
+        :param verb:        - Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -1890,12 +1882,12 @@ class EvaluationTools:
         When clicking on a matrix element the event number and from which file
         is printed out in the console
 
-        :param pred_method:         - Required : Name of the predictions method.
-        :param what:                - Optional, default all : test or train data or all.
-        :param rotation_xticklabels:- Optional, default 0 : lets you rotate the x tick labels.
-        :param force_xlabelnbr:     - Optional, default False : uses the number instead of the labels for better readability.
-        :param figsize:             - optional, default None : changes the overall figure size.
-        :param verb:                - Optional, default False : if True additional information is printed on the console.
+        :param pred_method:          - Required : Name of the predictions method.
+        :param what:                 - Optional, default all : test or train data or all.
+        :param rotation_xticklabels: - Optional, default 0 : lets you rotate the x tick labels.
+        :param force_xlabelnbr:      - Optional, default False : uses the number instead of the labels for better readability.
+        :param figsize:              - optional, default None : changes the overall figure size.
+        :param verb:                 - Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
