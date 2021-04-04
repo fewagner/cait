@@ -1,8 +1,9 @@
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, BatchSampler
 import pytorch_lightning as pl
 from ._pt_dataset import H5CryoData
 from ._pt_sampler import get_random_samplers
 import torch.nn.functional as F
+from ._pt_dataloader import FastDataLoader
 
 
 class CryoDataModule(pl.LightningDataModule):
@@ -102,7 +103,6 @@ class CryoDataModule(pl.LightningDataModule):
                                        keys_one_hot=self.keys_one_hot,
                                        transform=self.transform,
                                        nmbr_events=self.nmbr_events,
-                                       load_to_memory=self.load_to_memory,
                                        double=self.double)
 
     def setup(self):
@@ -132,24 +132,27 @@ class CryoDataModule(pl.LightningDataModule):
 
         nmbr_features = 0
         for k in self.feature_keys:
-            nmbr_features += len(self.dataset_full[0][k])
+            nmbr_features += len(self.dataset_full.get_item_no_cache(0)[k])
 
         self.dims = (nmbr_samples, nmbr_features)  # returns full length of data set and nmbr of features
 
     def train_dataloader(self, batch_size=None):
         if batch_size is None:
             batch_size = self.batch_size
-        return DataLoader(self.dataset_full, batch_size=batch_size, sampler=self.train_sampler,
-                          num_workers=self.nmbr_workers)
+        return FastDataLoader(self.dataset_full,
+                              batch_sampler=BatchSampler(self.train_sampler, batch_size, drop_last=False),
+                              num_workers=self.nmbr_workers)
 
     def val_dataloader(self, batch_size=None):
         if batch_size is None:
             batch_size = self.batch_size
-        return DataLoader(self.dataset_full, batch_size=batch_size, sampler=self.val_sampler,
-                          num_workers=self.nmbr_workers)
+        return FastDataLoader(self.dataset_full,
+                              batch_sampler=BatchSampler(self.val_sampler, batch_size, drop_last=False),
+                              num_workers=self.nmbr_workers)
 
     def test_dataloader(self, batch_size=None):
         if batch_size is None:
             batch_size = self.batch_size
-        return DataLoader(self.dataset_full, batch_size=batch_size, sampler=self.test_sampler,
-                          num_workers=self.nmbr_workers)
+        return FastDataLoader(self.dataset_full,
+                              batch_sampler=BatchSampler(self.test_sampler, batch_size, drop_last=False),
+                              num_workers=self.nmbr_workers)

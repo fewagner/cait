@@ -10,8 +10,8 @@ class H5CryoData(Dataset):
     """
 
     def __init__(self, type, keys, channel_indices, feature_indices=None,
-                 keys_one_hot=[], hdf5_path = None, file_handle=None,
-                 transform=None, nmbr_events=None, load_to_memory=False, double=False):
+                 keys_one_hot=[], hdf5_path = None,
+                 transform=None, nmbr_events=None, double=False):
         """
         Give instructions how to extract the data from the h5 set
 
@@ -46,61 +46,13 @@ class H5CryoData(Dataset):
             if chs is not None:
                 self.nmbr_channels = len(chs)
                 break
-        self.load_to_memory = load_to_memory
-        if load_to_memory:
-            if file_handle is None:
-                with h5py.File(hdf5_path, 'r') as file_handle:
-                    self.data = self.load_data(file_handle)
-            else:
-                self.data = self.load_data(file_handle)
-        else:
-            pass  # h5 file is only opened in the __getitem__ method!
         if nmbr_events == None:
-            if load_to_memory:
-                self.nmbr_events = len(self.data[list(self.data.keys())[0]])
-            else:
-                with h5py.File(hdf5_path, 'r') as f:
-                    self.nmbr_events = len(f[type + '/event'][0])
+            with h5py.File(hdf5_path, 'r') as f:
+                self.nmbr_events = len(f[type + '/event'][0])
         else:
             self.nmbr_events = nmbr_events
         self.double = double
-        self.file_handle = file_handle
-
-    def load_data(self, f):
-        # TODO depricated!!!
-
-        data = {}
-
-        for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
-            ls = len(f[self.type][key].shape)
-            if ls == 1 and self.channel_indices[i] is None and self.feature_indices[i] is None:
-                if key not in self.keys_one_hot:
-                    data[key] = np.array(f[self.type][key]).reshape(-1, 1)  # e.g. true onset, ...
-                else:
-                    data[key] = np.array(f[self.type][key])
-            elif ls == 2 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
-                for c in self.channel_indices[i]:
-                    new_key = key + '_ch' + str(c)
-                    if new_key not in self.keys_one_hot:  # e.g. labels
-                        data[new_key] = np.array(f[self.type][key][c]).reshape(-1, 1)  # e.g. true ph, ...
-                    else:
-                        data[new_key] = np.array(f[self.type][key][c])
-            elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
-                for c in self.channel_indices[i]:
-                    new_key = key + '_ch' + str(c)
-                    data[new_key] = np.array(f[self.type][key][c])  # e.g. event, ...
-            elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is not None:
-                for c in self.channel_indices[i]:
-                    for fe in self.feature_indices[i]:
-                        new_key = key + '_ch' + str(c) + '_fe' + str(fe)
-                        if new_key not in self.keys_one_hot:
-                            data[new_key] = np.array(f[self.type][key][c, :, fe]).reshape(-1, 1)  # e.g. single mp, ...
-                        else:
-                            data[new_key] = np.array(f[self.type][key][c, :, fe])
-            else:
-                raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
-
-        return data
+        self.h5_set = None
 
     def __len__(self):
         """
@@ -108,36 +60,53 @@ class H5CryoData(Dataset):
         """
         return self.nmbr_events
 
+    def get_item_no_cache(self, idx):
+        # TODO
+        with h5py.File(self.hdf5_path, 'r') as f:
+            sample = self.build_sample(f, idx)
+
+        if self.transform:
+            sample = self.transform(sample)
+
+        # final check if dimensions are alright
+        for k in sample.keys():
+            if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
+                raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k, len(sample[k].shape)))
+            if self.double:
+                sample[k] = sample[k].double()
+
+        return sample
+
     def build_sample(self, f, idx):
         # TODO
         sample = {}
         for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
-            ls = len(f[self.type][key].shape)
+            ls = len(f[self.type + '/' + key].shape)
             if ls == 1 and self.channel_indices[i] is None and self.feature_indices[i] is None:
                 if key not in self.keys_one_hot:
-                    sample[key] = np.array(f[self.type][key][idx]).reshape(1)  # e.g. true onset, ...
+                    sample[key] = np.array(f[self.type + '/' + key][idx]).reshape(1)  # e.g. true onset, ...
                 else:
-                    sample[key] = np.array(f[self.type][key][idx])
+                    sample[key] = np.array(f[self.type + '/' + key][idx])
             elif ls == 2 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
                 for c in self.channel_indices[i]:
                     new_key = key + '_ch' + str(c)
                     if new_key not in self.keys_one_hot:  # e.g. labels
-                        sample[new_key] = np.array(f[self.type][key][c, idx]).reshape(1)  # e.g. true ph, ...
+                        sample[new_key] = np.array(f[self.type + '/' + key][c, idx]).reshape(1)  # e.g. true ph, ...
                     else:
-                        sample[new_key] = np.array(f[self.type][key][c, idx])
+                        sample[new_key] = np.array(f[self.type + '/' + key][c, idx])
             elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
                 for c in self.channel_indices[i]:
                     new_key = key + '_ch' + str(c)
-                    sample[new_key] = np.array(f[self.type][key][c, idx])  # e.g. event, ...
+                    sample[new_key] = np.array(f[self.type + '/' + key][c, idx])  # e.g. event, ...
             elif ls == 3 and self.channel_indices[i] is not None and self.feature_indices[i] is not None:
                 for c in self.channel_indices[i]:
                     for fe in self.feature_indices[i]:
                         new_key = key + '_ch' + str(c) + '_fe' + str(fe)
                         if new_key not in self.keys_one_hot:
-                            sample[new_key] = np.array(f[self.type][key][c, idx, fe]).reshape(
+                            sample[new_key] = np.array(f[self.type + '/' + key][c, idx, fe]).reshape(
                                 1)  # e.g. single mp, ...
                         else:
-                            sample[new_key] = np.array(f[self.type][key][c, idx, fe])
+                            sample[new_key] = np.array(f[self.type + '/' + key][c, idx, fe])
             else:
                 raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
         return sample
@@ -151,20 +120,11 @@ class H5CryoData(Dataset):
         :return: dict, each element is a numpy array
         """
 
-        if self.load_to_memory:
-            sample = {}
-            for key in self.data.keys():
-                sample[key] = self.data[key][idx]
-        else:
-            if self.file_handle is None:
-                if self.hdf5_path is not None:
-                    with h5py.File(self.hdf5_path, 'r') as f:  # this causes trouble with multiple workers?
-                        sample = self.build_sample(f, idx)
-                else:
-                    raise KeyError('If you provide no file handle, you must provide a hdf5 path!')
-            else:
-                sample = self.build_sample(self.file_handle, idx)
-
+        if self.h5_set is None:
+            self.h5_set = {}
+            for k in self.keys:
+                self.h5_set[self.type + '/' + k] = h5py.File(self.hdf5_path, 'r')[self.type + '/' + k]
+        sample = self.build_sample(self.h5_set, idx)
 
         if self.transform:
             sample = self.transform(sample)

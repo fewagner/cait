@@ -135,16 +135,6 @@ def simulate_events(path_h5,
                 time_s = np.concatenate([np.array(h5f['noise']['time_s'][il]) for il in idx_lists], axis=0)
                 time_mus = np.concatenate([np.array(h5f['noise']['time_mus'][il]) for il in idx_lists], axis=0)
 
-                # sim_events = np.array(h5f['noise']['event'][:, idx_lists, :])
-                # hours = np.array(h5f['noise']['hours'][:, idx_lists, :])
-                # time_s = np.array(h5f['noise']['time_s'][:, idx_lists, :])
-                # time_mus = np.array(h5f['noise']['time_mus'][:, idx_lists, :])
-
-                # sim_events = h5f['noise']['event'][:, idx_lists, :]
-                # hours = h5f['noise']['hours'][idx_lists]
-                # time_s = h5f['noise']['time_s'][idx_lists]
-                # time_mus = h5f['noise']['time_mus'][idx_lists]
-
         # get pulse heights
         print('Get Pulse Heights.')
         phs = np.zeros((nmbr_channels, size))
