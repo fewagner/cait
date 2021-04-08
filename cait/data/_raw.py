@@ -19,7 +19,11 @@ from ._progressBar import printProgressBar
 # ---------------------------------------------------------------
 
 @nb.njit
-def convert_to_V(event, bits=16, max=10, min=-10, offset=0):
+def convert_to_V(event,
+                 bits=16,
+                 max=10,
+                 min=-10,
+                 offset=0):
     """
     Converts an event from int to volt
     :param event: 1D array of the event

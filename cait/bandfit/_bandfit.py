@@ -1,15 +1,18 @@
 # imports
 
+import numpy as np
 import scipy
 import scipy.stats
 import scipy.interpolate
 import scipy.integrate
+from scipy.special import erfinv
+from scipy.stats import norm
 import numpy as np
 import matplotlib.pyplot as plt
 from ._likelihood import *
 from ._bandfunctions import *
 from ..styles import use_cait_style, make_grid
-
+from tqdm.auto import tqdm, trange
 
 # class
 
@@ -46,13 +49,15 @@ class Bandfit():
         values = list(values_module_independent)
 
         if lbounds_module_independent is None:
-            lbounds = [0.0, 0.0, 0.5, -0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -20.0, 0.0, 0.0, 0.0, 0.5, -0.03,
+            lbounds = [0.0, 0.0, 0.5, -0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, -20.0, 0.0, 0.0, 0.0, 0.5,
+                       -0.03,
                        0.3, 0.0, 0.0]
         else:
             lbounds = list(lbounds_module_independent)
 
         if ubounds_module_independent is None:
-            ubounds = [10.0, 1.0, 1.5, 0.1, 0.3, 1.0, 0.1, 100.0, 25.0, 10.0, 0.03, 0.05, 1000.0, 20.0, 1.0e6, 10.0, 0.3,
+            ubounds = [10.0, 1.0, 1.5, 0.1, 0.3, 1.0, 0.1, 100.0, 25.0, 10.0, 0.03, 0.05, 1000.0, 20.0, 1.0e6, 10.0,
+                       0.3,
                        1.5, 0.03, 1.0, 1.0e6, 1.0e6]
         else:
             ubounds = list(ubounds_module_independent)
@@ -148,7 +153,8 @@ class Bandfit():
                    path_xy,
                    path_ncal,
                    path_cuteff,
-                   region_of_interest):
+                   region_of_interest,
+                   ):
         """
         TODO
 
@@ -199,7 +205,11 @@ class Bandfit():
 
         print('Files loaded.')
 
-    def minimize(self, method='Nelder-Mead', verb=True):
+    def minimize(self,
+                 method='Nelder-Mead',
+                 verb=True,
+                 maxiter=None,
+                 ):
         """
         TODO
 
@@ -219,6 +229,8 @@ class Bandfit():
             info['Nfeval'] = 0
 
         if method == 'Nelder-Mead':
+            if maxiter is None:
+                maxiter = 2e4
             minresult = scipy.optimize.minimize(wrappernoint,
                                                 x0=valuesred,
                                                 args=(self.values, self.fixed, self.lbounds, self.ubounds,
@@ -226,14 +238,16 @@ class Bandfit():
                                                       self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
                                                       self.nmbr_inelastic, info),
                                                 method='Nelder-Mead',
-                                                options={#'maxiter': 1e100,
-                                                         'maxiter': 2e4,
-                                                         #'maxfev': 1e100,
-                                                         'maxfev': 2e4,
-                                                         'xatol': 1e-10,
-                                                         'fatol': 1e-10,
-                                                         'adaptive': True})
+                                                options={  # 'maxiter': 1e100,
+                                                    'maxiter': maxiter,
+                                                    # 'maxfev': 1e100,
+                                                    'maxfev': maxiter,
+                                                    'xatol': 1e-10,
+                                                    'fatol': 1e-10,
+                                                    'adaptive': True})
         elif method == 'differential_evolution':
+            if maxiter is None:
+                maxiter = 1000
             minresult = scipy.optimize.differential_evolution(wrappernoint,
                                                               scipy.optimize.Bounds(lboundsred, uboundsred),
                                                               args=(self.values, self.fixed, self.lbounds, self.ubounds,
@@ -242,7 +256,7 @@ class Bandfit():
                                                                     self.nmbr_inelastic, info),
                                                               strategy='randtobest1bin',
                                                               workers=-1,
-                                                              maxiter=1000,
+                                                              maxiter=maxiter,
                                                               popsize=8,
                                                               tol=0.001,
                                                               updating='deferred')
@@ -257,7 +271,10 @@ class Bandfit():
     def plot_bck(self,
                  binwidth=0.05,
                  lowErange=[0., 0.5],
-                 lowEbinw=0.01):
+                 lowEbinw=0.01,
+                 plot_bands=True,
+                 grid_step=0.001,
+                 ):
         """
         TODO
 
@@ -272,6 +289,19 @@ class Bandfit():
         :return:
         :rtype:
         """
+
+        if plot_bands:
+            try:
+                band_means = []
+                band_sigmas = []
+                for i in range(self.nmbr_nuclei):
+                    grid = np.arange(self.region_of_interest[0], self.region_of_interest[1], grid_step)
+                    band_means.append(self._get_band_mean(nucleus=i,
+                                                          energy=grid))
+                    band_sigmas.append(self._get_band_sigma(nucleus=i,
+                                                            energy=grid))
+            except AttributeError:
+                raise AttributeError('Before you can plot bands, you need to call minimize!')
 
         plt.close()
         use_cait_style()
@@ -291,13 +321,25 @@ class Bandfit():
         make_grid(ax[0, 1])
 
         ax[1, 0].scatter(self.bck[:, 0], self.bck[:, 1], s=5, zorder=15)
+        if plot_bands:
+            for i in range(self.nmbr_nuclei):
+                ax[1, 0].plot(grid, band_means[i] - band_sigmas[i], linewidth=0.7, color='black', linestyle='dotted', zorder=20)
+                ax[1, 0].plot(grid, band_means[i], color='black', linewidth=1, zorder=20)
+                ax[1, 0].plot(grid, band_means[i] + band_sigmas[i], linewidth=0.7, color='black', linestyle='dotted', zorder=20)
         ax[1, 0].set_xlabel("Energy / keV")
         ax[1, 0].set_ylabel("Light Yield")
+        ax[1, 0].set_ylim(-10, 10)
         make_grid(ax[1, 0])
 
         ax[1, 1].scatter(self.bck[:, 0], self.bck[:, 1], s=5, zorder=15)
+        if plot_bands:
+            for i in range(self.nmbr_nuclei):
+                ax[1, 1].plot(grid, band_means[i] - band_sigmas[i], color='black', linestyle='dotted', zorder=20)
+                ax[1, 1].plot(grid, band_means[i], color='black', linewidth=2, zorder=20)
+                ax[1, 1].plot(grid, band_means[i] + band_sigmas[i], color='black', linestyle='dotted', zorder=20)
         ax[1, 1].set_xlabel("Energy / keV")
         ax[1, 1].set_ylabel("Light Yield")
+        ax[1, 1].set_ylim(-10, 10)
         ax[1, 1].set_xlim(lowErange[0], lowErange[1])
         make_grid(ax[1, 1])
 
@@ -307,7 +349,10 @@ class Bandfit():
     def plot_ncal(self,
                   binwidth=0.05,
                   lowErange=[0., 0.5],
-                  lowEbinw=0.01):
+                  lowEbinw=0.01,
+                  plot_bands=True,
+                  grid_step=0.001,
+                  ):
         """
         TODO
 
@@ -320,6 +365,19 @@ class Bandfit():
         :return:
         :rtype:
         """
+
+        if plot_bands:
+            try:
+                band_means = []
+                band_sigmas = []
+                for i in range(self.nmbr_nuclei):
+                    grid = np.arange(self.region_of_interest[0], self.region_of_interest[1], grid_step)
+                    band_means.append(self._get_band_mean(nucleus=i,
+                                                          energy=grid))
+                    band_sigmas.append(self._get_band_sigma(nucleus=i,
+                                                            energy=grid))
+            except AttributeError:
+                raise AttributeError('Before you can plot bands, you need to call minimize!')
 
         plt.close()
         use_cait_style()
@@ -339,13 +397,25 @@ class Bandfit():
         make_grid(ax[0, 1])
 
         ax[1, 0].scatter(self.ncal[:, 0], self.ncal[:, 1], s=5, zorder=15)
+        if plot_bands:
+            for i in range(self.nmbr_nuclei):
+                ax[1, 0].plot(grid, band_means[i] - band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
+                ax[1, 0].plot(grid, band_means[i], color='black', linewidth=1, zorder=20)
+                ax[1, 0].plot(grid, band_means[i] + band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
         ax[1, 0].set_xlabel("Energy / keV")
         ax[1, 0].set_ylabel("Light Yield")
+        ax[1, 0].set_ylim(-10, 10)
         make_grid(ax[1, 0])
 
         ax[1, 1].scatter(self.ncal[:, 0], self.ncal[:, 1], s=5, zorder=15)
+        if plot_bands:
+            for i in range(self.nmbr_nuclei):
+                ax[1, 1].plot(grid, band_means[i] - band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
+                ax[1, 1].plot(grid, band_means[i], color='black', linewidth=1, zorder=20)
+                ax[1, 1].plot(grid, band_means[i] + band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
         ax[1, 1].set_xlabel("Energy / keV")
         ax[1, 1].set_ylabel("Light Yield")
+        ax[1, 1].set_ylim(-10, 10)
         ax[1, 1].set_xlim(lowErange[0], lowErange[1])
         make_grid(ax[1, 1])
 
@@ -371,3 +441,108 @@ class Bandfit():
         plt.xscale('log', nonpositive='clip')
         plt.title("Signal Survival Probability")
         plt.show()
+
+    def nuclear_cut_efficiency(self,
+                               energy_array: float,
+                               nucleus: int,
+                               upper_acceptance: float = 0.5,
+                               lower_acceptance: float = 0.005,
+                               step_size: float = 10e-5,
+                               ):
+        # TODO
+
+        # get mean of band
+        mean_nuclear_band = self._get_band_mean(nucleus, energy_array)  # mean of nuclear recoil band
+
+        # get sigma of band
+        sigma_nuclear_band = self._get_band_sigma(nucleus, energy_array)
+
+        # get limits acceptance region
+        lower_limit, upper_limit = self._get_acceptance_region(energy_array, upper_acceptance, lower_acceptance)
+
+        # do integral over gauss with mean and sigma, from min to max light
+        nuclear_cut_eff = np.zeros(len(energy_array))
+        print('Calculating integral over light for nucleus {}.'.format(nucleus))
+        for i in trange(len(energy_array)):
+            grid = np.arange(lower_limit[i], upper_limit[i], step=step_size)
+            nuclear_cut_eff[i] = np.trapz(y=norm(loc=mean_nuclear_band[i],
+                                                 scale=sigma_nuclear_band[i]).pdf(grid),
+                                          x=grid)
+
+        # multiply with energy dependent cut efficiency
+        nuclear_cut_eff = self.cutf(energy_array) * nuclear_cut_eff
+
+        # return
+        return nuclear_cut_eff
+
+    # private
+
+    def _get_band_mean(self, nucleus, energy):
+        p = expandparvalues(self.values, self.minresult, self.fixed)
+        # get mean of band
+        peb = p[0:4]
+        eps = p[19]
+        pnb = p[
+              22 + nucleus * 5:22 + nucleus * 5 + 3]  # neutron band parameters; 0 = QF; 1 = es_f; 1 = es_lb
+        mnn = meanenn(energy, peb)
+        mean_nuclear_band = meann(energy, pnb, eps, mnn)  # mean of nuclear recoil band
+        return mean_nuclear_band
+
+    def _get_band_slope(self, nucleus, energy):
+        p = expandparvalues(self.values, self.minresult, self.fixed)
+        # get mean of band
+        peb = p[0:4]
+        eps = p[19]
+        pnb = p[
+              22 + nucleus * 5:22 + nucleus * 5 + 3]  # neutron band parameters; 0 = QF; 1 = es_f; 1 = es_lb
+        slope_nuclear_band = slopen(energy, pnb, peb, eps)
+        return slope_nuclear_band
+
+    def _get_band_sigma(self, nucleus, energy):
+        p = expandparvalues(self.values, self.minresult, self.fixed)
+        # get mean of band
+        peb = p[0:4]
+        plr = p[4:7]
+        ppr = p[10:12]
+        eps = p[19]
+        pnb = p[22 + nucleus * 5:22 + nucleus * 5 + 3]  # neutron band parameters; 0 = QF; 1 = es_f; 1 = es_lb
+        thr = p[21]
+        mnn = meanenn(energy, peb)
+        mean_nuclear_band = meann(energy, pnb, eps, mnn)  # mean of nuclear recoil band
+        slope_nuclear_band = slopen(energy, pnb, peb, eps)
+
+        # get sigma of band
+        sigma_nuclear_band = np.sqrt(bressq(energy, mean_nuclear_band, ppr, plr, thr, slope_nuclear_band))
+        return sigma_nuclear_band
+
+    def _get_acceptance_region(self,
+                               energy,
+                               upper_acceptance: float = 0.5,
+                               lower_acceptance: float = 0.005,
+                               ):
+        # TODO
+        p = expandparvalues(self.values, self.minresult, self.fixed)
+        peb = p[0:4]
+        plr = p[4:7]
+        ppr = p[10:12]
+        eps = p[19]
+        thr = p[21]
+        mnn = meanenn(energy, peb)
+
+        # get upper limit acceptance region
+        pnb_temp = p[22 + 0 * 5:22 + 0 * 5 + 3]
+        meanlight_temp = meann(energy, pnb_temp, eps, mnn)
+        slope_nuclear_band_temp = slopen(energy, pnb_temp, peb, eps)
+        sigma_temp = np.sqrt(bressq(energy, meanlight_temp, ppr, plr, thr, slope_nuclear_band_temp))
+
+        upper_limit = meanlight_temp + ((erfinv(2.0 * upper_acceptance - 1.0) * np.sqrt(2)) * sigma_temp)
+
+        # get lower limit acceptance region
+        pnb_temp = p[22 + self.nmbr_nuclei * 5:22 + self.nmbr_nuclei * 5 + 3]
+        meanlight_temp = meann(energy, pnb_temp, eps, mnn)
+        slope_nuclear_band_temp = slopen(energy, pnb_temp, peb, eps)
+        sigma_temp = np.sqrt(bressq(energy, meanlight_temp, ppr, plr, thr, slope_nuclear_band_temp))
+
+        lower_limit = meanlight_temp + ((erfinv(2.0 * lower_acceptance - 1.0) * np.sqrt(2)) * sigma_temp)
+
+        return lower_limit, upper_limit

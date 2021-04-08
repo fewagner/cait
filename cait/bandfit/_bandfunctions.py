@@ -181,7 +181,10 @@ def probability(L, meanlight, resolution):
     """
     Calls the gaussn function.
     """
-    return gaussn(L, meanlight, resolution)
+    ret = gaussn(L, meanlight, resolution)
+    if ret < 10e-8:
+        ret = 10e-8
+    return ret
 
 @numba.njit
 def probexli(E, L, p, meanlight, res, ressq):

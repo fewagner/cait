@@ -652,4 +652,4 @@ class FeaturesMixin(object):
                                                   dtype=float)
             cut_dataset[channel, ...] = values
 
-        print('Included cut values.')
+        print('Included values.')

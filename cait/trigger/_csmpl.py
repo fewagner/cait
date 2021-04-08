@@ -110,12 +110,13 @@ def get_max_index(stream,  # memmap array
     """
 
     # get record window
-    record = convert_to_V(stream[counter:counter + record_length])
+    record = stream[counter:counter + record_length]
     # downsample
     if down > 1:
         record = np.mean(record.reshape((int(len(record) / down), down)), axis=1)
         overlap = int(overlap / down)
         block = int(block / down)
+    record = convert_to_V(record)
 
     # remove offset
     record -= np.mean(record[:int(overlap / 2)])
@@ -188,10 +189,9 @@ def trigger_csmpl(paths,
         overlap = int(record_length * overlap)
 
     triggers = []
-    if return_info:
-        trigger_heights = []
-        record_starts = []
-        blocks = []
+    trigger_heights = []
+    record_starts = []
+    blocks = []
 
     # global loop for all bck files
     for j, path in enumerate(paths):
@@ -245,10 +245,9 @@ def trigger_csmpl(paths,
                                                      )
 
                         triggers.append(start_hours + sample_to_time(counter + trig))
-                        if return_info:
-                            trigger_heights.append(height)
-                            record_starts.append(start_hours + sample_to_time(counter))
-                            blocks.append(block)
+                        trigger_heights.append(height)
+                        record_starts.append(start_hours + sample_to_time(counter))
+                        blocks.append(block)
                         block += trig + trigger_block
 
                     # increment

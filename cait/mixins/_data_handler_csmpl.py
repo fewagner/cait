@@ -67,7 +67,7 @@ class CsmplMixin(object):
                                               sample_duration=1 / self.sample_frequency,
                                               )
         else:
-            aligned_triggers = time[0].reshape(1, -1)
+            aligned_triggers = time[0].reshape(-1)
 
         with h5py.File(self.path_h5, 'a') as h5f:
 
@@ -174,7 +174,7 @@ class CsmplMixin(object):
 
             # do the triggering
             time = []
-            for c in range(self.nmbr_channels):
+            for c in range(len(csmpl_paths)):
                 print('TRIGGER CHANNEL ', c)
                 # get triggers
                 trig = trigger_csmpl(paths=[csmpl_paths[c]],
@@ -773,18 +773,59 @@ class CsmplMixin(object):
     def include_noise_events(self,
                              csmpl_paths,
                              datatype='float32',
-                             origin=None):
+                             origin=None,
+                             down=1):
     # TODO
 
         with h5py.File(self.path_h5, 'r+') as h5f:
 
             # get the time stamps
+            noise_hours = h5f['stream']['noise_hours']
+            noise_time_s = h5f['stream']['noise_time_s']
+            noise_time_mus = h5f['stream']['noise_time_mus']
+
+            nmbr_all_events = len(noise_hours)
 
             # make data sets
             noise = h5f.require_group('noise')
-            events = noise.require_dataset(name='event',
-                                           shape=(self.nmbr_channels, ))
+            noise.require_dataset(name='event',
+                                         shape=(
+                                             self.nmbr_channels, nmbr_all_events,
+                                             int(self.record_length / down)),
+                                         dtype=datatype)
+
+            if origin is None:
+                hours_h5 = noise.require_dataset(name='hours',
+                                               shape=(nmbr_all_events),
+                                               dtype=float)
+                time_s_h5 = noise.require_dataset(name='time_s',
+                                               shape=(nmbr_all_events),
+                                               dtype=int)
+                time_mus_h5 = noise.require_dataset(name='time_mus',
+                                               shape=(nmbr_all_events),
+                                               dtype=int)
+                hours_h5[...] = noise_hours
+                time_s_h5[...] = noise_time_s
+                time_mus_h5[...] = noise_time_mus
+
 
             # get the record windows
+            print('Include the triggered events.')
+            for c in range(self.nmbr_channels):
+                print('Channel ', c)
+                if origin is None:
+                    iterable = range(nmbr_all_events)
+                else:
+                    iterable = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
+                for i in tqdm(iterable):
+                    noise['event'][c, i, :], _ = get_record_window(path=csmpl_paths[c],
+                                                                          start_time=noise_hours[
+                                                                                         i] * 3600 - sample_to_time(
+                                                                              self.record_length / 4,
+                                                                              sample_duration=1/self.sample_frequency),
+                                                                          record_length=self.record_length,
+                                                                          sample_duration=1/self.sample_frequency,
+                                                                          down=down)
 
-            #
+
+            print('Done.')

@@ -377,6 +377,9 @@ class AnalysisMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as f:
 
+            if cpe_factor is None:
+                cpe_factor = [None for i in range(self.nmbr_channels)]
+
             if method == 'ph':
                 evhs = np.array(f['events']['mainpar' + name_appendix_ev][:, :, 0])
                 tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
@@ -452,11 +455,10 @@ class AnalysisMixin(object):
                                                                                                    cpe_factor=cpe_factor[channel],
                                                                                                    interpolation_method=interpolation_method,
                                                                                                    )
-
+        print('Finished.')
         if return_pulser_models:
             return pulser_models
 
-        print('Finished.')
 
     def calc_light_correction(self,
                               scintillation_efficiency: float,
