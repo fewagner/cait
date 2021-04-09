@@ -14,6 +14,7 @@ from ._bandfunctions import *
 from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm, trange
 
+
 # class
 
 class Bandfit():
@@ -209,6 +210,8 @@ class Bandfit():
                  method='Nelder-Mead',
                  verb=True,
                  maxiter=None,
+                 workers=-1,
+                 optstart=False
                  ):
         """
         TODO
@@ -223,16 +226,42 @@ class Bandfit():
         lboundsred = reduceparvalues(self.lbounds, self.fixed)
         uboundsred = reduceparvalues(self.ubounds, self.fixed)
 
-        info = {}
-        if verb:
-            print('{}   {}'.format('Iter', 'f(X)'))
-            info['Nfeval'] = 0
-
         if method == 'Nelder-Mead':
             if maxiter is None:
                 maxiter = 2e4
+
+            x0 = valuesred
+
+            if optstart:
+                print('Getting optimal start values.')
+                info = {}
+                if verb:
+                    print('{}   {}'.format('Nfeval', 'f(X)'))
+                    info['Nfeval'] = 0
+                minresult = scipy.optimize.differential_evolution(wrappernoint,
+                                                                  scipy.optimize.Bounds(lboundsred, uboundsred),
+                                                                  args=(
+                                                                      self.values, self.fixed, self.lbounds,
+                                                                      self.ubounds,
+                                                                      self.xy, self.cateffarr, self.region_of_interest,
+                                                                      self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
+                                                                      self.nmbr_inelastic, info),
+                                                                  strategy='randtobest1bin',
+                                                                  workers=workers,
+                                                                  maxiter=maxiter,
+                                                                  popsize=8,
+                                                                  tol=0.001,
+                                                                  updating='deferred')
+
+                x0 = minresult.x
+
+            print('Start optimization.')
+            info = {}
+            if verb:
+                print('{}   {}'.format('Nfeval', 'f(X)'))
+                info['Nfeval'] = 0
             minresult = scipy.optimize.minimize(wrappernoint,
-                                                x0=valuesred,
+                                                x0=x0,
                                                 args=(self.values, self.fixed, self.lbounds, self.ubounds,
                                                       self.xy, self.cateffarr, self.region_of_interest,
                                                       self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
@@ -248,6 +277,11 @@ class Bandfit():
         elif method == 'differential_evolution':
             if maxiter is None:
                 maxiter = 1000
+            print('Start optimization.')
+            info = {}
+            if verb:
+                print('{}   {}'.format('Nfeval', 'f(X)'))
+                info['Nfeval'] = 0
             minresult = scipy.optimize.differential_evolution(wrappernoint,
                                                               scipy.optimize.Bounds(lboundsred, uboundsred),
                                                               args=(self.values, self.fixed, self.lbounds, self.ubounds,
@@ -255,7 +289,7 @@ class Bandfit():
                                                                     self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
                                                                     self.nmbr_inelastic, info),
                                                               strategy='randtobest1bin',
-                                                              workers=-1,
+                                                              workers=workers,
                                                               maxiter=maxiter,
                                                               popsize=8,
                                                               tol=0.001,
@@ -274,6 +308,9 @@ class Bandfit():
                  lowEbinw=0.01,
                  plot_bands=True,
                  grid_step=0.001,
+                 all_in_one=False,
+                 upper_acceptance: float = 0.5,
+                 lower_acceptance: float = 0.005,
                  ):
         """
         TODO
@@ -297,54 +334,82 @@ class Bandfit():
                 for i in range(self.nmbr_nuclei):
                     grid = np.arange(self.region_of_interest[0], self.region_of_interest[1], grid_step)
                     band_means.append(self._get_band_mean(nucleus=i,
-                                                          energy=grid))
+                                                          energy=grid) / grid)
                     band_sigmas.append(self._get_band_sigma(nucleus=i,
-                                                            energy=grid))
+                                                            energy=grid) / grid)
             except AttributeError:
                 raise AttributeError('Before you can plot bands, you need to call minimize!')
 
-        plt.close()
-        use_cait_style()
-        fig, ax = plt.subplots(2, 2, figsize=(13, 8))
+            # get limits acceptance region
+            lower_limit, upper_limit = self._get_acceptance_region(grid, upper_acceptance, lower_acceptance) / grid
 
-        ax[0, 0].hist(self.bck[:, 0], bins=np.arange(self.region_of_interest[0], self.region_of_interest[1], binwidth),
+        def plt_hist_high(axis, data):
+            axis.hist(data[:, 0],
+                      bins=np.arange(self.region_of_interest[0], self.region_of_interest[1], binwidth),
                       zorder=15)
-        ax[0, 0].set_yscale('log', nonpositive='clip')
-        ax[0, 0].set_xlabel("Energy / keV")
-        ax[0, 0].set_ylabel("counts / " + str(binwidth) + " keV")
-        make_grid(ax[0, 0])
+            axis.set_yscale('log', nonpositive='clip')
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("counts / " + str(binwidth) + " keV")
+            make_grid(axis)
 
-        ax[0, 1].hist(self.bck[:, 0], bins=np.arange(lowErange[0], lowErange[1], lowEbinw), zorder=15)
-        ax[0, 1].set_yscale('log', nonpositive='clip')
-        ax[0, 1].set_xlabel("Energy / keV")
-        ax[0, 1].set_ylabel("counts / " + str(lowEbinw) + " keV")
-        make_grid(ax[0, 1])
+        def plt_hist_low(axis, data):
+            axis.hist(data[:, 0], bins=np.arange(lowErange[0], lowErange[1], lowEbinw), zorder=15)
+            axis.set_yscale('log', nonpositive='clip')
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("counts / " + str(lowEbinw) + " keV")
+            make_grid(axis)
 
-        ax[1, 0].scatter(self.bck[:, 0], self.bck[:, 1], s=5, zorder=15)
-        if plot_bands:
-            for i in range(self.nmbr_nuclei):
-                ax[1, 0].plot(grid, band_means[i] - band_sigmas[i], linewidth=0.7, color='black', linestyle='dotted', zorder=20)
-                ax[1, 0].plot(grid, band_means[i], color='black', linewidth=1, zorder=20)
-                ax[1, 0].plot(grid, band_means[i] + band_sigmas[i], linewidth=0.7, color='black', linestyle='dotted', zorder=20)
-        ax[1, 0].set_xlabel("Energy / keV")
-        ax[1, 0].set_ylabel("Light Yield")
-        ax[1, 0].set_ylim(-10, 10)
-        make_grid(ax[1, 0])
+        def plt_scatter_high(axis, data):
+            axis.scatter(data[:, 0], data[:, 1], s=5, zorder=15)
+            if plot_bands:
+                for i in range(self.nmbr_nuclei):
+                    axis.plot(grid, band_means[i] - band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                    axis.plot(grid, band_means[i], color='C' + str(i + 1), linewidth=1, zorder=20)
+                    axis.plot(grid, band_means[i] + band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                axis.fill_between(grid, y1=lower_limit, y2=upper_limit, color='yellow', zorder=0)
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("Light Yield")
+            axis.set_ylim(-10, 10)
+            make_grid(axis)
 
-        ax[1, 1].scatter(self.bck[:, 0], self.bck[:, 1], s=5, zorder=15)
-        if plot_bands:
-            for i in range(self.nmbr_nuclei):
-                ax[1, 1].plot(grid, band_means[i] - band_sigmas[i], color='black', linestyle='dotted', zorder=20)
-                ax[1, 1].plot(grid, band_means[i], color='black', linewidth=2, zorder=20)
-                ax[1, 1].plot(grid, band_means[i] + band_sigmas[i], color='black', linestyle='dotted', zorder=20)
-        ax[1, 1].set_xlabel("Energy / keV")
-        ax[1, 1].set_ylabel("Light Yield")
-        ax[1, 1].set_ylim(-10, 10)
-        ax[1, 1].set_xlim(lowErange[0], lowErange[1])
-        make_grid(ax[1, 1])
+        def plt_scatter_low(axis, data):
+            axis.scatter(data[:, 0], data[:, 1], s=5, zorder=15)
+            if plot_bands:
+                for i in range(self.nmbr_nuclei):
+                    axis.plot(grid, band_means[i] - band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                    axis.plot(grid, band_means[i], color='C' + str(i + 1), linewidth=1, zorder=20)
+                    axis.plot(grid, band_means[i] + band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                axis.fill_between(grid, y1=lower_limit, y2=upper_limit, color='yellow', zorder=0)
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("Light Yield")
+            axis.set_ylim(-10, 10)
+            axis.set_xlim(lowErange[0], lowErange[1])
+            make_grid(axis)
 
-        fig.suptitle("Background Data")
-        plt.show()
+        if all_in_one:
+
+            plt.close()
+            use_cait_style()
+            fig, ax = plt.subplots(2, 2, figsize=(13, 8))
+            plt_hist_high(ax[0, 0], data=self.bck)
+            plt_hist_low(ax[0, 1], data=self.bck)
+            plt_scatter_high(ax[1, 0], data=self.bck)
+            plt_scatter_low(ax[1, 1], data=self.bck)
+            fig.suptitle("Background Data")
+            plt.show()
+
+        else:
+            for f_handle in [plt_hist_high, plt_hist_low, plt_scatter_high, plt_scatter_low]:
+                plt.close()
+                use_cait_style()
+                fig, ax = plt.subplots(1, 1)
+                f_handle(ax, data=self.bck)
+                ax.set_title("Background Data")
+                plt.show()
 
     def plot_ncal(self,
                   binwidth=0.05,
@@ -352,6 +417,9 @@ class Bandfit():
                   lowEbinw=0.01,
                   plot_bands=True,
                   grid_step=0.001,
+                  all_in_one=False,
+                  upper_acceptance: float = 0.5,
+                  lower_acceptance: float = 0.005,
                   ):
         """
         TODO
@@ -370,57 +438,85 @@ class Bandfit():
             try:
                 band_means = []
                 band_sigmas = []
+                grid = np.arange(self.region_of_interest[0], self.region_of_interest[1], grid_step)
                 for i in range(self.nmbr_nuclei):
-                    grid = np.arange(self.region_of_interest[0], self.region_of_interest[1], grid_step)
                     band_means.append(self._get_band_mean(nucleus=i,
-                                                          energy=grid))
+                                                          energy=grid) / grid)
                     band_sigmas.append(self._get_band_sigma(nucleus=i,
-                                                            energy=grid))
+                                                            energy=grid) / grid)
             except AttributeError:
                 raise AttributeError('Before you can plot bands, you need to call minimize!')
 
-        plt.close()
-        use_cait_style()
-        fig, ax = plt.subplots(2, 2, figsize=(13, 8))
+            # get limits acceptance region
+            lower_limit, upper_limit = self._get_acceptance_region(grid, upper_acceptance, lower_acceptance) / grid
 
-        ax[0, 0].hist(self.ncal[:, 0], bins=np.arange(self.region_of_interest[0], self.region_of_interest[1], binwidth),
+        def plt_hist_high(axis, data):
+            axis.hist(data[:, 0],
+                      bins=np.arange(self.region_of_interest[0], self.region_of_interest[1], binwidth),
                       zorder=15)
-        ax[0, 0].set_yscale('log', nonpositive='clip')
-        ax[0, 0].set_xlabel("Energy / keV")
-        ax[0, 0].set_ylabel("counts / " + str(binwidth) + " keV")
-        make_grid(ax[0, 0])
+            axis.set_yscale('log', nonpositive='clip')
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("counts / " + str(binwidth) + " keV")
+            make_grid(axis)
 
-        ax[0, 1].hist(self.ncal[:, 0], bins=np.arange(lowErange[0], lowErange[1], lowEbinw), zorder=15)
-        ax[0, 1].set_yscale('log', nonpositive='clip')
-        ax[0, 1].set_xlabel("Energy / keV")
-        ax[0, 1].set_ylabel("counts / " + str(lowEbinw) + " keV")
-        make_grid(ax[0, 1])
+        def plt_hist_low(axis, data):
+            axis.hist(data[:, 0], bins=np.arange(lowErange[0], lowErange[1], lowEbinw), zorder=15)
+            axis.set_yscale('log', nonpositive='clip')
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("counts / " + str(lowEbinw) + " keV")
+            make_grid(axis)
 
-        ax[1, 0].scatter(self.ncal[:, 0], self.ncal[:, 1], s=5, zorder=15)
-        if plot_bands:
-            for i in range(self.nmbr_nuclei):
-                ax[1, 0].plot(grid, band_means[i] - band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
-                ax[1, 0].plot(grid, band_means[i], color='black', linewidth=1, zorder=20)
-                ax[1, 0].plot(grid, band_means[i] + band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
-        ax[1, 0].set_xlabel("Energy / keV")
-        ax[1, 0].set_ylabel("Light Yield")
-        ax[1, 0].set_ylim(-10, 10)
-        make_grid(ax[1, 0])
+        def plt_scatter_high(axis, data):
+            axis.scatter(data[:, 0], data[:, 1], s=5, zorder=15)
+            if plot_bands:
+                for i in range(self.nmbr_nuclei):
+                    axis.plot(grid, band_means[i] - band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                    axis.plot(grid, band_means[i], color='C' + str(i + 1), linewidth=1, zorder=20)
+                    axis.plot(grid, band_means[i] + band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                axis.fill_between(grid, y1=lower_limit, y2=upper_limit, color='yellow', zorder=0)
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("Light Yield")
+            axis.set_ylim(-10, 10)
+            make_grid(axis)
 
-        ax[1, 1].scatter(self.ncal[:, 0], self.ncal[:, 1], s=5, zorder=15)
-        if plot_bands:
-            for i in range(self.nmbr_nuclei):
-                ax[1, 1].plot(grid, band_means[i] - band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
-                ax[1, 1].plot(grid, band_means[i], color='black', linewidth=1, zorder=20)
-                ax[1, 1].plot(grid, band_means[i] + band_sigmas[i], color='black', linewidth=0.7, linestyle='dotted', zorder=20)
-        ax[1, 1].set_xlabel("Energy / keV")
-        ax[1, 1].set_ylabel("Light Yield")
-        ax[1, 1].set_ylim(-10, 10)
-        ax[1, 1].set_xlim(lowErange[0], lowErange[1])
-        make_grid(ax[1, 1])
+        def plt_scatter_low(axis, data):
+            axis.scatter(data[:, 0], data[:, 1], s=5, zorder=15)
+            if plot_bands:
+                for i in range(self.nmbr_nuclei):
+                    axis.plot(grid, band_means[i] - band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                    axis.plot(grid, band_means[i], color='C' + str(i + 1), linewidth=1, zorder=20)
+                    axis.plot(grid, band_means[i] + band_sigmas[i], linewidth=1, color='C' + str(i + 1),
+                              linestyle='dotted', zorder=20)
+                axis.fill_between(grid, y1=lower_limit, y2=upper_limit, color='yellow', zorder=0)
+            axis.set_xlabel("Energy / keV")
+            axis.set_ylabel("Light Yield")
+            axis.set_ylim(-10, 10)
+            axis.set_xlim(lowErange[0], lowErange[1])
+            make_grid(axis)
 
-        fig.suptitle("Neutron Calibration Data")
-        plt.show()
+        if all_in_one:
+
+            plt.close()
+            use_cait_style()
+            fig, ax = plt.subplots(2, 2, figsize=(13, 8))
+            plt_hist_high(ax[0, 0], data=self.ncal)
+            plt_hist_low(ax[0, 1], data=self.ncal)
+            plt_scatter_high(ax[1, 0], data=self.ncal)
+            plt_scatter_low(ax[1, 1], data=self.ncal)
+            fig.suptitle("Neutron Calibration Data")
+            plt.show()
+
+        else:
+            for f_handle in [plt_hist_high, plt_hist_low, plt_scatter_high, plt_scatter_low]:
+                plt.close()
+                use_cait_style()
+                fig, ax = plt.subplots(1, 1)
+                f_handle(ax, data=self.ncal)
+                ax.set_title("Neutron Calibration Data")
+                plt.show()
 
     def plot_survival_prob(self):
         """
@@ -442,13 +538,14 @@ class Bandfit():
         plt.title("Signal Survival Probability")
         plt.show()
 
-    def nuclear_cut_efficiency(self,
-                               energy_array: float,
-                               nucleus: int,
-                               upper_acceptance: float = 0.5,
-                               lower_acceptance: float = 0.005,
-                               step_size: float = 10e-5,
-                               ):
+    def nuclear_efficiency(self,
+                           energy_array: float,
+                           nucleus: int,
+                           upper_acceptance: float = 0.5,
+                           lower_acceptance: float = 0.005,
+                           step_size: float = 10e-5,
+                           include_cut_efficiency: bool = True,
+                           ):
         # TODO
 
         # get mean of band
@@ -470,10 +567,34 @@ class Bandfit():
                                           x=grid)
 
         # multiply with energy dependent cut efficiency
-        nuclear_cut_eff = self.cutf(energy_array) * nuclear_cut_eff
+        if include_cut_efficiency:
+            nuclear_cut_eff = self.cutf(energy_array) * nuclear_cut_eff
 
         # return
         return nuclear_cut_eff
+
+    def get_accepted_events(self,
+                            upper_acceptance: float = 0.5,
+                            lower_acceptance: float = 0.005,
+                            ):
+        # TODO
+        try:
+
+            accepted_events = []
+
+            print('Calculating accepted events.')
+            for (e, l) in zip(self.bck[:, 0], self.bck[:, 1]):
+                ll, ul = self._get_acceptance_region(energy=e,
+                                                     upper_acceptance=upper_acceptance,
+                                                     lower_acceptance=lower_acceptance,
+                                                     )
+                if l > ll and l < ul:
+                    accepted_events.append(e)
+
+        except:
+            raise AttributeError('You need to call minimize, before you can get accepted events!')
+
+        return np.array(accepted_events), np.array(self.bck[:, 0])
 
     # private
 
@@ -538,7 +659,7 @@ class Bandfit():
         upper_limit = meanlight_temp + ((erfinv(2.0 * upper_acceptance - 1.0) * np.sqrt(2)) * sigma_temp)
 
         # get lower limit acceptance region
-        pnb_temp = p[22 + self.nmbr_nuclei * 5:22 + self.nmbr_nuclei * 5 + 3]
+        pnb_temp = p[22 + (self.nmbr_nuclei - 1) * 5:22 + (self.nmbr_nuclei - 1) * 5 + 3]
         meanlight_temp = meann(energy, pnb_temp, eps, mnn)
         slope_nuclear_band_temp = slopen(energy, pnb_temp, peb, eps)
         sigma_temp = np.sqrt(bressq(energy, meanlight_temp, ppr, plr, thr, slope_nuclear_band_temp))
