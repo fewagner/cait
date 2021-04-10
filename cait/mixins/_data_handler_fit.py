@@ -11,7 +11,8 @@ from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import baseline_template_cubic, sev_fit_template
 from scipy.optimize import curve_fit
 from ..fit._bl_fit import get_rms
-from ..fit._noise import noise_trigger_template, get_noise_parameters_binned
+from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbinned, \
+    plot_noise_trigger_model, calc_threshold
 from ..fit._saturation import logistic_curve
 from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
@@ -259,11 +260,11 @@ class FitMixin(object):
                                    detector_mass,
                                    allowed_noise_triggers=1,
                                    method='of',
-                                   bins=100,
-                                   yran=(1, 10e4),
+                                   bins=200,
+                                   yran=None,
                                    xran=None,
                                    xran_hist=None,
-                                   ul=30, # in mV
+                                   ul=30,  # in mV
                                    ll=0,  # in mV
                                    cut_flag=None,
                                    plot=True,
@@ -271,10 +272,15 @@ class FitMixin(object):
                                    sample_length=4e-5,  # in seconds
                                    record_length=16384,  # in samples
                                    interval_restriction=0.75,
+                                   binned_fit=False,
+                                   model='gauss',
+                                   ylog=False,
+                                   save_path=None,
                                    ):
         # TODO
 
         print('Estimating Trigger Threshold.')
+        print('Using model: {}'.format(model))
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             if method == 'of':
@@ -292,64 +298,46 @@ class FitMixin(object):
 
         nmbr_baselines = len(phs)
         print('Nmbr baseline: ', nmbr_baselines)
-        d, sigma = get_noise_parameters_binned(counts=counts_hist,
+        if binned_fit:
+            if model != 'gauss':
+                raise NotImplementedError('For the binned fit, only the Gauss model is implemented!')
+            pars = get_noise_parameters_binned(counts=counts_hist,
                                                bins=bins_hist,
                                                )
-        # d, sigma = get_noise_parameters(x_max=phs, baseline_resolution=baseline_resolution)
-        print('Fitted Noise Trigger Template Parameters: d {},  sigma {:.3} mV'.format(d, sigma))
+        else:
+            pars = get_noise_parameters_unbinned(events=phs,
+                                                 model=model,
+                                                 )
 
-        # calc the exposure in kg days
-        trigger_window = record_length * sample_length * detector_mass / 3600 / 24 * interval_restriction
-
-        # get the noise trigger rate
-        num = 1000
-        h = (ul - ll)/num
-        x_grid = np.linspace(start=ll, stop=ul, num=num)
-        ph_distribution = noise_trigger_template(x_max=x_grid, d=d, sigma=sigma)
-        noise_trigger_rate = np.array([h*np.sum(ph_distribution[i:]) for i in range(len(ph_distribution))])
-        ph_distribution /= trigger_window
-        noise_trigger_rate /= trigger_window
-
-        # calc the threshold
-        threshold = x_grid[noise_trigger_rate < allowed_noise_triggers][0]
-        print('Threshold for {} Noise Trigger per kg day: {:.3} mV'.format(allowed_noise_triggers, threshold))
-
+        x_grid, \
+        trigger_window, \
+        ph_distribution, \
+        polluted_ph_distribution, \
+        noise_trigger_rate, \
+        polluted_trigger_rate, \
+        threshold, \
+        nmbr_pollution_triggers = calc_threshold(record_length, sample_length, detector_mass, interval_restriction, ul,
+                                                 ll, model,
+                                                 pars, allowed_noise_triggers)
 
         if plot:
-
-            # plot the counts
-            plt.close()
-            use_cait_style()
-            xdata = bins[:-1] + (bins[1] - bins[0]) / 2
-            plt.hist(xdata, bins_hist, weights=counts_hist / trigger_window,
-                     zorder=8, alpha=0.8, label='Counts')
-            plt.plot(x_grid, ph_distribution, linewidth=2, zorder=12, color='black', label='Fit Model')
-            make_grid()
-            if title is not None:
-                plt.title(title)
-            if xran_hist is not None:
-               plt.xlim(xran_hist)
-            plt.legend()
-            plt.xlabel('Pulse Height (mV)')
-            plt.ylabel('Counts (1 / kg days mV)')
-            plt.show()
-
-            # plot the threshold
-            plt.close()
-            use_cait_style()
-            plt.plot(x_grid, noise_trigger_rate, linewidth=2, zorder=16, color='black', label='Noise Trigger Rate')
-            plt.vlines(x=threshold, ymin=yran[0], ymax=allowed_noise_triggers, color='tab:red',
-                        linewidth=2, zorder=20, label='{} / kg days'.format(allowed_noise_triggers))
-            plt.hlines(y=allowed_noise_triggers, xmin=0, xmax=threshold, color='tab:red',
-                        linewidth=2, zorder=20)
-            make_grid()
-            plt.ylim(yran)
-            if xran is not None:
-               plt.xlim(xran)
-            plt.yscale('log')
-            if title is not None:
-                plt.title(title)
-            plt.legend()
-            plt.xlabel('Threshold (mV)')
-            plt.ylabel('Noise Trigger Rate (1 / kg days)')
-            plt.show()
+            plot_noise_trigger_model(bins_hist,
+                                     counts_hist,
+                                     x_grid,
+                                     trigger_window,
+                                     ph_distribution,
+                                     model,
+                                     polluted_ph_distribution,
+                                     title,
+                                     xran_hist,
+                                     noise_trigger_rate,
+                                     polluted_trigger_rate,
+                                     threshold,
+                                     yran,
+                                     allowed_noise_triggers,
+                                     nmbr_pollution_triggers,
+                                     xran,
+                                     ylog,
+                                     only_histogram=False,
+                                     save_path=save_path,
+                                     )
