@@ -123,7 +123,6 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
             amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
         else:
             amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
-            peakpos += length / 8
     else:
         if return_peakpos:
             peakpos = np.argmax(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
