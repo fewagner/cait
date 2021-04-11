@@ -10,9 +10,7 @@ from ..fit._saturation import logistic_curve
 from ..styles._plt_styles import use_cait_style, make_grid
 
 
-# -----------------------------------------------------------
-# CLASS
-# -----------------------------------------------------------
+# functions
 
 def _str_empty(value):
     """
@@ -23,6 +21,9 @@ def _str_empty(value):
     else:
         return str(value)
 
+# -----------------------------------------------------------
+# CLASS
+# -----------------------------------------------------------
 
 class PlotMixin(object):
     """
@@ -678,7 +679,8 @@ class PlotMixin(object):
                 s=10,
                 show=True,
                 save_path=None,
-                dpi=150):
+                dpi=150,
+                name_appendix=''):
         """
         Make a Light Yield Plot out of specific Labels or Predictions
 
@@ -698,14 +700,14 @@ class PlotMixin(object):
 
         with h5py.File(self.path_h5, 'r') as f_h5:
             if which_method == 'ph':
-                x_par = f_h5[type]['mainpar'][x_channel, :, 0]
-                y_par = f_h5[type]['mainpar'][y_channel, :, 0]
+                x_par = f_h5[type]['mainpar' + name_appendix][x_channel, :, 0]
+                y_par = f_h5[type]['mainpar' + name_appendix][y_channel, :, 0]
             elif which_method == 'sef':
-                x_par = f_h5[type]['sev_fit_par'][x_channel, :, 0]
-                y_par = f_h5[type]['sev_fit_par'][y_channel, :, 0]
+                x_par = f_h5[type]['sev_fit_par' + name_appendix][x_channel, :, 0]
+                y_par = f_h5[type]['sev_fit_par' + name_appendix][y_channel, :, 0]
             elif which_method == 'of':
-                x_par = f_h5[type]['of_ph'][x_channel]
-                y_par = f_h5[type]['of_ph'][y_channel]
+                x_par = f_h5[type]['of_ph' + name_appendix][x_channel]
+                y_par = f_h5[type]['of_ph' + name_appendix][y_channel]
 
             nmbr_events = len(x_par)
 

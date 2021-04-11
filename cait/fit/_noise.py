@@ -255,9 +255,9 @@ def get_noise_parameters_unbinned(events,
     print('Independent samples d: ', res.x[0])
     print('Baseline resolution sigma (mV): ', res.x[1])
     if model == 'pollution_exponential':
-        print('Exponential pollution rate parameter lambda (mV): ', res.x[2])
+        print('Exponential pollution rate parameter lambda (1/mV): ', res.x[2])
     if model == 'fraction_exponential':
-        print('Exponential fraction rate parameter lambda (mV): ', res.x[2])
+        print('Exponential fraction rate parameter lambda (1/mV): ', res.x[2])
         print('Weight gaussian baseline parameter w: ', res.x[3])
     if model == 'pollution_gauss':
         print('Gaussian pollution mean parameter mu (mV): ', res.x[2])

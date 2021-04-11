@@ -86,7 +86,8 @@ def filter_event(event, transfer_function, window=False):
     return event_filtered
 
 
-def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False):
+def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False,
+                   peakpos=None, return_peakpos=False, flexibility=20):
     """
     This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
@@ -95,7 +96,10 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     :param nps: 1D array, length N/2 + 1, the noise power spectrum
     :param hard_restrict: bool, The maximum search is restricted to 20-30% of the record window.
     :param down: int, a factor by which the events and filter is downsampled before application
-    :return: 1D array size (nmbr_events), the phs after of filtering
+    :param peakpos: array of length nmbr_events,
+    :param return_peakpos: bool, if true a second array is returned, namely the peak positions within the arrays
+    :return: 1D array size (nmbr_events), the phs after of filtering; if return_peakpos is true, this is instead
+        a 2-tuple of the of_ph and the maximum positions
     """
 
     length = len(events_array[0])
@@ -110,9 +114,25 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     # filter events
     events_filtered = np.array([filter_event(event, transition_function, window=window) for event in events_array])
     # get maximal heights of filtered events
-    if not hard_restrict:
-        amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
-    if hard_restrict:
-        amplitudes = np.max(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
+    if peakpos is not None:
+        amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
+    elif not hard_restrict:
+        if return_peakpos:
+            peakpos = np.argmax(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
+            peakpos += int(length / 8)
+            amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
+        else:
+            amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
+            peakpos += int(length / 8)
+    else:
+        if return_peakpos:
+            peakpos = np.argmax(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
+            peakpos += int(length * 20 / 100)
+            amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
+        else:
+            amplitudes = np.max(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
 
-    return amplitudes
+    if return_peakpos:
+        return amplitudes, peakpos
+    else:
+        return amplitudes

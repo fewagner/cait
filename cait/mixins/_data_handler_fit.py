@@ -36,12 +36,14 @@ class FitMixin(object):
         """
         Calculate the Parameteric Fit for the Events in an HDF5 File.
 
-        :param path_h5: string, optional, the full path to the hdf5 file, e.g. "data/bck_001.h5"
-        :type
-        :param type: string, either events or testpulses
-        :type
-        :param processes: int, the number of processes to use for the calculation
-        :type
+        Attention! This method is only implemented for 2 channel detectors!
+
+        :param path_h5: Optional, the full path to the hdf5 file, e.g. "data/bck_001.h5".
+        :type path_h5: string
+        :param type: Either events or testpulses.
+        :type type: string
+        :param processes: The number of processes to use for the calculation.
+        :type processes: int
         """
 
         if type not in ['events', 'testpulses']:
@@ -88,7 +90,7 @@ class FitMixin(object):
     # apply sev fit
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=0.04, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
-                      verb=False, processes=4, name_appendix='', group_name_appendix=''):
+                      verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -117,6 +119,9 @@ class FitMixin(object):
         :type name_appendix: string
         :param group_name_appendix: This is appendend to the group name of the stdevent in the HDF5 set.
         :type group_name_appendix: string
+        :param first_channel_dominant: Take the peak position from the first channel and evaluate the others at the
+            same position.
+        :type first_channel_dominant: bool
         """
 
         print('Calculating SEV Fit.')
@@ -137,16 +142,21 @@ class FitMixin(object):
             par = np.zeros([self.nmbr_channels, len(events[0]), int(order_bl_polynomial + 3)])
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
-                    if verb:
-                        print('Fitting channel {}.'.format(c))
-                    # create instance of fit model
-                    fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds,
-                                                 truncation_level=truncation_level[c],
-                                                 interval_restriction_factor=interval_restriction_factor)
+                        if verb:
+                            print('Fitting channel {}.'.format(c))
+                        # create instance of fit model
+                        fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds,
+                                                     truncation_level=truncation_level[c],
+                                                     interval_restriction_factor=interval_restriction_factor)
 
-                    # fit all
-                    with Pool(processes) as p:
-                        par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, events[c]), total=len(events[c])))
+                        # fit all
+                        with Pool(processes) as p:
+                            if first_channel_dominant and c != 0:
+                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], par[0, :, 1])),
+                                                        total=len(events[c])))
+                            else:
+                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], [None for i in range(len(events[c]))])),
+                                                        total=len(events[c])))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='sev_fit_par{}'.format(name_appendix),
@@ -277,7 +287,52 @@ class FitMixin(object):
                                    ylog=False,
                                    save_path=None,
                                    ):
-        # TODO
+        """
+
+
+        :param channel:
+        :type channel:
+        :param detector_mass:
+        :type detector_mass:
+        :param allowed_noise_triggers:
+        :type allowed_noise_triggers:
+        :param method:
+        :type method:
+        :param bins:
+        :type bins:
+        :param yran:
+        :type yran:
+        :param xran:
+        :type xran:
+        :param xran_hist:
+        :type xran_hist:
+        :param ul:
+        :type ul:
+        :param ll:
+        :type ll:
+        :param cut_flag:
+        :type cut_flag:
+        :param plot:
+        :type plot:
+        :param title:
+        :type title:
+        :param sample_length:
+        :type sample_length:
+        :param record_length:
+        :type record_length:
+        :param interval_restriction:
+        :type interval_restriction:
+        :param binned_fit:
+        :type binned_fit:
+        :param model:
+        :type model:
+        :param ylog:
+        :type ylog:
+        :param save_path:
+        :type save_path:
+        :return:
+        :rtype:
+        """
 
         print('Estimating Trigger Threshold.')
         print('Using model: {}'.format(model))

@@ -224,15 +224,19 @@ class sev_fit_template:
 
         return out
 
-    def fit_cubic(self, event):
+    def fit_cubic(self, pars):
         """
         Calculates the standard event fit parameters with a cubic baseline model.
 
         :param event: The event to fit.
         :type event: 1D array
+        :param t0: The onset can be handed explicitely.
+        :type t0: float
         :return: The sev fit parameters.
         :rtype: array
         """
+
+        event, t0 = pars
 
         if self.down > 1:
             event = np.mean(event.reshape(int(len(event) / self.down), self.down), axis=1)
@@ -252,15 +256,16 @@ class sev_fit_template:
         a20 = 0
         a30 = 0
 
-        # fit t0
-        res = minimize(fun=self.t0_minimizer,
-                       x0=np.array([-3]),
-                       method='nelder-mead',
-                       args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
-                             self.low, self.up, self.pm_par, truncation_flag,),
-                       options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
-                       )
-        t0 = res.x
+        if t0 is None:
+            # fit t0
+            res = minimize(fun=self.t0_minimizer,
+                           x0=np.array([-3]),
+                           method='nelder-mead',
+                           args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
+                                 self.low, self.up, self.pm_par, truncation_flag,),
+                           options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
+                           )
+            t0 = res.x
 
         # fit height, d and k with fixed t0
         res = minimize(self.par_minimizer,

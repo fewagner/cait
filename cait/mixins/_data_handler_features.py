@@ -154,7 +154,7 @@ class FeaturesMixin(object):
 
             # if no pulse_height_interval is specified set it to average values for all channels
             if pulse_height_interval == None:
-                pulse_height_interval = [[0.5, 1.5]
+                pulse_height_interval = [None
                                          for c in range(self.nmbr_channels)]
 
             # fix the issue with different arguments for different channels
@@ -295,7 +295,7 @@ class FeaturesMixin(object):
 
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False, down=1, window=False):
+                 chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -309,6 +309,14 @@ class FeaturesMixin(object):
         :type chunk_size: int
         :param hard_restrict: If True, the maximum search is restricted to 20-30% of the record window.
         :type hard_restrict: bool
+        :param down: The events get downsampled with this factor before application of the filter.
+        :type down: int
+        :param window: If true, a window function is applied to the record window, before filtering. This is recommended,
+            to avoid artifacts from left-right offset differences of the baseline.
+        :type window: bool
+        :param first_channel_dominant: Take the maximum position from the first channel and evaluate the others at the
+            same position.
+        :type first_channel_dominant: bool
         """
 
         print('Calculating OF Heights.')
@@ -326,13 +334,33 @@ class FeaturesMixin(object):
             counter = 0
             while counter + chunk_size < nmbr_events:
                 for c in range(self.nmbr_channels):
-                    of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                           hard_restrict=hard_restrict, down=down, window=window)
+                    if first_channel_dominant and c == 0:
+                        of_ph, peakpos = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                                               hard_restrict=hard_restrict, down=down, window=window,
+                                               return_peakpos=True)
+                    elif first_channel_dominant:
+                        of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                                                         hard_restrict=hard_restrict, down=down, window=window,
+                                                         peakpos=peakpos)
+                    else:
+                        of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                                               hard_restrict=hard_restrict, down=down, window=window)
+
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
             for c in range(self.nmbr_channels):
-                of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                       hard_restrict=hard_restrict, down=down, window=window)
+                if first_channel_dominant and c == 0:
+                    of_ph, peakpos = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                                                    hard_restrict=hard_restrict, down=down, window=window,
+                                                    return_peakpos=True)
+                elif first_channel_dominant:
+                    of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                                           hard_restrict=hard_restrict, down=down, window=window,
+                                           peakpos=peakpos, return_peakpos=False)
+                else:
+                    of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                                           hard_restrict=hard_restrict, down=down, window=window,
+                                           return_peakpos=False)
                 f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
 
     # calc stdevent carrier
@@ -358,15 +386,15 @@ class FeaturesMixin(object):
 
         :param naming: Pick a name for the type of event, e.g. 'carrier'.
         :type naming: string
-        :param naming: The number of the channel in the hdf5 file.
-        :type naming: int
+        :param channel: The number of the channel in the hdf5 file.
+        :type channel: int
         :param type: The group name in the HDF5 set, either "events" or "testpulses".
         :type type: string
         :param use_prediction_instead_label: If True then instead of the labels the predictions are used.
         :type use_prediction_instead_label: bool
         :param model: If set this is the name of the model whiches predictions are in the
             h5 file, e.g. "RF" --> look for "RF_predictions".
-        :type string or None
+        :type model: string or None
         :param correct_label: Use only events with this label.
         :type correct_label: int or None
         :param use_idx: If set then only these indices are used for the sev creation.
@@ -626,18 +654,20 @@ class FeaturesMixin(object):
                        type: str = 'events',
                        delete_old: bool = False):
         """
-        TODO
+        Include values as a data set in the HDF5 file.
 
-        :param cut_values:
-        :type cut_values:
-        :param naming:
-        :type naming:
-        :param channel:
-        :type channel:
-        :param type:
-        :type type:
-        :param delete_old:
-        :type delete_old:
+        Typically this is used to store values of cuts or calibrated energies.
+
+        :param values: The values that we want to include in the file.
+        :type values: list of floats
+        :param naming: The name of the data set in the HDF5 file.
+        :type naming: string
+        :param channel: The channel number to which we want to include the cut values.
+        :type channel: int
+        :param type: The group name in the HDF5 set.
+        :type type: string
+        :param delete_old: If a set by this name exists already, it gets deleted first.
+        :type delete_old: bool
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
