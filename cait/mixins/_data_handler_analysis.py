@@ -290,6 +290,7 @@ class AnalysisMixin(object):
                          name_appendix_tp: str = '',
                          return_pulser_models: bool = False,
                          pulser_models: object = None,
+                         name_appendix_energy: str = '',
                          ):
         """
         Calculates the calibrated energies of all events with uncertainties.
@@ -416,16 +417,16 @@ class AnalysisMixin(object):
             if cut_flag is not None:
                 stable = np.logical_and(stable, cut_flag)
 
-            f['events'].require_dataset(name='recoil_energy',
+            f['events'].require_dataset(name='recoil_energy' + name_appendix_energy,
                                         shape=(self.nmbr_channels, len(ev_hours)),
                                         dtype=float)
-            f['events'].require_dataset(name='tpa_equivalent',
+            f['events'].require_dataset(name='tpa_equivalent' + name_appendix_energy,
                                         shape=(self.nmbr_channels, len(ev_hours)),
                                         dtype=float)
-            f['events'].require_dataset(name='recoil_energy_sigma',
+            f['events'].require_dataset(name='recoil_energy_sigma' + name_appendix_energy,
                                         shape=(self.nmbr_channels, len(ev_hours)),
                                         dtype=float)
-            f['events'].require_dataset(name='tpa_equivalent_sigma',
+            f['events'].require_dataset(name='tpa_equivalent_sigma' + name_appendix_energy,
                                         shape=(self.nmbr_channels, len(ev_hours)),
                                         dtype=float)
 
@@ -453,10 +454,10 @@ class AnalysisMixin(object):
                     pulser_models[channel].plot(interpolation_method=interpolation_method,
                                                 poly_order=poly_order)
 
-                f['events']['recoil_energy'][channel, ...], \
-                f['events']['recoil_energy_sigma'][channel, ...], \
-                f['events']['tpa_equivalent'][channel, ...], \
-                f['events']['tpa_equivalent_sigma'][channel, ...] = pulser_models[channel].predict(evhs=evhs[channel],
+                f['events']['recoil_energy' + name_appendix_energy][channel, ...], \
+                f['events']['recoil_energy_sigma' + name_appendix_energy][channel, ...], \
+                f['events']['tpa_equivalent' + name_appendix_energy][channel, ...], \
+                f['events']['tpa_equivalent_sigma' + name_appendix_energy][channel, ...] = pulser_models[channel].predict(evhs=evhs[channel],
                                                                                                    ev_hours=ev_hours,
                                                                                                    poly_order=poly_order,
                                                                                                    cpe_factor=cpe_factor[channel],
