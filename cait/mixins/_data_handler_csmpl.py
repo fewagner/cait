@@ -24,15 +24,32 @@ class CsmplMixin(object):
     def include_ctrigger_stamps(self,
                                 paths,
                                 name_appendix='',
-                                take_samples: int = None,
                                 trigger_block: int = None,
                                 path_sql: str = None,
                                 csmpl_channels: list = None,
                                 sql_file_label: str = None,
                                 ):
+        """
+        Include time stamps from a CAT CTrigger data format.
 
-        if take_samples is None:
-            take_samples = -1
+        These are included in the group stream. Choose and appropriate
+        name_appendix to distinguish them from time stamps that are calculated with the Cait trigger!
+
+        :param paths: The paths to the *.csmpl.trig files that contain the time stamps from the CAT CTrigger.
+        :type paths: tuple of strings
+        :param name_appendix: A string that is appended to the HDF5 data sets trigger_hours, trigger_time_mus,
+            trigger_time_s.
+        :type name_appendix: string
+        :param trigger_block: The value of samples that is blocked for triggering in all channels, after one trigger.
+        :type trigger_block: int
+        :param path_sql: Path to the SQL database file of the run.
+        :type path_sql: string
+        :param csmpl_channels: The csmpl channel numbers.
+        :type csmpl_channels: list of ints
+        :param sql_file_label: In the SQL database, we need to access the start time of file with the corresponding
+            label of the file. The label can be looked up in the SQL file.
+        :type sql_file_label: string
+        """
 
         if trigger_block is None:
             trigger_block = self.record_length
@@ -129,7 +146,8 @@ class CsmplMixin(object):
         precision in the SQL file. This is not a problem for out analysis, as all events within this files are down to
         micro seconds precisely matched to each other.
 
-        :param csmpl_paths: The full paths for the csmpl files of all channels.
+        :param csmpl_paths: The full paths for the csmpl files of all channels. If you want to trigger only one channel,
+            then only put the path of this channel here.
         :type csmpl_paths: list of strings
         :param thresholds: The trigger tresholds for all channels in Volt.
         :type thresholds: list of floats
@@ -151,6 +169,13 @@ class CsmplMixin(object):
         :type sql_file_label: string
         :param down: The downsampling factor for triggering.
         :type down: int
+        :param window: If true, the trigger window is multiplied with a window function before the filtering.
+            This is strongly recommended! Otherwise some artifacts from major differences in the left and right baseline
+            level can appear somewhere in the middle of the record window.
+        :type window: bool
+        :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
+            previous/next one. Standard value is 1/8 - it is recommended to use this value!
+        :type overlap: float
         """
 
         if take_samples is None:
@@ -270,6 +295,20 @@ class CsmplMixin(object):
         :type fitpar: array with shape (channels, 6)
         :param mainpar: The main parameters of all standard events.
         :type mainpar: array with shape (channels, 10)
+        :param scale_fit_height: If true, the fitted standard event amplitude parameters get divided by 1/height of the
+            fitted parametric model. Use this with caution! With this you intentionally deviate from the best fit
+            parameters.
+        :type scale_fit_height: bool
+        :param sample_length: The sample length in milliseconds.
+        :type sample_length: float
+        :param t0_start: The start values for the fit of the parametric model, for all channels.
+        :type t0_start: list of floats
+        :param opt_start: If true, before the nelder-mead fit startes, a differential evolution fit is looking for suitable
+            starting values.
+        :type opt_start: bool
+        :param group_name_appendix: A string that gets appended to the name stdevent of the group. Typically _tp for the
+            test pulse standard event.
+        :type group_name_appendix: string
         """
 
         std_evs = []
@@ -349,6 +388,9 @@ class CsmplMixin(object):
         :type of_imag: array of shape (channels, samples/2 + 1)
         :param down: The downsample rate of the transfer function.
         :type down: int
+        :param group_name_appendix: A string that gets appended to the name optimumfilter of the group. Typically _tp for the
+            test pulse standard event.
+        :type group_name_appendix: string
         """
         with h5py.File(self.path_h5, 'r+') as f:
             optimumfilter = f.require_group(name='optimumfilter' + group_name_appendix)
@@ -400,6 +442,10 @@ class CsmplMixin(object):
         :type exclude_tp: bool
         :param sample_duration: The duration of a sample in seconds.
         :type sample_duration: float
+        :param name_appendix: The name appendix of the data sets trigger_hours, trigger_time_s and trigger_time_mus in
+            the HDF5 file. This is typically needed, when we want to include the events corresponding to time stamps
+            that were triggered with the CAT CTrigger and then included in the HDF5 set.
+        :type name_appendix: string
         :param datatype: The datatype of the stored events.
         :type datatype: string
         :param min_tpa: TPA values below this are not counted as testpulses.
@@ -592,10 +638,7 @@ class CsmplMixin(object):
             print('DONE')
 
     def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, sql_file_label,
-                            # triggerdelay=2081024,
-                            # samplediv=2,
                             clock=10000000,
-                            # event_rate=25000,
                             fix_offset=True,
                             ):
         """
@@ -613,12 +656,11 @@ class CsmplMixin(object):
         :param sql_file_label: In the SQL database, we need to access the start time of file with the corresponding
             label of the file. The label can be looked up in the SQL file.
         :type sql_file_label: string
-        :param triggerdelay: The number of samples recorded in one bankswitch.
-        :type triggerdelay: int
-        :param samplediv: The oversampling rate by the CDAQ compared to the saved sample rate.
-        :type samplediv: int
-        :param sample_length: The duration of a sample in seconds.
-        :type sample_length: float
+        :param clock: The Frequency of the time clock, in Hz. Standard for CRESST is 10MHz.
+        :type clock: int
+        :param fix_offset: This fixes the time offset between the trigger time stamps and the DAQ time stamps. Strongly
+            recommended!!
+        :type fix_offset: bool
         """
 
         # open file stream
@@ -687,7 +729,28 @@ class CsmplMixin(object):
                                max_distance=60,
                                record_window_length=16384 / 25000,
                                max_attempts=5):
-        # TODO
+        """
+        Include a number of random triggers from the Stream.
+
+        The random triggers are only choosen in intervals that are measurement time (frequently occuring test pulses)
+        and that are away from test pulses. The triggers are stored in the stream group in the HDF5 file.
+
+        :param nmbr: The number of noise triggers we want to include.
+        :type nmbr: int
+        :param min_distance: The minimal distance in seconds of the start and end of a noise trigger window from a
+            test pulse. If you choose record_length * 1.5 or higher, you avoid pile up.
+        :type min_distance: float
+        :param max_distance: The maximal distance of two test pulses in seconds, such that the interval in between still
+            counts as measurement time.
+        :type max_distance: float
+        :param record_window_length: The length of the record window in seconds.
+        :type record_window_length: float
+        :param max_attempts: In case the chosen time stamp is piled up with an already chosen noise trigger, we chose
+            another time stamp. This counts as one attempt. If the maximal number of attempts is exceeded, we skip one
+            noise trigger and try for another gap. In this case, we will include one less time stamp than the parameter
+            nmbr. This procedure prevents infinite loops due to a too high nmbr parameter.
+        :type max_attempts: int
+        """
 
         min_distance /= 3600  # all in hours
         max_distance /= 3600
@@ -725,14 +788,17 @@ class CsmplMixin(object):
 
                 while attempts < max_attempts:
 
+                    # choose one of the good gaps
                     idx = np.random.choice(gaps_idx[good_gaps_flag],
                                            size=1,
                                            p=probabilities)
 
+                    # take a time stamp within this gap
                     trig = np.random.uniform(low=all_stamps[idx] + pre_dist,
                                              high=all_stamps[idx + 1] - post_dist)
                     attempts += 1
 
+                    # check if the time stamp is piled up with another already chosen time stamp
                     if all(np.abs(trig - noise_triggers[from_gap == idx]) > record_window_length):
                         noise_triggers[i] = trig
                         from_gap[i] = idx
@@ -775,7 +841,22 @@ class CsmplMixin(object):
                              datatype='float32',
                              origin=None,
                              down=1):
-    # TODO
+        """
+        Include the events corresponding to chosen noise triggers.
+
+        :param csmpl_paths: The paths to the *.csmpl files of all channels, should be nmbr_channels long.
+        :type csmpl_paths: list of strings
+        :param datatype: The datatype of the events that we want to store. Typically float32 is a good choice, float16
+            would lead to significantly reduced precision.
+        :type datatype: string
+        :param origin: This is needed in case you want to include events to a dataset that itself is a merge of other
+            datasets. Then typically a set of origin strings is included in the set, which specify the origin of the
+            individual events within the merged set. By putting a origin string here, the events get included in the
+            event data set exactly at the positions where the origin attribute is the same as the handed origin string.
+        :type origin: string
+        :param down: The factor by which we want to downsample the included events.
+        :type down: int
+        """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
 

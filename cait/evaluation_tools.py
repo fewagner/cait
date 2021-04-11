@@ -32,42 +32,45 @@ from .features._mp import *
 class EvaluationTools:
     """
     The Class EvaluationTools provides a easier way to handle the data.
+
     Especially for hdf5-files as widely used in this library.
     Besides that it also provides a easy way to organize predictions as well
     as visualize the results via confusion matrix and TSNE or PCA plots to depict high dimensional data.
     How it is used is best seen in the tutorial 'Machine Learning-based Event Selection'.
     """
 
-    save_plot_dir = './'
-    save_as = False
+    def __init__(self):
 
-    event_nbrs = None  # numeration of all events
+        self.save_plot_dir = './'
+        self.save_as = False
 
-    data = None  # can contain part of mainpar or events
-    features = None  # normalized 'data'
+        self.event_nbrs = None  # numeration of all events
 
-    events = None  # 'events/event' from hdf5 file
-    mainpar = None  # 'events/mainpar' from hdf5 file
-    mainpar_labels = None  # 'events/mainpar'.attrs from hdf5 file
+        self.data = None  # can contain part of mainpar or events
+        self.features = None  # normalized 'data'
 
-    pl_channel = None
-    files = None
-    file_nbrs = None
-    events_per_file = None
+        self.events = None  # 'events/event' from hdf5 file
+        self.mainpar = None  # 'events/mainpar' from hdf5 file
+        self.mainpar_labels = None  # 'events/mainpar'.attrs from hdf5 file
 
-    label_nbrs = None
-    labels = None
-    labels_color_map = None
+        self.pl_channel = None
+        self.files = None
+        self.file_nbrs = None
+        self.events_per_file = None
 
-    test_size = 0.50
-    is_train_valid = False
-    is_train = None
-    predictions = None
-    perdiction_true_labels = None
+        self.label_nbrs = None
+        self.labels = None
+        self.labels_color_map = None
 
-    color_order = mpl_default_colors
+        self.test_size = 0.50
+        self.is_train_valid = False
+        self.is_train = None
+        self.predictions = None
+        self.perdiction_true_labels = None
 
-    scaler = StandardScaler()
+        self.color_order = mpl_default_colors
+
+        self.scaler = StandardScaler()
 
     # ################### PRIVATE ###################
 
@@ -986,15 +989,15 @@ class EvaluationTools:
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    - Required                  : prediction method should be used
-        :param what:        - Required                  : which data is plotted
-        :param plt_labels:      - Optional, default True    : adds subplot with labels.
-        :param figsize:         - Optional, default None    : sets figure size of plot.
-        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
-        :param verb:            - Optional, default False   : additional output is printed
+        :param pred_methods:    Required                  : prediction method should be used
+        :param what:            Required                  : which data is plotted
+        :param plt_labels:      Optional, default True    : adds subplot with labels.
+        :param figsize:         Optional, default None    : sets figure size of plot.
+        :param perplexity:      Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          Optional, default None    : Random seed for numpy random.
+        :param dot_size:        Optional, default 5       : Size of the point in the scatter plot.
+        :param verb:            Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
@@ -1257,16 +1260,16 @@ class EvaluationTools:
         Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    - Required                  : prediction method should be used
-        :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
-        :param what:            - Optional, default 'all'   : which data is plotted
-        :param plt_labels:      - Optional, default True    : adds subplot with labels.
-        :param figsize:         - Optional, default None    : sets figure size of plot.
-        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
-        :param verb:            - Optional, default False   : additional output is printed
+        :param pred_methods:    Required                  : prediction method should be used
+        :param xy_comp:         Optional, default (1,2)   : select with pc's are used for x and y axis
+        :param what:            Optional, default 'all'   : which data is plotted
+        :param plt_labels:      Optional, default True    : adds subplot with labels.
+        :param figsize:         Optional, default None    : sets figure size of plot.
+        :param perplexity:      Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          Optional, default None    : Random seed for numpy random.
+        :param dot_size:        Optional, default 5       : Size of the point in the scatter plot.
+        :param verb:            Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
@@ -1539,11 +1542,11 @@ class EvaluationTools:
         Plots a histogram for all labels of the pulse hights in different
         subplots.
 
-        :param ncols:       - optional, default 2 : number of plots side by side.
-        :param extend_plot: - optional, default False : sets the x axis of all histograms to the same limits.
-        :param figsize:     - optional, default None : changes the overall figure size.
-        :param bins:        - optional, default auto : bins for the histograms.
-        :param verb:        - optional, default False : ouputs additional information.
+        :param ncols:       optional, default 2 : number of plots side by side.
+        :param extend_plot: optional, default False : sets the x axis of all histograms to the same limits.
+        :param figsize:     optional, default None : changes the overall figure size.
+        :param bins:        optional, default auto : bins for the histograms.
+        :param verb:        optional, default False : ouputs additional information.
         """
         max_height=self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
@@ -1599,9 +1602,9 @@ class EvaluationTools:
         Plots a histogram for all event pulses and strongly saturated event pulses
         in a single plot.
 
-        :param figsize:         - optional, default None : changes the overall figure size.
-        :param bins:            - optional, default auto : bins for the histograms.
-        :param ylog:            - optional, default False : if True the y axis is in log scale.
+        :param figsize:         optional, default None : changes the overall figure size.
+        :param bins:            optional, default auto : bins for the histograms.
+        :param ylog:            optional, default False : if True the y axis is in log scale.
         """
 
         plt.close()
@@ -1664,13 +1667,13 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for every label.
 
-        :param pred_method:     - Required : Name of the predictions method.
-        :param what:            - Optional, default all : test or train data or all.
-        :param bin_size:        - Optional, default 4 : bin size for calculating the average.
-        :param ncols:           - Optional, default 2 : number of plots side by side.
-        :param figsize:         - Optional, default None : Size of the figure for matplotlib.
-        :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
-        :param verb:            - Optional, default False : if True additional information is printed on the console.
+        :param pred_method:     Required : Name of the predictions method.
+        :param what:            Optional, default all : test or train data or all.
+        :param bin_size:        Optional, default 4 : bin size for calculating the average.
+        :param ncols:           Optional, default 2 : number of plots side by side.
+        :param figsize:         Optional, default None : Size of the figure for matplotlib.
+        :param extend_plot:     Optional, default False : if True x limits is set to the same for all subplots.
+        :param verb:            Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -1780,13 +1783,13 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for events.
 
-        :param pred_method: - Required : Name of the predictions method.
-        :param what:        - Optional, default all : test or train data or all.
-        :param bin_size:    - Optional, default 4 : bin size for calculating the average.
-        :param ncols:       - Optional, default 2 : number of plots side by side.
-        :param extend_plot: - Optional, default False : if True x limits is set to the same for all subplots.
-        :param figsize:     - optional, default None : changes the overall figure size.
-        :param verb:        - Optional, default False : if True additional information is printed on the console.
+        :param pred_method: Required : Name of the predictions method.
+        :param what:        Optional, default all : test or train data or all.
+        :param bin_size:    Optional, default 4 : bin size for calculating the average.
+        :param ncols:       Optional, default 2 : number of plots side by side.
+        :param extend_plot: Optional, default False : if True x limits is set to the same for all subplots.
+        :param figsize:     optional, default None : changes the overall figure size.
+        :param verb:        Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -1892,12 +1895,12 @@ class EvaluationTools:
         When clicking on a matrix element the event number and from which file
         is printed out in the console
 
-        :param pred_method:          - Required : Name of the predictions method.
-        :param what:                 - Optional, default all : test or train data or all.
-        :param rotation_xticklabels: - Optional, default 0 : lets you rotate the x tick labels.
-        :param force_xlabelnbr:      - Optional, default False : uses the number instead of the labels for better readability.
-        :param figsize:              - optional, default None : changes the overall figure size.
-        :param verb:                 - Optional, default False : if True additional information is printed on the console.
+        :param pred_method:          Required : Name of the predictions method.
+        :param what:                 Optional, default all : test or train data or all.
+        :param rotation_xticklabels: Optional, default 0 : lets you rotate the x tick labels.
+        :param force_xlabelnbr:      Optional, default False : uses the number instead of the labels for better readability.
+        :param figsize:              optional, default None : changes the overall figure size.
+        :param verb:                 Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -2061,7 +2064,7 @@ class EvaluationTools:
         Uses a bar graph to visualize how often a label occures in the
         dataset
 
-        :param figsize: - optional, default None : changes the overall figure size.
+        :param figsize: optional, default None : changes the overall figure size.
         """
 
         plt.close()

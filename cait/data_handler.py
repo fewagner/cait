@@ -35,7 +35,7 @@ class DataHandler(SimulateMixin,
     and stores all data from the recorded binary files (*.rdt, ...), as well as the calculated features
     (main parameters, standard events, ...) in the file.
 
-    :param run: The number of the measuremend run. This is a necessary argument, to identify a measurement with a given module uniquely.
+    :param run: The number of the measurement run. This is a necessary argument, to identify a measurement with a given module uniquely.
     :type run: string
     :param module: The naming of the detector module. Necessary for unique identification of the physics data.
     :type module: string

@@ -342,6 +342,13 @@ class AnalysisMixin(object):
         :type name_appendix_ev: string
         :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
         :type name_appendix_tp: string
+        :param return_pulser_models: If set to true, a list of the used PulserModels is returned.
+        :type return_pulser_models: bool
+        :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful is case the
+            Calibration is done on one file with test pulses, but you want to predict the TPA equivalent values of another
+            data set, e.g. the resolution data set, with the same pulser models.
+        :type pulser_models: list of instances of PulserModel
+
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
         ...                     cpe_factor=[1, 1],
@@ -494,16 +501,27 @@ class AnalysisMixin(object):
                     scintillation_efficiency=scintillation_efficiency)
 
     def exposure(self,
-                 detector_mass=None,  # in g
+                 detector_mass=None,  # in kg
                  max_dist=0.1,  # in hours
-                 tp_exclusion_interval=1):  # in seconds
+                 tp_exclusion_interval=1,  # in seconds
+                 return_values=False,
+                 ):
         """
-        TODO
+        Calculate the exposure in the data set.
 
-        :param detector_mass:
-        :type detector_mass:
-        :return:
-        :rtype:
+        This method calculated the live time of the detector by excluding all test pulses, instable intervals and
+        non-measurement times. If a detector mass is handed, the exposure is calculated as well.
+
+        :param detector_mass: The mass of the detector in kg.
+        :type detector_mass: float
+        :param max_dist: The maximal distance between two test pulses in hours, such that the interval in between is still counted
+            as measurement time.
+        :type max_dist: float
+        :param tp_exclusion_interval: The time in seconds that has to be excluded for every test pulse. Typically this
+        is 1.5*length of record window, i.e. ~ a second for a window of length 16384 samples and 25 kHz sample frequency.
+        :type tp_exclusion_interval: float
+        :param return_values: If this is set to True, a tuple of (exposure, live_time) is returned.
+        :type return_values: bool
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
@@ -555,4 +573,10 @@ class AnalysisMixin(object):
                                                                             100 * good_hours / good_intervals[-1][1]))
         print('Dead Time: {:.3f} hours'.format(dead_time))
         if detector_mass is not None:
-            print('Exposure: {:.6f} kg * days.'.format(good_hours / 24 * detector_mass / 1000))
+            exposure = good_hours / 24 * detector_mass
+            print('Exposure: {:.6f} kg * days.'.format(exposure))
+
+        if return_values and detector_mass is not None:
+            return (exposure, good_hours)
+        elif return_values:
+            return (None, good_hours)

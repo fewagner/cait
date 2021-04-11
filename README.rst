@@ -3,14 +3,14 @@ cait
 ****
 
 Cait (Cryogenic Artificial Intelligence Tools) is a Python 3 software package for the machine learning based analysis
-of raw data from cryogenic dark matter experiments. In the current version, it is tailored to the needs of the CRESST
-experiment, but also suitable for the COSINUS and NUCLEUS experiment.
+of raw data from cryogenic dark matter experiments. It is tailored to the needs of the CRESST and COSINUS experiment,
+but applicable to other, similar data structures.
 
-**Documentation:** https://git.cryocluster.org/fwagner/cait/-/wikis/0.-Getting-Started (depricated), preview of new version: https://adoring-hoover-f7972f.netlify.app/
+**Documentation:** Preview of new version: https://adoring-hoover-f7972f.netlify.app/
 
 **Source Code:** https://git.cryocluster.org/fwagner/cait (for CRYOCLUSTER collaborations), sync on: https://github.com/fewagner/cait
 
-**Bug Report:** https://git.cryocluster.org/fwagner/cait/-/issues (for CRYOCLUSTER collaborations), sync on: https://github.com/fewagner/cait/issues
+**Bug Report:** https://git.cryocluster.org/fwagner/cait/-/issues (for CRYOCLUSTER collaborations), otherwise: https://github.com/fewagner/cait/issues
 
 
 Installation
@@ -45,13 +45,13 @@ You can now import the library in Python, e.g.
 Version History
 ===============
 
-Master brunch is on Version 0.1.0-beta.
+Master branch is on Version 1.0.0 and stable.
 
 Version numbers follow the segmantic versioning guide (https://semver.org/).
 
 We want you ...
 ===============
 
-... to contribute! Cait is in a very early stage of development and we are happy about any contributions. To coordinate 
+... to contribute! We are always happy about any contributions to our software. To coordinate
 efforts, please get in touch with felix.wagner(at)oeaw.ac.at such that we can include your
 features in the upcoming release. If you have any troubles with the current release, please open an issue in the Bug Report.

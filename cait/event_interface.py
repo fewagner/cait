@@ -31,14 +31,16 @@ class EventInterface:
         necessary for unique identification of the data.
     :type run: string
     :param record_length: The number of samples in a record window.
-    :type int
+    :type record_length: int
     :param sample_frequency: The record frequency of the measurement.
-    :type int
+    :type sample_frequency: int
     :param nmbr_channels: The number of channels of the detector modules,
         typically 1, 2 (phonon/light) or 3 (including I-sticks or ring).
     :type nmbr_channels: int
     :param down: The downsample rate for viewing the events. This can later be adapted in the interactive menu.
     :type down: int
+    :param dpi: Dots per inch for the plots.
+    :type dpi: int
 
     >>> ei = ai.EventInterface()
     Event Interface Instance created.
@@ -385,6 +387,13 @@ class EventInterface:
         """
         Add the optimal transfer function from the HDF5 file.
 
+        :param down: The downsample factor of the optimal transfer function. The data set of the optimumfilter in the HDF5
+            set has a consistent name appendix _downX.
+        :type down: int
+        :param group_name_appendix: A string that is appended to the group name optimumfilter in the HDF5 file. Typically
+            this could be _tp for a test pulse optimum filter.
+        :type group_name_appendix: str
+
         This is needed in order to view the filtered event in the labeling or viewing process. For this to work, the
         optimal transfer function must be included in the HDF5 file, e.g. calculated with an instance of the DataHandler
         before (dh.calc_of()).
@@ -415,8 +424,14 @@ class EventInterface:
         fit parameters for every event must be included in the HDF5 file, e.g. calculated with an instance of the
         DataHandler before (dh.apply_sev_fit()).
 
+        :param name_appendix: An appendix to the data set sev_fit_par in the HDF5 set. Typically this is _downX in case
+            a downsampling was used for the fit.
+        :type name_appendix: string
         :param sample_length: The length of a sample in milliseconds, i.e. 1/sample_frequency.
         :type sample_length: float
+        :param group_name_appendix: A string that is appended to the group name stdevent in the HDF5 file. Typically
+            this could be _tp for a test pulse standard event.
+        :type group_name_appendix: string
 
         >>> ei.load_sev_par()
         Added the sev fit parameters.
@@ -453,6 +468,8 @@ class EventInterface:
         :param down: int, the downsample rate
         :param color: string, the color in which the mp are plotted
         :param offset_in_samples: int, an offset parameter from the beginning of the file
+        :param xlim: tuple, the lower and upper limit of the x axis in the plot, in sample numbers
+        :offset_sub: float, a value that is additionally substracted from the y values
         """
         pulse_height = main_par[0]
         t_zero = main_par[1]
@@ -872,6 +889,9 @@ class EventInterface:
 
         :param start_from_idx: An event index to start labeling from.
         :type start_from_idx: int
+        :param print_label_list: If set to true, the list of the labels is printed together when the user is asked for
+            labels.
+        :type print_label_list: bool
         :param label_only_class: If set only events of this class will be shown in the labeling/viewing process.
         :type label_only_class: int
         :param label_only_prediction: If set only events of this prediction will be shown in the labeling/viewing process.
