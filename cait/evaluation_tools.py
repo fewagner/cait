@@ -941,6 +941,27 @@ class EvaluationTools:
     # ################### PLOT ###################
 
     def plot_event(self, index, what='all', plot_mainpar=False, text=None, verb=False):
+        """
+        Plots a single event specified by the index from all available events.
+        It is also used for the interactiv plot functions, called 'plt_pred_with_tsne' and 'plt_pred_with_pca'.
+        If the parameter plot_mainpar is set to True some main parameters are added to the plot. 
+
+        :param verb: enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        :return: tuple of size 6, where every entry in this tuple is an array
+        :rtype: tuple
+
+        :param index: index of event to be plotted from the list of events
+        :type index: integer
+        :param what: usually the index from 'all' (default) is used, but for special cases it might be needed to use the index of all events of the 'test' or 'train' set
+        :type what: str, optional
+        :param plot_mainpar: adds some of the main parameters to the plot; by default this parameter is False
+        :type plot_mainpar: bool, optional
+        :param text: defines the title of the plot; if set to None (default) no title is added 
+        :type text: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        """
 
         if verb:
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
