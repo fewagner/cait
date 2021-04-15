@@ -71,8 +71,10 @@ def optimal_transfer_function(stdevent, nps):
 def filter_event(event, transfer_function, window=False):
     """
     this function filters a single event
+
     :param event: 1D array of the one event that should be filtered, size N
-    :param transition_function: the filter in fourier space, size N/2 +1 complex numpy array
+    :param transfer_function: the filter in fourier space, size N/2 +1 complex numpy array
+    :param window: bool, if activated the array is multiplied with a window function befor filtering
     :return: 1D array length N, the filtered event
     """
     if window:
@@ -96,8 +98,11 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     :param nps: 1D array, length N/2 + 1, the noise power spectrum
     :param hard_restrict: bool, The maximum search is restricted to 20-30% of the record window.
     :param down: int, a factor by which the events and filter is downsampled before application
+    :param window: bool, if activated the array is multiplied with a window function befor filtering
     :param peakpos: array of length nmbr_events,
     :param return_peakpos: bool, if true a second array is returned, namely the peak positions within the arrays
+    :param flexibility: int, in case a peak position is provided, the maximum search can still deviate by this
+        amount of samples
     :return: 1D array size (nmbr_events), the phs after of filtering; if return_peakpos is true, this is instead
         a 2-tuple of the of_ph and the maximum positions
     """

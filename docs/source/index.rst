@@ -12,6 +12,7 @@
    tips
    magic
    bandfit
+   changelog
 
 .. toctree::
    :caption: Tutorials

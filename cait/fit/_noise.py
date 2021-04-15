@@ -14,7 +14,18 @@ import numba as nb
 # ------------------------------------------
 
 def noise_trigger_template(x_max, d, sigma):
-    # TODO
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :return:
+    :rtype:
+    """
     P = (d / np.sqrt(2 * np.pi) / sigma)
     P *= np.exp(-(x_max / np.sqrt(2) / sigma) ** 2)
     P *= (1 / 2 + erf(x_max / np.sqrt(2) / sigma) / 2) ** (d - 1)
@@ -22,8 +33,6 @@ def noise_trigger_template(x_max, d, sigma):
 
 
 def wrapper(x_max, d, sigma):
-    # TODO
-
     sigma_lower_bound = 0.0001
     if sigma < sigma_lower_bound:
         P = 1000 * np.abs(sigma_lower_bound - sigma) + 1000
@@ -36,7 +45,16 @@ def wrapper(x_max, d, sigma):
 def get_noise_parameters_binned(counts,
                                 bins,
                                 ):
-    # TODO
+    """
+    TODO
+
+    :param counts:
+    :type counts:
+    :param bins:
+    :type bins:
+    :return:
+    :rtype:
+    """
 
     x_data = bins[:-1] + (bins[1] - bins[0]) / 2
     ydata = counts
@@ -57,12 +75,40 @@ def get_noise_parameters_binned(counts,
 # ------------------------------------------
 
 def gauss_noise(x_max, d, sigma):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :return:
+    :rtype:
+    """
+
     P = d * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     P[P < 10e-8] = 10e-8
     return P
 
 
 def pollution_exponential_noise(x_max, d, sigma, lamb):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param lamb:
+    :type lamb:
+    :return:
+    :rtype:
+    """
+
     P = expon.pdf(x_max, scale=1 / lamb) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     P += expon.cdf(x_max, scale=1 / lamb) * (d - 1) * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0,
                                                                                                      scale=sigma) ** (
@@ -72,6 +118,23 @@ def pollution_exponential_noise(x_max, d, sigma, lamb):
 
 
 def fraction_exponential_noise(x_max, d, sigma, lamb, w):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param lamb:
+    :type lamb:
+    :param w:
+    :type w:
+    :return:
+    :rtype:
+    """
+
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.pdf(x_max, scale=1 / lamb)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.cdf(x_max, scale=1 / lamb)) ** (d - 1)
     P[P < 10e-8] = 10e-8
@@ -79,6 +142,23 @@ def fraction_exponential_noise(x_max, d, sigma, lamb, w):
 
 
 def pollution_gauss_noise(x_max, d, sigma, mu, sigma_2):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param mu:
+    :type mu:
+    :param sigma_2:
+    :type sigma_2:
+    :return:
+    :rtype:
+    """
+
     P = norm.pdf(x_max, loc=mu, scale=sigma_2) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     P += (d - 1) * norm.cdf(x_max, loc=mu, scale=sigma_2) * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0,
                                                                                                            scale=sigma) ** (
@@ -88,6 +168,25 @@ def pollution_gauss_noise(x_max, d, sigma, mu, sigma_2):
 
 
 def fraction_gauss_noise(x_max, d, sigma, mu, sigma_2, w):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param mu:
+    :type mu:
+    :param sigma_2:
+    :type sigma_2:
+    :param w:
+    :type w:
+    :return:
+    :rtype:
+    """
+
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.pdf(x_max, loc=mu, scale=sigma_2)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.cdf(x_max, loc=mu, scale=sigma_2)) ** (d - 1)
     P[P < 10e-8] = 10e-8
@@ -99,6 +198,21 @@ def fraction_gauss_noise(x_max, d, sigma, mu, sigma_2, w):
 # ------------------------------------------
 
 def pollution_exponential_noise_gauss_comp(x_max, d, sigma, lamb):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param lamb:
+    :type lamb:
+    :return:
+    :rtype:
+    """
+
     P = expon.cdf(x_max, scale=1 / lamb) * (d - 1) * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0,
                                                                                                     scale=sigma) ** (
                 d - 2)
@@ -106,12 +220,44 @@ def pollution_exponential_noise_gauss_comp(x_max, d, sigma, lamb):
 
 
 def fraction_exponential_noise_gauss_comp(x_max, d, sigma, lamb, w):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param lamb:
+    :type lamb:
+    :param w:
+    :type w:
+    :return:
+    :rtype:
+    """
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.cdf(x_max, scale=1 / lamb)) ** (d - 1)
     return P
 
 
 def pollution_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param mu:
+    :type mu:
+    :param sigma_2:
+    :type sigma_2:
+    :return:
+    :rtype:
+    """
     P = (d - 1) * norm.cdf(x_max, loc=mu, scale=sigma_2) * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0,
                                                                                                           scale=sigma) ** (
                 d - 2)
@@ -119,6 +265,24 @@ def pollution_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2):
 
 
 def fraction_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2, w):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param mu:
+    :type mu:
+    :param sigma_2:
+    :type sigma_2:
+    :param w:
+    :type w:
+    :return:
+    :rtype:
+    """
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.cdf(x_max, loc=mu, scale=sigma_2)) ** (d - 1)
     return P
@@ -130,22 +294,86 @@ def fraction_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2, w):
 
 
 def pollution_exponential_noise_poll_comp(x_max, d, sigma, lamb):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param lamb:
+    :type lamb:
+    :return:
+    :rtype:
+    """
     P = expon.pdf(x_max, scale=1 / lamb) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     return P
 
 
 def fraction_exponential_noise_poll_comp(x_max, d, sigma, lamb, w):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param lamb:
+    :type lamb:
+    :param w:
+    :type w:
+    :return:
+    :rtype:
+    """
     P = d * ((1 - w) * expon.pdf(x_max, scale=1 / lamb)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.cdf(x_max, scale=1 / lamb)) ** (d - 1)
     return P
 
 
 def pollution_gauss_noise_poll_comp(x_max, d, sigma, mu, sigma_2):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param mu:
+    :type mu:
+    :param sigma_2:
+    :type sigma_2:
+    :return:
+    :rtype:
+    """
     P = norm.pdf(x_max, loc=mu, scale=sigma_2) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     return P
 
 
 def fraction_gauss_noise_poll_comp(x_max, d, sigma, mu, sigma_2, w):
+    """
+    TODO
+
+    :param x_max:
+    :type x_max:
+    :param d:
+    :type d:
+    :param sigma:
+    :type sigma:
+    :param mu:
+    :type mu:
+    :param sigma_2:
+    :type sigma_2:
+    :param w:
+    :type w:
+    :return:
+    :rtype:
+    """
     P = d * ((1 - w) * norm.pdf(x_max, loc=mu, scale=sigma_2)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.cdf(x_max, loc=mu, scale=sigma_2)) ** (d - 1)
     return P
@@ -222,7 +450,16 @@ def nll_fraction_gauss(pars, x):
 def get_noise_parameters_unbinned(events,
                                   model='gauss',
                                   ):
-    # TODO
+    """
+    TODO
+
+    :param events:
+    :type events:
+    :param model:
+    :type model:
+    :return:
+    :rtype:
+    """
 
     if model == 'gauss':
         # d, sigma
@@ -294,7 +531,50 @@ def plot_noise_trigger_model(bins_hist,
                              only_histogram,
                              save_path,
                              ):
-    # TODO
+    """
+    TODO
+
+    :param bins_hist:
+    :type bins_hist:
+    :param counts_hist:
+    :type counts_hist:
+    :param x_grid:
+    :type x_grid:
+    :param trigger_window:
+    :type trigger_window:
+    :param ph_distribution:
+    :type ph_distribution:
+    :param model:
+    :type model:
+    :param polluted_ph_distribution:
+    :type polluted_ph_distribution:
+    :param title:
+    :type title:
+    :param xran_hist:
+    :type xran_hist:
+    :param noise_trigger_rate:
+    :type noise_trigger_rate:
+    :param polluted_trigger_rate:
+    :type polluted_trigger_rate:
+    :param threshold:
+    :type threshold:
+    :param yran:
+    :type yran:
+    :param allowed_noise_triggers:
+    :type allowed_noise_triggers:
+    :param nmbr_pollution_triggers:
+    :type nmbr_pollution_triggers:
+    :param xran:
+    :type xran:
+    :param ylog:
+    :type ylog:
+    :param only_histogram:
+    :type only_histogram:
+    :param save_path:
+    :type save_path:
+    :return:
+    :rtype:
+    """
 
     # plot the counts
     plt.close()
@@ -314,6 +594,10 @@ def plot_noise_trigger_model(bins_hist,
         plt.title(title)
     if xran_hist is not None:
         plt.xlim(xran_hist)
+    if yran is not None:
+        plt.ylim(yran)
+    else:
+        plt.ylim(bottom=0.1)
     if ylog:
         plt.yscale('log')
         plt.ylim(bottom=np.min(counts_hist[counts_hist > 0] / trigger_window) / 10)
@@ -368,7 +652,30 @@ def plot_noise_trigger_model(bins_hist,
 
 def calc_threshold(record_length, sample_length, detector_mass, interval_restriction, ul, ll, model,
                    pars, allowed_noise_triggers):
-    # TODO
+    """
+    TODO
+
+    :param record_length:
+    :type record_length:
+    :param sample_length:
+    :type sample_length:
+    :param detector_mass:
+    :type detector_mass:
+    :param interval_restriction:
+    :type interval_restriction:
+    :param ul:
+    :type ul:
+    :param ll:
+    :type ll:
+    :param model:
+    :type model:
+    :param pars:
+    :type pars:
+    :param allowed_noise_triggers:
+    :type allowed_noise_triggers:
+    :return:
+    :rtype:
+    """
 
     if model == 'gauss':
         d, sigma = pars

@@ -18,43 +18,52 @@ class LSTMModule(LightningModule):
     """
     Lightning module for the training of an LSTM model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
+
+    :param input_size: the number of features that get passed to the LSTM in one time step
+    :type input_size: int
+    :param hidden_size: the number of nodes in the hidden layer of the lstm
+    :type hidden_size: int
+    :param num_layers: the number of LSTM layers
+    :type num_layers: int
+    :param seq_steps: the number of time steps
+    :type seq_steps: int
+    :param device_name: the device on that the NN is trained
+    :type device_name: string, either 'cpu' or 'cude'
+    :param nmbr_out: the number of output nodes the last linear layer after the lstm has
+    :type nmbr_out: int
+    :param label_keys: the keys of the dataset that are used as labels
+    :type label_keys: list of strings
+    :param feature_keys: the keys of the dataset that are used as nn inputs
+    :type feature_keys: list of strings
+    :param lr: the learning rate for the neural network training
+    :type lr: float between 0 and 1
+    :param is_classifier: if true, the output of the nn gets an additional softmax activation
+    :type is_classifier: bool
+    :param down: the downsample factor of the training data set, if one is applied
+    :type down: int
+    :param down_keys: the keys of the data that is to downsample (usually the event time series)
+    :type down_keys: list of string
+    :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
+    :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
+    :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
+    :type offset_keys: list of strings
+    :param weight_decay: The weight decay parameter for the optimizer.
+    :type weight_decay: float
+    :param bidirectional: If true, a bidirectional LSTM is used.
+    :type bidirectional: bool
+    :param norm_type: Either 'z' (mu=0, sigma=1) or 'minmax' (min=0, max=1). The type of normalization.
+    :type norm_type: string
+    :param lr_scheduler: If true, a learning rate scheduler is used.
+    :type lr_scheduler: bool
+    :param indiv_norm: If true, every event is divide by its maximal value before passing into the network.
+    :type indiv_norm: bool
+    :param attention: If activated, an attention layer is added before passing into the model.
+    :type attention: bool
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
                  norm_vals=None, offset_keys=None, weight_decay=1e-5, bidirectional=False,
                  norm_type='minmax', lr_scheduler=True, indiv_norm=False, attention=False):
-        """
-        Initial information for the neural network module
-
-        :param input_size: the number of features that get passed to the LSTM in one time step
-        :type input_size: int
-        :param hidden_size: the number of nodes in the hidden layer of the lstm
-        :type hidden_size: int
-        :param num_layers: the number of LSTM layers
-        :type num_layers: int
-        :param seq_steps: the number of time steps
-        :type seq_steps: int
-        :param device_name: the device on that the NN is trained
-        :type device_name: string, either 'cpu' or 'cude'
-        :param nmbr_out: the number of output nodes the last linear layer after the lstm has
-        :type nmbr_out: int
-        :param label_keys: the keys of the dataset that are used as labels
-        :type label_keys: list of strings
-        :param feature_keys: the keys of the dataset that are used as nn inputs
-        :type feature_keys: list of strings
-        :param lr: the learning rate for the neural network training
-        :type lr: float between 0 and 1
-        :param is_classifier: if true, the output of the nn gets an additional softmax activation
-        :type is_classifier: bool
-        :param down: the downsample factor of the training data set, if one is applied
-        :type down: int
-        :param down_keys: the keys of the data that is to downsample (usually the event time series)
-        :type down_keys: list of string
-        :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
-        :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
-        :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
-        :type offset_keys: list of strings
-        """
 
         super().__init__()
         self.save_hyperparameters()
@@ -225,6 +234,8 @@ class LSTMModule(LightningModule):
                 for key in self.norm_vals.keys():
                     min, max = self.norm_vals[key]
                     sample[key] = (sample[key] - min) / (max - min)
+            else:
+                raise NotImplementedError('This normalization type is not implemented.')
 
         # downsample
         if self.down_keys is not None:

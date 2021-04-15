@@ -105,6 +105,9 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04, down=1, t0_start=-3, t0_
     :param x0: None or 1D array (t0, An, At, tau_n, tau_in, tau_t); the start values for the fit
     :param sample_length: float, the length of one sample in milliseconds
     :param down: int, should be power of 2, downsample rate during the fit
+    :param t0_start: float, the start value for t0
+    :param t0_bounds: tuple, lower and upper bound for the t0 value
+    :param opt_start: bool, if activated the start values are searched with a differential evolution algorithm
     :return: 1D array length 6, the fitted parameters
     """
     record_length = event.shape[0]
@@ -148,16 +151,4 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04, down=1, t0_start=-3, t0_
 
     res = par.x
 
-    # res, _ = curve_fit(f=pulse_template,
-    #                    xdata=t_dummy,
-    #                    ydata=event,
-    #                    p0=x0,
-    #                    maxfev=1000000,
-    #                    bounds=[(t0_bounds[0], 0, 0, 1e-2, 1e-2, 1e-2),
-    #                            (t0_bounds[1], 5 * height_event, 5 * height_event, 3e3, 1e2, 1e3)])
-
-    # except RuntimeError:
-    #     print("Error - curve_fit failed")
-    #     return np.zeros(x0.shape)
-    # print("Fit Successful.")
     return res

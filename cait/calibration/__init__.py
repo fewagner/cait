@@ -5,6 +5,4 @@ from ._pulser_model import *
 
 __all__=['energy_calibration',
          'light_yield_correction',
-         'energy_calibration_linear',
-         'energy_calibration_tree',
          'PulserModel']

@@ -43,6 +43,8 @@ def generate_standard_event(events,
     :param verb: bool, if True verbal feedback about the progress of the program is provided
     :param scale_fit_height: bool, if True the fitpar of the sev are scaled to height 1 after the fit
     :param sample_length: float, the length of one sample in milliseconds --> needed for the fit!
+    :param t0_start: float, the start value for t0
+    :param opt_start: bool, if activated the starting values are searched with a differential evolution algorithm
     :return: tuple of (sev, fitpar): sev is 1D array with len=record_length ... the calculated sev,
         fitpar is 1D array with len=parameters of fit (i think 6) ... the fit parameters
     """

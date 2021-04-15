@@ -15,7 +15,30 @@ def nn_predict(h5_path: str,
                chunk_size: int = 50,
                no_channel_idx_in_pred: bool = False,
                ):
-    # TODO
+    """
+    TODO
+
+    :param h5_path:
+    :type h5_path:
+    :param feature_channel:
+    :type feature_channel:
+    :param model:
+    :type model:
+    :param ptl_module:
+    :type ptl_module:
+    :param ptl_ckp_path:
+    :type ptl_ckp_path:
+    :param group_name:
+    :type group_name:
+    :param prediction_name:
+    :type prediction_name:
+    :param keys:
+    :type keys:
+    :param chunk_size:
+    :type chunk_size:
+    :param no_channel_idx_in_pred:
+    :type no_channel_idx_in_pred:
+    """
 
     if model is None and (ptl_module is None or ptl_ckp_path is None):
         raise KeyError('You need provide either model or ptl_module path and ptl_model_path!')
@@ -84,7 +107,24 @@ def mh_predict(h5_path: str,
                mh_path: str = None,
                which_data: str = 'mainpar',
                ):
-    # TODO
+    """
+    TODO
+
+    :param h5_path:
+    :type h5_path:
+    :param feature_channel:
+    :type feature_channel:
+    :param type:
+    :type type:
+    :param model_type:
+    :type model_type:
+    :param model_handler:
+    :type model_handler:
+    :param mh_path:
+    :type mh_path:
+    :param which_data:
+    :type which_data:
+    """
 
     if model_handler is None and mh_path is None:
         raise KeyError("You need provide either model_handler or mh_path!")

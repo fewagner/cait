@@ -16,6 +16,17 @@ from ..filter._of import filter_event
 class MainParameters():
     """
     Class to contain the main parameters
+
+    :param pulse_height: float, the height of the event
+    :param t_zero: int, the sample index where the rise starts
+    :param t_rise: int, the sample index where the rise reaches 80%
+    :param t_max: int, the sample index of the max event
+    :param t_decaystart: int, the sample index where the peak falls down to 90%
+    :param t_half: int, the sample index where the peak falls down to 73%
+    :param t_end: int, the sample index where the peak falls down to 36%
+    :param offset: float, the mean of the first 1/8 of the record length
+    :param linear_drift: float, the linear slope of the event baseline
+    :param quadratic_drift: float, the quadratic slope of the event baseline
     """
 
     def __init__(self,
@@ -29,20 +40,6 @@ class MainParameters():
                  offset=0,
                  linear_drift=0,
                  quadratic_drift=0):
-        """
-        Provide the main parameters
-
-        :param pulse_height: float, the height of the event
-        :param t_zero: int, the sample index where the rise starts
-        :param t_rise: int, the sample index where the rise reaches 80%
-        :param t_max: int, the sample index of the max event
-        :param t_decaystart: int, the sample index where the peak falls down to 90%
-        :param t_half: int, the sample index where the peak falls down to 73%
-        :param t_end: int, the sample index where the peak falls down to 36%
-        :param offset: float, the mean of the first 1/8 of the record length
-        :param linear_drift: float, the linear slope of the event baseline
-        :param quadratic_drift: float, the quadratic slope of the event baseline
-        """
         self.pulse_height = pulse_height
         self.t_zero = t_zero
         self.t_rise = t_rise
@@ -57,8 +54,6 @@ class MainParameters():
     def print_all(self):
         """
         Method to print all the stored main parameters
-
-        :return: -
         """
         print('Pulse height: ', self.pulse_height)
         print('Index of Rise Start: ', self.t_zero)
@@ -130,7 +125,7 @@ class MainParameters():
         :param color: string, the color of the main parameters in the scatter plot
         :param zorder: int, the plot with the highest zorder is plot on top of the others
             this should be choosen high, such that the main parameters are visible
-        :return: -
+        :param fig: object, the pyplot figure to which we want to plot the parameters
         """
 
         # t = np.linspace(0, nmbr_samples-1, nmbr_samples) - nmbr_samples/4
@@ -208,6 +203,8 @@ def calc_main_parameters(event, down=1, max_bounds=None, quad_drift=False):
 
     :param event: 1D array, the event
     :param down: integer, power of 2, the factor for downsampling
+    :param max_bounds: tuple, the lower and upper index of the interval within which the maximum is searched
+    :param quad_drift: bool, include quadratic drift in the calculation
     :return: instance of MainParameters, see :class:`~simulate.MainParameters`
     """
 
@@ -333,8 +330,9 @@ def calc_additional_parameters(event,
     """
     Calculate parameters additionally to the main parameters
 
-    :param optimal_transfer_function:
-    :param down:
+    :param event: array, the event of which we want to calculate the additional main parameters
+    :param optimal_transfer_function: array, the optimum filter transfer function
+    :param down: int, if we want to downsample the event by a factor, this can be done here
     :return: List of float values parameters (maximum of array,
                      minimum of array,
                      variance of first 1/8 or array,
@@ -393,9 +391,9 @@ def calc_additional_parameters(event,
     filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
     filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
 
-    return np.array([max, # 0
-                     min, # 1
-                     var_start, # 2
+    return np.array([max,  # 0
+                     min,  # 1
+                     var_start,  # 2
                      mean_start,  # 3
                      var_end,  # 4
                      mean_end,  # 5

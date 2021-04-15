@@ -288,50 +288,59 @@ class FitMixin(object):
                                    save_path=None,
                                    ):
         """
+        Estimate the trigger threshold to obtain a given number of noise triggers per exposure.
 
+        The method assumes a Gaussian sample distribution of the noise, following arXiv:1711.11459. There are multiple
+        extensions implemented, that descibe additional Gaussian mixture or non-Gaussian components. A more extensive
+        description can be found in the corresponding tutorial.
 
-        :param channel:
-        :type channel:
-        :param detector_mass:
-        :type detector_mass:
-        :param allowed_noise_triggers:
-        :type allowed_noise_triggers:
-        :param method:
-        :type method:
-        :param bins:
-        :type bins:
-        :param yran:
-        :type yran:
-        :param xran:
-        :type xran:
-        :param xran_hist:
-        :type xran_hist:
-        :param ul:
-        :type ul:
-        :param ll:
-        :type ll:
-        :param cut_flag:
-        :type cut_flag:
-        :param plot:
-        :type plot:
-        :param title:
-        :type title:
-        :param sample_length:
-        :type sample_length:
-        :param record_length:
-        :type record_length:
+        :param channel: The number of the channel for that we estimate the noise trigger threshold.
+        :type channel: int
+        :param detector_mass: The mass of the detector in kg.
+        :type detector_mass: float
+        :param allowed_noise_triggers: The number of noise triggers that are allowed per kg day exposure.
+        :type allowed_noise_triggers: float
+        :param method: Either 'of' for estimating the noise triggers after optimal filtering or 'ph' for taking the
+            maximum value of the raw data.
+        :type method: string
+        :param bins: The number of bins for the histogram plots.
+        :type bins: int
+        :param yran: The range of the y axis on both plots.
+        :type yran: tuple of two floats
+        :param xran: The range of the x axis on the noise trigger estimation plot.
+        :type xran: tuple of two floats
+        :param xran_hist: The range of the x axis on the histogram plot.
+        :type xran_hist: tuple of two floats
+        :param ul: The upper limit of the interval that is used to search a threshold, in mV.
+        :type ul: float
+        :param ll: The lower limit of the interval that is used to search a threshold, in mV.
+        :type ll: float
+        :param cut_flag: A list of boolean values that determine which events are excluded from the calculation.
+        :type cut_flag: list of bool
+        :param plot: If True, a plot of the fit and the noise trigger estimation are shown.
+        :type plot: bool
+        :param title: A title for both plots.
+        :type title: string
+        :param sample_length: The length of a sample in seconds.
+        :type sample_length: float
+        :param record_length: The number of samples within a record window.
+        :type record_length: int
         :param interval_restriction:
         :type interval_restriction:
-        :param binned_fit:
-        :type binned_fit:
-        :param model:
-        :type model:
-        :param ylog:
-        :type ylog:
-        :param save_path:
-        :type save_path:
-        :return:
-        :rtype:
+        :param binned_fit: Not recommended. If chosen, the model is fit with least squared to the histogram. Otherwise
+            an unbinned likelihood fit is performed.
+        :type binned_fit: bool
+        :param model: Determine which model is fit to the noise.
+            - 'gauss': Model of purely Gaussian noise.
+            - 'pollution_exponential': Model of Gaussian noise with one exponentially distributed sample on each baseline.
+            - 'fraction_exponential': Mixture model of Gaussian and exponentially distributed noise.
+            - 'pollution_gauss': Model of Gaussian noise and one sample in each baseline that follows another, also Gaussian distribution.
+            - 'fraction_gauss':  Mixture model of two Gaussian noise components.
+        :type model: string
+        :param ylog: If set, the y axis is plotted logarithmically on the histogram plot.
+        :type ylog: bool
+        :param save_path: A path to save the plots.
+        :type save_path: string
         """
 
         print('Estimating Trigger Threshold.')

@@ -18,6 +18,50 @@ from tqdm.auto import tqdm, trange
 # class
 
 class Bandfit():
+    """
+    A class for calculating a bandfit in the energy-light plane.
+
+    :param values_module_independent:
+    :type values_module_independent:
+    :param lbounds_module_independent:
+    :type lbounds_module_independent:
+    :param ubounds_module_independent:
+    :type ubounds_module_independent:
+    :param fixed_module_independent:
+    :type fixed_module_independent:
+    :param values_nuclear:
+    :type values_nuclear:
+    :param lbounds_nuclear:
+    :type lbounds_nuclear:
+    :param ubounds_nuclear:
+    :type ubounds_nuclear:
+    :param fixed_nuclear:
+    :type fixed_nuclear:
+    :param values_gamma:
+    :type values_gamma:
+    :param lbounds_gamma:
+    :type lbounds_gamma:
+    :param ubounds_gamma:
+    :type ubounds_gamma:
+    :param fixed_gamma:
+    :type fixed_gamma:
+    :param values_beta:
+    :type values_beta:
+    :param lbounds_beta:
+    :type lbounds_beta:
+    :param ubounds_beta:
+    :type ubounds_beta:
+    :param fixed_beta:
+    :type fixed_beta:
+    :param values_inelastic:
+    :type values_inelastic:
+    :param lbounds_inelastic:
+    :type lbounds_inelastic:
+    :param ubounds_inelastic:
+    :type ubounds_inelastic:
+    :param fixed_inelastic:
+    :type fixed_inelastic:
+    """
 
     def __init__(self,
                  values_module_independent,
@@ -167,8 +211,6 @@ class Bandfit():
         :type path_cuteff:
         :param region_of_interest:
         :type region_of_interest:
-        :return:
-        :rtype:
         """
 
         def out_of_bound_index(array,
@@ -218,6 +260,14 @@ class Bandfit():
 
         :param method:
         :type method:
+        :param verb:
+        :type verb:
+        :param maxiter:
+        :type maxiter:
+        :param workers:
+        :type workers:
+        :param optstart:
+        :type optstart:
         :return:
         :rtype:
         """
@@ -313,9 +363,7 @@ class Bandfit():
                  lower_acceptance: float = 0.005,
                  ):
         """
-        TODO
-
-        plot background & neutron calibration data, and show signal survival probability
+        plot background data
 
         :param binwidth:
         :type binwidth:
@@ -323,8 +371,16 @@ class Bandfit():
         :type lowErange:
         :param lowEbinw:
         :type lowEbinw:
-        :return:
-        :rtype:
+        :param plot_bands:
+        :type plot_bands:
+        :param grid_step:
+        :type grid_step:
+        :param all_in_one:
+        :type all_in_one:
+        :param upper_acceptance:
+        :type upper_acceptance:
+        :param lower_acceptance:
+        :type lower_acceptance:
         """
 
         if plot_bands:
@@ -422,7 +478,7 @@ class Bandfit():
                   lower_acceptance: float = 0.005,
                   ):
         """
-        TODO
+        plot ncal data
 
         :param binwidth:
         :type binwidth:
@@ -430,8 +486,16 @@ class Bandfit():
         :type lowErange:
         :param lowEbinw:
         :type lowEbinw:
-        :return:
-        :rtype:
+        :param plot_bands:
+        :type plot_bands:
+        :param grid_step:
+        :type grid_step:
+        :param all_in_one:
+        :type all_in_one:
+        :param upper_acceptance:
+        :type upper_acceptance:
+        :param lower_acceptance:
+        :type lower_acceptance:
         """
 
         if plot_bands:
@@ -521,9 +585,6 @@ class Bandfit():
     def plot_survival_prob(self):
         """
         TODO
-
-        :return:
-        :rtype:
         """
 
         plt.close()
@@ -546,7 +607,24 @@ class Bandfit():
                            step_size: float = 10e-5,
                            include_cut_efficiency: bool = True,
                            ):
-        # TODO
+        """
+        TODO
+
+        :param energy_array:
+        :type energy_array:
+        :param nucleus:
+        :type nucleus:
+        :param upper_acceptance:
+        :type upper_acceptance:
+        :param lower_acceptance:
+        :type lower_acceptance:
+        :param step_size:
+        :type step_size:
+        :param include_cut_efficiency:
+        :type include_cut_efficiency:
+        :return:
+        :rtype:
+        """
 
         # get mean of band
         mean_nuclear_band = self._get_band_mean(nucleus, energy_array)  # mean of nuclear recoil band
@@ -577,7 +655,16 @@ class Bandfit():
                             upper_acceptance: float = 0.5,
                             lower_acceptance: float = 0.005,
                             ):
-        # TODO
+        """
+        TODO
+
+        :param upper_acceptance:
+        :type upper_acceptance:
+        :param lower_acceptance:
+        :type lower_acceptance:
+        :return:
+        :rtype:
+        """
         try:
 
             accepted_events = []

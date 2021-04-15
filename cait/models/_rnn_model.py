@@ -18,45 +18,41 @@ class RNNModule(LightningModule):
     """
     Lightning module for the training of an RNN model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
+
+    :param input_size: the number of features that get passed to the RNN in one time step
+    :type input_size: int
+    :param hidden_size: the number of nodes in the hidden layer of the RNN
+    :type hidden_size: int
+    :param num_layers: the number of RNN layers
+    :type num_layers: int
+    :param seq_steps: the number of time steps
+    :type seq_steps: int
+    :param device_name: the device on that the NN is trained
+    :type device_name: string, either 'cpu' or 'cude'
+    :param nmbr_out: the number of output nodes the last linear layer after the RNN has
+    :type nmbr_out: int
+    :param label_keys: the keys of the dataset that are used as labels
+    :type label_keys: list of strings
+    :param feature_keys: the keys of the dataset that are used as nn inputs
+    :type feature_keys: list of strings
+    :param lr: the learning rate for the neural network training
+    :type lr: float between 0 and 1
+    :param is_classifier: if true, the output of the nn gets an additional softmax activation
+    :type is_classifier: bool
+    :param down: the downsample factor of the training data set, if one is applied
+    :type down: int
+    :param down_keys: the keys of the data that is to downsample (usually the event time series)
+    :type down_keys: list of string
+    :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
+    :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
+    :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
+    :type offset_keys: list of strings
+    :param weight_decay: The weight decay parameter for the optimizer.
+    :type weight_decay: float
     """
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
-                 norm_vals=None, offset_keys=None, weight_decay=1e-5, dain=False):
-        """
-        Initial information for the neural network module
-
-        :param input_size: the number of features that get passed to the RNN in one time step
-        :type input_size: int
-        :param hidden_size: the number of nodes in the hidden layer of the RNN
-        :type hidden_size: int
-        :param num_layers: the number of RNN layers
-        :type num_layers: int
-        :param seq_steps: the number of time steps
-        :type seq_steps: int
-        :param device_name: the device on that the NN is trained
-        :type device_name: string, either 'cpu' or 'cude'
-        :param nmbr_out: the number of output nodes the last linear layer after the RNN has
-        :type nmbr_out: int
-        :param label_keys: the keys of the dataset that are used as labels
-        :type label_keys: list of strings
-        :param feature_keys: the keys of the dataset that are used as nn inputs
-        :type feature_keys: list of strings
-        :param lr: the learning rate for the neural network training
-        :type lr: float between 0 and 1
-        :param is_classifier: if true, the output of the nn gets an additional softmax activation
-        :type is_classifier: bool
-        :param down: the downsample factor of the training data set, if one is applied
-        :type down: int
-        :param down_keys: the keys of the data that is to downsample (usually the event time series)
-        :type down_keys: list of string
-        :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
-        :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
-        :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
-        :type offset_keys: list of strings
-        :param dain: use the deep adaptive input normalization
-        :type dain: bool
-        """
-
+                 norm_vals=None, offset_keys=None, weight_decay=1e-5):
         super().__init__()
         self.save_hyperparameters()
 

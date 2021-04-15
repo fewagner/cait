@@ -105,6 +105,8 @@ def get_max_index(stream,  # memmap array
     :type transfer_function:
     :param down:
     :type down:
+    :param window:
+    :type window:
     :return:
     :rtype:
     """
@@ -179,6 +181,8 @@ def trigger_csmpl(paths,
     :type down:
     :param return_info:
     :type return_info:
+    :param window:
+    :type window:
     :return:
     :rtype:
     """
@@ -285,6 +289,10 @@ def get_record_window(path,
     :type record_length:
     :param sample_duration:
     :type sample_duration:
+    :param down:
+    :type down:
+    :param bytes_per_sample:
+    :type bytes_per_sample:
     :return:
     :rtype:
     """
@@ -344,6 +352,18 @@ def plot_csmpl(path,
     :type hours:
     :param plot_stamps:
     :type plot_stamps:
+    :param plot_stamps_second:
+    :type plot_stamps_second:
+    :param dpi:
+    :type dpi:
+    :param teststamp_path:
+    :type teststamp_path:
+    :param clock:
+    :type clock:
+    :param sec_offset:
+    :type sec_offset:
+    :param save_path:
+    :type save_path:
     :return:
     :rtype:
     """
@@ -492,6 +512,8 @@ def exclude_testpulses(trigger_hours,
     :type tp_hours:
     :param max_time_diff:
     :type max_time_diff:
+    :param in_seconds:
+    :type in_seconds:
     :return:
     :rtype:
     """

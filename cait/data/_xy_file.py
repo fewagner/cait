@@ -7,7 +7,7 @@ import numpy as np
 
 def write_xy_file(filepath, data, title, axis):
     """
-
+    TODO
 
     :param filepath:
     :type filepath:
@@ -42,7 +42,18 @@ def write_xy_file(filepath, data, title, axis):
 
 
 def read_xy_file(filepath, skip_lines=4, separator='\t'):
-    # TODO
+    """
+    TODO
+
+    :param filepath:
+    :type filepath:
+    :param skip_lines:
+    :type skip_lines:
+    :param separator:
+    :type separator:
+    :return:
+    :rtype:
+    """
     values = np.genfromtxt(filepath,
                            skip_header=skip_lines,
                            delimiter=separator)

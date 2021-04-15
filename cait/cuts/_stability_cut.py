@@ -8,8 +8,25 @@ import numpy as np
 def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, lb=0, ub=100):
     """
     Return all event indices, that are between two stable control pulses
+
     TODO
 
+    :param cphs:
+    :type cphs:
+    :param hours_cp:
+    :type hours_cp:
+    :param hours_ev:
+    :type hours_ev:
+    :param significance:
+    :type significance:
+    :param max_gap:
+    :type max_gap:
+    :param lb:
+    :type lb:
+    :param ub:
+    :type ub:
+    :return:
+    :rtype:
     """
 
     print('Do Testpulse Stability Cut')
@@ -82,8 +99,29 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev,
                         lb=None, ub=None):
     """
     Return all event indices, that are between two stable testpulses
+
     TODO
 
+    :param tpas:
+    :type tpas:
+    :param tphs:
+    :type tphs:
+    :param hours_tp:
+    :type hours_tp:
+    :param hours_ev:
+    :type hours_ev:
+    :param significance:
+    :type significance:
+    :param noise_level:
+    :type noise_level:
+    :param max_gap:
+    :type max_gap:
+    :param lb:
+    :type lb:
+    :param ub:
+    :type ub:
+    :return:
+    :rtype:
     """
 
     print('Do Control Pulse Stability Cut')

@@ -9,21 +9,9 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append('..')
 
 import h5py
-from UtilsFiles.CalculateMainParameters import get_times
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import numpy as np
 
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
-
-import itertools
-from scipy import linalg
-from sklearn import mixture
-from sklearn.manifold import TSNE
-
-from UtilsFiles.CalculateMainParameters import *
+from ..features._mp import calc_main_parameters
 
 import argparse
 

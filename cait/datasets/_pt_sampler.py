@@ -5,8 +5,9 @@ def get_random_samplers(test_size, val_size, dataset_size=None, only_idx=None, s
     """
     Chooses the indices for the Split datasets.
 
-    :param dataset_size: Size of the whole dataset, is a number
     :param test_size: float between 0 and 1, the size of the testset
+    :param val_size: float between 0 and 1, the size of the validation set
+    :param dataset_size: Size of the whole dataset, is a number
     :param only_idx: list of ints or None, if set only these indices from the dataset are included
     :param shuffle_dataset: When true, the indices are dataset is shuffled befor the indices are assigned
     :param random_seed: set of some value to get the same datasets always for comparability

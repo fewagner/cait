@@ -7,31 +7,26 @@ import torch
 class H5CryoData(Dataset):
     """
     Pytorch Dataset for the processing of raw data from hdf5 files
+
+    :param type: string, either events or testpulses or noise - the group index of the hd5 data set
+    :param keys: list of strings, the keys that are accessed in the hdf5 group
+    :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
+        of the data sets in the group, if None then no index is set (i.e. if the h5 data set does not belong to
+        a specific channel)
+    :param feature_indices: list of lists or Nones, must have same length than the keys list, the feature indices
+        of the data sets in the group (third idx),
+        if None then no index is set (i.e. there is no third index in the set or all features are chosen)
+    :param keys_one_hot: list of strings, the keys that get one hot encoded - important for correct size
+    :param hdf5_path: string or None, full path to the hdf5 data set, need be provided if no file handle is set
+    :param transform: pytorch transforms class, get applied to every sample when getitem is called
+    :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
+        from the hdf5 file with len(self.f['events/event'][0])
+    :param double: bool, if true all events are cast to double before calculations
     """
 
     def __init__(self, type, keys, channel_indices, feature_indices=None,
                  keys_one_hot=[], hdf5_path = None,
                  transform=None, nmbr_events=None, double=False):
-        """
-        Give instructions how to extract the data from the h5 set
-
-        :param hdf5_path: string or None, full path to the hdf5 data set, need be provided if no file handle is set
-        :param file_handle: hdf5 file stream or None, the stream of the h5 file that holds the data
-        :param type: string, either events or testpulses or noise - the group index of the hd5 data set
-        :param keys: list of strings, the keys that are accessed in the hdf5 group
-        :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
-            of the data sets in the group, if None then no index is set (i.e. if the h5 data set does not belong to
-            a specific channel)
-        :param feature_indices: list of lists or Nones, must have same length than the keys list, the feature indices
-            of the data sets in the group (third idx),
-            if None then no index is set (i.e. there is no third index in the set or all features are chosen)
-        :param keys_one_hot: list of strings, the keys that get one hot encoded - important for correct size
-        :param transform: pytorch transforms class, get applied to every sample when getitem is called
-        :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
-            from the hdf5 file with len(self.f['events/event'][0])
-        :param load_to_memory: bool, if set the whole data gets loaded into memory when the dataset is created - causes
-            less problems with multiprocessing but might cause memory issues
-        """
         self.hdf5_path = hdf5_path
         self.transform = transform
         self.type = type
@@ -61,7 +56,14 @@ class H5CryoData(Dataset):
         return self.nmbr_events
 
     def get_item_no_cache(self, idx):
-        # TODO
+        """
+        TODO
+
+        :param idx:
+        :type idx:
+        :return:
+        :rtype:
+        """
         with h5py.File(self.hdf5_path, 'r') as f:
             sample = self.build_sample(f, idx)
 
@@ -78,7 +80,16 @@ class H5CryoData(Dataset):
         return sample
 
     def build_sample(self, f, idx):
-        # TODO
+        """
+        TODO
+
+        :param f:
+        :type f:
+        :param idx:
+        :type idx:
+        :return:
+        :rtype:
+        """
         sample = {}
         for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
             ls = len(f[self.type + '/' + key].shape)

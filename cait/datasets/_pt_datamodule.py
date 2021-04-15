@@ -9,27 +9,25 @@ from ._pt_dataloader import FastDataLoader
 class CryoDataModule(pl.LightningDataModule):
     """
     Pytorch Lightning DataModule for processing of HDF5 dataset
+
+    :param hdf5_path: string, full path to the hdf5 data set
+    :param type: string, either events or testpulses or noise - the group index of the hd5 data set
+    :param keys: list of strings, the keys that are accessed in the hdf5 group
+    :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
+        of the data sets in the group, if None then no index is set (i.e. if the h5 data set does not belong to
+        a specific channel)
+    :param feature_indices: list of lists or Nones, must have same length than the keys list, the feature indices
+        of the data sets in the group (third idx),
+        if None then no index is set (i.e. there is no third index in the set or all features are chosen)
+    :param transform: pytorch transforms class, get applied to every sample when getitem is called
+    :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
+        from the hdf5 file with len(f['events/event'][0])
+    :param double: bool, if true all events are cast to double before calculations
     """
 
     def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices=None,
                  transform=None, nmbr_events=None, double=False):
         super().__init__()
-        """
-        Give instructions how to extract the data from the h5 set
-
-        :param hdf5_path: string, full path to the hdf5 data set
-        :param type: string, either events or testpulses or noise - the group index of the hd5 data set
-        :param keys: list of strings, the keys that are accessed in the hdf5 group
-        :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
-            of the data sets in the group, if None then no index is set (i.e. if the h5 data set does not belong to
-            a specific channel)
-        :param feature_indices: list of lists or Nones, must have same length than the keys list, the feature indices
-            of the data sets in the group (third idx),
-            if None then no index is set (i.e. there is no third index in the set or all features are chosen)
-        :param transform: pytorch transforms class, get applied to every sample when getitem is called
-        :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
-            from the hdf5 file with len(f['events/event'][0])
-        """
         self.hdf5_path = hdf5_path
         self.transform = transform
         self.type = type
@@ -71,9 +69,7 @@ class CryoDataModule(pl.LightningDataModule):
         :param label_keys: data from these keys is supposed to be labels for the NN training
         :type label_keys: list of strings
         :param keys_one_hot: this data gets one-hot encoded
-        :type channels_one_hot: list of strings
-        :return: -
-        :rtype: -
+        :type keys_one_hot: list of strings
         """
         # called only on 1 GPU
         self.test_size = test_size
@@ -108,9 +104,6 @@ class CryoDataModule(pl.LightningDataModule):
     def setup(self):
         """
         Called on every GPU before start of training, here creation of dataset and splits in samplers are done
-
-        :return: -
-        :rtype: -
         """
 
         if self.dataset_size is None:
@@ -137,6 +130,15 @@ class CryoDataModule(pl.LightningDataModule):
         self.dims = (nmbr_samples, nmbr_features)  # returns full length of data set and nmbr of features
 
     def train_dataloader(self, batch_size=None):
+        """
+        TODO
+
+        :param batch_size: The batchsize.
+        :type batch_size: int
+        :return: Instance of FastDataLoader, a child of the PyTorch DataLoader, developed from within the
+            PyTorch community
+        :rtype: object
+        """
         if batch_size is None:
             batch_size = self.batch_size
         return FastDataLoader(self.dataset_full,
@@ -144,6 +146,15 @@ class CryoDataModule(pl.LightningDataModule):
                               num_workers=self.nmbr_workers)
 
     def val_dataloader(self, batch_size=None):
+        """
+        TODO
+
+        :param batch_size: The batchsize.
+        :type batch_size: int
+        :return: Instance of FastDataLoader, a child of the PyTorch DataLoader, developed from within the
+            PyTorch community
+        :rtype: object
+        """
         if batch_size is None:
             batch_size = self.batch_size
         return FastDataLoader(self.dataset_full,
@@ -151,6 +162,15 @@ class CryoDataModule(pl.LightningDataModule):
                               num_workers=self.nmbr_workers)
 
     def test_dataloader(self, batch_size=None):
+        """
+        TODO
+
+        :param batch_size: The batchsize.
+        :type batch_size: int
+        :return: Instance of FastDataLoader, a child of the PyTorch DataLoader, developed from within the
+            PyTorch community
+        :rtype: object
+        """
         if batch_size is None:
             batch_size = self.batch_size
         return FastDataLoader(self.dataset_full,

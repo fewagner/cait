@@ -25,6 +25,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   ):
     """
     Merges two HDF5 files, groups to merge can be chosen
+    # TODO
 
     :param path_h5_a: path to the first file to merge
     :type path_h5_a: string
@@ -42,9 +43,16 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :type groups_from_a: list of strings
     :param groups_from_b:
     :type groups_from_b: list of strings
-    :param continue_hours: bool, if True, the value of the last hours in a is added to the hours in b
-    :return: -
-    :rtype: -
+    :param a_name:
+    :type a_name:
+    :param b_name:
+    :type b_name:
+    :param continue_hours: if True, the value of the last hours in a is added to the hours in b
+    :type continue_hours: bool
+    :param keep_original_files:
+    :type keep_original_files:
+    :param verb:
+    :type verb:
     """
 
     for v in concatenate_axis:

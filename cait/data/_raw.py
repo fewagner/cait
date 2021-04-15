@@ -2,16 +2,9 @@
 # IMPORTS
 # ---------------------------------------------------------------
 
-# import os
 import numpy as np
 import numba as nb
-import struct
-# from ..fit._pm_fit import arrays_equal
 from pathlib import Path
-# import pathlib
-# import ipdb
-
-from ._progressBar import printProgressBar
 
 
 # ---------------------------------------------------------------
@@ -26,6 +19,7 @@ def convert_to_V(event,
                  offset=0):
     """
     Converts an event from int to volt
+
     :param event: 1D array of the event
     :param bits: int, number of bits in each sample
     :param max: int, the max volt value
@@ -46,6 +40,7 @@ def convert_to_V(event,
 def convert_to_int(event, bits=16, max=10, min=-10, offset=0):
     """
     Converts an event from volt to int
+
     :param event: 1D array of the event
     :param bits: int, number of bits in each sample
     :param max: int, the max volt value
@@ -67,22 +62,23 @@ def read_rdt_file(fname, path, channels,
     """
     Reads a given given hdf5 file and filters out a specific phonon and light
     channel as well as chosen testpulse amplitudes.
+
     :param fname: Name of the hdf5 file. (with or without the '.rdt' extension)
     :param path: Path to the hdf5 file.
-    :param phonon_channel: For selecting the phonon channel.
-    :param light_channel: For selecting the light channel.
-    :param tpa_list: List of which testpulse amplitudes are filtered out.
-                    (Default: [0.0]; if it contains '1.0' all events are taken)
-    :param read_events: Number of events which are read. (default: -1 = read till end)
-    :param chunk_size: int, the init size of the arrays, if array full another chunks gets
-        allocated
+    :param channels: list of ints, the channels from within the rdt file
     :param remove_offset: Removes the offset of an event. (default: False)
+    :param store_as_int: bool, if activated the events are saved as 16 bit int instead of 32 bit float
+    :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+    :type ints_in_header: int
+    :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
+    :type lazy_loading: bool
     :return: returns two arrays of shape (2,n,13) and (2,n,m), where the first
             one contains the metainformation of the filtered events and the
             second contain the pulses.
     """
 
-    nmbr_channels = len(channels)  # this is fixed at the moment, change asap
+    nmbr_channels = len(channels)
 
     if fname[-4:] == '.rdt':
         fname = fname[:-4]
@@ -126,8 +122,6 @@ def read_rdt_file(fname, path, channels,
                        ('samples', 'i2', record_length),
                        ])
 
-    #with open("{}{}.rdt".format(path, fname), "rb") as f:
-        # read whole file
     if not lazy_loading:
         recs = np.fromfile("{}{}.rdt".format(path, fname), dtype=record)
     else:
@@ -182,7 +176,4 @@ def read_rdt_file(fname, path, channels,
     if remove_offset and not store_as_int:
         pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :int(record_length / 8)], axis=2).T).T
 
-        # uncomment if needed
-        # dvms = np.dstack([p_dvms, l_dvms])
-
-    return metainfo, pulse  # , dvms
+    return metainfo, pulse

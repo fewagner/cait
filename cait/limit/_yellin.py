@@ -113,8 +113,8 @@ def calc_c_0(x, mu):
     """
     Probability of the maximum gap size being smaller than a particular value of x.
 
-    :par mu: The expected value of recoils in the gap.
-    :par x: The value with that we compare the maximum gap size.
+    :param mu: The expected value of recoils in the gap.
+    :param x: The value with that we compare the maximum gap size.
     """
     if mu < 0.:
         if x < 1.:
@@ -179,10 +179,10 @@ def expected_recoil_rate(e_recoil: Union[int, float],
 
     :param e_recoil: Given in keV.
     :param m_chi: Considered mass of the Dark Matter particle in GeV.
-    :param exposure:
     :param component_mass: Mass of all atom nucleons in atomic units (u).
     :param component_nucleons: Number nucleons in all atoms.
     :param component_efficiencies: List of cut efficiencies of the atom nucleons. Must all have same length.
+    :param exposure: The exposure in kg days.
     :return: dN/dE in keV^-1.
     """
     # constants
@@ -207,8 +207,16 @@ def expected_recoil_rate(e_recoil: Union[int, float],
 
 class Limit():
     """
+    A class for the calculation of Yellin Maximum Gap Limits.
 
+    :param exposure: The exposure in kg days.
+    :type exposure: float
+    :param component_mass: The masses of all components within the detector material.
+    :type component_mass: array of floats
+    :param component_nucleons: The number of nucleons of all components within the detector material.
+    :type component_nucleons: array of ints
     :param confidence: Confidence level of limit.
+    :type confidence: float
     """
 
     def __init__(self,
@@ -228,7 +236,11 @@ class Limit():
                             paths: list,
                             ):
         """
-        Imports the efficiencies of all nuclei from a given list of paths.
+        Imports the efficiencies of all components from a given list of paths.
+
+        The file has to be in an xy format, first column is the energies, second the efficiency.
+
+        :param paths: list of string, the paths to the efficiencies of all components
         """
 
         self.component_efficiencies = []
@@ -241,6 +253,10 @@ class Limit():
     def import_observations(self, path: str):
         """
         Import the observed recoils of a detector.
+
+        File is in x file format with one recoil energy per line.
+
+        :param path: string, the path to the file with the observed energies
         """
 
         self.detector_AR = np.genfromtxt(path)
@@ -253,8 +269,6 @@ class Limit():
         Calculated the cross section upper limit for given detector observations and a given wimp mass.
 
         :param m_chi: The WIMP mass.
-        :param c: The confidence level of the limit.
-        :param detector_AR: The observed recoil spectrum of the detector.
         """
 
         recoil_cdf, cdf_norm = self._calc_recoil_cum_spec(m_chi)
@@ -275,6 +289,10 @@ class Limit():
         """
         Calculate the wimp cross section upper limit for a given detector.
 
+        :param ll: float, The lowest mass to calculate a limit for.
+        :param ul: float, The highest mass to calculate a limit for.
+        :param steps: The number of values for that we want to calculate the limit.
+        :param plot: bool, If True we plot the limit.
         :return x: The wimp masses.
         :return y: The exclusion cross sections.
         """
@@ -317,6 +335,8 @@ class Limit():
                                ):
         """
         Plot the expected WIMP energy distribution.
+
+        :param wimp_masses: list of float, the wimp masses for that we want to do the plot
         """
         plt.close()
         use_cait_style()
@@ -334,7 +354,9 @@ class Limit():
                                  wimp_masses=[3., 5., 8.],
                                  ):
         """
-        Plot the expected recoil spectra.
+        Plot the expected recoil spectra, including cut efficiencies.
+
+        :param wimp_masses: list of float, the wimp masses for that we want to do the plot
         """
         x = np.linspace(.1, 20., 1000)
 
@@ -360,6 +382,9 @@ class Limit():
                           ):
         """
         Plot the observed recoil histogram.
+
+        :param bins: int, the number of bins in the histogram
+        :param title: string, the title of the plot
         """
         plt.close()
         use_cait_style()

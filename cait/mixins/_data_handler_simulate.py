@@ -46,42 +46,67 @@ class SimulateMixin(object):
                         ps_dev=False,
                         dtype='float32'):
         """
-        Simulates a data set of pulses by superposing the fitted SEV with fake or real noise
+        Simulates a data set of pulses by superposing the fitted SEV with fake or real noise.
 
-        TODO
-
-        :param path_sim: string, the full path where to store the simulated data set
-        :param size_events: int, the number of events to simulate; if >0 we need a sev in the hdf5
-        :param size_tp: int, the number of testpulses to simulate; if >0 we need a tp-sev in the hdf5
-        :param size_noise: int, the number of noise baselines to simulate
-        :param ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists, the interval in which the pulse heights
+        :param path_sim: , the full path where to store the simulated data set
+        :type path_sim: string
+        :param size_events: , the number of events to simulate; if >0 we need a sev in the hdf5
+        :type size_events: int
+        :param size_tp: , the number of testpulses to simulate; if >0 we need a tp-sev in the hdf5
+        :type size_tp: int
+        :param size_noise: , the number of noise baselines to simulate
+        :type size_noise: int
+        :param ev_ph_intervals: , the interval in which the pulse heights
             are continuously distributed
-        :param ev_discrete_phs: list of NMBR_CHANNELS lists - the discrete values, from which the pulse heights
+        :type ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
+        :param ev_discrete_phs:  - the discrete values, from which the pulse heights
             are uniformly sampled. if the ph_intervals argument is set, this option will be ignored
-        :param exceptional_sev_naming: string or None, if set, this is the full group name in the HDF5 set for the
+        :type ev_discrete_phs: list of NMBR_CHANNELS lists
+        :param exceptional_sev_naming: , if set, this is the full group name in the HDF5 set for the
             sev used for the simulation of events - by setting this, e.g. carrier events can be
             simulated
-        :param channel_exceptional_sev: list of ints, the channels for that the exceptional sev is
+        :type exceptional_sev_naming: string or None
+        :param channel_exceptional_sev: , the channels for that the exceptional sev is
             used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1]
+        :type channel_exceptional_sev: list of ints
         :param tp_ph_intervals: analogous to ev_ph_intervals, but for the testpulses
+        :type tp_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
         :param tp_discrete_phs: analogous to ev_ph_intervals, but for the testpulses
-        :param t0_interval: 2-tuple or list, the interval from which the pulse onset are continuously sampled
-        :param fake_noise: bool, the True the noise will be taken not from the measured baselines from the
+        :type tp_discrete_phs: list of NMBR_CHANNELS lists
+        :param t0_interval: , the interval from which the pulse onset are continuously sampled
+        :type t0_interval: 2-tuple or list
+        :param fake_noise: , the True the noise will be taken not from the measured baselines from the
             hdf5 set, but simulated
-        :param store_of: bool, if True the optimum filter will be saved to the simulated datasets
-        :param rms_thresholds: list of two floats, above which value noise baselines are excluded for the
+        :type fake_noise: bool
+        :param store_of: , if True the optimum filter will be saved to the simulated datasets
+        :type store_of: bool
+        :param rms_thresholds: , above which value noise baselines are excluded for the
             distribution of polynomial coefficients (i.e. a parameter for the fake noise simulation), also a
             cut parameter for the noise baselines from the h5 set if no fake ones are taken
-        :param lamb: float, a parameter for the fake baseline simulation, decrease if calculation time is too long
-        :param sample_length: float, the length of one sample in milliseconds
-        :param assign_labels: list of ints, pre-assign a label to all the simulated events; tp and noise are
+        :type rms_thresholds: list of two floats
+        :param lamb: , a parameter for the fake baseline simulation, decrease if calculation time is too long
+        :type lamb: float
+        :param sample_length: , the length of one sample in milliseconds
+        :type sample_length: float
+        :param assign_labels: , pre-assign a label to all the simulated events; tp and noise are
             automatically labeled, the length of the list must match the list channels_exceptional_sev
-        :param start_from_bl_idx: int, the index of baselines that is as first taken for simulation
-        :param saturation: bool, if true apply the logistics curve to the simulated pulses
-        :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
+        :type assign_labels: list of ints
+        :param start_from_bl_idx: , the index of baselines that is as first taken for simulation
+        :type start_from_bl_idx: int
+        :param saturation: , if true apply the logistics curve to the simulated pulses
+        :type saturation: bool
+        :param reuse_bl: , if True the same baselines are used multiple times to have enough of them
             (use this with care to not have identical copies of events)
-        :param pulses_per_bl: int, number of pulses to simulate per one baseline --> gets multiplied to size!!
-        :return: -
+        :type reuse_bl: bool
+        :param pulses_per_bl: , number of pulses to simulate per one baseline --> gets multiplied to size!!
+        :type pulses_per_bl: int
+        :param ps_dev: If True the pulse shape parameters are modelled with deviations. Attention! This will always
+            model TUM40-like phonon pulse shapes! The light channel is not affected by this features. Generally, it is
+            not clear how well the deviations model the actual deviations in measured data, so please handle this
+            feature with care.
+        :type ps_dev: bool
+        :param dtype: The data format of the simulated raw data events array.
+        :type dtype: string
         """
 
         # create file handle

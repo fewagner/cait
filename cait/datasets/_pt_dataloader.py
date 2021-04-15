@@ -3,10 +3,10 @@ import torch.utils.data
 
 
 class _RepeatSampler(object):
-    """ Sampler that repeats forever.
+    """
+    Sampler that repeats forever.
 
-    Args:
-        sampler (Sampler)
+    :param sampler: The Sampler.
     """
 
     def __init__(self, sampler):

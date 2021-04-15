@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 from ..fit._templates import pulse_template
 from ..fit._saturation import logistic_curve
 from ..styles._plt_styles import use_cait_style, make_grid
-
+import warnings
 
 # functions
 
@@ -45,14 +45,28 @@ class PlotMixin(object):
         """
         Plot the standardevent of all channels.
 
-        TODO
-
-        :param type: string, either stdevent for events or stdevent_tp for testpulses
-        :param show_fit: bool, if True then also plot the parametric fit
-        :param block: bool, if False the matplotlib generated figure window does not block
-            the futher code execution
-        :param sample_length: float, the length of a sample milliseconds
-        :return: -
+        :param type: Either stdevent for events or stdevent_tp for testpulses.
+        :type type: string
+        :param channel: If chosen, only this channel is plotted.
+        :type channel: int
+        :param title: A title for the plot.
+        :type title: string
+        :param show_fit: If True then also plot the parametric fit.
+        :type show_fit:bool
+        :param block: If False the matplotlib generated figure window does not block
+            the futher code execution.
+        :type block: bool
+        :param sample_length: The length of a sample milliseconds.
+        :type sample_length: float
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param name_appendix: A string that is appended to the group name standardevent. Typically this is _tp in case
+            we want to plot a test pulse standardevent.
+        :type name_appendix: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         """
 
         with h5py.File(self.path_h5, 'r') as f:
@@ -119,17 +133,26 @@ class PlotMixin(object):
                              save_path=None,
                              dpi=150):
         """
-        Plot an exceptional standardevent of one channel
+        Plot an exceptional standardevent.
 
-        TODO
-
-        :param naming: string, the naming of the event, must match the group in the h5 data set,
+        :param naming: The naming of the event, must match the group in the h5 data set,
             e.g. "carrier" --> group name "stdevent_carrier"
-        :param show_fit: bool, if True then also plot the parametric fit
-        :param block: bool, if False the matplotlib generated figure window does not block
+        :type naming: string
+        :param title: A title for the plot.
+        :type title: string
+        :param show_fit: If True then also plot the parametric fit.
+        :type show_fit:bool
+        :param block: If False the matplotlib generated figure window does not block
             the futher code execution
-        :param sample_length: float, the length of a sample milliseconds
-        :return: -
+        :type block: bool
+        :param sample_length: The length of a sample milliseconds
+        :type sample_length: float
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         """
 
         with h5py.File(self.path_h5, 'r') as f:
@@ -173,13 +196,25 @@ class PlotMixin(object):
                  yran=None,
                  dpi=150):
         """
-        Plot the Noise Power Spectrum of all channels
+        Plot the Noise Power Spectrum.
 
-        TODO
-
-        :param block: bool, if False the matplotlib generated figure window does not block
-            the futher code execution
-        :return: -
+        :param channel: If chosen, only this channel is plotted.
+        :type channel: int
+        :param title: A title for the plot.
+        :type title: string
+        :param block: If False the matplotlib generated figure window does not block
+            the futher code execution.
+        :type block: bool
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param xran: The range of the x axis.
+        :type xran: tuple of two floats
+        :param yran: The range of the y axis.
+        :type yran: tuple of two floats
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         """
         with h5py.File(self.path_h5, 'r') as f:
 
@@ -234,13 +269,30 @@ class PlotMixin(object):
                 yran=None,
                 dpi=150):
         """
-        Plot the Optimum Filter of all channels
+        Plot the Optimum Filter.
 
-        TODO
-
-        :param block: bool, if False the matplotlib generated figure window does not block
-            the futher code execution
-        :return: -
+        :param channel: If chosen, only this channel is plotted.
+        :type channel: int
+        :param title: A title for the plot.
+        :type title: string
+        :param block: If False the matplotlib generated figure window does not block
+            the futher code execution.
+        :type block: bool
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param group_name_appendix: A string that is appended to the group name optimumfilter. Typically this is _tp in case
+            we want to plot a test pulse standardevent.
+        :type group_name_appendix: string
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param down: The downsample factor of the optimum filter. This is appended to the name of the data sets in the Hdf5 set.
+        :type down: int
+        :param xran: The range of the x axis.
+        :type xran: tuple of two floats
+        :param yran: The range of the y axis.
+        :type yran: tuple of two floats
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         """
         with h5py.File(self.path_h5, 'r') as f:
 
@@ -312,38 +364,41 @@ class PlotMixin(object):
                         range=None,
                         ):
         """
-        TODO
+        Calculate the cut efficiency for a given cut flag and plot it.
 
-        :param channel:
-        :type channel:
-        :param cut_flag:
-        :type cut_flag:
-        :param which_quantity:
-        :type which_quantity:
-        :param bins:
-        :type bins:
-        :param title:
-        :type title:
-        :param xlabel:
-        :type xlabel:
-        :param ylabel:
-        :type ylabel:
-        :param show:
-        :type show:
-        :param xran:
-        :type xran:
-        :param yran:
-        :type yran:
-        :param block:
-        :type block:
-        :param save_path:
-        :type save_path:
-        :param dpi:
-        :type dpi:
-        :param range:
-        :type range:
-        :return:
-        :rtype:
+        :param channel: The cut efficiency is calculated and plotted for this channel.
+        :type channel: int
+        :param cut_flag: The cut values that are used for the cut efficiency calculation.
+        :type cut_flag: list of bools
+        :param which_quantity: Either 'true_ph', 'ph', 'of', 'sef' or 'recoil_energy'. The method that is used for the
+            pulse height estimation.
+        :type which_quantity: string
+        :param bins: The number of bins in which we calculate the efficiency.
+        :type bins: int
+        :param title: A title for the plot.
+        :type title: string
+        :param xlabel: A label for the x axis.
+        :type xlabel: string
+        :param ylabel: A label for the y axis.
+        :type ylabel: string
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param xran: The range of the x axis.
+        :type xran: tuple of two floats
+        :param yran: The range of the y axis.
+        :type yran: tuple of two floats
+        :param block: If False the matplotlib generated figure window does not block
+            the futher code execution.
+        :type block: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
+        :param range: The range in which the histogram is calculated. This should be maximally as large as the interval
+            in which the pulses are simulated.
+        :type range: tuple of two floats
+        :return: The efficiency within the bins, the number of counts within the bins, the bin edges.
+        :rtype: tuple of (array of length bins, array of length bins, array of length bins+1)
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
@@ -417,18 +472,41 @@ class PlotMixin(object):
         """
         Shows a histogram of some values from the HDF5 file
 
-        TODO
-
-        :param group: string, The group index that is used in the hdf5 file,
-            typically either events, testpulses or noise
-        :param key: string, the key index of the hdf5 file, typically mainpar, fit_rms, ...
-        :param idx0: int, the first index of the array
-        :param idx1: int or None, the second index of the array
-        :param idx2: int or None, the third index of the array
-        :param block: bool, if the plot blocks the code when executed in cmd
-        :param bins: int, the number of bins for the histogram
-        :param range: 2D tuple of floats, the interval that is shown in the histogram
-        :return: -
+        :param group: The group index that is used in the hdf5 file,
+            typically either events, testpulses or noise.
+        :type group: string
+        :param key: The key index of the hdf5 file, typically mainpar, fit_rms, ...
+        :type key: string
+        :param title: A title for the plot.
+        :type title: string
+        :param xlabel: A label for the x axis.
+        :type xlabel: string
+        :param ylabel: A label for the y axis.
+        :type ylabel: string
+        :param cut_flag: A booled array that decides which values are included in the histogram.
+        :type cut_flag: list of bools
+        :param idx0: The first index of the array.
+        :type idx0: int
+        :param idx1:The second index of the array.
+        :type idx1: int or None
+        :param idx2: The third index of the array.
+        :type idx2: int or None
+        :param block: If the plot blocks the code when executed in cmd.
+        :type block: bool
+        :param bins: The number of bins for the histogram.
+        :type bins: int
+        :param range: The interval that is shown in the histogram.
+        :type range: 2D tuple of floats
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param xran: The range of the x axis.
+        :type xran: tuple of two floats
+        :param yran: The range of the y axis.
+        :type yran: tuple of two floats
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
@@ -497,22 +575,44 @@ class PlotMixin(object):
         """
         Shows a scatter plot of some values from the HDF5 file
 
-        TODO
-
-        :param groups: list of string, The group index that is used in the hdf5 file,
+        :param groups: The group index that is used in the hdf5 file,
             typically either events, testpulses or noise; first list element applies to data on x,
-            second to data on y axis
-        :param keys: list of string, the key index of the hdf5 file, typically mainpar, fit_rms, ...;
-            first list element applies to data on x, second to data on y axis
-        :param idxs: list of int, the first index of the array; first list element applies to data on x,
-            second to data on y axis
-        :param idx0s: list of int or None, the second index of the array; first list element applies to data on x,
-            second to data on y axis
-        :param idx0s: list of int or None, the third index of the array; first list element applies to data on x,
-            second to data on y axis
-        :param block: bool, if the plot blocks the code when executed in cmd
-        :param marker: string, the marker type from pyplots scatter plot
-        :return: -
+            second to data on y axis.
+        :type groups: list of string
+        :param keys: The key index of the hdf5 file, typically mainpar, fit_rms, ...;
+            first list element applies to data on x, second to data on y axis.
+        :type keys: list of string
+        :param title: A title for the plot.
+        :type title: string
+        :param xlabel: A label for the x axis.
+        :type xlabel: string
+        :param ylabel: A label for the y axis.
+        :type ylabel: string
+        :param cut_flag: A booled array that decides which values are included in the histogram.
+        :type cut_flag: list of bools
+        :param idx0s: The first index of the array; first list element applies to data on x,
+            second to data on y axis.
+        :type idx0s: list of int
+        :param idx1s: The second index of the array; first list element applies to data on x,
+            second to data on y axis.
+        :type idx1s: list of int or None
+        :param idx2s: The third index of the array; first list element applies to data on x,
+            second to data on y axis.
+        :type idx2s: list of int or None
+        :param block: If the plot blocks the code when executed in cmd.
+        :type block: bool
+        :param marker: The marker type from pyplots scatter plot.
+        :type marker: string
+        :param xran: The range of the x axis.
+        :type xran: tuple of two floats
+        :param yran: The range of the y axis.
+        :type yran: tuple of two floats
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
@@ -583,25 +683,10 @@ class PlotMixin(object):
         """
         Show a histogram of main parameter values
 
-        TODO
 
-        :param which_mp: string, possible are: ['pulse_height', 't_zero', 't_rise', 't_max', 't_decaystart', 't_half', 't_end',
-            'offset', 'linear_drift', 'quadratic_drift']
-        :param only_idx: list of ints or None, if set only these indices are used
-        :param which_channel: int, the number of the channel from that we want the histogram
-        :param type: string, either events or testpulses
-        :param which_labels: list or None, if set only events with these labels are included; needs a labels file
-            to be included in the hdf5 set
-        :param which_predictions: list or None, if set only events with these predictions are included;
-            needs a predictions file to be included in the hdf5 set
-        :param pred_model: string, the naming of the model that made the predictions; must match the naming of the
-            predictions in the HDF5 file
-        :param bins: int, the number of bins in the histogram
-        :param block: bool, if False the matplotlib generated figure window does not block
-            the futher code execution
-        :param range: 2-tuple or None, if set the range of the histogram
-        :return: -
         """
+
+        warnings.warn("Attention! This function is depricated! Use show_scatter instead!", warnings.DeprecationWarning)
 
         with h5py.File(self.path_h5, 'r') as f_h5:
             nmbr_mp = f_h5[type]['mainpar'].attrs[which_mp]
@@ -682,20 +767,54 @@ class PlotMixin(object):
                 dpi=150,
                 name_appendix=''):
         """
-        Make a Light Yield Plot out of specific Labels or Predictions
+        Make a Light Yield Plot out of specific Labels or Predictions.
 
-        TODO
-
-        :param x_channel: int, the number of the channel that PHs are on the x axis
-        :param y_channel: int, the number of the channel that PHs are on the y axis
-        :param only_idx: list of ints or None, if set only these indices are used
-        :param type: string, either events or testpulses
-        :param which_labels: list of ints, the labels that are used in the plot
-        :param good_y_classes: list of ints or None, if set events with y class other than
-            in that list are not used in the plot
-        :param which_predictions: list of ints or None, the predictions that are used in the plot
-        :param pred_model: string, the naming of the model from that the predictions are
-        :param block: bool, if True the plots are non blocking in the cmd
+        :param title: A title for the plot.
+        :type title: string
+        :param xlabel: A label for the x axis.
+        :type xlabel: string
+        :param ylabel: A label for the y axis.
+        :type ylabel: string
+        :param which_method: Either ph, sef or of. The pulse height estimation method that is used for the plot.
+        :type which_method: string
+        :param x_channel: The number of the channel that PHs are on the x axis.
+        :type x_channel: int
+        :param y_channel: The number of the channel that PHs are on the y axis.
+        :type y_channel: int
+        :param xlim: The range of the x axis.
+        :type xlim: tuple of two floats
+        :param ylim: The range of the y axis.
+        :type ylim: tuple of two floats
+        :param only_idx: If set only these indices are used.
+        :type only_idx: list of ints or None
+        :param type: Either events or testpulses.
+        :type type: string
+        :param which_labels: The labels that are used in the plot.
+        :type which_labels: list of ints
+        :param good_y_classes: If set events with y class other than
+            in that list are not used in the plot.
+        :type good_y_classes: list of ints or None
+        :param which_predictions: The predictions that are used in the plot.
+        :type which_predictions: list of ints or None
+        :param pred_model: The naming of the model from that the predictions are.
+        :type pred_model: string
+        :param block: If the plot blocks the code when executed in cmd.
+        :type block: bool
+        :param marker: The marker type from pyplots scatter plot.
+        :type marker: string
+        :param alpha: The transparency factor of the scatter objects. Between 0 and 1.
+        :type alpha: float
+        :param s: The size parameter of the scatter objects.
+        :type s: int
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
+        :param name_appendix: A string that is appended to the dataset of the pulse height estimation method. This is
+            typically _downX if pulse height estimations were calculated with downsampling.
+        :type name_appendix: string
         """
 
         with h5py.File(self.path_h5, 'r') as f_h5:
@@ -708,6 +827,8 @@ class PlotMixin(object):
             elif which_method == 'of':
                 x_par = f_h5[type]['of_ph' + name_appendix][x_channel]
                 y_par = f_h5[type]['of_ph' + name_appendix][y_channel]
+            else:
+                raise NotImplementedError('This method is not implemented.')
 
             nmbr_events = len(x_par)
 
@@ -789,8 +910,14 @@ class PlotMixin(object):
 
             print('LY Plot created.')
 
-    def show_saturation(self, show_fit=True, channel=0, marker='.', s=1, alpha=1,
-                        only_idx=None, title=None,
+    def show_saturation(self,
+                        show_fit=True,
+                        channel=0,
+                        marker='.',
+                        s=1,
+                        alpha=1,
+                        only_idx=None,
+                        title=None,
                         block=False,
                         show=True,
                         save_path=None,
@@ -799,16 +926,30 @@ class PlotMixin(object):
                         name_appendix_tp: str = '',
                         ):
         """
-        Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve
+        Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve.
 
-        TODO
-
-        :param show_fit: bool, if true show the fitted logistics curve
-        :param channel: int, the channel for that we want to plot the saturation curve
-        :param only_idx: only these indices are used in the fit of the saturation
+        :param show_fit: If true show the fitted logistics curve.
+        :type show_fit: bool
+        :param channel: The channel for that we want to plot the saturation curve.
+        :param channel: int
+        :param marker: The marker type from pyplots scatter plot.
+        :type marker: string
+        :param s: The size parameter of the scatter objects.
+        :type s: int
+        :param alpha: The transparency factor of the scatter objects. Between 0 and 1.
+        :type alpha: float
+        :param only_idx: Only these indices are used in the fit of the saturation.
         :type only_idx: list of ints
-        :param s: float, radius of the markers in the scatter plot
-        :param marker: string, the matplotlib marker in the scatter plot
+        :param title: A title for the plot.
+        :type title: string
+        :param block: If the plot blocks the code when executed in cmd.
+        :type block: bool
+        :param show: If set, the plots are shown.
+        :type show: bool
+        :param save_path: If set, the plots are save to this directory.
+        :type save_path: string
+        :param dpi: The dots per inch of the plot.
+        :type dpi: int
         :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter) or 'sef' (standard event fit).
             Test pulse heights and event heights are then estimated with this method.
         :type method: string

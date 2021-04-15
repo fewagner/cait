@@ -1,6 +1,5 @@
 
 from ._baselines import *
-from ._edit_h5 import *
 from ._gen_h5 import *
 from ._raw import *
 from ._converter import *
@@ -9,7 +8,6 @@ from ._xy_file import *
 from ._test_data import *
 
 __all__=['get_nps',
-         'edit_h5_dataset',
          'gen_dataset_from_rdt',
          'convert_to_V',
          'noise_function',

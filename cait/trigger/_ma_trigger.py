@@ -11,19 +11,17 @@ def get_q(m):
 class MovingAverageTrigger():
     """
     Class to efficiently trigger a time series with moving averages on two time scales.
-    TODO this algorithm has potentially huge numerical problems because q must be very close to 1
+    Attention! This algorithm has potentially huge numerical problems because q must be very close to 1.
+    Also, it might not be properly tested.
+
+    :param q1: float in (0,1), the weight parameter for past samples in the long time scale
+    :param q2: float in (0,1), the weight parameter for past samples in the short time scale
+    :param p: float in (0,1), the weight parameter for triggered samples
+    :param tres: float, the multiplicative factor for the sigma by which to trigger
+    :param down: int, the value how many sample we should average before handing it to the trigger
     """
 
     def __init__(self, q1, q2, q3, tres, down=1):
-        """
-        Give parameters for the algorithm
-
-        :param q1: float in (0,1), the weight parameter for past samples in the long time scale
-        :param q2: float in (0,1), the weight parameter for past samples in the short time scale
-        :param p: float in (0,1), the weight parameter for triggered samples
-        :param tres: float, the multiplicative factor for the sigma by which to trigger
-        :param down: int, the value how many sample we should average before handing it to the trigger
-        """
 
         if ([q1, q2, p] >= 1).any() or ([q1, q2, p] <= 0).any():
             raise KeyError("Need values in (0,1) for all q!")
@@ -49,7 +47,6 @@ class MovingAverageTrigger():
         Set the first value of the moving average
 
         :param x0: float, the first value
-        :return: -
         """
 
         self.m1 = x0

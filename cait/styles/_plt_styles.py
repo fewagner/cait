@@ -12,6 +12,16 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=No
     """
     TODO
 
+    :param x_size:
+    :type x_size:
+    :param y_size:
+    :type y_size:
+    :param fontsize:
+    :type fontsize:
+    :param autolayout:
+    :type autolayout:
+    :param dpi:
+    :type dpi:
     :return:
     :rtype:
     """
@@ -35,7 +45,14 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=No
         mpl.rcParams['savefig.dpi'] = dpi
 
 def make_grid(ax=None):
-    # TODO
+    """
+    TODO
+
+    :param ax:
+    :type ax:
+    :return:
+    :rtype:
+    """
     if ax is None:
         # major grid lines
         plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
@@ -51,7 +68,26 @@ def make_grid(ax=None):
 
 
 def scatter_img(x_data, y_data, height=2800, width=2800, alpha=0.3, xlims=None, ylims=None):
-    # TODO
+    """
+    TODO
+
+    :param x_data:
+    :type x_data:
+    :param y_data:
+    :type y_data:
+    :param height:
+    :type height:
+    :param width:
+    :type width:
+    :param alpha:
+    :type alpha:
+    :param xlims:
+    :type xlims:
+    :param ylims:
+    :type ylims:
+    :return:
+    :rtype:
+    """
     if xlims is None:
         xlims = (x_data.min(), x_data.max())
     if ylims is None:

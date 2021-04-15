@@ -37,20 +37,37 @@ def gen_dataset_from_rdt(path_rdt,
                          lazy_loading=True
                          ):
     """
-    Generates a HDF5 File from an RDT File, optionally MP, Fit, SEV Calculation
-    :param path_rdt: string, the full path to the RDT File, e.g. "data/bcks/"
-    :param fname: string, the name of the rdt file without appendix, e.g. "bck_001"
-    :param path_h5: string, the path where to store the hdf file, e.g. "data/hdf5s/"
-    :param channels: list, the numbers of the channels in the hdf5 file that we want to include in rdt
-    :param tpa_list: list, the TPAs that we want to include in the hdf5 file, 0 -> events, -1 -> noise, 1 -> TP
-    :param calc_mp: bool, calculate and store the main parameters in the hdf5
-    :param calc_fit: bool, calculate the parametric pulse fit and store parameters
-    :param calc_sev: bool, calculate the standard event and store it in the hdf5
-    :param processes: int, the number of processes for the parallel calculation
-    :param chunk_size: int, the init size of the arrays, arrays get resized after reaching this size,
-        ideally this is just a bit larger than the number of events we want to read from the file
-    :param event_dtype: string, datatype to save the events with
-    :return: -
+    Generates a HDF5 File from an RDT File, optionally MP, Fit, SEV Calculation.
+
+    :param path_rdt: Path to the rdt file e.g. "data/bcks/".
+    :type path_rdt: string
+    :param fname: Name of the file e.g. "bck_001".
+    :type fname: string
+    :param path_h5: Path where the h5 file is saved e.g. "data/hdf5s%".
+    :type path_h5: string
+    :param channels: the numbers of the channels in the hdf5 file that we want to include in rdt
+    :type channels: list
+    :param tpa_list: The test pulse amplitudes to save, if 1 is in the list, all positive values are included.
+    :type tpa_list: list
+    :param calc_mp: If True the main parameters for all events are calculated and stored.
+    :type calc_mp: bool
+    :param calc_fit: Not recommended! If True the parametric fit for all events is calculated and stored.
+    :type calc_fit: bool
+    :param calc_sev: Not recommended! If True the standard event for all event channels is calculated.
+    :type calc_sev: bool
+    :param calc_nps: If True the main parameters for all events are calculated and stored.
+    :type calc_nps: bool
+    :param processes: The number of processes that is used for the code execution.
+    :type processes: int
+    :param event_dtype: Datatype to save the events with.
+    :type event_dtype: string
+    :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+    :type ints_in_header: int
+    :param sample_frequency: The sample frequency of the records.
+    :type sample_frequency: int
+    :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
+    :type lazy_loading: bool
     """
 
     nmbr_channels = len(channels)
@@ -315,18 +332,3 @@ def gen_dataset_from_rdt(path_rdt,
                 testpulses['fitpar'].attrs.create(name='tau_n', data=3)
                 testpulses['fitpar'].attrs.create(name='tau_in', data=4)
                 testpulses['fitpar'].attrs.create(name='tau_t', data=5)
-
-
-# ------------------------------------------------------------
-# MAIN ROUTINE
-# ------------------------------------------------------------
-
-
-if __name__ == '__main__':
-    gen_dataset_from_rdt(path_rdt='./data/run33_TUM40/',
-                         fname='bck_056',
-                         path_h5='./data/run33_TUM40/',
-                         channels=[0, 1],
-                         tpa_list=[0.0],
-                         calc_fit=False,
-                         processes=4)

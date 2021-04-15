@@ -85,12 +85,18 @@ def sec(t, h, t0, a0, a1, a2, a3, t00, An, At, tau_n, tau_in, tau_t):
     """
     Standard Event Model with Cubic Baseline
 
-    :param h: float, hight of pulse shape
+    :param h: float, height of pulse shape
     :param t0: float, onset of pulse shape
     :param a0: float, offset of the baseline
     :param a1: float, linear drift component of the baseline
     :param a2: float, quadratic drift component of the baseline
     :param a3: float, cubic drift component of the baseline
+    :param t00: float, onset of standard event
+    :param An: float, amplitude of non-thermal component in standard event
+    :param At: float, amplitude of thermal component in standard event
+    :param tau_n: float, parametric pulse shape model parameter tau_n of standard event
+    :param tau_in: float, parametric pulse shape model parameter tau_in of standard event
+    :param tau_t: float, parametric pulse shape model parameter tau_t of standard event
     :return: 1D array, the pulse model evaluated on the time grid
     """
     t0_comb = t0 + t00
@@ -116,6 +122,10 @@ class sev_fit_template:
         (t0, An, At, tau_n, tau_in, tau_t)
     :param t: 1D array, the time grid on which the pulse shape model is evaluated
     :param down: int, power of 2, the downsample rate of the event for fitting
+    :param t0_bounds: tuple, the lower and upper bounds for the t0 value
+    :param truncation_level: float, all values above this are excluded from the fit
+    :param interval_restriction_factor: float, value between 0 and 1, the inverval of the event is restricted around
+        1/4 by this factor
     """
 
     def __init__(self, pm_par, t, down=1, t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None):
@@ -181,7 +191,7 @@ class sev_fit_template:
         return h * pulse_template(self.t, *x) + a0 + \
                a1 * (self.t - t0) + a2 * (self.t - t0) ** 2
 
-    def wrap_sec(self, h, t0, a0, a1, a2, a3):
+    def _wrap_sec(self, h, t0, a0, a1, a2, a3):
         """
         A wrapper function for the pulse shape model.
         """
@@ -189,8 +199,7 @@ class sev_fit_template:
 
     @staticmethod
     @nb.njit
-    def t0_minimizer(par, h0, a00, a10, a20, a30, event, t, t0_lb, t0_ub, low, up, pm_par, trunc_flag):
-        # TODO
+    def _t0_minimizer(par, h0, a00, a10, a20, a30, event, t, t0_lb, t0_ub, low, up, pm_par, trunc_flag):
 
         out = 0
 
@@ -212,8 +221,7 @@ class sev_fit_template:
 
     @staticmethod
     @nb.njit
-    def par_minimizer(par, t0, event, t, low, up, pm_par, trunc_flag):
-        # TODO
+    def _par_minimizer(par, t0, event, t, low, up, pm_par, trunc_flag):
 
         # truncate in interval
         fit = sec(t[low:up], par[0], t0, par[1], par[2], par[3], par[4], pm_par[0],
@@ -258,7 +266,7 @@ class sev_fit_template:
 
         if t0 is None:
             # fit t0
-            res = minimize(fun=self.t0_minimizer,
+            res = minimize(fun=self._t0_minimizer,
                            x0=np.array([-3]),
                            method='nelder-mead',
                            args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
@@ -268,7 +276,7 @@ class sev_fit_template:
             t0 = res.x
 
         # fit height, d and k with fixed t0
-        res = minimize(self.par_minimizer,
+        res = minimize(self._par_minimizer,
                        x0=np.array([h0, a00, a10, a20, a30]),
                        method='nelder-mead',
                        args=(t0, event, self.t, self.low, self.up, self.pm_par, truncation_flag,),

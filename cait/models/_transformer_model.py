@@ -37,45 +37,59 @@ class TransformerModule(LightningModule):
     """
     Lightning module for the training of an Transformer Encoder model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
+
+    TODO
+
+    :param input_size: the number of features that get passed to the Model in one time step
+    :type input_size: int
+    :param d_model:
+    :type d_model:
+    :param number_heads:
+    :type number_heads:
+    :param dim_feedforward:
+    :type dim_feedforward:
+    :param hidden_size: the number of nodes in the hidden layer of the lstm
+    :type hidden_size: int
+    :param num_layers: the number of LSTM layers
+    :type num_layers: int
+    :param seq_steps: the number of time steps
+    :type seq_steps: int
+    :param device_name: the device on that the NN is trained
+    :type device_name: string, either 'cpu' or 'cude'
+    :param nmbr_out: the number of output nodes the last linear layer after the lstm has
+    :type nmbr_out: int
+    :param label_keys: the keys of the dataset that are used as labels
+    :type label_keys: list of strings
+    :param feature_keys: the keys of the dataset that are used as nn inputs
+    :type feature_keys: list of strings
+    :param lr: the learning rate for the neural network training
+    :type lr: float between 0 and 1
+    :param is_classifier: if true, the output of the nn gets an additional softmax activation
+    :type is_classifier: bool
+    :param down: the downsample factor of the training data set, if one is applied
+    :type down: int
+    :param down_keys: the keys of the data that is to downsample (usually the event time series)
+    :type down_keys: list of string
+    :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
+    :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
+    :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
+    :type offset_keys: list of strings
+    :param weight_decay: The weight decay parameter for the optimizer.
+    :type weight_decay: float
+    :param dropout:
+    :type dropout:
+    :param norm_type: Either 'z' (mu=0, sigma=1) or 'minmax' (min=0, max=1). The type of normalization.
+    :type norm_type: string
+    :param pos_enc:
+    :type pos_enc:
+    :param lr_scheduler: If true, a learning rate scheduler is used.
+    :type lr_scheduler: bool
     """
+
     def __init__(self, input_size, d_model, number_heads, dim_feedforward, num_layers, nmbr_out,
                  seq_steps, device_name, label_keys, feature_keys, lr, is_classifier,
                  down, down_keys, offset_keys, norm_vals, weight_decay=1e-5, dropout=0.5,
                  norm_type='minmax', pos_enc=True, lr_scheduler=True):
-        """
-        Initial information for the neural network module
-
-        :param input_size: the number of features that get passed to the Model in one time step
-        :type input_size: int
-        :param hidden_size: the number of nodes in the hidden layer of the lstm
-        :type hidden_size: int
-        :param num_layers: the number of LSTM layers
-        :type num_layers: int
-        :param seq_steps: the number of time steps
-        :type seq_steps: int
-        :param device_name: the device on that the NN is trained
-        :type device_name: string, either 'cpu' or 'cude'
-        :param nmbr_out: the number of output nodes the last linear layer after the lstm has
-        :type nmbr_out: int
-        :param label_keys: the keys of the dataset that are used as labels
-        :type label_keys: list of strings
-        :param feature_keys: the keys of the dataset that are used as nn inputs
-        :type feature_keys: list of strings
-        :param lr: the learning rate for the neural network training
-        :type lr: float between 0 and 1
-        :param is_classifier: if true, the output of the nn gets an additional softmax activation
-        :type is_classifier: bool
-        :param down: the downsample factor of the training data set, if one is applied
-        :type down: int
-        :param down_keys: the keys of the data that is to downsample (usually the event time series)
-        :type down_keys: list of string
-        :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
-        :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
-        :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
-        :type offset_keys: list of strings
-        :param dain: use the deep adaptive input normalization
-        :type dain: bool
-        """
 
         super().__init__()
         self.save_hyperparameters()

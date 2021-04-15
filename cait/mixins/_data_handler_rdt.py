@@ -8,6 +8,7 @@ from ..data._gen_h5 import gen_dataset_from_rdt
 import h5py
 from ..data._raw import read_rdt_file
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -24,11 +25,19 @@ class RdtMixin(object):
         """
         Prints the channel numbers of a number of events in the rdt File, from the beginning
 
-        :param path_rdt: string, full path to the rdt file e.g. "data/bcks/bck_001.rdt"
-        :param read_events: int, number of events to read from file, if -1 read all events
-        :param tpa_list: list, the tpas that are to read from the file, 0 -> events, -1 -> noise, 1 -> tp
-        :param dvm_channels: int, number of dvm channels
-        :return: -
+        :param path_rdt: Full path to the rdt file e.g. "data/bcks/bck_001.rdt".
+        :type path_rdt: string
+        :param read_events: Number of events to read from file, if -1 read all events.
+        :type read_events: int
+        :param tpa_list: The tpas that are to read from the file, 0 -> events, -1 -> noise, 1 -> tp.
+        :type tpa_list: list
+        :param dvm_channels: Number of dvm channels.
+        :type dvm_channels: int
+        :param verb: If activated, all read parameters are printed.
+        :type verb: bool
+        :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+        :type ints_in_header: int
         """
         # initialize dvm and event arrays
         dvm = np.zeros(dvm_channels, dtype=float)
@@ -93,7 +102,9 @@ class RdtMixin(object):
                     print('measuring hours (0 @ START WRITE): ', hours)
                     if verb:
                         print('accumulated dead time of channel [s] (0 @ START WRITE): ', dead_time)
-                        print('test pulse amplitude (0. for pulses, (0.,10.] for test pulses, >10. for control pulses): ', test_pulse_amplitude)
+                        print(
+                            'test pulse amplitude (0. for pulses, (0.,10.] for test pulses, >10. for control pulses): ',
+                            test_pulse_amplitude)
                         print('DAC output of control program (proportional to heater power): ', dac_output)
 
                     # print the dvm channels
@@ -103,16 +114,15 @@ class RdtMixin(object):
     # checkout con file
     def checkout_con(self, path_con, read_events=100, ints_in_header=7):
         """
-        TODO
+        Print the content of a *.con file.
 
-        :param path_con:
-        :type path_con:
-        :param read_events:
-        :type read_events:
-        :param ints_in_header:
-        :type ints_in_header:
-        :return:
-        :rtype:
+        :param path_con: Path to the con file e.g. "data/bcks/".
+        :type path_con: string
+        :param read_events: The number of events to print from the file.
+        :type read_events: int
+        :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+        :type ints_in_header: int
         """
         record = np.dtype([('detector_nmbr', 'int32'),
                            ('pulse_height', 'float32'),
@@ -130,36 +140,35 @@ class RdtMixin(object):
         print('{} control pulses read from CON file.'.format(read_events))
 
         if ints_in_header == 7:
-            print(" \tdetector_nmbr,\t \tpulse_height, \ttime_stamp_low, \ttime_stamp_high, \tdead_time, \tmus_since_last_tp")
+            print(
+                " \tdetector_nmbr,\t \tpulse_height, \ttime_stamp_low, \ttime_stamp_high, \tdead_time, \tmus_since_last_tp")
             for i in range(read_events):
-                print('{}\t{}\t\t{:.3}\t\t{}\t\t{}\t\t\t{:.3}\t{}'.format(i+1, cons['detector_nmbr'][i],
-                                                      cons['pulse_height'][i],
-                                                      cons['time_stamp_low'][i],
-                                                      cons['time_stamp_high'][i],
-                                                      cons['dead_time'][i],
-                                                      cons['mus_since_last_tp'][i],
-                                                      ))
+                print('{}\t{}\t\t{:.3}\t\t{}\t\t{}\t\t\t{:.3}\t{}'.format(i + 1, cons['detector_nmbr'][i],
+                                                                          cons['pulse_height'][i],
+                                                                          cons['time_stamp_low'][i],
+                                                                          cons['time_stamp_high'][i],
+                                                                          cons['dead_time'][i],
+                                                                          cons['mus_since_last_tp'][i],
+                                                                          ))
         else:
             print("\tdetector_nmbr, \tpulse_height, \ttime_stamp_low, \ttime_stamp_high, \tdead_time")
             for i in range(read_events):
-                print('{}\t{}\t\t{:.3}\t\t{}\t\t{}\t\t\t{:.3}'.format(i+1, cons['detector_nmbr'][i],
-                                                      cons['pulse_height'][i],
-                                                      cons['time_stamp_low'][i],
-                                                      cons['time_stamp_high'][i],
-                                                      cons['dead_time'][i],
-                                                      ))
+                print('{}\t{}\t\t{:.3}\t\t{}\t\t{}\t\t\t{:.3}'.format(i + 1, cons['detector_nmbr'][i],
+                                                                      cons['pulse_height'][i],
+                                                                      cons['time_stamp_low'][i],
+                                                                      cons['time_stamp_high'][i],
+                                                                      cons['dead_time'][i],
+                                                                      ))
 
     # checkout dig file
     def checkout_dig(self, path_dig, read_events=100):
         """
-        TODO
+        Print the content of a *.dig_stamps file.
 
-        :param path_dig:
-        :type path_dig:
-        :param read_events:
-        :type read_events:
-        :return:
-        :rtype:
+        :param path_dig: Path to the dig file e.g. "data/bcks/*.dig_stamps".
+        :type path_dig: string
+        :param read_events: Number of events to read from file, if -1 read all events.
+        :type read_events: int
         """
         dig = np.dtype([
             ('stamp', np.uint64),
@@ -179,14 +188,12 @@ class RdtMixin(object):
     # checkout test stamps file
     def checkout_test(self, path_test, read_events=100):
         """
-        TDOO
+        Print the content of a *.test_stamps file.
 
-        :param path_test:
-        :type path_test:
-        :param read_events:
-        :type read_events:
-        :return:
-        :rtype:
+        :param path_test: Full path to the test file e.g. "data/bcks/*.test_stamps".
+        :type path_test: string
+        :param read_events: Number of events to read from file, if -1 read all events.
+        :type read_events: int
         """
 
         teststamp = np.dtype([
@@ -206,14 +213,12 @@ class RdtMixin(object):
 
     def checkout_mon(self, path_mon, read_events=5):
         """
-        TODO
+        Print the content of a *.mon file.
 
-        :param path_mon:
-        :type path_mon:
-        :param read_events:
-        :type read_events:
-        :return:
-        :rtype:
+        :param path_mon: Path to the mon file e.g. "data/bcks/*.mon".
+        :type path_mon: string
+        :param read_events: Number of events to read from file, if -1 read all events.
+        :type read_events: int
         """
 
         header = np.dtype([('file_version', '|S12'),
@@ -238,33 +243,49 @@ class RdtMixin(object):
         print('Names: ', record.names)
         print('Read Pars: ', mon_pars)
 
-
     # Converts a bck to a hdf5 for one module with 2 or 3 channels
-    def convert_dataset(self, path_rdt,
-                        fname, path_h5,
+    def convert_dataset(self,
+                        path_rdt,
+                        fname,
+                        path_h5,
                         tpa_list=[0, 1, -1],
-                        calc_mp=True, calc_fit=False,
-                        calc_sev=False, calc_nps=True,
+                        calc_mp=True,
+                        calc_fit=False,
+                        calc_sev=False,
+                        calc_nps=True,
                         processes=4,
                         event_dtype='float32',
                         ints_in_header=7,
                         lazy_loading=True,
                         ):
         """
-        Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file
+        Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
 
-        :param path_rdt: string, path to the rdt file e.g. "data/bcks/"
-        :param fname: string, name of the file e.g. "bck_001"
-        :param path_h5: string, path where the h5 file is saved e.g. "data/hdf5s%"
-        :param tpa_list: list, the test pulse amplitudes to save
-        :param calc_mp: bool, if True the main parameters for all events are calculated and stored
-        :param calc_fit: bool, if True the parametric fit for all events is calculated and stored
-        :param calc_sev: bool, if True the standard event for all event channels is calculated
-        :param processes: int, the number of processes that is used for the code execution
-        :param chunk_size: int, the init size of the arrays, should ideally
-            be a bit more than we read events
-        :param event_dtype: string, datatype to save the events with
-        :return: -
+        :param path_rdt: Path to the rdt file e.g. "data/bcks/".
+        :type path_rdt: string
+        :param fname: Name of the file e.g. "bck_001".
+        :type fname: string
+        :param path_h5: Path where the h5 file is saved e.g. "data/hdf5s%".
+        :type path_h5: string
+        :param tpa_list: The test pulse amplitudes to save, if 1 is in the list, all positive values are included.
+        :type tpa_list: list
+        :param calc_mp: If True the main parameters for all events are calculated and stored.
+        :type calc_mp: bool
+        :param calc_fit: Not recommended! If True the parametric fit for all events is calculated and stored.
+        :type calc_fit: bool
+        :param calc_sev: Not recommended! If True the standard event for all event channels is calculated.
+        :type calc_sev: bool
+        :param calc_nps: If True the main parameters for all events are calculated and stored.
+        :type calc_nps: bool
+        :param processes: The number of processes that is used for the code execution.
+        :type processes: int
+        :param event_dtype: Datatype to save the events with.
+        :type event_dtype: string
+        :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+        :type ints_in_header: int
+        :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
+        :type lazy_loading: bool
         """
 
         print('Start converting.')
@@ -301,36 +322,38 @@ class RdtMixin(object):
             self.path_h5 = path
         self.fname = fname
 
-
         print('Filepath and -name saved.')
 
     # include rdt infos to existing hdf5
-    def include_rdt(self, path_data, fname, channels, ints_in_header=7, tpa_list=[0, 1, -1],
+    def include_rdt(self, path_data, fname, ints_in_header=7, tpa_list=[0, 1, -1],
                     event_dtype='float32', lazy_loading=True, origin=None):
         """
-        TODO
+        Read the content of an rdt file an add to HDF5.
 
-        :param path_data:
-        :type path_data:
-        :param fname:
-        :type fname:
-        :param channels:
-        :type channels:
-        :param ints_in_header:
-        :type ints_in_header:
-        :param tpa_list:
-        :type tpa_list:
-        :param event_dtype:
-        :type event_dtype:
-        :return:
-        :rtype:
+        :param path_data: Path to the rdt file e.g. "data/bcks/*.rdt".
+        :type path_data: string
+        :param fname: Name of the file e.g. "bck_001".
+        :type fname: string
+        :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+        :type ints_in_header: int
+        :param tpa_list: The test pulse amplitudes to save, if 1 is in the list, all positive values are included.
+        :type tpa_list: list
+        :param event_dtype: Datatype to save the events with.
+        :type event_dtype: string
+        :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
+        :type lazy_loading: bool
+        :param origin: This is needed in case you add to merged dataset. In the merge, you can assign an origin data set
+            with individual strings for all original files. If you provide an origin string here, the events are written
+            at the corresponding position in the event array.
+        :type origin: string
         """
         print('Accessing RDT File ...')
 
         metainfo, pulse = \
             read_rdt_file(fname=fname,
                           path=path_data,
-                          channels=channels,
+                          channels=self.channels,
                           store_as_int=False,
                           ints_in_header=ints_in_header,
                           lazy_loading=lazy_loading
@@ -379,8 +402,8 @@ class RdtMixin(object):
                 if origin is not None:
                     idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
                     noise.require_dataset('event',
-                                           shape=(self.nmbr_channels, len(noise['hours']), self.record_length),
-                                           dtype=event_dtype)
+                                          shape=(self.nmbr_channels, len(noise['hours']), self.record_length),
+                                          dtype=event_dtype)
                     noise['event'][:, idx, :] = np.array(pulse_noise, dtype=event_dtype)
 
                 else:
@@ -410,8 +433,8 @@ class RdtMixin(object):
                 if origin is not None:
                     idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
                     testpulses.require_dataset('event',
-                                          shape=(self.nmbr_channels, len(testpulses['hours']), self.record_length),
-                                          dtype=event_dtype)
+                                               shape=(self.nmbr_channels, len(testpulses['hours']), self.record_length),
+                                               dtype=event_dtype)
                     testpulses['event'][:, idx, :] = np.array(pulse_tp, dtype=event_dtype)
 
                 else:
@@ -426,24 +449,66 @@ class RdtMixin(object):
 
         print('Done.')
 
-    def include_con_file(self, path_con_file, ints_in_header=7):
+    def read_clock_frequency(self, path_rdt, ints_in_header=7, dvm_channels=0):
         """
         TODO
 
-        :param path_con_file:
-        :type path_con_file:
+        :param path_rdt:
+        :type path_rdt:
         :param ints_in_header:
         :type ints_in_header:
-        :return:
-        :rtype:
+        :param dvm_channels:
+        :type dvm_channels:
+        """
+
+        record = np.dtype([('detector_nmbr', 'i4'),
+                           ('coincide_pulses', 'i4'),
+                           ('trig_count', 'i4'),
+                           ('trig_delay', 'i4'),
+                           ('abs_time_s', 'i4'),
+                           ('abs_time_mus', 'i4'),
+                           ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
+                           ('time_low', 'i4'),
+                           ('time_high', 'i4'),
+                           ('qcd_events', 'i4'),
+                           ('hours', 'f4'),
+                           ('dead_time', 'f4'),
+                           ('test_pulse_amplitude', 'f4'),
+                           ('dac_output', 'f4'),
+                           ('dvm_channels', 'f4', dvm_channels),
+                           ('samples', 'i2', self.record_length),
+                           ])
+
+        data = np.memmap(path_rdt, dtype=record, mode='r')
+
+        frequencies = (data['time_high'][-10:] * 2 ** 32 + data['time_low'][-10:]) / data[
+            'hours'][-10:] / 3600
+
+        print('Frequency estimate: {:.1f}'.format(np.mean(frequencies)))
+
+    def include_con_file(self, path_con_file, ints_in_header=7, clock_frequency=None):
+        """
+        Read the content of a con file an add to HDF5.
+
+        These files contain the control pulse heights and time stamps.
+
+        :param clock_frequency: The frequency of the clock that records the time stamps. This you either know or you
+            can read it out from the rdt file, by using with the function read_clock_frequency.
+        :type clock_frequency: int
+        :param path_con_file: Path to the con file e.g. "data/bcks/*.con".
+        :type path_con_file: string
+        :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+        :type ints_in_header: int
         """
 
         print('Accessing CON File...')
 
-        if ints_in_header == 7:
-            clock_frequency = 1e7
-        else:
-            clock_frequency = 1.7e9
+        if clock_frequency is None:
+            if ints_in_header == 7:
+                clock_frequency = 1e7
+            else:
+                clock_frequency = 1.7e9
 
         # define data type for file read
         record = np.dtype([('detector_nmbr', 'int32'),
@@ -483,14 +548,12 @@ class RdtMixin(object):
 
     def include_mon(self, path_mon):
         """
-        TODO
+        Read the content of an mon file an add to HDF5.
 
-        :param path_mon:
-        :type path_mon:
-        :param read_events:
-        :type read_events:
-        :return:
-        :rtype:
+        These files contain the paramters of the cryostat with time stamps.
+
+        :param path_mon: Path to the mon file e.g. "data/bcks/*.mon".
+        :type path_mon: string
         """
 
         header = np.dtype([('file_version', '|S12'),
@@ -517,6 +580,6 @@ class RdtMixin(object):
                 if name in mon:
                     del mon[name]
                 mon.create_dataset(name=name,
-                                 data=mon_pars[name])
+                                   data=mon_pars[name])
 
         print('MON File Included.')

@@ -31,8 +31,22 @@ def light_yield_correction(phonon_energy, light_energy, scintillation_efficiency
 # classes
 
 class PolyModel:
+    """
+    # TODO
+
+    :param xd:
+    :type xd:
+    :param yd:
+    :type yd:
+    :param x_sigma:
+    :type x_sigma:
+    :param y_sigma:
+    :type y_sigma:
+    :param order:
+    :type order:
+    """
+
     def __init__(self, xd, yd, x_sigma=None, y_sigma=None, order=5):
-        # todo https://docs.scipy.org/doc/scipy/reference/odr.html !!
         self.xd = xd
         self.yd = yd
         self.x_sigma = x_sigma
@@ -49,6 +63,14 @@ class PolyModel:
         self.dydx = np.polyder(self.y, m=1)
 
     def y_pred(self, x):
+        """
+        # TODO
+
+        :param x:
+        :type x:
+        :return:
+        :rtype:
+        """
         y = self.y(x)
         if len(x.shape) == 0:
             x = np.array([x])
@@ -64,6 +86,15 @@ class PolyModel:
 
 
 class LinearModel:
+    """
+    TODO
+
+    :param xd:
+    :type xd:
+    :param yd:
+    :type yd:
+    """
+
     def __init__(self, xd, yd):
         self.xd = xd
         self.yd = yd
@@ -75,9 +106,27 @@ class LinearModel:
         self.stdev = np.sqrt(1 / (len(self.yd) - 2) * self.sum_errs)
 
     def y(self, x):
+        """
+        TODO
+
+        :param x:
+        :type x:
+        :return:
+        :rtype:
+        """
         return x * self.a + self.b
 
     def confidence_interval(self, x, conf=0.95):
+        """
+        TODO
+
+        :param x:
+        :type x:
+        :param conf:
+        :type conf:
+        :return:
+        :rtype:
+        """
         alpha = 1. - conf
 
         y = self.y(x)
@@ -91,12 +140,30 @@ class LinearModel:
         return yl, y, yu
 
     def y_sigma(self, x):
+        """
+        TODO
+
+        :param x:
+        :type x:
+        :return:
+        :rtype:
+        """
         yl, y, yu = self.confidence_interval(x, conf=0.68)
 
         lower, upper = y - np.sqrt((y - yl) ** 2 + self.stdev ** 2), y + np.sqrt((y - yu) ** 2 + self.stdev ** 2)
         return lower, y, upper
 
     def prediction_interval(self, x, pi=.68):
+        """
+        TODO
+
+        :param x:
+        :type x:
+        :param pi:
+        :type pi:
+        :return:
+        :rtype:
+        """
         y = self.y(x)
 
         one_minus_pi = 1 - pi
@@ -112,6 +179,11 @@ class LinearModel:
 class PulserModel:
     """
     TODO
+
+    :param start_saturation:
+    :type start_saturation:
+    :param max_dist:
+    :type max_dist:
     """
 
     def __init__(self,
