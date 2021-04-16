@@ -91,7 +91,7 @@ class FeaturesMixin(object):
                  remove_offset=True,
                  verb=True,
                  scale_fit_height=True,
-                 sample_length=0.04,
+                 sample_length=None,
                  t0_start=None,
                  opt_start=False):
         """
@@ -134,13 +134,17 @@ class FeaturesMixin(object):
         :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
             the fit is done.
         :type scale_fit_height: bool
-        :param sample_length: The length of one sample in milliseconds.
+        :param sample_length: The length of one sample in milliseconds. If None, this is calculated from the sample
+            frequency.
         :type sample_length: float
         :param t0_start: The start values for t0 in the fit.
         :type t0_start: 2-tupel of floats
         :param opt_start: If true, a pre-fit is applied to find optimal start values.
         :type opt_start: bool
         """
+
+        if sample_length is None:
+            sample_length = 1/self.sample_frequency * 1000
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             events = h5f[type]['event']
@@ -380,7 +384,7 @@ class FeaturesMixin(object):
                              remove_offset=True,
                              verb=True,
                              scale_fit_height=True,
-                             sample_length=0.04):
+                             sample_length=None):
         """
         Calculate an exceptional Standard Event for a Class in the HDF5 File, for only one specific channel.
 
@@ -425,9 +429,13 @@ class FeaturesMixin(object):
         :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
             the fit is done.
         :type scale_fit_height: bool
-        :param sample_length: The length of one sample in milliseconds.
+        :param sample_length: The length of one sample in milliseconds. If None, this is calculated from the sample
+            frequency.
         :type sample_length: float
         """
+
+        if sample_length is None:
+            sample_length = 1000 / self.sample_frequency
 
         with h5py.File(self.path_h5, 'r+') as h5f:
 

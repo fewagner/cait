@@ -14,16 +14,18 @@ from sklearn.ensemble import GradientBoostingRegressor
 
 def light_yield_correction(phonon_energy, light_energy, scintillation_efficiency):
     """
-    TODO
+    Return the recoil energy, corrected for the energy loss to scintillation light.
 
-    :param phonon_energy:
-    :type phonon_energy:
-    :param light_energy:
-    :type light_energy:
-    :param scintillation_efficiency:
-    :type scintillation_efficiency:
-    :return:
-    :rtype:
+    TODO add citation
+
+    :param phonon_energy: The recoil energies of the phonon channel, in keV.
+    :type phonon_energy: 1D float array
+    :param light_energy: The recoil energies of the light channel, in keV electron equivalent.
+    :type light_energy: 1D float array
+    :param scintillation_efficiency: The scintillation efficiency of the crystal.
+    :type scintillation_efficiency: float
+    :return: The corrected recoil energies.
+    :rtype: 1D float array
     """
     return scintillation_efficiency * light_energy + (1 - scintillation_efficiency) * phonon_energy
 
@@ -32,18 +34,18 @@ def light_yield_correction(phonon_energy, light_energy, scintillation_efficiency
 
 class PolyModel:
     """
-    # TODO
+    Fit a polynomial to given x and y data an orthogonal distance regression and uncertainties.
 
-    :param xd:
-    :type xd:
-    :param yd:
-    :type yd:
-    :param x_sigma:
-    :type x_sigma:
-    :param y_sigma:
-    :type y_sigma:
-    :param order:
-    :type order:
+    :param xd: The x values for the fit.
+    :type xd: 1D array
+    :param yd: The y values for the fit.
+    :type yd: 1D array
+    :param x_sigma: The uncertainties on the x values for the fit.
+    :type x_sigma: 1D array
+    :param y_sigma: The uncertainties on the y values for the fit.
+    :type y_sigma: 1D array
+    :param order: The order of the polynomial.
+    :type order: int
     """
 
     def __init__(self, xd, yd, x_sigma=None, y_sigma=None, order=5):
@@ -64,12 +66,12 @@ class PolyModel:
 
     def y_pred(self, x):
         """
-        # TODO
+        Evaluate the fitted polynomial for a given x value and return the +/i 1 sigma prediction interval.
 
-        :param x:
-        :type x:
-        :return:
-        :rtype:
+        :param x: The x values for which we evaluate the fitted polynomial.
+        :type x: 1D array
+        :return: (predicted values - 1 sigma uncertainty, predicted value, predicted values + 1 sigma uncertainty)
+        :rtype: 3-tuple of 1D arrays
         """
         y = self.y(x)
         if len(x.shape) == 0:
@@ -87,12 +89,12 @@ class PolyModel:
 
 class LinearModel:
     """
-    TODO
+    Fit a linear model to given x and y data with ordinary least squares regression and prediction intervals.
 
-    :param xd:
-    :type xd:
-    :param yd:
-    :type yd:
+    :param xd: The x values for the fit.
+    :type xd: 1D array
+    :param yd: The y values for the fit.
+    :type yd: 1D array
     """
 
     def __init__(self, xd, yd):
@@ -107,25 +109,25 @@ class LinearModel:
 
     def y(self, x):
         """
-        TODO
+        Evaluate the fitted linear model for a given x value.
 
-        :param x:
-        :type x:
-        :return:
-        :rtype:
+        :param x: The x values for which we evaluate the fitted linear model.
+        :type x: 1D array
+        :return: The predicted values.
+        :rtype: 1D array
         """
         return x * self.a + self.b
 
     def confidence_interval(self, x, conf=0.95):
         """
-        TODO
+        Return predicted values and their confidence interval for given x data.
 
-        :param x:
-        :type x:
-        :param conf:
-        :type conf:
-        :return:
-        :rtype:
+        :param x: The x values for which we evaluate the fitted polynomial.
+        :type x: 1D array
+        :param conf: The confidence level of the confidence interval.
+        :type conf: float between 0 and 1
+        :return: (predicted values - confidence, predicted value, predicted values + confidence)
+        :rtype: 3-tuple of 1D arrays
         """
         alpha = 1. - conf
 
@@ -141,12 +143,12 @@ class LinearModel:
 
     def y_sigma(self, x):
         """
-        TODO
+        Evaluate the fitted linear model for a given x value and return the +/i 1 sigma accumulated uncertainties (confidence and prediction uncertainty).
 
-        :param x:
-        :type x:
-        :return:
-        :rtype:
+        :param x:  The x values for which we evaluate the fitted polynomial.
+        :type x: 1D array
+        :return: (predicted values - 1 sigma prediction interval, predicted value, predicted values + 1 sigma prediction interval)
+        :rtype: 3-tuple of 1D arrays
         """
         yl, y, yu = self.confidence_interval(x, conf=0.68)
 
@@ -155,14 +157,14 @@ class LinearModel:
 
     def prediction_interval(self, x, pi=.68):
         """
-        TODO
+        Evaluate the fitted polynomial for a given x value and return the prediction interval.
 
-        :param x:
-        :type x:
-        :param pi:
-        :type pi:
-        :return:
-        :rtype:
+        :param x: The x values for which we evaluate the fitted polynomial.
+        :type x: 1D array
+        :param pi: The
+        :type pi: float between 0 and 1
+        :return: (predicted values - prediction interval, predicted value, predicted values + prediction interval)
+        :rtype: 3-tuple of 1D arrays
         """
         y = self.y(x)
 
@@ -178,12 +180,17 @@ class LinearModel:
 
 class PulserModel:
     """
-    TODO
+    A model to unfold the detector effects of cryogenic detectos.
 
-    :param start_saturation:
-    :type start_saturation:
-    :param max_dist:
-    :type max_dist:
+    The model is to predict the equivalent test pulse values for particle event recoils within the detector crystal.
+
+    # todo add citation
+
+    :param start_saturation: Test pulses with average pulse heights above this value are excluded from the fit.
+    :type start_saturation: float
+    :param max_dist: The maximal distance between two test pulses such that they are included still in the same regression.
+        For test pulses further apart, a new regression is started.
+    :type max_dist: float
     """
 
     def __init__(self,
@@ -205,26 +212,28 @@ class PulserModel:
             UPPER_ALPHA=0.84,
             ):
         """
-        TODO
+        Fit the model to given test pulse heights and amplitudes.
 
-        :param tphs:
-        :type tphs:
-        :param tpas:
-        :type tpas:
-        :param tp_hours:
-        :type tp_hours:
-        :param exclude_tpas:
-        :type exclude_tpas:
-        :param method:
-        :type method:
-        :param LOWER_ALPHA:
-        :type LOWER_ALPHA:
-        :param MIDDLE_ALPHA:
-        :type MIDDLE_ALPHA:
-        :param UPPER_ALPHA:
-        :type UPPER_ALPHA:
-        :return:
-        :rtype:
+        This fits a linear model or a gradient boosted regression tree for each test pulse amplitude in the
+        pulse height - time plane.
+
+        :param tphs: The pulse heights of the test pulses.
+        :type tphs: 1D array
+        :param tpas: The test pulse amplitudes.
+        :type tpas: 1D array
+        :param tp_hours: The hours time stamps of the test pulses.
+        :type tp_hours: 1D array
+        :param exclude_tpas: A list of TPA values that are excluded from the fit.
+        :type exclude_tpas: list
+        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
+            the interpolation of test pulse pulse height.
+        :type interpolation_method: string
+        :param LOWER_ALPHA: For the regression tree, this gives the quantile for the upper prediction band.
+        :type LOWER_ALPHA: float
+        :param MIDDLE_ALPHA: For the regression tree, this gives the quantile for the central prediction band.
+        :type MIDDLE_ALPHA: float
+        :param UPPER_ALPHA: For the regression tree, this gives the quantile for the lower prediction band.
+        :type UPPER_ALPHA: float
         """
 
         self.tphs = tphs
@@ -304,20 +313,22 @@ class PulserModel:
                 interpolation_method='linear',
                 ):
         """
-        TODO
+        Predict the equivalent test pulse value for given pulse heights.
 
-        :param evhs:
-        :type evhs:
-        :param ev_hours:
-        :type ev_hours:
-        :param poly_order:
-        :type poly_order:
-        :param cpe_factor:
-        :type cpe_factor:
-        :param method:
-        :type method:
-        :return:
-        :rtype:
+        :param evhs: The pulse heights of the events to predict equivalent TPA values for.
+        :type evhs: 1D array
+        :param ev_hours: The hours time stamps of the events to predict equivalent TPA values for.
+        :type ev_hours: 1D array
+        :param poly_order: The order of the polynomial to fit in the TPA/PH plane.
+        :type poly_order: int
+        :param cpe_factor: The CPE factor, which linearly maps TPA values to recoil energies.
+        :type cpe_factor: float
+        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
+            the interpolation of test pulse pulse height.
+        :type interpolation_method: string
+        :return: (the recoil energies, the 1 sigma uncertainties on the recoil energies, the equivalent tpa values, the
+            2 sigma uncertainties on the equivalent tpa values)
+        :rtype: 4-tuple of 1D arrays
         """
 
         # for each event in the interpolation intervals define a ph/tpa factor, for other events take closest TP time value
@@ -384,18 +395,18 @@ class PulserModel:
              poly_order=3,
              ):
         """
-        TODO
+        Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
 
-        :param dpi:
-        :type dpi:
-        :param plot_only_first_poly:
-        :type plot_only_first_poly:
-        :param method:
-        :type method:
-        :param poly_order:
-        :type poly_order:
-        :return:
-        :rtype:
+        :param dpi: The dots per inch of the plots.
+        :type dpi: int
+        :param plot_only_first_poly: If true, only the polynomial from the middle of the first consecutive record
+            interval is plotted, otherwise all are plotted.
+        :type plot_only_first_poly: bool
+        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
+            the interpolation of test pulse pulse height.
+        :type interpolation_method: string
+        :param poly_order: The order of the polynomial to fit in the TPA/PH plane.
+        :type poly_order: int
         """
 
         if interpolation_method == 'linear':

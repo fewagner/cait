@@ -16,13 +16,12 @@ from tqdm.auto import tqdm
 
 def readcs(path):
     """
-    This functions reads a continuous stream file i.e. from CRESST
-    TODO
+    This functions reads a continuous stream file, i.e. from CRESST.
 
-    :param path:
-    :type path:
-    :return:
-    :rtype:
+    :param path: Path to the continuos stream file.
+    :type path: string
+    :return: Return the opened file stream to the memory mapped stream file.
+    :rtype: memory mapped array
     """
     arr = np.memmap(path, dtype=np.int16, mode='r')
     return arr
@@ -31,14 +30,14 @@ def readcs(path):
 @nb.njit
 def time_to_sample(t, sample_duration=0.00004):
     """
-    TODO
+    Convert a seconds time stamp to a sample index within the stream.
 
-    :param t:
-    :type t:
-    :param sample_duration:
-    :type sample_duration:
-    :return:
-    :rtype:
+    :param t: The seconds time stamps.
+    :type t: 1D array
+    :param sample_duration: The sample duration in second.
+    :type sample_duration: float
+    :return: The sample indices.
+    :rtype: 1D array
     """
     s = np.floor(t / sample_duration)
     return s
@@ -47,14 +46,14 @@ def time_to_sample(t, sample_duration=0.00004):
 @nb.njit
 def sample_to_time(s, sample_duration=0.00004):
     """
-    TODO
+    Convert a sample index stamp to a seconds time stamp within the stream.
 
-    :param s:
-    :type s:
-    :param sample_duration:
-    :type sample_duration:
-    :return:
-    :rtype:
+    :param s: The sample indices.
+    :type s: 1D array
+    :param sample_duration: The sample duration in second.
+    :type sample_duration: float
+    :return: The seconds time stamps.
+    :rtype: 1D array
     """
     t = s * sample_duration
     return t
@@ -62,16 +61,16 @@ def sample_to_time(s, sample_duration=0.00004):
 
 def time(start_sample, stop_sample, sample_duration=0.00004):
     """
-    TODO
+    Return an array of second values of individual samples.
 
-    :param start_sample:
-    :type start_sample:
-    :param stop_sample:
-    :type stop_sample:
-    :param sample_duration:
-    :type sample_duration:
-    :return:
-    :rtype:
+    :param start_sample: The sample to start the array from.
+    :type start_sample: int
+    :param stop_sample: The last sample in the array.
+    :type stop_sample: int
+    :param sample_duration: The duration of the sample in the array.
+    :type sample_duration: float
+    :return: The array of second values.
+    :rtype: 1D array
     """
     start_time = start_sample * sample_duration
     stop_time = (stop_sample - 1) * sample_duration

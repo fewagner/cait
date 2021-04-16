@@ -451,14 +451,16 @@ class RdtMixin(object):
 
     def read_clock_frequency(self, path_rdt, ints_in_header=7, dvm_channels=0):
         """
-        TODO
+        Estimate the frequency of the DAQ clock by matching it with the CPU clock, for the last couple of events in
+        an RDT file.
 
-        :param path_rdt:
-        :type path_rdt:
-        :param ints_in_header:
-        :type ints_in_header:
-        :param dvm_channels:
-        :type dvm_channels:
+        :param path_rdt: Full path to the rdt file.
+        :type path_rdt: string
+        :param ints_in_header: Either 6 or 7. The correct value is written in the Par file. Recordings with muon veto
+            have an additional int (and therefore 7) in the header of each written event.
+        :type ints_in_header: int
+        :param dvm_channels: The number of DVM channels.
+        :type dvm_channels: int
         """
 
         record = np.dtype([('detector_nmbr', 'i4'),

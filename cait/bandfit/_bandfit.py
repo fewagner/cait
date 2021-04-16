@@ -7,12 +7,11 @@ import scipy.interpolate
 import scipy.integrate
 from scipy.special import erfinv
 from scipy.stats import norm
-import numpy as np
 import matplotlib.pyplot as plt
 from ._likelihood import *
 from ._bandfunctions import *
 from ..styles import use_cait_style, make_grid
-from tqdm.auto import tqdm, trange
+from tqdm.auto import trange
 
 
 # class
@@ -21,46 +20,59 @@ class Bandfit():
     """
     A class for calculating a bandfit in the energy-light plane.
 
-    :param values_module_independent:
-    :type values_module_independent:
-    :param lbounds_module_independent:
-    :type lbounds_module_independent:
-    :param ubounds_module_independent:
-    :type ubounds_module_independent:
-    :param fixed_module_independent:
-    :type fixed_module_independent:
-    :param values_nuclear:
-    :type values_nuclear:
-    :param lbounds_nuclear:
-    :type lbounds_nuclear:
-    :param ubounds_nuclear:
-    :type ubounds_nuclear:
-    :param fixed_nuclear:
-    :type fixed_nuclear:
-    :param values_gamma:
-    :type values_gamma:
-    :param lbounds_gamma:
-    :type lbounds_gamma:
-    :param ubounds_gamma:
-    :type ubounds_gamma:
-    :param fixed_gamma:
-    :type fixed_gamma:
-    :param values_beta:
-    :type values_beta:
-    :param lbounds_beta:
-    :type lbounds_beta:
-    :param ubounds_beta:
-    :type ubounds_beta:
-    :param fixed_beta:
-    :type fixed_beta:
-    :param values_inelastic:
-    :type values_inelastic:
-    :param lbounds_inelastic:
-    :type lbounds_inelastic:
-    :param ubounds_inelastic:
-    :type ubounds_inelastic:
-    :param fixed_inelastic:
-    :type fixed_inelastic:
+    # TODO add citation
+
+    :param values_module_independent: The module independent parameter values. These are the parameters by the names
+        "np_decay", "np_fract", "L0", "L1", "sigma_l0", "S1", "S2", "el_amp", "el_decay", "el_width",
+                 "sigma_p0", "sigma_p1", "E_p0", "E_p1", "E_fr", "E_dc", "L_lee", "QF_y", "QF_ye", "eps", "kg_d", "thr".
+    :type values_module_independent: 1D float array
+    :param lbounds_module_independent: The lower bounds for the module independent paramater values.
+    :type lbounds_module_independent: 1D float array
+    :param ubounds_module_independent: The upper bounds for the module independent paramater values.
+    :type ubounds_module_independent: 1D float array
+    :param fixed_module_independent: The fixed values flag for the module independent paramater values. Ones mean fixed
+        values, zero mean not fixed in the likelihood estimation.
+    :type fixed_module_independent: 1D int array
+    :param values_nuclear: The nuclear parameter values. These are the parameters by the names
+        "QF_nucX", "es_nucX_f", "es_nucX_lb", "nc_nucX_p0", "nc_nucX_p1", where X stands for the number or the nucleus.
+        The first array index enumerates the number of the nucleus, the second the five parameter types.
+    :type values_nuclear: 2D float array
+    :param lbounds_nuclear: The lower bounds of the nuclear parameter values.
+    :type lbounds_nuclear: 2D float array
+    :param ubounds_nuclear: The upper bounds of the nuclear parameter values.
+    :type ubounds_nuclear: 2D float array
+    :param fixed_nuclear: The fixed values flag for the nuclear parameter values.
+    :type fixed_nuclear: 2D int array
+    :param values_gamma: The gamma parameter values. These are the parameters by the names
+        "FG_X_C", "FG_X_M", where X stands for the number or the gamma line.
+        The first array index enumerates the number of the gamma line, the second the two parameter types.
+    :type values_gamma: 2D float array
+    :param lbounds_gamma: The lower bounds of the gamma parameter values.
+    :type lbounds_gamma: 2D float array
+    :param ubounds_gamma: The upper bounds of the gamma parameter values.
+    :type ubounds_gamma: 2D float array
+    :param fixed_gamma: The fixed values flag for the gamma parameter values.
+    :type fixed_gamma: 2D int array
+    :param values_beta: The beta parameter values. These are the parameters by the names
+        "B_X_C", "B_X_M", "B_X_D", where X stands for the number or the beta line.
+        The first array index enumerates the number of the beta line, the second the three parameter types.
+    :type values_beta: 2D float array
+    :param lbounds_beta: The lower bounds of the beta parameter values.
+    :type lbounds_beta: 2D float array
+    :param ubounds_beta: The upper bounds of the beta parameter values.
+    :type ubounds_beta: 2D float array
+    :param fixed_beta: The fixed values flag for the beta parameter values.
+    :type fixed_beta: 2D int array
+    :param values_inelastic: The inelastic parameter values. These are the parameters by the names
+        "IE_X_M", "IE_X_S", "IE_X_E", "IE_X_p0", "IE_X_p1", where X stands for the number or the inelastic line.
+        The first array index enumerates the number of the inelastic line, the second the five parameter types.
+    :type values_inelastic: 2D float array
+    :param lbounds_inelastic: The lower bounds of the inelastic parameter values.
+    :type lbounds_inelastic: 2D float array
+    :param ubounds_inelastic: The upper bounds of the inelastic parameter values.
+    :type ubounds_inelastic: 2D float array
+    :param fixed_inelastic: The fixed values flag for the inelastic parameter values.
+    :type fixed_inelastic: 2D int array
     """
 
     def __init__(self,
@@ -201,16 +213,20 @@ class Bandfit():
                    region_of_interest,
                    ):
         """
-        TODO
+        Add the files with the unbinned recoil energies of bck data and neutron calibration data. Also add the
+        binned cut efficiency and define the region of interest.
 
-        :param path_xy:
-        :type path_xy:
-        :param path_ncal:
-        :type path_ncal:
-        :param path_cuteff:
-        :type path_cuteff:
-        :param region_of_interest:
-        :type region_of_interest:
+        :param path_xy: Path to the xy file of the bck data. The file should contain in the first column the recoil
+            energies in keV and in the second column the light yield.
+        :type path_xy: string
+        :param path_ncal: Path to the xy file of the ncal data. The file should contain in the first column the recoil
+            energies in keV and in the second column the light yield.
+        :type path_ncal: string
+        :param path_cuteff: Path to the xy file of the binned cut efficiency. The file should contain in the first column the recoil
+            energies in keV and in the second column the value of the cut efficiency.
+        :type path_cuteff: string
+        :param region_of_interest: The upper and lower bound of the region of interst, in keV.
+        :type region_of_interest: 2-tuple of floats
         """
 
         def out_of_bound_index(array,
@@ -243,7 +259,7 @@ class Bandfit():
         self.cuteff = np.loadtxt(path_cuteff, skiprows=4)
         self.cutf = scipy.interpolate.Akima1DInterpolator(self.cuteff[:, 0], self.cuteff[:, 1])
 
-        self.cateffarr = self.cutf(self.xy[:, 0])
+        self.cuteffarr = self.cutf(self.xy[:, 0])
         self.region_of_interest = region_of_interest
 
         print('Files loaded.')
@@ -256,20 +272,20 @@ class Bandfit():
                  optstart=False
                  ):
         """
-        TODO
+        Minimize the negative log likelihood of the distribution, that describes all bands in the energy-light plane.
 
-        :param method:
-        :type method:
-        :param verb:
-        :type verb:
-        :param maxiter:
-        :type maxiter:
-        :param workers:
-        :type workers:
-        :param optstart:
-        :type optstart:
-        :return:
-        :rtype:
+        :param method: Either Nelder-Mead or differential_evolution. The optimization method applied.
+        :type method: string
+        :param verb: If true, we get verbal feedback about the progress of optimization.
+        :type verb: bool
+        :param maxiter: The maximal number of iterations for the algorithm. This is a different thing than the number of
+            function evaluations, which is printed when the argument verb is set to true.
+        :type maxiter: int
+        :param workers: The number of workers for the differential evolution algorithm. -1 means all available.
+        :type workers: int
+        :param optstart: If true, we start with a differential evolution optimization to find optimal start values
+            and continue with a Nelder-Mead to find final optimal parameters.
+        :type optstart: bool
         """
 
         valuesred = reduceparvalues(self.values, self.fixed)
@@ -293,7 +309,7 @@ class Bandfit():
                                                                   args=(
                                                                       self.values, self.fixed, self.lbounds,
                                                                       self.ubounds,
-                                                                      self.xy, self.cateffarr, self.region_of_interest,
+                                                                      self.xy, self.cuteffarr, self.region_of_interest,
                                                                       self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
                                                                       self.nmbr_inelastic, info),
                                                                   strategy='randtobest1bin',
@@ -313,7 +329,7 @@ class Bandfit():
             minresult = scipy.optimize.minimize(wrappernoint,
                                                 x0=x0,
                                                 args=(self.values, self.fixed, self.lbounds, self.ubounds,
-                                                      self.xy, self.cateffarr, self.region_of_interest,
+                                                      self.xy, self.cuteffarr, self.region_of_interest,
                                                       self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
                                                       self.nmbr_inelastic, info),
                                                 method='Nelder-Mead',
@@ -335,7 +351,7 @@ class Bandfit():
             minresult = scipy.optimize.differential_evolution(wrappernoint,
                                                               scipy.optimize.Bounds(lboundsred, uboundsred),
                                                               args=(self.values, self.fixed, self.lbounds, self.ubounds,
-                                                                    self.xy, self.cateffarr, self.region_of_interest,
+                                                                    self.xy, self.cuteffarr, self.region_of_interest,
                                                                     self.nmbr_nuclei, self.nmbr_gamma, self.nmbr_beta,
                                                                     self.nmbr_inelastic, info),
                                                               strategy='randtobest1bin',
@@ -354,7 +370,7 @@ class Bandfit():
 
     def plot_bck(self,
                  binwidth=0.05,
-                 lowErange=[0., 0.5],
+                 lowErange=(0., 0.5),
                  lowEbinw=0.01,
                  plot_bands=True,
                  grid_step=0.001,
@@ -363,24 +379,24 @@ class Bandfit():
                  lower_acceptance: float = 0.005,
                  ):
         """
-        plot background data
+        Plot a histogram and light yield scatter plot of the the background data.
 
-        :param binwidth:
-        :type binwidth:
-        :param lowErange:
-        :type lowErange:
-        :param lowEbinw:
-        :type lowEbinw:
-        :param plot_bands:
-        :type plot_bands:
-        :param grid_step:
-        :type grid_step:
-        :param all_in_one:
-        :type all_in_one:
-        :param upper_acceptance:
-        :type upper_acceptance:
-        :param lower_acceptance:
-        :type lower_acceptance:
+        :param binwidth: The bin width of the histogram in keV.
+        :type binwidth: float
+        :param lowErange: The lower and upper limit of the low energy region.
+        :type lowErange: 2-tuple
+        :param lowEbinw: The bin width of the low energy histogram in keV.
+        :type lowEbinw: float
+        :param plot_bands: If true, we plot the bands. The minimization has to be done before.
+        :type plot_bands: bool
+        :param grid_step: The step width of the grid for evaluating the acceptance region.
+        :type grid_step: float
+        :param all_in_one: Do all plots together in one subplot figure.
+        :type all_in_one: bool
+        :param upper_acceptance: The quantile of the highest recoil band that limits the acceptance region from above.
+        :type upper_acceptance: float
+        :param lower_acceptance: The quantile of the lowest recoil band that limits the acceptance region from below.
+        :type lower_acceptance: float
         """
 
         if plot_bands:
@@ -478,24 +494,24 @@ class Bandfit():
                   lower_acceptance: float = 0.005,
                   ):
         """
-        plot ncal data
+        Plot a histogram and light yield scatter plot of the the neutron calibration data.
 
-        :param binwidth:
-        :type binwidth:
-        :param lowErange:
-        :type lowErange:
-        :param lowEbinw:
-        :type lowEbinw:
-        :param plot_bands:
-        :type plot_bands:
-        :param grid_step:
-        :type grid_step:
-        :param all_in_one:
-        :type all_in_one:
-        :param upper_acceptance:
-        :type upper_acceptance:
-        :param lower_acceptance:
-        :type lower_acceptance:
+        :param binwidth: The bin width of the histogram in keV.
+        :type binwidth: float
+        :param lowErange: The lower and upper limit of the low energy region.
+        :type lowErange: 2-tuple
+        :param lowEbinw: The bin width of the low energy histogram in keV.
+        :type lowEbinw: float
+        :param plot_bands: If true, we plot the bands. The minimization has to be done before.
+        :type plot_bands: bool
+        :param grid_step: The step width of the grid for evaluating the acceptance region.
+        :type grid_step: float
+        :param all_in_one: Do all plots together in one subplot figure.
+        :type all_in_one: bool
+        :param upper_acceptance: The quantile of the highest recoil band that limits the acceptance region from above.
+        :type upper_acceptance: float
+        :param lower_acceptance: The quantile of the lowest recoil band that limits the acceptance region from below.
+        :type lower_acceptance: float
         """
 
         if plot_bands:
@@ -584,7 +600,7 @@ class Bandfit():
 
     def plot_survival_prob(self):
         """
-        TODO
+        Plot a histogram of the event survival probability.
         """
 
         plt.close()
@@ -608,22 +624,24 @@ class Bandfit():
                            include_cut_efficiency: bool = True,
                            ):
         """
-        TODO
+        Return the cut efficiency, multiplied with the overlap of the individual nuclear recoil band with the
+        acceptance region.
 
-        :param energy_array:
-        :type energy_array:
-        :param nucleus:
-        :type nucleus:
-        :param upper_acceptance:
-        :type upper_acceptance:
-        :param lower_acceptance:
-        :type lower_acceptance:
-        :param step_size:
-        :type step_size:
-        :param include_cut_efficiency:
-        :type include_cut_efficiency:
-        :return:
-        :rtype:
+        :param energy_array: The array of energy values, on which we want to evaluate the nuclear cut efficiency.
+        :type energy_array: 1D array
+        :param nucleus: The number of nucleus the nucleus, for that we want to calculate the nuclear cut efficiency.
+        :type nucleus: int
+        :param upper_acceptance: The quantile of the highest recoil band that limits the acceptance region from above.
+        :type upper_acceptance: float
+        :param lower_acceptance: The quantile of the lowest recoil band that limits the acceptance region from below.
+        :type lower_acceptance: float
+        :param step_size: The step width of the grid for evaluating the acceptance region.
+        :type step_size: float
+        :param include_cut_efficiency: If true, we multiply the cut efficiency with the overlap of the recoil band with
+            the acceptance region. Otherwise we return only the overlap.
+        :type include_cut_efficiency: bool
+        :return: The nuclear cut efficiency.
+        :rtype: 1D array
         """
 
         # get mean of band
@@ -656,14 +674,14 @@ class Bandfit():
                             lower_acceptance: float = 0.005,
                             ):
         """
-        TODO
+        Calculate and return the events within the acceptance region.
 
-        :param upper_acceptance:
-        :type upper_acceptance:
-        :param lower_acceptance:
-        :type lower_acceptance:
-        :return:
-        :rtype:
+        :param upper_acceptance: The quantile of the highest recoil band that limits the acceptance region from above.
+        :type upper_acceptance: float
+        :param lower_acceptance: The quantile of the lowest recoil band that limits the acceptance region from below.
+        :type lower_acceptance: float
+        :return: (the accepted events, all events)
+        :rtype: 2-tuple of 1D arrays
         """
         try:
 
@@ -728,7 +746,6 @@ class Bandfit():
                                upper_acceptance: float = 0.5,
                                lower_acceptance: float = 0.005,
                                ):
-        # TODO
         p = expandparvalues(self.values, self.minresult, self.fixed)
         peb = p[0:4]
         plr = p[4:7]

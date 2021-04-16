@@ -281,7 +281,7 @@ class CsmplMixin(object):
                     fitpar=None,
                     mainpar=None,
                     scale_fit_height=True,
-                    sample_length=0.04,
+                    sample_length=None,
                     t0_start=None,
                     opt_start=False,
                     group_name_appendix='',
@@ -299,7 +299,7 @@ class CsmplMixin(object):
             fitted parametric model. Use this with caution! With this you intentionally deviate from the best fit
             parameters.
         :type scale_fit_height: bool
-        :param sample_length: The sample length in milliseconds.
+        :param sample_length: The sample length in milliseconds. If None, it is calculated from the sample frequency.
         :type sample_length: float
         :param t0_start: The start values for the fit of the parametric model, for all channels.
         :type t0_start: list of floats
@@ -310,6 +310,9 @@ class CsmplMixin(object):
             test pulse standard event.
         :type group_name_appendix: string
         """
+
+        if sample_length is None:
+            sample_length = 1/self.sample_frequency * 1000
 
         std_evs = []
 
@@ -418,7 +421,7 @@ class CsmplMixin(object):
                                  csmpl_paths,
                                  max_time_diff=0.5,  # in sec
                                  exclude_tp=True,
-                                 sample_duration=0.00004,
+                                 sample_duration=None,
                                  name_appendix='',
                                  datatype='float32',
                                  min_tpa=0.0001,
@@ -440,7 +443,7 @@ class CsmplMixin(object):
         :param exclude_tp: If true, we separate the test pulses from the triggered events and put them in individual
             groups.
         :type exclude_tp: bool
-        :param sample_duration: The duration of a sample in seconds.
+        :param sample_duration: The duration of a sample in seconds. If None, the inverse of the sample frequency is taken.
         :type sample_duration: float
         :param name_appendix: The name appendix of the data sets trigger_hours, trigger_time_s and trigger_time_mus in
             the HDF5 file. This is typically needed, when we want to include the events corresponding to time stamps
@@ -455,6 +458,9 @@ class CsmplMixin(object):
         :param down: The events get stored downsampled by this factor.
         :type down: int
         """
+
+        if sample_duration is None:
+            sample_duration = 1/self.sample_frequency
 
         # open read file
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -727,7 +733,7 @@ class CsmplMixin(object):
                                nmbr,
                                min_distance=0.5,
                                max_distance=60,
-                               record_window_length=16384 / 25000,
+                               record_window_length=None,
                                max_attempts=5):
         """
         Include a number of random triggers from the Stream.
@@ -743,7 +749,8 @@ class CsmplMixin(object):
         :param max_distance: The maximal distance of two test pulses in seconds, such that the interval in between still
             counts as measurement time.
         :type max_distance: float
-        :param record_window_length: The length of the record window in seconds.
+        :param record_window_length: The length of the record window in seconds. If None, it is calculated from the
+            record length and sample frequency.
         :type record_window_length: float
         :param max_attempts: In case the chosen time stamp is piled up with an already chosen noise trigger, we chose
             another time stamp. This counts as one attempt. If the maximal number of attempts is exceeded, we skip one
@@ -751,6 +758,9 @@ class CsmplMixin(object):
             nmbr. This procedure prevents infinite loops due to a too high nmbr parameter.
         :type max_attempts: int
         """
+
+        if record_window_length is None:
+            record_window_length = self.record_length / self.sample_frequency
 
         min_distance /= 3600  # all in hours
         max_distance /= 3600

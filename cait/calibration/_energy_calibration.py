@@ -26,33 +26,10 @@ def energy_calibration(evhs,
                        plot=False
                        ):
     """
-    TODO
-
-    Attention! This function is deprecated!
-
-    :param evhs:
-    :type evhs:
-    :param ev_hours:
-    :type ev_hours:
-    :param tphs:
-    :type tphs:
-    :param tpas:
-    :type tpas:
-    :param tp_hours:
-    :type tp_hours:
-    :param linear_tpa_range:
-    :type linear_tpa_range:
-    :param max_dist:
-    :type max_dist:
-    :param cpe_factor:
-    :type cpe_factor:
-    :param smoothing_factor:
-    :type smoothing_factor:
-    :return:
-    :rtype:
+    Attention! This function is deprecated! Please use the PulserModel class instead!
     """
 
-    raise Warning('This function is deprecated, please use energy_calibration_linear or energy_calibration_tree!')
+    raise Warning('This function is deprecated, please use the PulseModel instead!')
 
     unique_tpas = np.unique(tpas)
     unique_tpas = unique_tpas[np.logical_not(np.in1d(unique_tpas, exclude_tpas))]

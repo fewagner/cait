@@ -13,14 +13,18 @@ class LogicalCut:
     :type initial_condition:
     """
 
-    def __init__(self, initial_condition):
+    def __init__(self, initial_condition=None):
 
-        if len(initial_condition.shape) != 1:
-            raise KeyError('initial_condition needs to be a 1-dimensional array!')
-        if initial_condition.dtype != 'bool':
-            raise KeyError('initial_condition needs to be numpy array with dtype bool!')
+        if initial_condition is not None:
+            if len(initial_condition.shape) != 1:
+                raise KeyError('initial_condition needs to be a 1-dimensional array!')
+            if initial_condition.dtype != 'bool':
+                raise KeyError('initial_condition needs to be numpy array with dtype bool!')
+            self.all_idx = np.arange(len(initial_condition))
+        else:
+            self.all_idx = None
         self.cut_flag = initial_condition
-        self.all_idx = np.arange(len(initial_condition))
+
 
     def __len__(self):
         return len(self.get_idx())
@@ -36,7 +40,12 @@ class LogicalCut:
             raise KeyError('condition needs to be a 1-dimensional array!')
         if condition.dtype != 'bool':
             raise KeyError('condition needs to be numpy array with dtype bool!')
-        self.cut_flag = np.logical_and(self.cut_flag, condition)
+        if self.cut_flag is not None:
+            self.cut_flag = np.logical_and(self.cut_flag, condition)
+        else:
+            self.cut_flag = condition
+        if self.all_idx is None:
+            self.all_idx = np.arange(len(condition))
 
     def force_true(self, idx):
         """

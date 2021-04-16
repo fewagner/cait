@@ -88,7 +88,7 @@ class FitMixin(object):
             h5f[type]['fitpar'][:, idx, :] = fitpar_event
 
     # apply sev fit
-    def apply_sev_fit(self, type='events', only_channels=None, sample_length=0.04, down=1, order_bl_polynomial=3,
+    def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
                       verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False):
         """
@@ -101,7 +101,7 @@ class FitMixin(object):
         :type only_channels: list of ints
         :param order_bl_polynomial: Either 0,1,2 or 3 - the order of the polynomial assumed for baseline.
         :type order_bl_polynomial: int
-        :param sample_length: The length of a sample in milliseconds.
+        :param sample_length: The length of a sample in milliseconds. If None, this is calculated from the sample frequency.
         :type sample_length: float
         :param down: The downsample factor for the fit, has to be a power of 2.
         :type down: int
@@ -123,6 +123,9 @@ class FitMixin(object):
             same position.
         :type first_channel_dominant: bool
         """
+
+        if sample_length is None:
+            sample_length = 1000 / self.sample_frequency
 
         print('Calculating SEV Fit.')
 
@@ -321,7 +324,7 @@ class FitMixin(object):
         :type plot: bool
         :param title: A title for both plots.
         :type title: string
-        :param sample_length: The length of a sample in seconds.
+        :param sample_length: The length of a sample in seconds. If None, it is calculated from the sample frequency.
         :type sample_length: float
         :param record_length: The number of samples within a record window.
         :type record_length: int
@@ -342,6 +345,9 @@ class FitMixin(object):
         :param save_path: A path to save the plots.
         :type save_path: string
         """
+
+        if sample_length is None:
+            sample_length = 1/self.sample_frequency
 
         print('Estimating Trigger Threshold.')
         print('Using model: {}'.format(model))

@@ -37,7 +37,7 @@ class PlotMixin(object):
                  title=None,
                  show_fit=True,
                  block=True,
-                 sample_length=0.04,
+                 sample_length=None,
                  show=True,
                  save_path=None,
                  name_appendix='',
@@ -56,7 +56,7 @@ class PlotMixin(object):
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution.
         :type block: bool
-        :param sample_length: The length of a sample milliseconds.
+        :param sample_length: The length of a sample milliseconds. If None, it is calcualted from the sample frequency.
         :type sample_length: float
         :param show: If set, the plots are shown.
         :type show: bool
@@ -68,6 +68,9 @@ class PlotMixin(object):
         :param dpi: The dots per inch of the plot.
         :type dpi: int
         """
+
+        if sample_length is None:
+            sample_length = 1/self.sample_frequency * 1000
 
         with h5py.File(self.path_h5, 'r') as f:
             sev = f[type + name_appendix]['event']
@@ -128,7 +131,7 @@ class PlotMixin(object):
                              title=None,
                              show_fit=True,
                              block=True,
-                             sample_length=0.04,
+                             sample_length=None,
                              show=True,
                              save_path=None,
                              dpi=150):
@@ -145,7 +148,7 @@ class PlotMixin(object):
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution
         :type block: bool
-        :param sample_length: The length of a sample milliseconds
+        :param sample_length: The length of a sample in milliseconds. If None, it is calcualted from the sample frequency.
         :type sample_length: float
         :param show: If set, the plots are shown.
         :type show: bool
@@ -154,6 +157,9 @@ class PlotMixin(object):
         :param dpi: The dots per inch of the plot.
         :type dpi: int
         """
+
+        if sample_length is None:
+            sample_length = 1/self.sample_frequency * 1000
 
         with h5py.File(self.path_h5, 'r') as f:
             sev = np.array(f['stdevent_{}'.format(naming)]['event'])

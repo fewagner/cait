@@ -11,7 +11,6 @@
    ../../CONTRIBUTING.rst
    tips
    magic
-   bandfit
    changelog
 
 .. toctree::

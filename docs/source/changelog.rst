@@ -22,7 +22,7 @@ This is the first stable, full release of Cait. In this original version, the fo
     - Baseline fits
 - Processing of continuously recorded raw data:
     - Stream triggering with and without optimum filtering
-    - synchronisation with hardware triggered data
+    - Synchronisation with hardware triggered data
     - Simulation of random triggers on the continuous data stream
 - Raw data analysis tools:
     - Logical cuts
@@ -32,8 +32,7 @@ This is the first stable, full release of Cait. In this original version, the fo
     - Calculation of baseline resolution
     - Calculation of total exposure
 - Simulation tools:
-    - Simulation of raw data with particle
-    - Test pulse or exceptional standard event templates in the linear and saturated regime
+    - Simulation of raw data with particle, test pulse or exceptional standard event templates in the linear and saturated regime
     - Simulation of realistic noise baselines
     - Simulation of test data in various raw data formats
 - Machine learning:
