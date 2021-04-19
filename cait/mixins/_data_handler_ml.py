@@ -7,6 +7,7 @@ import h5py
 from sklearn.decomposition import PCA, IncrementalPCA
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.pipeline import Pipeline
+from tqdm.auto import tqdm
 
 # -----------------------------------------------------------
 # CLASS
@@ -76,6 +77,7 @@ class MachineLearningMixin(object):
 
             for c in range(self.nmbr_channels):
                 print('Channel ', c)
+                print('Fitting ...')
                 if fit_idx is None:
                     X = f[type]['event'][c]
                 else:
@@ -86,7 +88,8 @@ class MachineLearningMixin(object):
                 print('Singular Values: ', pipe['PCA'].singular_values_)
 
                 # save the transformed events and their error
-                for i, ev in enumerate(f[type]['event'][c]):
+                print('Saving predictions ...')
+                for i, ev in tqdm(enumerate(f[type]['event'][c])):
                     preprocessed_ev = pipe['downsample'].transform(ev.reshape(1, -1))
                     preprocessed_ev = pipe['remove_offset'].transform(preprocessed_ev)
                     transformed_ev = pipe['PCA'].transform(preprocessed_ev)

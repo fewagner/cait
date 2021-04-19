@@ -35,16 +35,20 @@ class DataHandler(SimulateMixin,
     and stores all data from the recorded binary files (*.rdt, ...), as well as the calculated features
     (main parameters, standard events, ...) in the file.
 
-    :param run: The number of the measurement run. This is a necessary argument, to identify a measurement with a given module uniquely.
-    :type run: string
-    :param module: The naming of the detector module. Necessary for unique identification of the physics data.
-    :type module: string
     :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
     :type channels: list of integers
     :param record_length: The number of samples in one record window. To ensure performance of all features, this should be a power of 2.
     :type record_length: int
     :param sample_frequency: The sampling frequency of the recording.
     :type sample_frequency: int
+    :param run: The number of the measurement run. This is a optional argument, to identify a measurement with a
+        given module uniquely. Providing this argument has no effect, but might be useful in case you start multiple
+        DataHandlers at once, to stay organized.
+    :type run: string or None
+    :param module: The naming of the detector module. Optional argument, for unique identification of the physics data.
+        Providing this argument has no effect, but might be useful in case you start multiple
+        DataHandlers at once, to stay organized.
+    :type module: string or None
 
     Example for the generation of an HDF5 for events from an test *.rdt file:
 
@@ -75,8 +79,8 @@ class DataHandler(SimulateMixin,
     Most of the methods are included via parent mixin classes (see folder cait/mixins).
     """
 
-    def __init__(self, run: str = '01', module: str = 'Test', channels: list = [0, 1],
-                 record_length: int = 16384, sample_frequency: int = 25000):
+    def __init__(self, channels: list = [0, 1],
+                 record_length: int = 16384, sample_frequency: int = 25000, run: str = None, module: str = None):
         self.run = run
         self.module = module
         self.record_length = record_length

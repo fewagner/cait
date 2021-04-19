@@ -5,7 +5,7 @@
 import numpy as np
 from scipy.optimize import minimize
 import numba as nb
-
+import torch
 
 # -----------------------------------------------------
 # FUNCTIONS
@@ -41,13 +41,12 @@ def baseline_template_cubic(t, c0, c1, c2, c3):
     """
     return c0 + t * c1 + t ** 2 * c2 + t ** 3 * c3
 
-
 @nb.njit
 def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     """
     Parametric model for the pulse shape, 6 parameters
 
-    :param t: 1D array, the time grid
+    :param t: 1D array, the time grid; attention, this needs to be provided in compatible units with the fit parameters!
     :param t0: float, the pulse onset time
     :param An: float, Amplitude of the first nonthermal pulse component
     :param At: float, Amplitude of the thermal pulse component

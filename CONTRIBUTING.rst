@@ -75,7 +75,7 @@ While the core developers sometimes do small fixes directly on the development b
 - Close the issue.
 - Delete the branch you created for the issue.
 
-Please keep as close as possible to this procedure. Keep your changes on the feature branch as close to the issue you defined to work on as possible. Merge the feature branch as soon as possible in the development branch, to avoid merge conflicts due to a drifted apart code base.
+Please keep as close as possible to this procedure. Keep your changes on the feature branch as close to the issue you defined to work on as possible. Merge the feature branch as soon as possible in the development branch, to avoid merge conflicts due to a drifted apart code base. You can find a very nice summary of the Git workflow in this blog post: https://nvie.com/posts/a-successful-git-branching-model/
 
 Wheel files
 ==================

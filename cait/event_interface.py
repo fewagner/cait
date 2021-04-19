@@ -25,11 +25,6 @@ class EventInterface:
     them in order to train supervised machine learning models. The interface is with an interactive menu
     optimized for an efficient workflow.
 
-    :param module: The naming of the detector module, e.g. "TUM40".
-    :type module: string
-    :param run: The number of the run from which the measurement originates,
-        necessary for unique identification of the data.
-    :type run: string
     :param record_length: The number of samples in a record window.
     :type record_length: int
     :param sample_frequency: The record frequency of the measurement.
@@ -41,6 +36,14 @@ class EventInterface:
     :type down: int
     :param dpi: Dots per inch for the plots.
     :type dpi: int
+    :param run: The number of the measurement run. This is a optional argument, to identify a measurement with a
+        given module uniquely. Providing this argument has no effect, but might be useful in case you start multiple
+        DataHandlers at once, to stay organized.
+    :type run: string or None
+    :param module: The naming of the detector module. Optional argument, for unique identification of the physics data.
+        Providing this argument has no effect, but might be useful in case you start multiple
+        DataHandlers at once, to stay organized.
+    :type module: string or None
 
     >>> ei = ai.EventInterface()
     Event Interface Instance created.
@@ -52,13 +55,14 @@ class EventInterface:
     >>> ei.create_labels_csv(path='./')
     """
     def __init__(self,
-                 module: str = 'Test',
-                 run: str = '01',
                  record_length: int = 16384,
                  sample_frequency: int = 25000,
                  nmbr_channels: int = 2,
                  down: int = 1,
-                 dpi: int = None):
+                 dpi: int = None,
+                 run: str = None,
+                 module: str = None,
+                 ):
         self.nmbr_channels = nmbr_channels
         self.module = module
         self.run = run
@@ -156,25 +160,25 @@ class EventInterface:
         path_h5 = path + '{}{}.h5'.format(fname, app)
         self.path_h5 = path_h5
 
-        with h5py.File(path_h5, 'r+') as f:
+        with h5py.File(path_h5, 'r') as f:
             self.channels = channels
 
             self.nmbrs = {}
 
             try:
-                self.nmbrs['events'] = len(f['events']['event'][0])
+                self.nmbrs['events'] = f['events']['event'].shape[1]
                 print('Nmbr triggered events: ', self.nmbrs['events'])
             except KeyError:
                 print('No triggered events in h5 file.')
 
             try:
-                self.nmbrs['testpulses'] = len(f['testpulses']['event'][0])
+                self.nmbrs['testpulses'] = f['testpulses']['event'].shape[1]
                 print('Nmbr testpulses: ', self.nmbrs['testpulses'])
             except KeyError:
                 print('No Testpulses in h5 file.')
 
             try:
-                self.nmbrs['noise'] = len(f['noise']['event'][0])
+                self.nmbrs['noise'] = f['noise']['event'].shape[1]
                 print('Nmbr noise: ', self.nmbrs['noise'])
             except KeyError:
                 print('No noise in h5 file.')
@@ -801,7 +805,7 @@ class EventInterface:
         print('20 ... Sharp Light Event')
         print('99 ... unknown/other')
 
-    def _ask_for_options(self,user_input):
+    def _ask_for_options(self, user_input):
         if user_input == 'q':
             return -1
         elif user_input == 'b':
@@ -956,7 +960,8 @@ class EventInterface:
                         if not viewer_mode:
                             user_input = self._ask_for_label(idx, channel)
                         else:
-                            user_input = self._ask_for_options()
+                            user_input = input('Enter q end, b back, n next, o options, i idx, p for (de)activate label list')
+                            user_input = self._ask_for_options(user_input)
 
                         if user_input == -1:
                             print('End labeling.')

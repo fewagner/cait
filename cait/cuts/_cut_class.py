@@ -7,10 +7,11 @@ import numpy as np
 
 class LogicalCut:
     """
-    TODO
+    A class for the application of logical cuts to given data.
 
-    :param initial_condition:
-    :type initial_condition:
+    :param initial_condition: An initial condition can be applied, e.g. ph > 0.01, where ph is an 1D array. The number
+        of events is
+    :type initial_condition: 1D bool array or None
     """
 
     def __init__(self, initial_condition=None):

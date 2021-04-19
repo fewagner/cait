@@ -56,7 +56,7 @@ class PlotMixin(object):
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution.
         :type block: bool
-        :param sample_length: The length of a sample milliseconds. If None, it is calcualted from the sample frequency.
+        :param sample_length: The length of a sample in milliseconds. If None, it is calcualted from the sample frequency.
         :type sample_length: float
         :param show: If set, the plots are shown.
         :type show: bool

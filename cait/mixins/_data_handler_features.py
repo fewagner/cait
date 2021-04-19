@@ -336,6 +336,8 @@ class FeaturesMixin(object):
 
             nmbr_events = len(events[0])
             counter = 0
+
+            # we do the calculation in batches, so that memory does not overflow
             while counter + chunk_size < nmbr_events:
                 for c in range(self.nmbr_channels):
                     if first_channel_dominant and c == 0:
@@ -352,6 +354,8 @@ class FeaturesMixin(object):
 
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
+
+            # calc rest that is smaller than a batch
             for c in range(self.nmbr_channels):
                 if first_channel_dominant and c == 0:
                     of_ph, peakpos = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],

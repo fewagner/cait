@@ -189,7 +189,7 @@ class FitMixin(object):
                         #     f['events']['sev_fit_rms_bl{}'.format(order_bl_polynomial)][c, i] = np.mean((events[c, i] - fit_model.seq(*par[c, i])) ** 2)
                         # elif order_bl_polynomial == 3:
                         set_fitrms[c, i] = np.mean((events[c, i][
-                                                    fit_model.low:fit_model.up] - fit_model.wrap_sec(
+                                                    fit_model.low:fit_model.up] - fit_model._wrap_sec(
                             *par[c, i])[fit_model.low:fit_model.up]) ** 2)
                         # else:
                         #     raise KeyError('Order Polynomial must be 0,1,2,3!')
@@ -391,23 +391,23 @@ class FitMixin(object):
                                                  pars, allowed_noise_triggers)
 
         if plot:
-            plot_noise_trigger_model(bins_hist,
-                                     counts_hist,
-                                     x_grid,
-                                     trigger_window,
-                                     ph_distribution,
-                                     model,
-                                     polluted_ph_distribution,
-                                     title,
-                                     xran_hist,
-                                     noise_trigger_rate,
-                                     polluted_trigger_rate,
-                                     threshold,
-                                     yran,
-                                     allowed_noise_triggers,
-                                     nmbr_pollution_triggers,
-                                     xran,
-                                     ylog,
+            plot_noise_trigger_model(bins_hist=bins_hist,
+                                     counts_hist=counts_hist,
+                                     x_grid=x_grid,
+                                     trigger_window=trigger_window,
+                                     ph_distribution=ph_distribution,
+                                     model=model,
+                                     polluted_ph_distribution=polluted_ph_distribution,
+                                     title=title,
+                                     xran_hist=xran_hist,
+                                     noise_trigger_rate=noise_trigger_rate,
+                                     polluted_trigger_rate=polluted_trigger_rate,
+                                     threshold=threshold,
+                                     yran=yran,
+                                     allowed_noise_triggers=allowed_noise_triggers,
+                                     nmbr_pollution_triggers=nmbr_pollution_triggers,
+                                     xran=xran,
+                                     ylog=ylog,
                                      only_histogram=False,
                                      save_path=save_path,
                                      )

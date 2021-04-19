@@ -67,7 +67,7 @@ def time(start_sample, stop_sample, sample_duration=0.00004):
     :type start_sample: int
     :param stop_sample: The last sample in the array.
     :type stop_sample: int
-    :param sample_duration: The duration of the sample in the array.
+    :param sample_duration: The duration of the samples in the array.
     :type sample_duration: float
     :return: The array of second values.
     :rtype: 1D array
@@ -88,26 +88,27 @@ def get_max_index(stream,  # memmap array
                   window=False,
                   ):
     """
-    TODO
+    Filter a record window from the stream array and return the maximum and maximum position.
 
-    :param stream:
-    :type stream:
-    :param counter:
-    :type counter:
-    :param record_length:
-    :type record_length:
-    :param overlap:
-    :type overlap:
-    :param block:
-    :type block:
-    :param transfer_function:
-    :type transfer_function:
-    :param down:
-    :type down:
-    :param window:
-    :type window:
-    :return:
-    :rtype:
+    :param stream: The stream array.
+    :type stream: 1D array
+    :param counter: The first sample of the record window within the stream.
+    :type counter: int
+    :param record_length: The length of the record window in samples.
+    :type record_length: int
+    :param overlap: The number of samples that overlap between two record windows that are to be filtered.
+    :type overlap: int
+    :param block: The trigger block value. Only indices larger than this value can be triggered.
+    :type block: int
+    :param transfer_function: The transfer function for the filter. If no transfer function is provided, a median filter
+        is applied instead.
+    :type transfer_function: 1D array of size record_length/2 +1
+    :param down: The array gets downsampled by this factor before it gets filtered.
+    :type down: int
+    :param window: If true, a window function is applied to the record window before filtering. Recommended!
+    :type window: bool
+    :return: (the trigger index inside the record window, the height of the triggered value)
+    :rtype: 2-tuple (int, float)
     """
 
     # get record window
@@ -156,34 +157,41 @@ def trigger_csmpl(paths,
                   window=False,
                   ):
     """
-    TODO
+    Trigger a number of CSMPL file of one channel and return the time stamps of all triggers.
 
-    :param paths:
-    :type paths:
-    :param trigger_tres:
-    :type trigger_tres:
-    :param transfer_function:
-    :type transfer_function:
-    :param record_length:
-    :type record_length:
-    :param overlap:
-    :type overlap:
-    :param sample_length:
-    :type sample_length:
-    :param take_samples:
-    :type take_samples:
-    :param start_hours:
-    :type start_hours:
-    :param trigger_block:
-    :type trigger_block:
-    :param down:
-    :type down:
-    :param return_info:
-    :type return_info:
-    :param window:
-    :type window:
-    :return:
-    :rtype:
+    TODO add citation of csmpl file format and trigger algorithm
+
+    :param paths: The paths to all CSMPL files. It is not recommended to put more than one path, because this will set
+        the time gap in between the files to zero.
+    :type paths: list of strings
+    :param trigger_tres: The trigger thresholds for all channels.
+    :type trigger_tres: list of floats
+    :param transfer_function: The transfer function for the filter. If no transfer function is provided, a median filter
+        is applied instead.
+    :type transfer_function: 1D array of size record_length/2 +1
+    :param record_length: The length of the record window in samples.
+    :type record_length: int
+    :param overlap: The number of samples that overlap between two record windows that are to be filtered.
+    :type overlap: int
+    :param sample_length: The sample length in seconds. If None, it is calculated from the sample frequency.
+        :type sample_length: float
+    :param take_samples: The number of samples, counted from the start of the of the stream, to trigger. If -1, take
+        all samples.
+    :type take_samples: int
+    :param start_hours: An hours value that is added to all trigger time stamps.
+    :type start_hours: float
+    :param trigger_block: The first trigger_block samples cannot get triggered.
+    :type trigger_block: int
+    :param down: The array gets downsampled by this factor before it gets filtered.
+    :type down: int
+    :param return_info: If true, instead of only the trigger time stamps a tuple is return. The first entry in the tuple
+        are the trigger time stamps, the second the trigger heights, third the start values of the record windows,
+        fourth the trigger block values of the individual trigger windows.
+    :type return_info: bool
+    :param window: If true, a window function is applied to the record window before filtering. Recommended!
+    :type window: bool
+    :return: The hours time stamps of all triggers.
+    :rtype: 1D array
     """
 
     if overlap is None:
@@ -247,9 +255,9 @@ def trigger_csmpl(paths,
                                                      window=window,
                                                      )
 
-                        triggers.append(start_hours + sample_to_time(counter + trig))
+                        triggers.append(start_hours + sample_to_time(counter + trig, sample_duration=sample_length))
                         trigger_heights.append(height)
-                        record_starts.append(start_hours + sample_to_time(counter))
+                        record_starts.append(start_hours + sample_to_time(counter, sample_duration=sample_length))
                         blocks.append(block)
                         block += trig + trigger_block
 
@@ -275,25 +283,25 @@ def get_record_window(path,
                       record_length,
                       sample_duration=0.00004,
                       down=1,
-                      bytes_per_sample=2  # short integer values
+                      bytes_per_sample=2,  # short integer values
                       ):
     """
-    TODO
+    Get a record window from a stream *.csmpl file.
 
-    :param path:
-    :type path:
-    :param start_time:
-    :type start_time:
-    :param record_length:
-    :type record_length:
-    :param sample_duration:
-    :type sample_duration:
-    :param down:
-    :type down:
+    :param path: The path to the *.csmpl file.
+    :type path: string
+    :param start_time: The start time of the record window from beginning of the file, in seconds.
+    :type start_time: float
+    :param record_length: The length of the record window in samples.
+    :type record_length: int
+    :param sample_duration: The duration of the samples in the array.
+    :type sample_duration: float
+    :param down: The array gets downsampled by this factor before it gets filtered.
+    :type down: int
     :param bytes_per_sample:
     :type bytes_per_sample:
-    :return:
-    :rtype:
+    :return: (the values of the record window, the time stamps of the individual samples)
+    :rtype: 2-tuple of 1D arrays
     """
 
     offset = bytes_per_sample * time_to_sample(start_time, sample_duration=sample_duration)
@@ -335,36 +343,37 @@ def plot_csmpl(path,
                save_path=None,
                ):
     """
-    TODO
+    Plot a part of the stream together with provided trigger time stamps.
 
-    :param path:
-    :type path:
-    :param start_time:
-    :type start_time:
-    :param record_length:
-    :type record_length:
-    :param end_time:
-    :type end_time:
-    :param sample_duration:
-    :type sample_duration:
-    :param hours:
-    :type hours:
-    :param plot_stamps:
-    :type plot_stamps:
-    :param plot_stamps_second:
-    :type plot_stamps_second:
-    :param dpi:
-    :type dpi:
-    :param teststamp_path:
-    :type teststamp_path:
-    :param clock:
-    :type clock:
-    :param sec_offset:
-    :type sec_offset:
-    :param save_path:
-    :type save_path:
-    :return:
-    :rtype:
+    :param path: The path to the *.csmpl file.
+    :type path: string
+    :param start_time: The start time of the record window from beginning of the file, in seconds.
+    :type start_time: float
+    :param record_length: The length of the record window in samples.
+    :type record_length: int
+    :param start_time: The end time of the record window from beginning of the file, in seconds.
+    :type start_time: float
+    :param sample_duration: The duration of the samples in the array.
+    :type sample_duration: float
+    :param hours: If true, the plot has hours instead of seconds on the x axis.
+    :type hours: bool
+    :param plot_stamps: If handed, all of these time stamps are plotted, if they are within the record window. In
+        hours. This feature is useful, to debug the trigger algorithm, in case it shows unexpected behaviour.
+    :type plot_stamps: float
+    :param plot_stamps_second: If handed, all of these time stamps are plotted, if they are within the record window,
+        in a different color than the first time stamps. In hours. This feature is useful to compare trigger values of
+        different trigger algorithms.
+    :type plot_stamps_second: float
+    :param dpi: The dots per inch of the plots.
+    :type dpi: int
+    :param teststamp_path: A path to a *.test_stamp file, these stamps are then plottet instead of the plot_stamps.
+    :type teststamp_path: string
+    :param clock: The Frequency of the time clock, in Hz. Standard for CRESST is 10MHz.
+    :type clock: int
+    :param sec_offset: This factor is substracted from the time stamps that are read from the *.test_stamps file.
+    :type sec_offset: float
+    :param save_path: Save the figure at this path location.
+    :type save_path: string
     """
 
     if record_length is None and end_time is None:
@@ -390,12 +399,12 @@ def plot_csmpl(path,
     if hours:
         if end_time is not None:
             record_length = int((end_time - start_time) / sample_duration * 3600)
-        offset = bytes_per_sample * time_to_sample(start_time * 3600, sample_duration=0.00004)
+        offset = bytes_per_sample * time_to_sample(start_time * 3600, sample_duration=sample_duration)
 
     else:
         if end_time is not None:
             record_length = int((end_time - start_time) / sample_duration)
-        offset = bytes_per_sample * time_to_sample(start_time, sample_duration=0.00004)
+        offset = bytes_per_sample * time_to_sample(start_time, sample_duration=sample_duration)
 
     print('Get {} samples from sample {}.'.format(record_length, offset))
     event = np.fromfile(path,
@@ -443,14 +452,14 @@ def plot_csmpl(path,
 
 def find_nearest(array, value):
     """
-    TODO
+    Find the nearest element in an array to a given value.
 
-    :param array:
-    :type array:
-    :param value:
-    :type value:
-    :return:
-    :rtype:
+    :param array: The array.
+    :type array: 1D array
+    :param value: The value.
+    :type value: float
+    :return: The array index of the closest element to the value.
+    :rtype: int
     """
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
@@ -462,16 +471,21 @@ def align_triggers(triggers,  # in seconds
                    sample_duration=0.00004,
                    ):
     """
-    TODO
+    Match the triggers from multiple csmpl file.
 
-    :param triggers:
-    :type triggers:
-    :param trigger_block:
-    :type trigger_block:
-    :param sample_duration:
-    :type sample_duration:
-    :return:
-    :rtype:
+    This function sorts all triggers from different channels into one array and introduces a trigger block
+    after each trigger value.
+
+    :param triggers: A list of all triggers from the different channels.
+    :type triggers: list of 1D array
+    :param trigger_block: A number of samples for which the trigger is blocked after a triggered sample. Typically this
+        is the same value as the record window length. This value is the smallest, that rejects overlap between record
+        windows.
+    :type trigger_block: int
+    :param sample_length: The length of a sample in seconds.
+        :type sample_length: float
+    :return: The aligned triggers.
+    :rtype: 1D array
     """
 
     nmbr_channels = len(triggers)
@@ -503,18 +517,22 @@ def exclude_testpulses(trigger_hours,
                        in_seconds=True,
                        ):
     """
-    TODO
+    Exclude all trigger values from the array, that are closer than a minimal distance value to a test pulse time stamp.
+    Also all triggers before and after the first and last test pulse are excluded.
 
-    :param trigger_hours:
-    :type trigger_hours:
-    :param tp_hours:
-    :type tp_hours:
-    :param max_time_diff:
-    :type max_time_diff:
-    :param in_seconds:
-    :type in_seconds:
-    :return:
-    :rtype:
+    :param trigger_hours: The time stamps of the triggers in hours.
+    :type trigger_hours: 1D array
+    :param tp_hours: The time stamps of the test pulses in hours.
+    :type tp_hours: 1D array
+    :param max_time_diff: Trigger values that are closer than this value to any test pulse time stamp get excluded.
+        Per default in seconds.
+    :type max_time_diff: float
+    :param in_seconds: If this is True, the max_time_diff should be handed in seconds. Otherwise, it should be handed
+        in hours.
+    :type in_seconds: bool
+    :return: A array of bool values, that tells which of the trigger time stamps should be kept and which
+        excluded.
+    :rtype: 1D array
     """
 
     flag = np.ones(len(trigger_hours), dtype=bool)
@@ -541,18 +559,19 @@ def get_test_stamps(path,
                     clock=10000000,
                     min_cpa=10.1):
     """
-    TODO
+    Load the test pulse time stamps from a *.test_stamps file.
 
-    :param path:
-    :type path:
-    :param channels:
-    :type channels:
-    :param control_pulses:
-    :type control_pulses:
-    :param event_rate:
-    :type event_rate:
-    :return:
-    :rtype:
+    :param path: The path to the *.test_stamps file.
+    :type path: string
+    :param channels: The test pulse channels we want to read out.
+    :type channels: list
+    :param control_pulses: If set to True, only control pulses are returned. If False, only test pulses are returned.
+        If None, all are returned.
+    :type control_pulses: bool or None
+    :param clock: The Frequency of the time clock, in Hz. Standard for CRESST is 10MHz.
+    :type clock: int
+    :return: (the test pulse hours time stamps, the test pulse amplitudes, the channels of the test pulses)
+    :rtype: 3-tuple of 1D arrays
     """
 
     teststamp = np.dtype([
@@ -589,16 +608,20 @@ def get_test_stamps(path,
 
 def get_starttime(path_sql, csmpl_channel, sql_file_label):
     """
-    TODO
+    Read the start time of a *.csmpl file from the SQL database.
 
-    :param path_sql:
-    :type path_sql:
-    :param csmpl_channel:
-    :type csmpl_channel:
-    :param filename:
-    :type filename:
-    :return: time of file creation in seconds
-    :rtype:
+    Attention, the start time is only in seconds. This produces an error of the absolute time stamp of up to one
+    second.
+
+    :param path_sql: The path of the SQL file.
+    :type path_sql: string
+    :param csmpl_channel: The channel number of the *.csmpl file. This is either contained in the file name of the
+        csmpl file or can be looked up in the SQL database.
+    :type csmpl_channel: string
+    :param sql_file_label: The file label of the *.csmpl file within SQL database, e.g. bck_001.
+    :type sql_file_label: string
+    :return: Time of file creation in seconds.
+    :rtype: float
     """
     connection = sqlite3.connect(path_sql)
     cursor = connection.cursor()

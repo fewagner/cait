@@ -15,16 +15,16 @@ import numba as nb
 
 def noise_trigger_template(x_max, d, sigma):
     """
-    TODO
+    A template for purely Gaussian noise.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :return: The template.
+    :rtype: 1D array
     """
     P = (d / np.sqrt(2 * np.pi) / sigma)
     P *= np.exp(-(x_max / np.sqrt(2) / sigma) ** 2)
@@ -46,14 +46,17 @@ def get_noise_parameters_binned(counts,
                                 bins,
                                 ):
     """
-    TODO
+    Return the least squares fit parameters to the purely Gaussian noise model. You need to calculate a histogram of
+    the maxima of the empty baselines before already, e.g. with np.hist.
 
-    :param counts:
-    :type counts:
-    :param bins:
-    :type bins:
-    :return:
-    :rtype:
+    TODO add citation
+
+    :param counts: The counts within the bins.
+    :type counts: 1D array
+    :param bins: The bin edges. This array is one number longer than the counts array.
+    :type bins: 1D array
+    :return: The fitted parameters (d, sigma).
+    :rtype: 2-tuple
     """
 
     x_data = bins[:-1] + (bins[1] - bins[0]) / 2
@@ -76,16 +79,17 @@ def get_noise_parameters_binned(counts,
 
 def gauss_noise(x_max, d, sigma):
     """
-    TODO
+    A template for purely Gaussian noise. Opposite to noise_trigger_template, this function uses the scipy
+    implementation of the norm distribution.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :return: The template.
+    :rtype: 1D array
     """
 
     P = d * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
@@ -95,18 +99,18 @@ def gauss_noise(x_max, d, sigma):
 
 def pollution_exponential_noise(x_max, d, sigma, lamb):
     """
-    TODO
+    A template for purely Gaussian noise with a pollution that follows an exponential distribution.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param lamb:
-    :type lamb:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :param lamb: The rate parameter of the exponential distribution.
+    :type lamb: float
+    :return: The template.
+    :rtype: 1D array
     """
 
     P = expon.pdf(x_max, scale=1 / lamb) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
@@ -119,20 +123,20 @@ def pollution_exponential_noise(x_max, d, sigma, lamb):
 
 def fraction_exponential_noise(x_max, d, sigma, lamb, w):
     """
-    TODO
+    A template for a Gaussian-exponential noise mixture.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param lamb:
-    :type lamb:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution.
+    :type sigma: float
+    :param lamb: The rate parameter of the exponential distribution.
+    :type lamb: float
+    :param w: The weight of the Gaussian fraction.
+    :type w: float
+    :return: The template.
+    :rtype: 1D array
     """
 
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.pdf(x_max, scale=1 / lamb)) * \
@@ -143,20 +147,20 @@ def fraction_exponential_noise(x_max, d, sigma, lamb, w):
 
 def pollution_gauss_noise(x_max, d, sigma, mu, sigma_2):
     """
-    TODO
+    A template for purely Gaussian noise with a pollution that follows another Gaussian distribution.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param mu:
-    :type mu:
-    :param sigma_2:
-    :type sigma_2:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :param mu: The mean of the Gaussian pollution.
+    :type mu: float
+    :param sigma_2: The standard deviation of the Gaussian pollution.
+    :type sigma_2: float
+    :return: The template.
+    :rtype: 1D array
     """
 
     P = norm.pdf(x_max, loc=mu, scale=sigma_2) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
@@ -169,22 +173,22 @@ def pollution_gauss_noise(x_max, d, sigma, mu, sigma_2):
 
 def fraction_gauss_noise(x_max, d, sigma, mu, sigma_2, w):
     """
-    TODO
+    A template for a two component Gaussian noise mixture.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param mu:
-    :type mu:
-    :param sigma_2:
-    :type sigma_2:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution.
+    :type sigma: float
+    :param mu: The mean of the second component.
+    :type mu: float
+    :param sigma: The standard deviation of the second component.
+    :type sigma: float
+    :param w: The weight of the first Gaussian fraction.
+    :type w: float
+    :return: The template.
+    :rtype: 1D array
     """
 
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.pdf(x_max, loc=mu, scale=sigma_2)) * \
@@ -199,18 +203,19 @@ def fraction_gauss_noise(x_max, d, sigma, mu, sigma_2, w):
 
 def pollution_exponential_noise_gauss_comp(x_max, d, sigma, lamb):
     """
-    TODO
+    A partial template for purely Gaussian noise with a pollution that follows an exponential distribution. Only the
+    Gaussian component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param lamb:
-    :type lamb:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :param lamb: The rate parameter of the exponential distribution.
+    :type lamb: float
+    :return: The template of the Gaussian component.
+    :rtype: 1D array
     """
 
     P = expon.cdf(x_max, scale=1 / lamb) * (d - 1) * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0,
@@ -221,20 +226,21 @@ def pollution_exponential_noise_gauss_comp(x_max, d, sigma, lamb):
 
 def fraction_exponential_noise_gauss_comp(x_max, d, sigma, lamb, w):
     """
-    TODO
+    A partial template for a Gaussian-exponential noise mixture. Only the
+    Gaussian component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param lamb:
-    :type lamb:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution.
+    :type sigma: float
+    :param lamb: The rate parameter of the exponential distribution.
+    :type lamb: float
+    :param w: The weight of the Gaussian fraction.
+    :type w: float
+    :return: The template of the Gaussian component.
+    :rtype: 1D array
     """
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.cdf(x_max, scale=1 / lamb)) ** (d - 1)
@@ -243,20 +249,21 @@ def fraction_exponential_noise_gauss_comp(x_max, d, sigma, lamb, w):
 
 def pollution_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2):
     """
-    TODO
+    A partial template for purely Gaussian noise with a pollution that follows another Gaussian distribution. Only the
+    Gaussian component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param mu:
-    :type mu:
-    :param sigma_2:
-    :type sigma_2:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :param mu: The mean of the Gaussian pollution.
+    :type mu: float
+    :param sigma_2: The standard deviation of the Gaussian pollution.
+    :type sigma_2: float
+    :return: The template of the Gaussian part.
+    :rtype: 1D array
     """
     P = (d - 1) * norm.cdf(x_max, loc=mu, scale=sigma_2) * norm.pdf(x_max, loc=0, scale=sigma) * norm.cdf(x_max, loc=0,
                                                                                                           scale=sigma) ** (
@@ -266,22 +273,23 @@ def pollution_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2):
 
 def fraction_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2, w):
     """
-    TODO
+    A partial template for a two component Gaussian noise mixture. Only the
+    first Gaussian component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param mu:
-    :type mu:
-    :param sigma_2:
-    :type sigma_2:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution.
+    :type sigma: float
+    :param mu: The mean of the second component.
+    :type mu: float
+    :param sigma: The standard deviation of the second component.
+    :type sigma: float
+    :param w: The weight of the first Gaussian fraction.
+    :type w: float
+    :return: The template of the first Gaussian component.
+    :rtype: 1D array
     """
     P = d * (w * norm.pdf(x_max, loc=0, scale=sigma)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.cdf(x_max, loc=mu, scale=sigma_2)) ** (d - 1)
@@ -295,18 +303,19 @@ def fraction_gauss_noise_gauss_comp(x_max, d, sigma, mu, sigma_2, w):
 
 def pollution_exponential_noise_poll_comp(x_max, d, sigma, lamb):
     """
-    TODO
+    A partial template for purely Gaussian noise with a pollution that follows an exponential distribution. Only the
+    polluting component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param lamb:
-    :type lamb:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :param lamb: The rate parameter of the exponential distribution.
+    :type lamb: float
+    :return: The template of the pollution.
+    :rtype: 1D array
     """
     P = expon.pdf(x_max, scale=1 / lamb) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     return P
@@ -314,20 +323,21 @@ def pollution_exponential_noise_poll_comp(x_max, d, sigma, lamb):
 
 def fraction_exponential_noise_poll_comp(x_max, d, sigma, lamb, w):
     """
-    TODO
+    A partial template for a Gaussian-exponential noise mixture. Only the
+    exponential component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param lamb:
-    :type lamb:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution.
+    :type sigma: float
+    :param lamb: The rate parameter of the exponential distribution.
+    :type lamb: float
+    :param w: The weight of the Gaussian fraction.
+    :type w: float
+    :return: The template of the exponential component.
+    :rtype: 1D array
     """
     P = d * ((1 - w) * expon.pdf(x_max, scale=1 / lamb)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * expon.cdf(x_max, scale=1 / lamb)) ** (d - 1)
@@ -336,20 +346,21 @@ def fraction_exponential_noise_poll_comp(x_max, d, sigma, lamb, w):
 
 def pollution_gauss_noise_poll_comp(x_max, d, sigma, mu, sigma_2):
     """
-    TODO
+    A partial template for purely Gaussian noise with a pollution that follows another Gaussian distribution. Only the
+    polluting component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param mu:
-    :type mu:
-    :param sigma_2:
-    :type sigma_2:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution
+    :type sigma: float
+    :param mu: The mean of the Gaussian pollution.
+    :type mu: float
+    :param sigma_2: The standard deviation of the Gaussian pollution.
+    :type sigma_2: float
+    :return: The template of the pollution.
+    :rtype: 1D array
     """
     P = norm.pdf(x_max, loc=mu, scale=sigma_2) * norm.cdf(x_max, loc=0, scale=sigma) ** (d - 1)
     return P
@@ -357,22 +368,23 @@ def pollution_gauss_noise_poll_comp(x_max, d, sigma, mu, sigma_2):
 
 def fraction_gauss_noise_poll_comp(x_max, d, sigma, mu, sigma_2, w):
     """
-    TODO
+    A partial template for a two component Gaussian noise mixture. Only the
+    second Gaussian component is returned.
 
-    :param x_max:
-    :type x_max:
-    :param d:
-    :type d:
-    :param sigma:
-    :type sigma:
-    :param mu:
-    :type mu:
-    :param sigma_2:
-    :type sigma_2:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param x_max: The maxima of the empty noise baselines.
+    :type x_max: 1D array
+    :param d: The number of independent samples.
+    :type d: float
+    :param sigma: The baseline resolution.
+    :type sigma: float
+    :param mu: The mean of the second component.
+    :type mu: float
+    :param sigma: The standard deviation of the second component.
+    :type sigma: float
+    :param w: The weight of the first Gaussian fraction.
+    :type w: float
+    :return: The template of the second Gaussian component.
+    :rtype: 1D array
     """
     P = d * ((1 - w) * norm.pdf(x_max, loc=mu, scale=sigma_2)) * \
         (w * norm.cdf(x_max, loc=0, scale=sigma) + (1 - w) * norm.cdf(x_max, loc=mu, scale=sigma_2)) ** (d - 1)
@@ -451,14 +463,20 @@ def get_noise_parameters_unbinned(events,
                                   model='gauss',
                                   ):
     """
-    TODO
+    Find the maximum likelihood estimators of all noise trigger model parameters in an unbinned maximum likelihood fit.
 
-    :param events:
-    :type events:
-    :param model:
-    :type model:
-    :return:
-    :rtype:
+    :param events: The array of the unbinned noise baseline maxima.
+    :type events: 1D array
+    :param model: The model that is used to fit the noise maxima.
+        - 'gauss': Purely Gaussian noise model.
+        - 'pollution_exponential': Gaussian noise model with an exponentially distributed pollution.
+        - 'fraction_exponential': Gaussian-exponential mixture noise model.
+        - 'pollution_gauss': Gaussian noise model with an Gaussian distributed pollution.
+        - 'fraction_gauss': Gaussian mixture noise model.
+    :type model: string
+    :return: The fitted parameters. These are different for each model and compatible with the functions gauss_noise,
+        pollution_exponential_noise, fraction_exponential_noise and pollution_gauss_noise.
+    :rtype: 1D array
     """
 
     if model == 'gauss':
@@ -516,64 +534,68 @@ def plot_noise_trigger_model(bins_hist,
                              x_grid,
                              trigger_window,
                              ph_distribution,
-                             model,
-                             polluted_ph_distribution,
-                             title,
                              xran_hist,
                              noise_trigger_rate,
                              polluted_trigger_rate,
                              threshold,
-                             yran,
-                             allowed_noise_triggers,
+                             polluted_ph_distribution,
                              nmbr_pollution_triggers,
-                             xran,
-                             ylog,
-                             only_histogram,
-                             save_path,
+                             model='gauss',
+                             title=None,
+                             yran=None,
+                             allowed_noise_triggers=1,
+                             xran=None,
+                             ylog=False,
+                             only_histogram=False,
+                             save_path=None,
                              ):
     """
-    TODO
+    Plot the noise trigger model.
 
-    :param bins_hist:
-    :type bins_hist:
-    :param counts_hist:
-    :type counts_hist:
-    :param x_grid:
-    :type x_grid:
-    :param trigger_window:
-    :type trigger_window:
-    :param ph_distribution:
-    :type ph_distribution:
-    :param model:
-    :type model:
-    :param polluted_ph_distribution:
-    :type polluted_ph_distribution:
-    :param title:
-    :type title:
-    :param xran_hist:
-    :type xran_hist:
-    :param noise_trigger_rate:
-    :type noise_trigger_rate:
-    :param polluted_trigger_rate:
-    :type polluted_trigger_rate:
-    :param threshold:
-    :type threshold:
-    :param yran:
-    :type yran:
-    :param allowed_noise_triggers:
-    :type allowed_noise_triggers:
-    :param nmbr_pollution_triggers:
-    :type nmbr_pollution_triggers:
-    :param xran:
-    :type xran:
-    :param ylog:
-    :type ylog:
-    :param only_histogram:
-    :type only_histogram:
-    :param save_path:
-    :type save_path:
-    :return:
-    :rtype:
+    :param bins_hist: The bins edges of the noise maxima histogram. This array is one number longer than the counts_hist
+        array.
+    :type bins_hist: 1D array
+    :param counts_hist: The counts of all histogram bins.
+    :type counts_hist: 1D array
+    :param x_grid: The grid to evaluate the noise trigger models on.
+    :type x_grid: 1D array
+    :param trigger_window: The exposure of the trigger window, in kg days.
+    :type trigger_window: float
+    :param ph_distribution: The evaluated noise template on x_grid, normalized to the exposure.
+    :type ph_distribution: 1D array
+    :param xran_hist: The range of the x axis on the histogram plot.
+    :type xran_hist: tuple of two floats
+    :param noise_trigger_rate: The number of noise triggers, depending on the threshold, given by the x_grid.
+    :type noise_trigger_rate: 1D array
+    :param polluted_trigger_rate: The number of pollution triggers, depending on the threshold, given by the x_grid.
+    :type polluted_trigger_rate: 1D array
+    :param threshold: The threshold in mV.
+    :type threshold: float
+    :param polluted_ph_distribution: The polluted component of the evaluated noise template on x_grid,
+        normalized to the exposure.
+    :type polluted_ph_distribution: 1D array
+    :param nmbr_pollution_triggers: The number of pollution triggers.
+    :type nmbr_pollution_triggers: float
+    :param model: Which model was fit to the noise.
+        - 'gauss': Model of purely Gaussian noise.
+        - 'pollution_exponential': Model of Gaussian noise with one exponentially distributed sample on each baseline.
+        - 'fraction_exponential': Mixture model of Gaussian and exponentially distributed noise.
+        - 'pollution_gauss': Model of Gaussian noise and one sample in each baseline that follows another, also Gaussian distribution.
+        - 'fraction_gauss':  Mixture model of two Gaussian noise components.
+    :param title: A title for both plots.
+    :type title: string
+    :param yran: The range of the y axis on both plots.
+    :type yran: tuple of two floats
+    :param allowed_noise_triggers: The number of noise triggers that are allowed per kg day exposure.
+        :type allowed_noise_triggers: float
+    :param xran: The range of the x axis on the noise trigger estimation plot.
+    :type xran: tuple of two floats
+    :param ylog: If set, the y axis is plotted logarithmically on the histogram plot.
+    :type ylog: bool
+    :param only_histogram: Plot only the histogram, not the noise trigger model.
+    :type only_histogram: bool
+    :param save_path: A path to save the plots.
+    :type save_path: string
     """
 
     # plot the counts
@@ -653,28 +675,45 @@ def plot_noise_trigger_model(bins_hist,
 def calc_threshold(record_length, sample_length, detector_mass, interval_restriction, ul, ll, model,
                    pars, allowed_noise_triggers):
     """
-    TODO
+    Calculate the treshold for given noise baseline maxima, to obtain a defined number of noise triggers.
 
-    :param record_length:
-    :type record_length:
-    :param sample_length:
-    :type sample_length:
-    :param detector_mass:
-    :type detector_mass:
-    :param interval_restriction:
-    :type interval_restriction:
-    :param ul:
-    :type ul:
-    :param ll:
-    :type ll:
-    :param model:
-    :type model:
-    :param pars:
-    :type pars:
-    :param allowed_noise_triggers:
-    :type allowed_noise_triggers:
-    :return:
-    :rtype:
+    TODO add citation
+
+    :param record_length: The number of samples in a record window.
+    :type record_length: int
+    :param sample_length: The length of a sample in seconds.
+    :type sample_length: float
+    :param detector_mass: The mass of the detector in kg.
+    :type detector_mass: float
+    :param interval_restriction: A value between 0 and 1. Only this share of the trigger window is used in the maximum
+        search. This is typically 0.75 if filters are applied, to avoid border effects.
+    :type interval_restriction: float
+    :param ul: The upper limit of the interval that is used to search a threshold, in mV.
+    :type ul: float
+    :param ll: The lower limit of the interval that is used to search a threshold, in mV.
+    :type ll: float
+    :param model: Determine which model is fit to the noise.
+            - 'gauss': Model of purely Gaussian noise.
+            - 'pollution_exponential': Model of Gaussian noise with one exponentially distributed sample on each baseline.
+            - 'fraction_exponential': Mixture model of Gaussian and exponentially distributed noise.
+            - 'pollution_gauss': Model of Gaussian noise and one sample in each baseline that follows another, also Gaussian distribution.
+            - 'fraction_gauss':  Mixture model of two Gaussian noise components.
+    :type model: string
+    :param pars: The fitted parameters for the model. They have to match the chosen model
+    :type pars: tuple
+    :param allowed_noise_triggers: The number of noise triggers that are allowed per kg day exposure.
+    :type allowed_noise_triggers: float
+    :return: 8-tuple
+            - The grid to evaluate the noise trigger models on.
+            - The exposure of the trigger window, in kg days.
+            - The evaluated noise template on x_grid, normalized to the exposure.
+            - The polluted component of the evaluated noise template on x_grid,
+        normalized to the exposure.
+            - The number of noise triggers, depending on the threshold, given by the x_grid.
+            - The number of pollution triggers, depending on the threshold, given by the x_grid.
+            - The threshold in mV.
+            - The number of pollution triggers.
+    :rtype: tuple
     """
 
     if model == 'gauss':
@@ -738,22 +777,22 @@ def calc_threshold(record_length, sample_length, detector_mass, interval_restric
     except IndexError:
         if model == 'pollution_exponential' or model == 'pollution_gauss':
             retval = (x_grid, \
-               trigger_window, \
-               ph_distribution, \
-               polluted_ph_distribution, \
-               noise_trigger_rate, \
-               polluted_trigger_rate, \
-               None, \
-               None)
+                      trigger_window, \
+                      ph_distribution, \
+                      polluted_ph_distribution, \
+                      noise_trigger_rate, \
+                      polluted_trigger_rate, \
+                      None, \
+                      None)
         else:
             retval = (x_grid, \
-               trigger_window, \
-               ph_distribution, \
-               None, \
-               noise_trigger_rate, \
-               None, \
-               None, \
-               None)
+                      trigger_window, \
+                      ph_distribution, \
+                      None, \
+                      noise_trigger_rate, \
+                      None, \
+                      None, \
+                      None)
         raise IndexError('The threshold for the wanted number of noise triggers is above the set interval. '
                          'Either increase the interval or allow for more noise triggers!', retval)
     print('Threshold for {} Noise Trigger per kg day: {:.3f} mV'.format(allowed_noise_triggers, threshold))
