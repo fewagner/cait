@@ -81,15 +81,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     print('Total Records in File: ', recs.shape[0])
 
-    # counts = []
-    # for c in channels:
-    #     counts.append(np.sum(recs['detector_nmbr'] == c))
-    #     print('Counts in Channel {}: {}'.format(c, counts[-1]))
-
     # get only consecutive events from these two channels
     good_idx = []
 
-    for idx in range(recs.shape[0] - nmbr_channels + 1):
+    for idx in tqdm(range(recs.shape[0] - nmbr_channels + 1)):
         cond = True
         for j in range(nmbr_channels):
             cond = np.logical_and(cond, recs['detector_nmbr'][idx + j] == channels[j])
