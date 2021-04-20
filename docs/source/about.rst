@@ -2,7 +2,7 @@
 About
 *****
 
-We started Cait (Cryogenic Artificial Intelligence Tools) as a Python project in 2020, to include machine learning methods in the analysis process of the cryogenic dark matter experiments CRESST and COSINUS. Due to the numerous available Python packages for scientific computing, it is also suitable for prototyping of new algorithms and analysis methods. Thanks to the efficient implementation of high-performance computing packages as Numpy and Scipy, Cait competes well for heavy lifting computing tasks as the triggering and large scale processing of raw data. The IPython functionality and integration in Jupyter Notebooks makes the work on remote vizualization clients of HPC clusters (MPCDF, CLIPP, ...) especially convenient.
+We started Cait as a Python project in 2020, to include machine learning methods in the analysis process of the cryogenic dark matter experiments CRESST and COSINUS. Together with the numerous available Python packages for scientific computing it forms an convenient environment for prototyping new algorithms and analysis methods. Cait does compete well for heavy lifting computing tasks, as the triggering and large scale processing of data, and features implementations of all typical methods used in the raw data analysis. The IPython functionality and integration in Jupyter Notebooks makes the work on remote visualization clients of HPC clusters (MPCDF, CLIPP, …) especially convenient.
 
 We follow a set of paradigms in the development of Cait, that ensure attractiveness and long-term support of our software:
 

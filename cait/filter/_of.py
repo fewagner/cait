@@ -44,14 +44,18 @@ def normalization_constant(stdevent, nps):
     return h
 
 
-def optimal_transfer_function(stdevent, nps):
+def optimal_transfer_function(stdevent, nps, window=True):
     """
-    this function calculates the transition function for an optimal filter
+    This function calculates the transition function for an optimal filter.
 
     :param stdevent: 1D array, pulse shape standard event with length N
     :param nps: 1D array, the NPS of a baseline, with length N/2 + 1
+    :param window: bool, include a window function to the standard event
     :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
     """
+
+    if window:
+        stdevent *= signal.windows.tukey(len(stdevent), alpha=0.25)
 
     tau_m = (np.argmax(stdevent)) / (1304 * len(
         stdevent) / 8192)  # index of maximal value, the number 1304 is experimentally evaluated on an event of length 8192

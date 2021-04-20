@@ -282,8 +282,8 @@ class FitMixin(object):
                                    cut_flag=None,
                                    plot=True,
                                    title=None,
-                                   sample_length=4e-5,  # in seconds
-                                   record_length=16384,  # in samples
+                                   sample_length=None,  # in seconds
+                                   record_length=None,  # in samples
                                    interval_restriction=0.75,
                                    binned_fit=False,
                                    model='gauss',
@@ -302,7 +302,7 @@ class FitMixin(object):
         :param detector_mass: The mass of the detector in kg.
         :type detector_mass: float
         :param allowed_noise_triggers: The number of noise triggers that are allowed per kg day exposure.
-        :type allowed_noise_triggers: float
+        :type allowed_noise_triggers: floatf
         :param method: Either 'of' for estimating the noise triggers after optimal filtering or 'ph' for taking the
             maximum value of the raw data.
         :type method: string
@@ -348,6 +348,9 @@ class FitMixin(object):
 
         if sample_length is None:
             sample_length = 1/self.sample_frequency
+
+        if record_length is None:
+            record_length = self.record_length
 
         print('Estimating Trigger Threshold.')
         print('Using model: {}'.format(model))
