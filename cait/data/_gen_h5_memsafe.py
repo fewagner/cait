@@ -130,6 +130,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
+                    del recs
                     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
                     counter = 0
                     while counter < nmbr_events - batch_size:
@@ -160,6 +161,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
+                    del recs
                     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
                     counter = 0
                     while counter < nmbr_noise - batch_size:
@@ -192,6 +194,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
+                    del recs
                     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
                     counter = 0
                     while counter < nmbr_testpulses - batch_size:
