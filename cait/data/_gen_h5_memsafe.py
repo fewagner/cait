@@ -6,6 +6,7 @@ import os
 import h5py
 import numpy as np
 from ..data._raw import convert_to_V
+from tqdm.auto import tqdm
 
 
 # ------------------------------------------------------------
@@ -127,10 +128,11 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             events.create_dataset('time_s', data=recs['abs_time_s'][idx_events], dtype='int32')
             events.create_dataset('time_mus', data=recs['abs_time_mus'][idx_events], dtype='int32')
 
-            for c in range(nmbr_channels):
-                for i, idx in enumerate(idx_events):
-                    events['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
-
+            with tqdm(total=nmbr_channels * nmbr_events) as pbar:
+                for c in range(nmbr_channels):
+                    for i, idx in enumerate(idx_events):
+                        events['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+                        pbar.update(1)
 
         # ################# PROCESS NOISE #################
         # if we filtered for noise
@@ -147,9 +149,11 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             noise.create_dataset('time_s', data=recs['abs_time_s'][idx_noise], dtype='int32')
             noise.create_dataset('time_mus', data=recs['abs_time_mus'][idx_noise], dtype='int32')
 
-            for c in range(nmbr_channels):
-                for i, idx in enumerate(idx_noise):
-                    noise['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+            with tqdm(total=nmbr_channels * nmbr_noise) as pbar:
+                for c in range(nmbr_channels):
+                    for i, idx in enumerate(idx_noise):
+                        noise['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+                        pbar.update(1)
 
         # ################# PROCESS TESTPULSES #################
         # if we filtered for testpulses
@@ -162,11 +166,14 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             print('CREATE DATASET WITH TESTPULSES.')
             testpulses = h5f.create_group('testpulses')
             testpulses.create_dataset('event', shape=(nmbr_channels, nmbr_testpulses, record_length), dtype=event_dtype)
-            testpulses.create_dataset('testpulseamplitude', data=recs['test_pulse_amplitude'][idx_testpulses], dtype=float)
+            testpulses.create_dataset('testpulseamplitude', data=recs['test_pulse_amplitude'][idx_testpulses],
+                                      dtype=float)
             testpulses.create_dataset('hours', data=recs['hours'][idx_testpulses], dtype=float)
             testpulses.create_dataset('time_s', data=recs['abs_time_s'][idx_testpulses], dtype='int32')
             testpulses.create_dataset('time_mus', data=recs['abs_time_mus'][idx_testpulses], dtype='int32')
 
-            for c in range(nmbr_channels):
-                for i, idx in enumerate(idx_testpulses):
-                    testpulses['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+            with tqdm(total=nmbr_channels * nmbr_testpulses) as pbar:
+                for c in range(nmbr_channels):
+                    for i, idx in enumerate(idx_testpulses):
+                        testpulses['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+                        pbar.update(1)
