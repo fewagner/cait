@@ -10,6 +10,7 @@ import h5py
 from ..data._raw import read_rdt_file
 import warnings
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -260,6 +261,7 @@ class RdtMixin(object):
                         lazy_loading=True,
                         memsafe=False,
                         dvm_channels=0,
+                        batch_size=1000,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -291,6 +293,8 @@ class RdtMixin(object):
         :type lazy_loading: bool
         :param dvm_channels: The number of DVM channels, this can be read in the PAR file.
         :type dvm_channels: int
+        :param batch_size: The batch size for loading the samples from disk.
+        :type batch_size: int
         """
 
         print('Start converting.')
@@ -328,15 +332,16 @@ class RdtMixin(object):
                               'Please call the calc_nps method instead.')
 
             gen_dataset_from_rdt_memsafe(path_rdt=path_rdt,
-                                 fname=fname,
-                                 path_h5=path_h5,
-                                 channels=self.channels,
-                                 tpa_list=tpa_list,
-                                 event_dtype=event_dtype,
-                                 ints_in_header=ints_in_header,
+                                         fname=fname,
+                                         path_h5=path_h5,
+                                         channels=self.channels,
+                                         tpa_list=tpa_list,
+                                         event_dtype=event_dtype,
+                                         ints_in_header=ints_in_header,
                                          dvm_channels=dvm_channels,
                                          record_length=self.record_length,
-                                 )
+                                         batch_size=batch_size,
+                                         )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
 
@@ -516,7 +521,7 @@ class RdtMixin(object):
         data = np.memmap(path_rdt, dtype=record, mode='r')
 
         frequencies = (data['time_high'][-10:] * 2 ** 32 + data['time_low'][-10:]) / data[
-            'hours'][-10:] / 3600
+                                                                                         'hours'][-10:] / 3600
 
         print('Frequency estimate: {:.1f}'.format(np.mean(frequencies)))
 

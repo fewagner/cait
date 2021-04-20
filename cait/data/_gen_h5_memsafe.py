@@ -48,6 +48,8 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type dvm_channels: int
     :param record_length: The number of samples in one record window.
     :type record_length: int
+    :param batch_size: The batch size for loading the samples from disk.
+    :type batch_size: int
     """
 
     nmbr_channels = len(channels)
@@ -79,18 +81,18 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     print('Total Records in File: ', recs.shape[0])
 
-    counts = []
-    for c in channels:
-        counts.append(np.sum(recs['detector_nmbr'] == c))
-        print('Counts in Channel {}: {}'.format(c, counts[-1]))
+    # counts = []
+    # for c in channels:
+    #     counts.append(np.sum(recs['detector_nmbr'] == c))
+    #     print('Counts in Channel {}: {}'.format(c, counts[-1]))
 
     # get only consecutive events from these two channels
     good_idx = []
 
-    for idx in range(np.min(counts)):
+    for idx in range(recs.shape[0] - nmbr_channels + 1):
         cond = True
-        for j in range(len(counts)):
-            np.logical_and(cond, recs['detector_nmbr'][idx + j] == channels[j])
+        for j in range(nmbr_channels):
+            cond = np.logical_and(cond, recs['detector_nmbr'][idx + j] == channels[j])
         if cond:
             good_idx.append(idx)
 
