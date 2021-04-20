@@ -129,10 +129,14 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             events.create_dataset('time_mus', data=recs['abs_time_mus'][idx_events], dtype='int32')
 
             with tqdm(total=nmbr_channels * nmbr_events) as pbar:
+                counter = 0
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_events):
                         events['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
-                        pbar.update(1)
+                        if i % 1000 == 0 and i > 0:
+                            pbar.update(1000)
+                            counter += 1000
+                pbar.update(nmbr_channels * nmbr_events - counter)
 
         # ################# PROCESS NOISE #################
         # if we filtered for noise
@@ -150,10 +154,14 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             noise.create_dataset('time_mus', data=recs['abs_time_mus'][idx_noise], dtype='int32')
 
             with tqdm(total=nmbr_channels * nmbr_noise) as pbar:
+                counter = 0
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_noise):
                         noise['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
-                        pbar.update(1)
+                        if i % 1000 == 0 and i > 0:
+                            pbar.update(1000)
+                            counter += 1000
+                pbar.update(nmbr_channels * nmbr_noise - counter)
 
         # ################# PROCESS TESTPULSES #################
         # if we filtered for testpulses
@@ -173,7 +181,11 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             testpulses.create_dataset('time_mus', data=recs['abs_time_mus'][idx_testpulses], dtype='int32')
 
             with tqdm(total=nmbr_channels * nmbr_testpulses) as pbar:
+                counter = 0
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_testpulses):
                         testpulses['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
-                        pbar.update(1)
+                        if i % 1000 == 0 and i > 0:
+                            pbar.update(1000)
+                            counter += 1000
+                pbar.update(nmbr_channels * nmbr_testpulses - counter)
