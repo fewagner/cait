@@ -3,7 +3,7 @@ Magic Numbers
 **************
 
 There are several places in the Cait code, where so-called "magic" number appear, e.g. a hard-coded integer as index
-to an array, with no are only short explanation why this number is taken here. Most of the time, this is due to the
+to an array, with no or only short explanation why this number is taken here. Most of the time, this is due to the
 numbering of labels, main parameters or fit parameters. These numbers are written as attributes in the HDF5 files,
 however we also provide lists here.
 
