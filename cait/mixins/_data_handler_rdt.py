@@ -5,8 +5,10 @@
 import numpy as np
 import struct
 from ..data._gen_h5 import gen_dataset_from_rdt
+from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
 import h5py
 from ..data._raw import read_rdt_file
+import warnings
 
 
 # -----------------------------------------------------------
@@ -257,6 +259,9 @@ class RdtMixin(object):
                         event_dtype='float32',
                         ints_in_header=7,
                         lazy_loading=True,
+                        memsafe=False,
+                        dvm_channels=0,
+                        batch_size=1000,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -286,25 +291,57 @@ class RdtMixin(object):
         :type ints_in_header: int
         :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
         :type lazy_loading: bool
+        :param dvm_channels: The number of DVM channels, this can be read in the PAR file.
+        :type dvm_channels: int
+        :param batch_size: The batch size for loading the samples from disk.
+        :type batch_size: int
         """
 
         print('Start converting.')
 
-        gen_dataset_from_rdt(path_rdt=path_rdt,
-                             fname=fname,
-                             path_h5=path_h5,
-                             channels=self.channels,
-                             tpa_list=tpa_list,
-                             calc_mp=calc_mp,
-                             calc_fit=calc_fit,
-                             calc_sev=calc_sev,
-                             calc_nps=calc_nps,
-                             processes=processes,
-                             event_dtype=event_dtype,
-                             ints_in_header=ints_in_header,
-                             sample_frequency=self.sample_frequency,
-                             lazy_loading=lazy_loading,
-                             )
+        if not memsafe:
+            warnings.warn('Consider using the memsafe option! From the next release, it will be activated by default.')
+
+            gen_dataset_from_rdt(path_rdt=path_rdt,
+                                 fname=fname,
+                                 path_h5=path_h5,
+                                 channels=self.channels,
+                                 tpa_list=tpa_list,
+                                 calc_mp=calc_mp,
+                                 calc_fit=calc_fit,
+                                 calc_sev=calc_sev,
+                                 calc_nps=calc_nps,
+                                 processes=processes,
+                                 event_dtype=event_dtype,
+                                 ints_in_header=ints_in_header,
+                                 sample_frequency=self.sample_frequency,
+                                 lazy_loading=lazy_loading,
+                                 )
+        else:
+            if calc_mp:
+                warnings.warn('Memsafe implementation does not privide on-the-fly main paramter calculation. '
+                              'Please call the calc_mp method instead.')
+            if calc_fit:
+                warnings.warn('Memsafe implementation does not privide on-the-fly parametric fit calculation. '
+                              'Please call the calc_parametric_fit method instead.')
+            if calc_sev:
+                warnings.warn('Memsafe implementation does not privide on-the-fly sev calculation. '
+                              'Please call the calc_sev method instead.')
+            if calc_nps:
+                warnings.warn('Memsafe implementation does not privide on-the-fly noise power spectrum calculation. '
+                              'Please call the calc_nps method instead.')
+
+            gen_dataset_from_rdt_memsafe(path_rdt=path_rdt,
+                                         fname=fname,
+                                         path_h5=path_h5,
+                                         channels=self.channels,
+                                         tpa_list=tpa_list,
+                                         event_dtype=event_dtype,
+                                         ints_in_header=ints_in_header,
+                                         dvm_channels=dvm_channels,
+                                         record_length=self.record_length,
+                                         batch_size=batch_size,
+                                         )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
 
@@ -484,7 +521,7 @@ class RdtMixin(object):
         data = np.memmap(path_rdt, dtype=record, mode='r')
 
         frequencies = (data['time_high'][-10:] * 2 ** 32 + data['time_low'][-10:]) / data[
-            'hours'][-10:] / 3600
+                                                                                         'hours'][-10:] / 3600
 
         print('Frequency estimate: {:.1f}'.format(np.mean(frequencies)))
 
