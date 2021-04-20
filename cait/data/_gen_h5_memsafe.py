@@ -1,0 +1,172 @@
+# ------------------------------------------------------------
+# IMPORTS
+# ------------------------------------------------------------
+
+import os
+import h5py
+import numpy as np
+from ..data._raw import convert_to_V
+
+
+# ------------------------------------------------------------
+# FUNCTION
+# ------------------------------------------------------------
+
+
+def gen_dataset_from_rdt_memsafe(path_rdt,
+                                 fname,
+                                 path_h5,
+                                 channels,
+                                 tpa_list=[0., 1., -1.],
+                                 event_dtype='float32',
+                                 ints_in_header=7,
+                                 dvm_channels=0,
+                                 record_length=16384,
+                                 ):
+    """
+    Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
+    file is large or the available RAM small.
+
+    :param path_rdt: Path to the rdt file e.g. "data/bcks/".
+    :type path_rdt: string
+    :param fname: Name of the file e.g. "bck_001".
+    :type fname: string
+    :param path_h5: Path where the h5 file is saved e.g. "data/hdf5s%".
+    :type path_h5: string
+    :param channels: the numbers of the channels in the hdf5 file that we want to include in rdt
+    :type channels: list
+    :param tpa_list: The test pulse amplitudes to save, if 1 is in the list, all positive values are included.
+    :type tpa_list: list
+    :param event_dtype: Datatype to save the events with.
+    :type event_dtype: string
+    :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
+            7 or 6!
+    :type ints_in_header: int
+    :param dvm_channels: The number of DVM channels, this can be read in the PAR file.
+    :type dvm_channels: int
+    :param record_length: The number of samples in one record window.
+    :type record_length: int
+    """
+
+    nmbr_channels = len(channels)
+
+    if not os.path.exists(path_h5):
+        os.makedirs(path_h5)
+
+    print('READ EVENTS FROM RDT FILE.')
+
+    record = np.dtype([('detector_nmbr', 'i4'),
+                       ('coincide_pulses', 'i4'),
+                       ('trig_count', 'i4'),
+                       ('trig_delay', 'i4'),
+                       ('abs_time_s', 'i4'),
+                       ('abs_time_mus', 'i4'),
+                       ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
+                       ('time_low', 'i4'),
+                       ('time_high', 'i4'),
+                       ('qcd_events', 'i4'),
+                       ('hours', 'f4'),
+                       ('dead_time', 'f4'),
+                       ('test_pulse_amplitude', 'f4'),
+                       ('dac_output', 'f4'),
+                       ('dvm_channels', 'f4', dvm_channels),
+                       ('samples', 'i2', record_length),
+                       ])
+
+    recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
+
+    print('Total Records in File: ', recs.shape[0])
+
+    counts = []
+    for c in channels:
+        counts.append(np.sum(recs['detector_nmbr'] == c))
+        print('Counts in Channel {}: {}'.format(c, counts[-1]))
+
+    # get only consecutive events from these two channels
+    good_idx = []
+
+    for idx in range(np.min(counts)):
+        cond = True
+        for j in range(len(counts)):
+            np.logical_and(cond, recs['detector_nmbr'][idx + j] == channels[j])
+        if cond:
+            good_idx.append(idx)
+
+    good_idx = np.array(good_idx)
+    good_tpas = np.array(recs['test_pulse_amplitude'][good_idx])
+
+    print('Good consecutive counts: {}'.format(good_idx.shape[0]))
+    # ----
+
+    if nmbr_channels == 2:
+        path = "{}{}-P_Ch{}-L_Ch{}.h5".format(path_h5, fname,
+                                              channels[0], channels[1])
+    else:
+        path = "{}{}".format(path_h5, fname)
+        for i, c in enumerate(channels):
+            path += '-{}_Ch{}'.format(i + 1, c)
+        path += ".h5"
+
+    with h5py.File(path, 'w') as h5f:
+
+        for i, c in enumerate(channels):
+            h5f.attrs.create('Ch_{}'.format(i + 1), data=c)
+
+        # ################# PROCESS EVENTS #################
+        # if we filtered for events
+        if 0.0 in tpa_list:
+            print('WORKING ON EVENTS WITH TPA = 0.')
+
+            nmbr_events = np.sum(good_tpas == 0.)
+            idx_events = good_idx[good_tpas == 0.]
+
+            print('CREATE DATASET WITH EVENTS.')
+            events = h5f.create_group('events')
+            events.create_dataset('event', shape=(nmbr_channels, nmbr_events, record_length), dtype=event_dtype)
+            events.create_dataset('hours', data=recs['hours'][idx_events], dtype=float)
+            events.create_dataset('time_s', data=recs['abs_time_s'][idx_events], dtype='int32')
+            events.create_dataset('time_mus', data=recs['abs_time_mus'][idx_events], dtype='int32')
+
+            for c in range(nmbr_channels):
+                for i, idx in enumerate(idx_events):
+                    events['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+
+
+        # ################# PROCESS NOISE #################
+        # if we filtered for noise
+        if -1.0 in tpa_list:
+            print('WORKING ON EVENTS WITH TPA = -1.')
+
+            nmbr_noise = np.sum(good_tpas == -1.)
+            idx_noise = good_idx[good_tpas == -1.]
+
+            print('CREATE DATASET WITH NOISE.')
+            noise = h5f.create_group('noise')
+            noise.create_dataset('event', shape=(nmbr_channels, nmbr_noise, record_length), dtype=event_dtype)
+            noise.create_dataset('hours', data=recs['hours'][idx_noise], dtype=float)
+            noise.create_dataset('time_s', data=recs['abs_time_s'][idx_noise], dtype='int32')
+            noise.create_dataset('time_mus', data=recs['abs_time_mus'][idx_noise], dtype='int32')
+
+            for c in range(nmbr_channels):
+                for i, idx in enumerate(idx_noise):
+                    noise['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+
+        # ################# PROCESS TESTPULSES #################
+        # if we filtered for testpulses
+        if any(el > 0 for el in tpa_list):
+            print('WORKING ON EVENTS WITH TPA > 0.')
+
+            nmbr_testpulses = np.sum(good_tpas > 0.)
+            idx_testpulses = good_idx[good_tpas > 0.]
+
+            print('CREATE DATASET WITH TESTPULSES.')
+            testpulses = h5f.create_group('testpulses')
+            testpulses.create_dataset('event', shape=(nmbr_channels, nmbr_testpulses, record_length), dtype=event_dtype)
+            testpulses.create_dataset('testpulseamplitude', data=recs['test_pulse_amplitude'][idx_testpulses], dtype=float)
+            testpulses.create_dataset('hours', data=recs['hours'][idx_testpulses], dtype=float)
+            testpulses.create_dataset('time_s', data=recs['abs_time_s'][idx_testpulses], dtype='int32')
+            testpulses.create_dataset('time_mus', data=recs['abs_time_mus'][idx_testpulses], dtype='int32')
+
+            for c in range(nmbr_channels):
+                for i, idx in enumerate(idx_testpulses):
+                    testpulses['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
