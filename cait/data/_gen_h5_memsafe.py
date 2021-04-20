@@ -23,6 +23,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  ints_in_header=7,
                                  dvm_channels=0,
                                  record_length=16384,
+                                 batch_size=1000,
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -129,18 +130,19 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             events.create_dataset('time_mus', data=recs['abs_time_mus'][idx_events], dtype='int32')
 
             with tqdm(total=nmbr_channels * nmbr_events) as pbar:
-                counter = 0
-                holder = np.zeros(record_length, dtype=event_dtype)
+                holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
                     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
-                    for i, idx in enumerate(idx_events):
-                        holder[:] = convert_to_V(recs['samples'][idx + c])
-                        events['event'][c, i, ...] = holder
-                        if i % 1000 == 0 and i > 0:
-                            pbar.update(1000)
-                            counter += 1000
-                pbar.update(nmbr_channels * nmbr_events - counter)
+                    counter = 0
+                    while counter < nmbr_events - batch_size:
+                        holder[:, :] = convert_to_V(recs['samples'][idx_events[counter:counter + batch_size] + c])
+                        events['event'][c, counter:counter + batch_size, ...] = holder
+                        pbar.update(batch_size)
+                        counter += batch_size
+                    events['event'][c, counter:nmbr_events, ...] = convert_to_V(
+                        recs['samples'][idx_events[counter:nmbr_events] + c])
+                    pbar.update(nmbr_events - counter)
 
         # ################# PROCESS NOISE #################
         # if we filtered for noise
@@ -158,18 +160,19 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             noise.create_dataset('time_mus', data=recs['abs_time_mus'][idx_noise], dtype='int32')
 
             with tqdm(total=nmbr_channels * nmbr_noise) as pbar:
-                counter = 0
-                holder = np.zeros(record_length, dtype=event_dtype)
+                holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
                     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
-                    for i, idx in enumerate(idx_noise):
-                        holder[:] = convert_to_V(recs['samples'][idx + c])
-                        noise['event'][c, i, ...] = holder
-                        if i % 1000 == 0 and i > 0:
-                            pbar.update(1000)
-                            counter += 1000
-                pbar.update(nmbr_channels * nmbr_noise - counter)
+                    counter = 0
+                    while counter < nmbr_noise - batch_size:
+                        holder[:, :] = convert_to_V(recs['samples'][idx_noise[counter:counter + batch_size] + c])
+                        noise['event'][c, counter:counter + batch_size, ...] = holder
+                        pbar.update(batch_size)
+                        counter += batch_size
+                    noise['event'][c, counter:nmbr_noise, ...] = convert_to_V(
+                        recs['samples'][idx_noise[counter:nmbr_noise] + c])
+                    pbar.update(nmbr_noise - counter)
 
         # ################# PROCESS TESTPULSES #################
         # if we filtered for testpulses
@@ -189,15 +192,17 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             testpulses.create_dataset('time_mus', data=recs['abs_time_mus'][idx_testpulses], dtype='int32')
 
             with tqdm(total=nmbr_channels * nmbr_testpulses) as pbar:
-                counter = 0
-                holder = np.zeros(record_length, dtype=event_dtype)
+                holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
                     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
-                    for i, idx in enumerate(idx_testpulses):
-                        holder[:] = convert_to_V(recs['samples'][idx + c])
-                        testpulses['event'][c, i, ...] = holder
-                        if i % 1000 == 0 and i > 0:
-                            pbar.update(1000)
-                            counter += 1000
-                pbar.update(nmbr_channels * nmbr_testpulses - counter)
+                    counter = 0
+                    while counter < nmbr_testpulses - batch_size:
+                        holder[:, :] = convert_to_V(recs['samples'][idx_testpulses[counter:counter + batch_size] + c])
+                        testpulses['event'][c, counter:counter + batch_size, ...] = holder
+                        pbar.update(batch_size)
+                        counter += batch_size
+                    testpulses['event'][c, counter:nmbr_testpulses, ...] = convert_to_V(
+                        recs['samples'][idx_testpulses[counter:nmbr_testpulses] + c])
+                    pbar.update(nmbr_testpulses - counter)
+
