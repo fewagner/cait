@@ -130,9 +130,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
             with tqdm(total=nmbr_channels * nmbr_events) as pbar:
                 counter = 0
+                holder = np.zeros(record_length, dtype=event_dtype)
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_events):
-                        holder = convert_to_V(recs['samples'][idx + c])
+                        holder[:] = convert_to_V(recs['samples'][idx + c])
                         events['event'][c, i, ...] = holder
                         if i % 1000 == 0 and i > 0:
                             pbar.update(1000)
@@ -156,9 +157,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
             with tqdm(total=nmbr_channels * nmbr_noise) as pbar:
                 counter = 0
+                holder = np.zeros(record_length, dtype=event_dtype)
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_noise):
-                        holder = convert_to_V(recs['samples'][idx + c])
+                        holder[:] = convert_to_V(recs['samples'][idx + c])
                         noise['event'][c, i, ...] = holder
                         if i % 1000 == 0 and i > 0:
                             pbar.update(1000)
@@ -184,9 +186,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
             with tqdm(total=nmbr_channels * nmbr_testpulses) as pbar:
                 counter = 0
+                holder = np.zeros(record_length, dtype=event_dtype)
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_testpulses):
-                        holder = convert_to_V(recs['samples'][idx + c])
+                        holder[:] = convert_to_V(recs['samples'][idx + c])
                         testpulses['event'][c, i, ...] = holder
                         if i % 1000 == 0 and i > 0:
                             pbar.update(1000)
