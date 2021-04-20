@@ -132,7 +132,8 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 counter = 0
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_events):
-                        events['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+                        holder = convert_to_V(recs['samples'][idx + c])
+                        events['event'][c, i, ...] = holder
                         if i % 1000 == 0 and i > 0:
                             pbar.update(1000)
                             counter += 1000
@@ -157,7 +158,8 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 counter = 0
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_noise):
-                        noise['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+                        holder = convert_to_V(recs['samples'][idx + c])
+                        noise['event'][c, i, ...] = holder
                         if i % 1000 == 0 and i > 0:
                             pbar.update(1000)
                             counter += 1000
@@ -184,7 +186,8 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 counter = 0
                 for c in range(nmbr_channels):
                     for i, idx in enumerate(idx_testpulses):
-                        testpulses['event'][c, i, ...] = convert_to_V(recs['samples'][idx + c])
+                        holder = convert_to_V(recs['samples'][idx + c])
+                        testpulses['event'][c, i, ...] = holder
                         if i % 1000 == 0 and i > 0:
                             pbar.update(1000)
                             counter += 1000
