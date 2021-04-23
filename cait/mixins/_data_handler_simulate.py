@@ -37,7 +37,7 @@ class SimulateMixin(object):
                         store_of=False,
                         rms_thresholds=[1, 0.5],
                         lamb=0.01,
-                        sample_length=0.04,
+                        sample_length=None,
                         assign_labels=[1],
                         start_from_bl_idx=0,
                         saturation=False,
@@ -86,7 +86,8 @@ class SimulateMixin(object):
         :type rms_thresholds: list of two floats
         :param lamb: , a parameter for the fake baseline simulation, decrease if calculation time is too long
         :type lamb: float
-        :param sample_length: , the length of one sample in milliseconds
+        :param sample_length: , the length of one sample in milliseconds (if None, it is calculated from the sample
+            frequency)
         :type sample_length: float
         :param assign_labels: , pre-assign a label to all the simulated events; tp and noise are
             automatically labeled, the length of the list must match the list channels_exceptional_sev
@@ -108,6 +109,9 @@ class SimulateMixin(object):
         :param dtype: The data format of the simulated raw data events array.
         :type dtype: string
         """
+
+        if sample_length is None:
+            sample_length = 1000/self.sample_frequency
 
         # create file handle
         with h5py.File(path_sim, 'w') as f, h5py.File(self.path_h5, 'r') as f_read:
