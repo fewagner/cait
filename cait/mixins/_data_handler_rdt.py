@@ -295,6 +295,8 @@ class RdtMixin(object):
         :type dvm_channels: int
         :param batch_size: The batch size for loading the samples from disk.
         :type batch_size: int
+        :param memsafe: Recommended! This activates
+        :type memsafe: bool
         """
 
         print('Start converting.')

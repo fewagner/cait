@@ -84,10 +84,12 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     # get only consecutive events from these two channels
     good_idx = []
 
-    for idx in tqdm(range(recs.shape[0] - nmbr_channels + 1)):
+    detnmbrs = np.array(recs['detector_nmbr'])
+
+    for idx in range(recs.shape[0] - nmbr_channels + 1):
         cond = True
         for j in range(nmbr_channels):
-            cond = np.logical_and(cond, recs['detector_nmbr'][idx + j] == channels[j])
+            cond = np.logical_and(cond, detnmbrs[idx + j] == channels[j])
         if cond:
             good_idx.append(idx)
 
