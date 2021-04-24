@@ -265,7 +265,6 @@ class RdtMixin(object):
                         dvm_channels=0,
                         batch_size=1000,
                         trace=False,
-                        load_detnmbrs_to_mem=True,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.

@@ -111,11 +111,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     good_idx = []
 
-
     detnmbrs = np.empty(recs.shape[0])
 
     for idx in trange(0, recs.shape[0], batch_size):
-        recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
+        recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record, offset=batch_size*record.itemsize, count=batch_size)
         end = min(idx + batch_size, recs.shape[0])
         detnmbrs[idx:end] = recs['detector_nmbr'][idx:end]
 
