@@ -363,6 +363,8 @@ class RdtMixin(object):
                                          record_length=self.record_length,
                                          batch_size=batch_size,
                                          trace=trace,
+                                         load_detnmbrs_to_mem=load_detnmbrs_to_mem,
+                                         lazy_loading=lazy_loading,
                                          )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))

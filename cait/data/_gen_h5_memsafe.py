@@ -28,6 +28,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  batch_size=1000,
                                  trace=False,
                                  load_detnmbrs_to_mem=True,
+                                 lazy_loading=True,
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -57,9 +58,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type batch_size: int
     :param trace: Trace the runtime and memory consumption
     :type trace: bool
-    :param load_detnmbrs_to_mem: Load the detector numbers to RAM. Depending on hard drive and OS, this will be significantly
-        slower or faster than without loading to RAM. For most systems, this is the recommended option.
+    :param load_detnmbrs_to_mem: Load the detector numbers to RAM. For most systems, this is the recommended option.
     :type load_detnmbrs_to_mem: bool
+    :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
+    :type lazy_loading: bool
     """
 
     nmbr_channels = len(channels)
@@ -91,7 +93,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                        ('samples', 'i2', record_length),
                        ])
 
-    recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
+    if lazy_loading:
+        recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
+    else:
+        recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record)
 
     if trace:
         current, peak = tracemalloc.get_traced_memory()
@@ -120,7 +125,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     else:
         detnmbrs = recs['detector_nmbr']
 
-    for idx in tqdm(range(recs.shape[0] - nmbr_channels + 1)):
+    for idx in range(recs.shape[0] - nmbr_channels + 1):
         cond = True
         for j in range(nmbr_channels):
             cond = np.logical_and(cond, detnmbrs[idx + j] == channels[j])
