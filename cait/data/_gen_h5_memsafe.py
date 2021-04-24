@@ -7,6 +7,8 @@ import h5py
 import numpy as np
 from ..data._raw import convert_to_V
 from tqdm.auto import tqdm
+import time
+import tracemalloc
 
 
 # ------------------------------------------------------------
@@ -24,6 +26,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  dvm_channels=0,
                                  record_length=16384,
                                  batch_size=1000,
+                                 trace=False
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -48,8 +51,11 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type dvm_channels: int
     :param record_length: The number of samples in one record window.
     :type record_length: int
-    :param batch_size: The batch size for loading the samples from disk.
+    :param batch_size: The batch size for loading the samples from disk. Usually 1000 is a good value and produces
+        RAM usage around 250 MB.
     :type batch_size: int
+    :param trace: Trace the runtime and memory consumption
+    :type trace: bool
     """
 
     nmbr_channels = len(channels)
@@ -58,6 +64,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         os.makedirs(path_h5)
 
     print('READ EVENTS FROM RDT FILE.')
+
+    if trace:
+        tracemalloc.start()
+        start_time = time.time()
 
     record = np.dtype([('detector_nmbr', 'i4'),
                        ('coincide_pulses', 'i4'),
@@ -79,22 +89,58 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
 
+    if trace:
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB; Runtime was {time.time() - start_time};")
+        tracemalloc.stop()
+        tracemalloc.start()
+        start_time = time.time()
+
     print('Total Records in File: ', recs.shape[0])
 
     # get only consecutive events from these two channels
+
+    if trace:
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB; Runtime was {time.time() - start_time};")
+        tracemalloc.stop()
+        tracemalloc.start()
+        start_time = time.time()
+
+    print('Getting good idx.')
+
     good_idx = []
 
-    detnmbrs = np.array(recs['detector_nmbr'])
+    detnmbrs = recs['detector_nmbr']
 
     for idx in range(recs.shape[0] - nmbr_channels + 1):
         cond = True
         for j in range(nmbr_channels):
             cond = np.logical_and(cond, detnmbrs[idx + j] == channels[j])
+            if not cond:
+                break
         if cond:
             good_idx.append(idx)
 
+    if trace:
+        current, peak = tracemalloc.get_traced_memory()
+        print(f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB; Runtime was {time.time() - start_time};")
+        tracemalloc.stop()
+        tracemalloc.start()
+        start_time = time.time()
+
+    print('Getting good tpas.')
+
     good_idx = np.array(good_idx)
     good_tpas = np.array(recs['test_pulse_amplitude'][good_idx])
+
+    if trace:
+        current, peak = tracemalloc.get_traced_memory()
+        print(
+            f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB; Runtime was {time.time() - start_time};")
+        tracemalloc.stop()
+        tracemalloc.start()
+        start_time = time.time()
 
     print('Good consecutive counts: {}'.format(good_idx.shape[0]))
     # ----
@@ -196,8 +242,8 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                 holder = np.zeros((batch_size, record_length), dtype=event_dtype)
                 for c in range(nmbr_channels):
                     # create new memmep for lower memory usage
-                    del recs
-                    recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
+                    # del recs
+                    # recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
                     counter = 0
                     while counter < nmbr_testpulses - batch_size:
                         holder[:, :] = convert_to_V(recs['samples'][idx_testpulses[counter:counter + batch_size] + c])
@@ -208,3 +254,11 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                         recs['samples'][idx_testpulses[counter:nmbr_testpulses] + c])
                     pbar.update(nmbr_testpulses - counter)
 
+    # recs
+    del holder
+
+    if trace:
+        current, peak = tracemalloc.get_traced_memory()
+        print(
+            f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB; Runtime was {time.time() - start_time};")
+        tracemalloc.stop()

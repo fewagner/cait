@@ -4,6 +4,8 @@ import h5py
 import numpy as np
 import os
 import itertools
+import tracemalloc
+import time
 
 
 # function
@@ -22,6 +24,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   continue_hours=True,
                   keep_original_files=True,
                   verb=False,
+                  trace=False,
                   ):
     """
     Merges two HDF5 files, groups to merge can be chosen
@@ -53,7 +56,13 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :type keep_original_files:
     :param verb:
     :type verb:
+    :param trace: Traces the memory and runtime consumption.
+    :type trace: bool
     """
+
+    if trace:
+        tracemalloc.start()
+        start_time = time.time()
 
     for v in concatenate_axis:
         if v not in [0, 1]:
@@ -191,3 +200,9 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
             os.remove(p)
 
     print('Merge done.')
+
+    if trace:
+        current, peak = tracemalloc.get_traced_memory()
+        print(
+            f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB; Runtime was {time.time() - start_time};")
+        tracemalloc.stop()
