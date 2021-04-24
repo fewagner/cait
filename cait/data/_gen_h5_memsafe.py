@@ -26,7 +26,8 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  dvm_channels=0,
                                  record_length=16384,
                                  batch_size=1000,
-                                 trace=False
+                                 trace=False,
+                                 load_detnmbrs_to_mem=True,
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -56,6 +57,9 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type batch_size: int
     :param trace: Trace the runtime and memory consumption
     :type trace: bool
+    :param load_detnmbrs_to_mem: Load the detector numbers to RAM. Depending on hard drive and OS, this will be significantly
+        slower or faster than without loading to RAM. For most systems, this is the recommended option.
+    :type load_detnmbrs_to_mem: bool
     """
 
     nmbr_channels = len(channels)
@@ -107,13 +111,16 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         tracemalloc.start()
         start_time = time.time()
 
-    print('Getting good idx.')
+    print('Getting good idx. (Depending on HDD speed and OS, this might take some minutes!)')
 
     good_idx = []
 
-    detnmbrs = recs['detector_nmbr']
+    if load_detnmbrs_to_mem:
+        detnmbrs = np.array(recs['detector_nmbr'])
+    else:
+        detnmbrs = recs['detector_nmbr']
 
-    for idx in range(recs.shape[0] - nmbr_channels + 1):
+    for idx in tqdm(range(recs.shape[0] - nmbr_channels + 1)):
         cond = True
         for j in range(nmbr_channels):
             cond = np.logical_and(cond, detnmbrs[idx + j] == channels[j])

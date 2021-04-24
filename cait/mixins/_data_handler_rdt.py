@@ -265,6 +265,7 @@ class RdtMixin(object):
                         dvm_channels=0,
                         batch_size=1000,
                         trace=False,
+                        load_detnmbrs_to_mem=True,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -302,6 +303,9 @@ class RdtMixin(object):
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
+        :param load_detnmbrs_to_mem: Load the detector numbers to RAM. Depending on hard drive and OS, this will be
+            significantly slower or faster than without loading to RAM. For most systems, this is the recommended option.
+        :type load_detnmbrs_to_mem: bool
         """
 
         print('Start converting.')
