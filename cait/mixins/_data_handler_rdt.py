@@ -303,9 +303,6 @@ class RdtMixin(object):
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
-        :param load_detnmbrs_to_mem: Load the detector numbers to RAM. Depending on hard drive and OS, this will be
-            significantly slower or faster than without loading to RAM. For most systems, this is the recommended option.
-        :type load_detnmbrs_to_mem: bool
         """
 
         print('Start converting.')
@@ -363,8 +360,6 @@ class RdtMixin(object):
                                          record_length=self.record_length,
                                          batch_size=batch_size,
                                          trace=trace,
-                                         load_detnmbrs_to_mem=load_detnmbrs_to_mem,
-                                         lazy_loading=lazy_loading,
                                          )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))

@@ -6,7 +6,7 @@ import os
 import h5py
 import numpy as np
 from ..data._raw import convert_to_V
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm, trange
 import time
 import tracemalloc
 
@@ -27,8 +27,6 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  record_length=16384,
                                  batch_size=1000,
                                  trace=False,
-                                 load_detnmbrs_to_mem=True,
-                                 lazy_loading=True,
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -58,10 +56,6 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type batch_size: int
     :param trace: Trace the runtime and memory consumption
     :type trace: bool
-    :param load_detnmbrs_to_mem: Load the detector numbers to RAM. For most systems, this is the recommended option.
-    :type load_detnmbrs_to_mem: bool
-    :param lazy_loading: Recommended! If true, the data is loaded with memory mapping to avoid memory overflows.
-    :type lazy_loading: bool
     """
 
     nmbr_channels = len(channels)
@@ -93,10 +87,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                        ('samples', 'i2', record_length),
                        ])
 
-    if lazy_loading:
-        recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
-    else:
-        recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record)
+    recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
 
     if trace:
         current, peak = tracemalloc.get_traced_memory()
@@ -120,10 +111,15 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     good_idx = []
 
-    if load_detnmbrs_to_mem:
-        detnmbrs = np.array(recs['detector_nmbr'])
-    else:
-        detnmbrs = recs['detector_nmbr']
+
+    detnmbrs = np.empty(recs.shape[0])
+
+    for idx in trange(0, recs.shape[0], batch_size):
+        recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
+        end = min(idx + batch_size, recs.shape[0])
+        detnmbrs[idx:end] = recs['detector_nmbr'][idx:end]
+
+    recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
 
     for idx in range(recs.shape[0] - nmbr_channels + 1):
         cond = True
