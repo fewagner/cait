@@ -87,21 +87,21 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                        ('samples', 'i2', record_length),
                        ])
 
-    header = np.dtype([('detector_nmbr', 'i4'),
-                       ('coincide_pulses', 'i4'),
-                       ('trig_count', 'i4'),
-                       ('trig_delay', 'i4'),
-                       ('abs_time_s', 'i4'),
-                       ('abs_time_mus', 'i4'),
-                       ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
-                       ('time_low', 'i4'),
-                       ('time_high', 'i4'),
-                       ('qcd_events', 'i4'),
-                       ('hours', 'f4'),
-                       ('dead_time', 'f4'),
-                       ('test_pulse_amplitude', 'f4'),
-                       ('dac_output', 'f4'),
-                       ])
+    # header = np.dtype([('detector_nmbr', 'i4'),
+    #                    ('coincide_pulses', 'i4'),
+    #                    ('trig_count', 'i4'),
+    #                    ('trig_delay', 'i4'),
+    #                    ('abs_time_s', 'i4'),
+    #                    ('abs_time_mus', 'i4'),
+    #                    ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
+    #                    ('time_low', 'i4'),
+    #                    ('time_high', 'i4'),
+    #                    ('qcd_events', 'i4'),
+    #                    ('hours', 'f4'),
+    #                    ('dead_time', 'f4'),
+    #                    ('test_pulse_amplitude', 'f4'),
+    #                    ('dac_output', 'f4'),
+    #                    ])
 
     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
 
@@ -129,7 +129,9 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     good_idx = []
 
-    detnmbrs = np.empty(nmbr_all_events)
+    detnmbrs = np.array(recs['detector_nmbr'])
+
+    # detnmbrs = np.empty(nmbr_all_events)
 
     # for idx in trange(0, nmbr_all_events, batch_size):
     #     end = min(batch_size, nmbr_all_events - idx)
@@ -137,10 +139,11 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     #     detnmbrs[idx:idx + end] = recs['detector_nmbr']
     #     del recs
 
-    for idx in trange(0, nmbr_all_events, 1):
-        recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=header, offset=idx*record.itemsize, count=1)
-        detnmbrs[idx] = recs['detector_nmbr']
-        del recs
+    # for idx in trange(0, nmbr_all_events, 1):
+    #     recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=header, offset=idx*record.itemsize, count=1)
+    #     # print(recs['detector_nmbr'].shape)
+    #     detnmbrs[idx] = recs['detector_nmbr'][0]
+    #     # del recs
 
     # for idx in trange(0, nmbr_all_events, batch_size):
     #     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='c')
