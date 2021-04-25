@@ -597,9 +597,10 @@ class RdtMixin(object):
 
             for i, c in enumerate(self.channels):
                 cond = data['detector_nmbr'] == c
+                phs = data['pulse_height'][cond]
 
                 # write data to file
-                cp_ph[i, ...] = data['pulse_height'][cond]
+                cp_ph[i, ...] = phs[:nmbr_cp]
 
         print('CON File included.')
 
