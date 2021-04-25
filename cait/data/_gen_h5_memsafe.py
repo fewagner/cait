@@ -109,7 +109,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         tracemalloc.start()
         start_time = time.time()
 
-    print('Getting good idx.')
+    print('Getting good idx. (Depending on OS and drive reading speed, this might take some minutes!)')
 
     good_idx = []
 
@@ -119,7 +119,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         end = min(batch_size, nmbr_all_events - idx)
         recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record, offset=idx*record.itemsize, count=end)
         detnmbrs[idx:idx + end] = recs['detector_nmbr']
-        # detnmbrs[idx:idx + end] = recs[idx:idx + end]['detector_nmbr']
+        del recs
 
     for c in channels:
         print(f'Event Counts Channel {c}: {np.sum(detnmbrs == c)}')
