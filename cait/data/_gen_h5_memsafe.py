@@ -63,7 +63,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     if not os.path.exists(path_h5):
         os.makedirs(path_h5)
 
-    print('READ EVENTS FROM RDT FILE.')
+    print('\nREAD EVENTS FROM RDT FILE.')
 
     if trace:
         tracemalloc.start()
@@ -96,7 +96,9 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         tracemalloc.start()
         start_time = time.time()
 
-    print('Total Records in File: ', recs.shape[0])
+    nmbr_all_events = recs.shape[0]
+
+    print('Total Records in File: ', nmbr_all_events)
 
     # get only consecutive events from these two channels
 
@@ -107,17 +109,20 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         tracemalloc.start()
         start_time = time.time()
 
-    print('Getting good idx. (Depending on HDD speed and OS, this might take some minutes!)')
+    print('Getting good idx.')
 
     good_idx = []
 
-    detnmbrs = np.empty(recs.shape[0])
+    detnmbrs = np.empty(nmbr_all_events)
 
-    for idx in trange(0, recs.shape[0], batch_size):
-        recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record, offset=batch_size*record.itemsize, count=batch_size)
-        end = min(idx + batch_size, recs.shape[0])
-        detnmbrs[idx:end] = recs['detector_nmbr'][idx:end]
+    for idx in trange(0, nmbr_all_events, batch_size):
+        end = min(batch_size, nmbr_all_events - idx)
+        recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record, offset=idx*record.itemsize, count=end)
+        detnmbrs[idx:idx + end] = recs['detector_nmbr']
+        # detnmbrs[idx:idx + end] = recs[idx:idx + end]['detector_nmbr']
 
+    for c in channels:
+        print(f'Event Counts Channel {c}: {np.sum(detnmbrs == c)}')
     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='r')
 
     for idx in range(recs.shape[0] - nmbr_channels + 1):
@@ -139,7 +144,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     print('Getting good tpas.')
 
     good_idx = np.array(good_idx)
-    good_tpas = np.array(recs['test_pulse_amplitude'][good_idx])
+    good_tpas = np.array(recs[good_idx]['test_pulse_amplitude'])
 
     if trace:
         current, peak = tracemalloc.get_traced_memory()
@@ -169,7 +174,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         # ################# PROCESS EVENTS #################
         # if we filtered for events
         if 0.0 in tpa_list:
-            print('WORKING ON EVENTS WITH TPA = 0.')
+            print('\nWORKING ON EVENTS WITH TPA = 0.')
 
             nmbr_events = np.sum(good_tpas == 0.)
             idx_events = good_idx[good_tpas == 0.]
@@ -200,7 +205,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         # ################# PROCESS NOISE #################
         # if we filtered for noise
         if -1.0 in tpa_list:
-            print('WORKING ON EVENTS WITH TPA = -1.')
+            print('\nWORKING ON EVENTS WITH TPA = -1.')
 
             nmbr_noise = np.sum(good_tpas == -1.)
             idx_noise = good_idx[good_tpas == -1.]
@@ -231,7 +236,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
         # ################# PROCESS TESTPULSES #################
         # if we filtered for testpulses
         if any(el > 0 for el in tpa_list):
-            print('WORKING ON EVENTS WITH TPA > 0.')
+            print('\nWORKING ON EVENTS WITH TPA > 0.')
 
             nmbr_testpulses = np.sum(good_tpas > 0.)
             idx_testpulses = good_idx[good_tpas > 0.]
