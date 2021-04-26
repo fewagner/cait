@@ -130,7 +130,7 @@ def read_rdt_file(fname, path, channels,
     # check if all events belong together in the channels
     good_recs = [[] for i in range(nmbr_channels)]
 
-    length_recs = len(recs)
+    length_recs = recs.shape[0]
     print('Total Records in File: ', length_recs)
 
     if nmbr_channels > 1:

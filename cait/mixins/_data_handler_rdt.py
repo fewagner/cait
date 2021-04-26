@@ -9,6 +9,8 @@ from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
 import h5py
 from ..data._raw import read_rdt_file
 import warnings
+import time
+import tracemalloc
 
 
 # -----------------------------------------------------------
@@ -262,6 +264,7 @@ class RdtMixin(object):
                         memsafe=False,
                         dvm_channels=0,
                         batch_size=1000,
+                        trace=False,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -295,12 +298,20 @@ class RdtMixin(object):
         :type dvm_channels: int
         :param batch_size: The batch size for loading the samples from disk.
         :type batch_size: int
+        :param memsafe: Recommended! This activates
+        :type memsafe: bool
+        :param trace: Trace the runtime and memory consumption
+        :type trace: bool
         """
 
         print('Start converting.')
 
         if not memsafe:
             warnings.warn('Consider using the memsafe option! From the next release, it will be activated by default.')
+
+            if trace:
+                tracemalloc.start()
+                start_time = time.time()
 
             gen_dataset_from_rdt(path_rdt=path_rdt,
                                  fname=fname,
@@ -317,6 +328,12 @@ class RdtMixin(object):
                                  sample_frequency=self.sample_frequency,
                                  lazy_loading=lazy_loading,
                                  )
+
+            if trace:
+                print("--- %s seconds ---" % (time.time() - start_time))
+                current, peak = tracemalloc.get_traced_memory()
+                print(f"Current memory usage is {current / 10 ** 6}MB; Peak was {peak / 10 ** 6}MB")
+                tracemalloc.stop()
         else:
             if calc_mp:
                 warnings.warn('Memsafe implementation does not privide on-the-fly main paramter calculation. '
@@ -341,6 +358,7 @@ class RdtMixin(object):
                                          dvm_channels=dvm_channels,
                                          record_length=self.record_length,
                                          batch_size=batch_size,
+                                         trace=trace,
                                          )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -579,9 +597,10 @@ class RdtMixin(object):
 
             for i, c in enumerate(self.channels):
                 cond = data['detector_nmbr'] == c
+                phs = data['pulse_height'][cond]
 
                 # write data to file
-                cp_ph[i, ...] = data['pulse_height'][cond]
+                cp_ph[i, ...] = phs[:nmbr_cp]
 
         print('CON File included.')
 
