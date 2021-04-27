@@ -261,7 +261,7 @@ def calc_main_parameters(event, down=1, max_bounds=None, quad_drift=False):
     if t_rise[0].size > 0:
         t_rise = t_rise[0][0] + t_zero
     else:
-        t_rise = 0
+        t_rise = t_zero
 
     t_end = np.where(event_smoothed[maximum_index:] < 0.368 * maximum_pulse_height_condition)
     if t_end[0].size > 0:
