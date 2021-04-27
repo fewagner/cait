@@ -489,13 +489,26 @@ class DataHandler(SimulateMixin,
 
         :param group: The name of the group in the HDF5 set.
         :type group: string
-        :param dataset: The name of the dataset in the HDF5 set.
+        :param dataset: The name of the dataset in the HDF5 set. There are special key word for calculated properties
+            from the main parameters, namely 'pulse_height', 'onset', 'rise_time', 'decay_time', 'slope'. These are
+            consistent with used in the cut when generating a standard event.
         :type dataset: string
         :return: The dataset from the HDF5 file
         :rtype: numpy array
         """
         with h5py.File(self.path_h5, 'r+') as f:
-            data = np.array(f[group][dataset])
+            if dataset == 'pulse_height':
+                data = np.array(f[group]['mainpar'][:, :, 0])
+            elif dataset == 'onset':
+                data = np.array((f[group]['mainpar'][:, :, 1] - self.record_length / 4) / self.sample_frequency * 1000)
+            elif dataset == 'rise_time':
+                data = np.array((f[group]['mainpar'][:, :, 2] - f[group]['mainpar'][:, :, 1]) / self.sample_frequency * 1000)
+            elif dataset == 'decay_time':
+                data = np.array((f[group]['mainpar'][:, :, 6] - f[group]['mainpar'][:, :, 4]) / self.sample_frequency * 1000)
+            elif dataset == 'slope':
+                data = np.array(f[group]['mainpar'][:, :, 8] * self.record_length)
+            else:
+                data = np.array(f[group][dataset])
         return data
 
     def keys(self, group: str = None):
@@ -510,3 +523,19 @@ class DataHandler(SimulateMixin,
                 print(list(f.keys()))
             else:
                 print(list(f[group].keys()))
+
+    def content(self):
+        """
+        Print the whole content of the HDF5 and all derived properties.
+        """
+        print('The following properties are in the HDF5 sets can be accessed through the get(group, dataset) methode.')
+
+        with h5py.File(self.path_h5, 'r+') as f:
+            for group in f.keys():
+                print(f'The following data sets are contained in the the group {group}:')
+                for dataset in f[group].keys():
+                    print(f'dataset: {dataset}, shape: {f[group][dataset].shape}')
+                if 'mainpar' in f[group].keys():
+                    shape = f[group]['mainpar'].shape[:2]
+                    for dataset in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
+                        print(f'dataset: {dataset}, shape: {shape}')

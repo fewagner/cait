@@ -56,7 +56,7 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, 
     cond[0] = True  # such that we do not exceed boundaries below
     cond[-1] = True
 
-    # make the exclusion intervalls
+    # make the exclusion intervals
     # both control pulses before and after must have condition true
     # also, gap between control pulses must not exceed the max_gap duration!
     exclusion = []
@@ -179,7 +179,7 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev,
     cond[0] = True  # such that we do not excees boundaries below
     cond[-1] = True
 
-    # make the exclusion intervalls
+    # make the exclusion intervals
     # both testpulses before and after must have condition true
     # also, gap between test pulses must not exceed the max_gap duration!
     exclusion = []

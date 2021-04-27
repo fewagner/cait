@@ -9,6 +9,7 @@ from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
 from ..filter._of import get_amplitudes
+from warnings import warn
 
 from ..data._baselines import calculate_mean_nps
 
@@ -111,20 +112,17 @@ class FeaturesMixin(object):
         :param pulse_height_interval: The upper and lower bound for the pulse heights to include into the creation
             of the SEV.
         :type pulse_height_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
-        :param left_right_cutoff: The maximal abs value of the linear slope of events
-            to be included in the Sev calculation. The slope is calculated with respect to the sample index as x-values.
+        :param left_right_cutoff: The maximal abs value of the R-L baseline difference of events
+            to be included in the SEV calculation.
         :type left_right_cutoff: list of NMBR_CHANNELS floats
         :param rise_time_interval: The upper
-            and lower bound for the rise time to include into the creation of the SEV.
-            based on the sample index as x-values.
+            and lower bound for the rise time in ms to include into the creation of the SEV.
         :type rise_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
         :param decay_time_interval: The upper
-            and lower bound for the decay time to include into the creation of the SEV.
-            Based on the sample index as x-values.
+            and lower bound for the decay time in ms to include into the creation of the SEV.
         :type decay_time_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
         :param onset_interval:  The upper
-            and lower bound for the onset time to include into the creation of the SEV.
-            Based on the sample index as x-values.
+            and lower bound for the onset time in ms to include into the creation of the SEV.
         :type onset_interval: list of NMBR_CHANNELS lists of length 2 (intervals)
         :param remove_offset: Tf True the offset is removed before the events are superposed for the
             sev calculation. Highly recommended!
@@ -144,7 +142,7 @@ class FeaturesMixin(object):
         """
 
         if sample_length is None:
-            sample_length = 1/self.sample_frequency * 1000
+            sample_length = 1 / self.sample_frequency * 1000
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             events = h5f[type]['event']
@@ -258,6 +256,9 @@ class FeaturesMixin(object):
         :type window: bool
         """
 
+        warn(
+            'Attention! Since v1.0 can as well use the regular calc_sev method for calculating SEVs of different pulse shapes. This method is therefore no longer maintained.')
+
         with h5py.File(self.path_h5, 'r+') as h5f:
             stdevent_pulse = np.array([h5f['stdevent' + name_appendix]['event'][i]
                                        for i in range(self.nmbr_channels)])
@@ -344,12 +345,12 @@ class FeaturesMixin(object):
                 for c in range(self.nmbr_channels):
                     if first_channel_dominant and c == 0:
                         of_ph, peakpos = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window,
-                                               return_peakpos=True)
+                                                        hard_restrict=hard_restrict, down=down, window=window,
+                                                        return_peakpos=True)
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                                         hard_restrict=hard_restrict, down=down, window=window,
-                                                         peakpos=peakpos)
+                                               hard_restrict=hard_restrict, down=down, window=window,
+                                               peakpos=peakpos)
                     else:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window)
@@ -393,6 +394,9 @@ class FeaturesMixin(object):
                              sample_length=None):
         """
         Calculate an exceptional Standard Event for a Class in the HDF5 File, for only one specific channel.
+
+        Attention! Since v1.0 can as well use the regular calc_sev method for calculating SEVs of different pulse shapes.
+        This method is therefore no longer maintained.
 
         :param naming: Pick a name for the type of event, e.g. 'carrier'.
         :type naming: string
@@ -522,7 +526,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_nps(self, use_labels=False, down=1, percentile=50):
+    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3).
@@ -533,6 +537,9 @@ class FeaturesMixin(object):
         :type down: int
         :param percentile: The lower percentile of the fit errors of the baselines that we include in the calculation.
         :type percentile: int
+        :param rms_cutoff: Only baselines with a fit rms below this values are included in the NPS calculation. This
+            will overwrite the percentile argument, if it is not set to None.
+        :type rms_cutoff: list of nmbr_channels floats
         """
         print('Calculate NPS.')
 
@@ -554,7 +561,9 @@ class FeaturesMixin(object):
                 mean_nps.append(calculate_mean_nps(bl,
                                                    down=down,
                                                    percentile=percentile,
-                                                   rms_baselines=rms_baselines)[0])
+                                                   rms_baselines=rms_baselines,
+                                                   sample_length=1/self.sample_frequency,
+                                                   rms_cutoff=rms_cutoff[c])[0])
 
             mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
             frequencies = np.fft.rfftfreq(self.record_length, d=1. / self.sample_frequency * down)

@@ -481,7 +481,9 @@ class PlotMixin(object):
         :param group: The group index that is used in the hdf5 file,
             typically either events, testpulses or noise.
         :type group: string
-        :param key: The key index of the hdf5 file, typically mainpar, fit_rms, ...
+        :param key: The key index of the hdf5 file, typically mainpar, fit_rms, ...; There are a few exceptioinal
+            properties that are calculated from the main parameters and can be plotted: 'pulse_height', 'onset',
+            'rise_time', 'decay_time', 'slope'.
         :type key: string
         :param title: A title for the plot.
         :type title: string
@@ -517,22 +519,26 @@ class PlotMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as hf5:
 
+            if key in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
+                data = self.get(group, key)
+            else:
+                data = hf5[group][key]
             if idx0 is None and idx1 is None and idx2 is None:
-                vals = hf5[group][key]
+                vals = data
             elif idx0 is None and idx1 is None and idx2 is not None:
-                vals = hf5[group][key][:, :, idx2]
+                vals = data[:, :, idx2]
             elif idx0 is None and idx1 is not None and idx2 is None:
-                vals = hf5[group][key][:, idx1]
+                vals = data[:, idx1]
             elif idx0 is None and idx1 is not None and idx2 is not None:
-                vals = hf5[group][key][:, idx1, idx2]
+                vals = data[:, idx1, idx2]
             elif idx0 is not None and idx1 is None and idx2 is None:
-                vals = hf5[group][key][idx0]
+                vals = data[idx0]
             elif idx0 is not None and idx1 is None and idx2 is not None:
-                vals = hf5[group][key][idx0, :, idx2]
+                vals = data[idx0, :, idx2]
             elif idx0 is not None and idx1 is not None and idx2 is None:
-                vals = hf5[group][key][idx0, idx1]
+                vals = data[idx0, idx1]
             elif idx0 is not None and idx1 is not None and idx2 is not None:
-                vals = hf5[group][key][idx0, idx1, idx2]
+                vals = data[idx0, idx1, idx2]
 
             if cut_flag is not None:
                 vals = vals[cut_flag]
@@ -689,10 +695,10 @@ class PlotMixin(object):
         """
         Show a histogram of main parameter values
 
-
+        Attention! This method is depricated! Use show_values instead!
         """
 
-        warnings.warn("Attention! This function is depricated! Use show_scatter instead!", warnings.DeprecationWarning)
+        warnings.warn("Attention! This function is depricated! Use show_values instead!", warnings.DeprecationWarning)
 
         with h5py.File(self.path_h5, 'r') as f_h5:
             nmbr_mp = f_h5[type]['mainpar'].attrs[which_mp]

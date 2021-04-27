@@ -86,7 +86,8 @@ def calculate_mean_nps(baselines,
                        percentile=50,
                        down=1,
                        sample_length = 0.00004,
-                       rms_baselines=None):
+                       rms_baselines=None,
+                       rms_cutoff=None):
     """
     Calculates the mean Noise Power Spectrum (mNPS) of a set of baselines,
     after cleaning them from artifacts with a polynomial fit
@@ -104,6 +105,9 @@ def calculate_mean_nps(baselines,
     :type down: int
     :param sample_length: the length of one sample from the time series in seconds
     :type sample_length: float
+    :param rms_cutoff: Only baselines with a fit rms below this values are included in the NPS calculation. This
+            will overwrite the percentile argument, if it is not set to None.
+    :type rms_cutoff: float
     :return: tuple (the mean NPS, the cleaned baselines)
     :rtype: (1D array of size (record_length/2 + 1), 2D array of size (percentile*nmbr_baselines, record_length))
     """
@@ -158,8 +162,12 @@ def calculate_mean_nps(baselines,
 
         idx_keep = []
         for i, rms in enumerate(rms_baselines):
-            if rms < rms_means:
-                idx_keep.append(i)
+            if rms_cutoff is None:
+                if rms < rms_means:
+                    idx_keep.append(i)
+            else:
+                if rms < rms_cutoff:
+                    idx_keep.append(i)
 
         baselines = baselines[idx_keep]
 

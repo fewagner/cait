@@ -6,6 +6,7 @@ import numpy as np
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
 
+
 # ------------------------------------------------------------
 # FUNCTION
 # ------------------------------------------------------------
@@ -13,7 +14,7 @@ from ..fit._templates import pulse_template
 def generate_standard_event(events,
                             main_parameters,
                             labels=None,
-                            correct_label = 1,
+                            correct_label=1,
                             pulse_height_interval=None,
                             left_right_cutoff=None,
                             rise_time_interval=None,
@@ -34,10 +35,10 @@ def generate_standard_event(events,
         labels are included in the SEV generation
     :param correct_label: int, the correct label to calc SEV from, 1==events, 2==testpulses
     :param pulse_height_interval: None or 2-tuple or list, the interval in which the PH may be to be included
-    :param left_right_cutoff: None or float, the maximal slope of the event
-    :param rise_time_interval: None or 2-tuple or list, the interval in which the rise time may be to be included
-    :param decay_time_interval: None or 2-tuple or list, the interval in which the decay time may be to be included
-    :param onset_interval: None or 2-tuple or list, the interval in which the onset time may be to be included
+    :param left_right_cutoff: None or float, the maximal abs(R - L) baseline difference of the event
+    :param rise_time_interval: None or 2-tuple or list, the interval in ms in which the rise time may be to be included
+    :param decay_time_interval: None or 2-tuple or list, the interval in ms in which the decay time may be to be included
+    :param onset_interval: None or 2-tuple or list, the interval in which the onset time in ms may be to be included
     :param remove_offset: bool, if True the offset of the events is removed before building mean for SEV;
         highly recommended!
     :param verb: bool, if True verbal feedback about the progress of the program is provided
@@ -50,6 +51,8 @@ def generate_standard_event(events,
     """
     if verb:
         print('{} Events handed.'.format(len(main_parameters)))
+
+    record_length = events.shape[1]
 
     use_indices = np.ones(len(main_parameters))
 
@@ -71,30 +74,31 @@ def generate_standard_event(events,
 
     # left - right cut
     if not left_right_cutoff is None:
-        use_indices[np.abs(main_parameters[:, 8]) > left_right_cutoff] = 0
+        use_indices[np.abs(main_parameters[:, 8]*record_length) > left_right_cutoff] = 0
 
         if verb:
             print('{} left after left - right cut.'.format(len(np.where(use_indices == 1)[0])))
 
-    # rise time and decay cut
+    # rise time cut
     if not rise_time_interval is None:
-        use_indices[main_parameters[:, 2] > main_parameters[:, 1] + rise_time_interval[1]] = 0
-        use_indices[main_parameters[:, 2] < main_parameters[:, 1] + rise_time_interval[0]] = 0
+        use_indices[main_parameters[:, 2]*sample_length > (main_parameters[:, 1])*sample_length + rise_time_interval[1]] = 0
+        use_indices[main_parameters[:, 2]*sample_length < (main_parameters[:, 1])*sample_length + rise_time_interval[0]] = 0
 
         if verb:
             print('{} left after rise time cut.'.format(len(np.where(use_indices == 1)[0])))
 
+    # decay time cut
     if not decay_time_interval is None:
-        use_indices[main_parameters[:, 5] > main_parameters[:, 3] + decay_time_interval[1]] = 0
-        use_indices[main_parameters[:, 5] < main_parameters[:, 3] + decay_time_interval[0]] = 0
+        use_indices[main_parameters[:, 6]*sample_length > (main_parameters[:, 4])*sample_length + decay_time_interval[1]] = 0
+        use_indices[main_parameters[:, 6]*sample_length < (main_parameters[:, 4])*sample_length + decay_time_interval[0]] = 0
 
         if verb:
             print('{} left after decay time cut.'.format(len(np.where(use_indices == 1)[0])))
 
     # onset cut
     if not onset_interval is None:
-        use_indices[main_parameters[:, 3] > onset_interval[1]] = 0
-        use_indices[main_parameters[:, 3] < onset_interval[0]] = 0
+        use_indices[(main_parameters[:, 3] - record_length/4)*sample_length > onset_interval[1]] = 0
+        use_indices[(main_parameters[:, 3] - record_length/4)*sample_length < onset_interval[0]] = 0
 
         if verb:
             print('{} left after onset cut.'.format(len(np.where(use_indices == 1)[0])))
