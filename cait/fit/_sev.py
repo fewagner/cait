@@ -97,8 +97,8 @@ def generate_standard_event(events,
 
     # onset cut
     if not onset_interval is None:
-        use_indices[(main_parameters[:, 3] - record_length/4)*sample_length > onset_interval[1]] = 0
-        use_indices[(main_parameters[:, 3] - record_length/4)*sample_length < onset_interval[0]] = 0
+        use_indices[(main_parameters[:, 1] - record_length/4)*sample_length > onset_interval[1]] = 0
+        use_indices[(main_parameters[:, 1] - record_length/4)*sample_length < onset_interval[0]] = 0
 
         if verb:
             print('{} left after onset cut.'.format(len(np.where(use_indices == 1)[0])))
