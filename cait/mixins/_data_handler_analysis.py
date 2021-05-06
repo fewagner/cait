@@ -38,6 +38,8 @@ class AnalysisMixin(object):
         optimum filter and as estimation with an standard event fit. To use the raw pulse height on simulated events,
         set the bool arguments of_filter, sev_fit and use_tp all to false.
 
+        TODO add citation
+
         :param ph_intervals: The upper and lower bounds of the peak in the pulse height spectrum to calculate
             the resolution.
         :type ph_intervals: list of float 2-tuples
@@ -141,6 +143,8 @@ class AnalysisMixin(object):
         intervals in which the TES is superconducting (no events) or triggers only in the noise, e.g. due to
         warming up of the cryostat.
 
+        TODO add citation
+
         :param interval: The interval length in minutes that is compared.
         :type interval: float
         :param significance: Rates that are by more than this factor times the standard deviation of the
@@ -184,6 +188,8 @@ class AnalysisMixin(object):
         pulses are ignored. Control pulse heights higher than a certain maximal value or lower than a certain minimal
         value are also ignored. If for a duration of more than a certain interval no control pulses appear in the data,
         the region is automatically counted as unstable.
+
+        TODO add citation
 
         :param channel: The number of the channel on that we calculate the cut in the HDF5 file.
         :type channel: int
@@ -307,6 +313,8 @@ class AnalysisMixin(object):
         which is determined by the CPE factor. In the fitting process with a polynomial, we also include the uncertainties
         in the estimated pulse heights of the test pulses with an orthogonal distance relation, linear error propagation
         and the calculation of a prediction interval.
+
+        TODO add citation
 
         :param starts_saturation: The pulse heights (V) at which the saturation of the pulses starts, for each channel.
         :type starts_saturation: list of floats
@@ -480,6 +488,8 @@ class AnalysisMixin(object):
         on the share of energy that went into scintillation light. It is therefor necessary to correct the energy of the
         phonon channel with a light-energy-dependent factor.
 
+        TODO add citation
+
         :param scintillation_efficiency: The share of the recoil energy that is turned into scintillation light.
         :type scintillation_efficiency: float >0, <1
         :param channels_to_calibrate: All channels that scintillate light and are used as energy estimators (typically the phonon channel).
@@ -511,7 +521,8 @@ class AnalysisMixin(object):
         Calculate the exposure in the data set.
 
         This method calculated the live time of the detector by excluding all test pulses, instable intervals and
-        non-measurement times. If a detector mass is handed, the exposure is calculated as well.
+        non-measurement times. If a detector mass is handed, the exposure is calculated as well. For each event, if any
+        of the control pulses from all channels is unstable, the event is excluded.
 
         :param detector_mass: The mass of the detector in kg.
         :type detector_mass: float

@@ -35,6 +35,8 @@ class CsmplMixin(object):
         These are included in the group stream. Choose and appropriate
         name_appendix to distinguish them from time stamps that are calculated with the Cait trigger!
 
+        TODO add citation
+
         :param paths: The paths to the *.csmpl.trig files that contain the time stamps from the CAT CTrigger.
         :type paths: tuple of strings
         :param name_appendix: A string that is appended to the HDF5 data sets trigger_hours, trigger_time_mus,
@@ -145,6 +147,8 @@ class CsmplMixin(object):
         the measurement. The absolute time stamp will be precise only to seconds, as it is only stored with this
         precision in the SQL file. This is not a problem for out analysis, as all events within this files are down to
         micro seconds precisely matched to each other.
+
+        TODO add citation
 
         :param csmpl_paths: The full paths for the csmpl files of all channels. If you want to trigger only one channel,
             then only put the path of this channel here.
@@ -740,6 +744,8 @@ class CsmplMixin(object):
 
         The random triggers are only choosen in intervals that are measurement time (frequently occuring test pulses)
         and that are away from test pulses. The triggers are stored in the stream group in the HDF5 file.
+
+        TODO add citation
 
         :param nmbr: The number of noise triggers we want to include.
         :type nmbr: int

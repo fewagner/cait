@@ -6,11 +6,11 @@ Cait (Cryogenic Artificial Intelligence Tools) is a Python 3 software package fo
 of raw data from cryogenic dark matter experiments. It is tailored to the needs of the CRESST and COSINUS experiment,
 but applicable to other, similar data structures.
 
-**Documentation:** Preview of new version: https://adoring-hoover-f7972f.netlify.app/
+**Documentation:** Preview: https://adoring-hoover-f7972f.netlify.app/
 
-**Source Code:** https://git.cryocluster.org/fwagner/cait (for CRYOCLUSTER collaborations), sync on: https://github.com/fewagner/cait
+**Source Code:** https://git.cryocluster.org/fwagner/cait (for CRYOCLUSTER collaborations)
 
-**Bug Report:** https://git.cryocluster.org/fwagner/cait/-/issues (for CRYOCLUSTER collaborations), otherwise: https://github.com/fewagner/cait/issues
+**Bug Report:** https://git.cryocluster.org/fwagner/cait/-/issues (for CRYOCLUSTER collaborations)
 
 
 Installation
@@ -45,9 +45,18 @@ You can now import the library in Python, e.g.
 Version History
 ===============
 
-Master branch is on Version 1.0.0 and stable.
+Master branch is on Version 1.0 and stable.
+
+Previous version v0.1 is hosted on the accordingly named GitLab branch.
+
+The Changelog starts with Version 1.0.
 
 Version numbers follow the segmantic versioning guide (https://semver.org/).
+
+Citations
+===============
+
+TODO add citation link to Cait, all underlying publications and all used required software packages
 
 We want you ...
 ===============

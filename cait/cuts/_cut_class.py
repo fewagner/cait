@@ -10,7 +10,7 @@ class LogicalCut:
     A class for the application of logical cuts to given data.
 
     :param initial_condition: An initial condition can be applied, e.g. ph > 0.01, where ph is an 1D array. The number
-        of events is
+        of events is equal to the length of the array.
     :type initial_condition: 1D bool array or None
     """
 
@@ -32,10 +32,10 @@ class LogicalCut:
 
     def add_condition(self, condition):
         """
-        TODO
+        Add and condition that is linked with and AND statement to all other conditions.
 
-        :param condition:
-        :type condition:
+        :param condition: A condition to be applied to all events, e.g. ph > 0.01.
+        :type condition: 1D bool array
         """
         if len(condition.shape) != 1:
             raise KeyError('condition needs to be a 1-dimensional array!')
@@ -50,55 +50,55 @@ class LogicalCut:
 
     def force_true(self, idx):
         """
-        TODO
+        Force certain events to true.
 
-        :param idx:
-        :type idx:
+        :param idx: All indices that we want to set to true.
+        :type idx: 1D int array
         """
         self.cut_flag = np.logical_or(self.cut_flag, np.in1d(self.all_idx, idx))
 
     def force_false(self, idx):
         """
-        TODO
+        Force certain events to false.
 
-        :param idx:
-        :type idx:
+        :param idx: All indices that we want to set to false.
+        :type idx: 1D int array
         """
         self.cut_flag = np.logical_and(self.cut_flag, np.logical_not(np.in1d(self.all_idx, idx)))
 
     def get_flag(self):
         """
-        TODO
+        Return a bool array of all events, indicating which do survive all cuts.
 
-        :return:
-        :rtype:
+        :return: Indicates which events do survive all cuts.
+        :rtype: 1D int array
         """
         return self.cut_flag
 
     def get_antiflag(self):
         """
-        TODO
+        Return a bool array of all events, indicating which do not survive all cuts.
 
-        :return:
-        :rtype:
+        :return: Indicates which events do not survive all cuts.
+        :rtype: 1D int array
         """
         return np.logical_not(self.cut_flag)
 
 
     def get_idx(self):
         """
-        TODO
+        Return an int array of all event indices that survive all cuts.
 
-        :return:
-        :rtype:
+        :return: The indices that survive all cuts.
+        :rtype: 1D int array
         """
         return self.all_idx[self.cut_flag]
 
     def counts(self):
         """
-        TODO
+        Return the number of events that survive all events.
 
-        :return:
-        :rtype:
+        :return: The number of events that survive all events.
+        :rtype: int
         """
         return len(self.get_idx())

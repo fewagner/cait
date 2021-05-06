@@ -16,3 +16,7 @@ Contributors (alphabetical list):
 - Matthias Kettner
 - Pascal Schanner
 - Daniel Schmiedmayer
+
+Contributors come from the following collaborations. As the contributors have acquired
+
+Contributing collaborations (alphabetical list):

@@ -7,26 +7,34 @@ import numpy as np
 
 def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, lb=0, ub=100):
     """
-    Return all event indices, that are between two stable control pulses
+    Find all stable control pulses and events.
 
-    TODO
+    A control pulse is defined as stable, if its height is between the lower and upper bound, and within
+    a significant amount of sigmas
+    of the mean height of control pulses. Every time interval between two control pulses is defined as stable, if they
+    are both stable. A single unstable control pulse is in this definition ignored, so only two consecutive instable
+    control pulses lead to an instable time interval. All events in instable time intervals are counted as instable.
 
-    :param cphs:
-    :type cphs:
-    :param hours_cp:
-    :type hours_cp:
-    :param hours_ev:
-    :type hours_ev:
-    :param significance:
-    :type significance:
-    :param max_gap:
-    :type max_gap:
-    :param lb:
-    :type lb:
-    :param ub:
-    :type ub:
-    :return:
-    :rtype:
+    TODO add citation
+
+    :param cphs: The pulse heights of the control pulses.
+    :type cphs: 1D float array
+    :param hours_cp: The hours time stamps of the control pulses.
+    :type hours_cp: 1D float array
+    :param hours_ev: The hours time stamps of the events.
+    :type hours_ev: 1D float array
+    :param significance: The multiplcator of the standard deviation of the pulse heights sigma, that is used to exclude
+        all pulses outside significance*sigma of the mean pulse height.
+    :type significance: float
+    :param max_gap: For control pulses that are further apart than this value, the interval in between is automatically
+        counted as instable.
+    :type max_gap: float
+    :param lb: All control pulse heights below this value are counted as instable.
+    :type lb: float
+    :param ub: All control pulse heights above this value are counted as instable.
+    :type ub: float
+    :return: ( The flag that specifies which events are stable; The flag that specifies which control pulses are stable.)
+    :rtype: 2-tuple of 1D bool arrays
     """
 
     print('Do Testpulse Stability Cut')
@@ -98,30 +106,36 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev,
                         significance=3, noise_level=0.005, max_gap=1,
                         lb=None, ub=None):
     """
-    Return all event indices, that are between two stable testpulses
+    Find all test pulses and events.
 
-    TODO
+    The stability is evaluated for all TPA values independently. A test pulse is defined as stable, if its height is
+    between the lower and upper bound, and within a significant amount of sigmas
+    of the mean height of test pulses with this TPA value. Every time interval between two test pulses is
+    defined as stable, if they
+    are both stable. All events in instable time intervals are counted as instable.
 
-    :param tpas:
-    :type tpas:
-    :param tphs:
-    :type tphs:
-    :param hours_tp:
-    :type hours_tp:
-    :param hours_ev:
-    :type hours_ev:
-    :param significance:
-    :type significance:
-    :param noise_level:
-    :type noise_level:
-    :param max_gap:
-    :type max_gap:
-    :param lb:
-    :type lb:
-    :param ub:
-    :type ub:
-    :return:
-    :rtype:
+    :param tpas: The TPA values of the test pulses.
+    :type tpas: 1D float array
+    :param tphs: The pulse heights of the test pulses.
+    :type tphs: 1D float array
+    :param hours_tp: The hours time stamps of the test pulses.
+    :type hours_tp: 1D float array
+    :param hours_ev: The hours time stamps of the events.
+    :type hours_ev: 1D float array
+    :param significance: The multiplcator of the standard deviation of the pulse heights sigma, that is used to exclude
+        all pulses outside significance*sigma of the mean pulse height.
+    :type significance: float
+    :param noise_level: The
+    :type noise_level: float
+    :param max_gap: For control pulses that are further apart than this value, the interval in between is automatically
+        counted as instable.
+    :type max_gap: float
+    :param lb: All control pulse heights below this value are counted as instable.
+    :type lb: float
+    :param ub: All control pulse heights above this value are counted as instable.
+    :type ub: float
+    :return: ( The flag that specifies which events are stable; The flag that specifies which test pulses are stable.)
+    :rtype: 2-tuple of 1D bool arrays
     """
 
     print('Do Control Pulse Stability Cut')

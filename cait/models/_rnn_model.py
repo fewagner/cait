@@ -19,6 +19,8 @@ class RNNModule(LightningModule):
     Lightning module for the training of an RNN model for classification or regression
     For classification, the classes need to get one hot encoded, best with the corresponding transform
 
+    TODO add citation
+
     :param input_size: the number of features that get passed to the RNN in one time step
     :type input_size: int
     :param hidden_size: the number of nodes in the hidden layer of the RNN

@@ -32,6 +32,8 @@ class FeaturesMixin(object):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
+        TODO add citation
+
         :param type: The group in the HDF5 set, either events or testpulses.
         :param type: string
         :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
@@ -97,6 +99,8 @@ class FeaturesMixin(object):
                  opt_start=False):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
+
+        TODO add citation
 
         :param type: The group name in the HDF5 set, either "events" or "testpulses".
         :type type: string
@@ -248,6 +252,8 @@ class FeaturesMixin(object):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
+        TODO add citation
+
         :param down: The downsample factor of the optimal filter transfer function.
         :type down: int
         :param name_appendix: A string that is appended to the group name stdevent and optimumfilter.
@@ -255,9 +261,6 @@ class FeaturesMixin(object):
         :param window: Include a window function to the standard event before building the filter.
         :type window: bool
         """
-
-        warn(
-            'Attention! Since v1.0 can as well use the regular calc_sev method for calculating SEVs of different pulse shapes. This method is therefore no longer maintained.')
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             stdevent_pulse = np.array([h5f['stdevent' + name_appendix]['event'][i]
@@ -443,6 +446,9 @@ class FeaturesMixin(object):
             frequency.
         :type sample_length: float
         """
+
+        warn(
+            'Attention! Since v1.0 can as well use the regular calc_sev method for calculating SEVs of different pulse shapes. This method is therefore no longer maintained.')
 
         if sample_length is None:
             sample_length = 1000 / self.sample_frequency

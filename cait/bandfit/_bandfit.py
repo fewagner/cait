@@ -20,7 +20,7 @@ class Bandfit():
     """
     A class for calculating a bandfit in the energy-light plane.
 
-    # TODO add citation
+    # TODO take this out
 
     :param values_module_independent: The module independent parameter values. These are the parameters by the names
         "np_decay", "np_fract", "L0", "L1", "sigma_l0", "S1", "S2", "el_amp", "el_decay", "el_width",

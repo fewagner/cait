@@ -35,53 +35,53 @@ class PositionalEncoding(nn.Module):
 
 class TransformerModule(LightningModule):
     """
-    Lightning module for the training of an Transformer Encoder model for classification or regression
-    For classification, the classes need to get one hot encoded, best with the corresponding transform
+    Lightning module for the training of an Transformer Encoder model for classification or regression.
+    For classification, the classes need to get one hot encoded, best with the corresponding transform.
 
-    TODO
+    TODO add citation (paper and implementation)
 
-    :param input_size: the number of features that get passed to the Model in one time step
+    :param input_size: The number of features that get passed to the Model in one time step.
     :type input_size: int
-    :param d_model:
-    :type d_model:
-    :param number_heads:
-    :type number_heads:
-    :param dim_feedforward:
-    :type dim_feedforward:
-    :param hidden_size: the number of nodes in the hidden layer of the lstm
+    :param d_model: The dimensions of the model.
+    :type d_model: int
+    :param number_heads: The number of heads for the attention layer.
+    :type number_heads: int
+    :param dim_feedforward: The dimensions in the feed forward net.
+    :type dim_feedforward: int
+    :param hidden_size: The number of nodes in the hidden layer of the lstm.
     :type hidden_size: int
-    :param num_layers: the number of LSTM layers
+    :param num_layers: The number of LSTM layers.
     :type num_layers: int
-    :param seq_steps: the number of time steps
+    :param seq_steps: The number of time steps.
     :type seq_steps: int
-    :param device_name: the device on that the NN is trained
-    :type device_name: string, either 'cpu' or 'cude'
-    :param nmbr_out: the number of output nodes the last linear layer after the lstm has
+    :param device_name: The device on that the NN is trained. Either 'cpu' or 'cuda'.
+    :type device_name: string
+    :param nmbr_out: The number of output nodes the last linear layer after the lstm has.
     :type nmbr_out: int
-    :param label_keys: the keys of the dataset that are used as labels
+    :param label_keys: The keys of the dataset that are used as labels.
     :type label_keys: list of strings
-    :param feature_keys: the keys of the dataset that are used as nn inputs
+    :param feature_keys: The keys of the dataset that are used as nn inputs.
     :type feature_keys: list of strings
-    :param lr: the learning rate for the neural network training
+    :param lr: The learning rate for the neural network training.
     :type lr: float between 0 and 1
-    :param is_classifier: if true, the output of the nn gets an additional softmax activation
+    :param is_classifier: If true, the output of the nn gets an additional softmax activation.
     :type is_classifier: bool
-    :param down: the downsample factor of the training data set, if one is applied
+    :param down: The downsample factor of the training data set, if one is applied.
     :type down: int
-    :param down_keys: the keys of the data that is to downsample (usually the event time series)
+    :param down_keys: The keys of the data that is to downsample (usually the event time series).
     :type down_keys: list of string
-    :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
+    :param norm_vals: The keys of this dictionary get scaled in the sample with (x - mu)/sigma.
     :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
-    :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
+    :param offset_keys: The keys in the sample from that we want to subtract the baseline offset level.
     :type offset_keys: list of strings
     :param weight_decay: The weight decay parameter for the optimizer.
     :type weight_decay: float
-    :param dropout:
-    :type dropout:
+    :param dropout: The share of weights that is set to zero in the dropout layer.
+    :type dropout: float
     :param norm_type: Either 'z' (mu=0, sigma=1) or 'minmax' (min=0, max=1). The type of normalization.
     :type norm_type: string
-    :param pos_enc:
-    :type pos_enc:
+    :param pos_enc: If true, we include a positional encoding layer.
+    :type pos_enc: bool
     :param lr_scheduler: If true, a learning rate scheduler is used.
     :type lr_scheduler: bool
     """
@@ -161,6 +161,16 @@ class TransformerModule(LightningModule):
         return out
 
     def loss_function(self, logits, labels):
+        """
+        Calculates the loss value, for classfiers the negative log likelihood, for regressors the MSE.
+
+        :param logits: The output values of the neural network.
+        :type logits: float
+        :param labels: The labels, e.g. the objective values or classes.
+        :type labels: float
+        :return: The loss value
+        :rtype: float
+        """
         if self.is_classifier:
             return F.nll_loss(logits, labels.long())
         else:

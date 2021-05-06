@@ -6,7 +6,11 @@ with open("README.rst", "r") as fh:
 setup(
     name='cait',
     version='1.0.0',
-    author='Daniel Bartolot, Jens Burkhart, Damir Rizvanovic, Daniel Schmiedmayer, Felix Wagner',
+    author='Daniel Bartolot, '
+           'Jens Burkhart, '
+           'Damir Rizvanovic, '
+           'Daniel Schmiedmayer, '
+           'Felix Wagner',
     author_email="felix.wagner@oeaw.ac.at",
     description='Cryogenic Artificial Intelligence Tools - A Python Package for the Data Analysis of Rare Event Search Experiments with Machine Learning.',
     long_description=long_description,

@@ -8,6 +8,8 @@ class H5CryoData(Dataset):
     """
     Pytorch Dataset for the processing of raw data from hdf5 files
 
+    TODO add citation
+
     :param type: string, either events or testpulses or noise - the group index of the hd5 data set
     :param keys: list of strings, the keys that are accessed in the hdf5 group
     :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices

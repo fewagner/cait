@@ -38,6 +38,8 @@ class FitMixin(object):
 
         Attention! This method is only implemented for 2 channel detectors!
 
+        TODO add citation
+
         :param path_h5: Optional, the full path to the hdf5 file, e.g. "data/bck_001.h5".
         :type path_h5: string
         :param type: Either events or testpulses.
@@ -94,6 +96,8 @@ class FitMixin(object):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
+
+        TODO add citation
 
         :param type: Name of the group in the HDF5 set, either events or testpulses.
         :type type: string
@@ -245,6 +249,8 @@ class FitMixin(object):
         """
         Fit a logistics curve to the testpulse amplitudes vs their pulse heights.
 
+        TODO add citation
+
         :param channel: The channel for that we calculate the saturation.
         :type channel: int
         :param only_idx: Only these indices are used in the fit of the saturation.
@@ -296,6 +302,8 @@ class FitMixin(object):
         The method assumes a Gaussian sample distribution of the noise, following arXiv:1711.11459. There are multiple
         extensions implemented, that descibe additional Gaussian mixture or non-Gaussian components. A more extensive
         description can be found in the corresponding tutorial.
+
+        TODO add citation
 
         :param channel: The number of the channel for that we estimate the noise trigger threshold.
         :type channel: int

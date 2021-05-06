@@ -23,6 +23,8 @@ class MachineLearningMixin(object):
         Apply a principal component analysis to the data matrix and store projections, reconstruction error and
         components.
 
+        TODO add citation
+
         :param nmbr_components: The number of components we want to store and project to.
         :type nmbr_components: int
         :param type: The group name in the HDF5 file, either 'events' or 'testpulses'.

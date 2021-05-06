@@ -11,7 +11,7 @@ def model_predict(f_handle,
                  channel):
     """
     Include predictions from a model to a HDF5 file
-    TODO
+    TODO Is this outdated???
 
     :param f_handle:
     :type f_handle:

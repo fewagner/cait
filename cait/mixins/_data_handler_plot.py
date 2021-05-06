@@ -372,6 +372,8 @@ class PlotMixin(object):
         """
         Calculate the cut efficiency for a given cut flag and plot it.
 
+        TODO add citation
+
         :param channel: The cut efficiency is calculated and plotted for this channel.
         :type channel: int
         :param cut_flag: The cut values that are used for the cut efficiency calculation.
@@ -781,6 +783,8 @@ class PlotMixin(object):
         """
         Make a Light Yield Plot out of specific Labels or Predictions.
 
+        TODO add citation
+
         :param title: A title for the plot.
         :type title: string
         :param xlabel: A label for the x axis.
@@ -939,6 +943,8 @@ class PlotMixin(object):
                         ):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve.
+
+        TODO add citation
 
         :param show_fit: If true show the fitted logistics curve.
         :type show_fit: bool
