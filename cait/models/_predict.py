@@ -145,8 +145,8 @@ def mh_predict(h5_path: str,
 
     with h5py.File(h5_path, 'r+') as f_handle:
 
-        nmbr_channels = len(f_handle[type]['mainpar'])
-        nmbr_events = len(f_handle[type]['mainpar'][0])
+        nmbr_channels = f_handle[type]['mainpar'].shape[0]
+        nmbr_events = f_handle[type]['mainpar'].shape[1]
 
         data = f_handle[type]
 

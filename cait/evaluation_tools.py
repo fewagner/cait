@@ -262,13 +262,13 @@ class EvaluationTools:
 
             if (type(which_data) is str) and (which_data == 'mainpar'):
                 self.__add_data(
-                    np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
+                    np.delete(ds['events']['mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
             if (type(which_data) is str) and (which_data == 'add_mainpar'):
                 self.__add_data(
-                    np.copy(ds['events/add_mainpar'][channel, use_idx, :]))
+                    np.copy(ds['events']['add_mainpar'][channel, use_idx, :]))
             elif (type(which_data) is str) and (which_data == 'timeseries'):
                 self.__add_data(
-                    np.copy(ds['events/event'][channel, use_idx, :]))
+                    np.copy(ds['events']['event'][channel, use_idx, :]))
             # elif which_data is None:
             # self.__add_data(np.array([]))
             # do nothing
