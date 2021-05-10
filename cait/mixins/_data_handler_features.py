@@ -550,7 +550,7 @@ class FeaturesMixin(object):
         print('Calculate NPS.')
 
         if rms_cutoff is None:
-            rms_cutoff = [None for c in self.nmbr_channels]
+            rms_cutoff = [None for c in range(self.nmbr_channels)]
 
         # open file
         with h5py.File(self.path_h5, 'r+') as h5f:
