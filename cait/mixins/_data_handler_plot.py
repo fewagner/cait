@@ -483,7 +483,7 @@ class PlotMixin(object):
         :param group: The group index that is used in the hdf5 file,
             typically either events, testpulses or noise.
         :type group: string
-        :param key: The key index of the hdf5 file, typically mainpar, fit_rms, ...; There are a few exceptioinal
+        :param key: The key index of the hdf5 file, typically mainpar, fit_rms, ...; There are a few exceptional
             properties that are calculated from the main parameters and can be plotted: 'pulse_height', 'onset',
             'rise_time', 'decay_time', 'slope'.
         :type key: string

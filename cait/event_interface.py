@@ -820,7 +820,7 @@ class EventInterface:
             return -6
         else:
             print(
-                'Enter q end, b back, n next, o options, i idx, p for (de)activate label list')
+                'Enter q end, b back, n next, o options, i idx, p for (de)activate label list\n')
 
     def _ask_for_label(self, idx: int, which: str = 'phonon'):
         """
@@ -830,7 +830,7 @@ class EventInterface:
         :param which: string, the naming of the channel, e.g. phonon/light
         :return: int > 0 or option code (int < 0) if the user input was one of the option flag
         """
-        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx, p for (de)activate label list)' .format(idx, which))
+        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx, p for (de)activate label list)\n' .format(idx, which))
 
         while True:
             user_input = input('{}: '.format(which))

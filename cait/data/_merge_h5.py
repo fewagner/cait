@@ -27,35 +27,39 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   trace=False,
                   ):
     """
-    Merges two HDF5 files, groups to merge can be chosen
-    # TODO
+    Merges two HDF5 files.
 
-    :param path_h5_a: path to the first file to merge
+    :param path_h5_a: Path to the first file to merge.
     :type path_h5_a: string
-    :param path_h5_b: path to the other file to merge
+    :param path_h5_b: Path to the other file to merge.
     :type path_h5_b: string
-    :param path_h5_merged: path where the merged file is saved
+    :param path_h5_merged: Path where the merged file is saved.
     :type path_h5_merged: string
-    :param groups_to_merge: the groups that hold the arrays that we want to concatenate
+    :param groups_to_merge: The groups that hold the arrays that we want to concatenate.
     :type groups_to_merge: list of strings
-    :param sets_to_merge: the sets that hold the arrays we want to concatenate, same sets for all groups
+    :param sets_to_merge: The sets that hold the arrays we want to concatenate, same sets for all groups.
     :type sets_to_merge: list of strings
-    :param concatenate_axis:
+    :param concatenate_axis: The axis along which the arrays are concatenated. Each n'th index in this list corresponds
+        to the n'th string in the sets_to_merge list.
     :type concatenate_axis: list of ints
-    :param groups_from_a:
+    :param groups_from_a: Which groups are copied from the first HDF5 set.
     :type groups_from_a: list of strings
-    :param groups_from_b:
+    :param groups_from_b: Which groups are copied from the second HDF5 set.
     :type groups_from_b: list of strings
-    :param a_name:
-    :type a_name:
-    :param b_name:
-    :type b_name:
-    :param continue_hours: if True, the value of the last hours in a is added to the hours in b
+    :param a_name: Type a name for the first HDF5 set to identify the data later on with the original data set. This
+        name is stored in the origin data set in the corresponding group. If 'keep', the content of the origin data set
+        from the HDF5 set is copied.
+    :type a_name: string
+    :param b_name: Type a name for the second HDF5 set to identify the data later on with the original data set. This
+        name is stored in the origin data set in the corresponding group. If 'keep', the content of the origin data set
+        from the HDF5 set is copied.
+    :type b_name: string
+    :param continue_hours: If True, the value of the last hours in a is added to the hours in b.
     :type continue_hours: bool
-    :param keep_original_files:
-    :type keep_original_files:
-    :param verb:
-    :type verb:
+    :param keep_original_files: If False, the original files are deleted after the merge.
+    :type keep_original_files: bool
+    :param verb: If True, verbal feedback about the process of the merge is given.
+    :type verb: bool
     :param trace: Traces the memory and runtime consumption.
     :type trace: bool
     """

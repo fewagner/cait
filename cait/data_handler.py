@@ -394,6 +394,23 @@ class DataHandler(SimulateMixin,
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
+    def drop(self, group: str, dataset: str):
+        """
+        Delete a dataset from a specified group in the HDF5 file.
+
+        :param group: The name of the group in the HDF5 file.
+        :type group: string
+        :param dataset: The name of the dataset in the HDF5 file.
+        :type dataset: string
+        """
+
+        with h5py.File(self.path_h5, 'r+') as h5f:
+            if dataset in h5f[group]:
+                del h5f[group][dataset]
+                print('Dataset {} deleted from group {}.'.format(dataset, group))
+            else:
+                raise FileNotFoundError('There is no dataset {} in group {} in the HDF5 file.'.format(dataset, group))
+
     def downsample_raw_data(self, type: str = 'events', down: int = 16, dtype: str = 'float32',
                             name_appendix: str = '', delete_old: bool = True):
         """
@@ -497,7 +514,7 @@ class DataHandler(SimulateMixin,
         :rtype: numpy array
         """
         with h5py.File(self.path_h5, 'r+') as f:
-            if dataset == 'pulse_height':
+            if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][:, :, 0])
             elif dataset == 'onset':
                 data = np.array((f[group]['mainpar'][:, :, 1] - self.record_length / 4) / self.sample_frequency * 1000)

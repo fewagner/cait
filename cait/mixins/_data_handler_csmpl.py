@@ -738,7 +738,9 @@ class CsmplMixin(object):
                                min_distance=0.5,
                                max_distance=60,
                                record_window_length=None,
-                               max_attempts=5):
+                               max_attempts=5,
+                               no_pileup=True,
+                               ):
         """
         Include a number of random triggers from the Stream.
 
@@ -763,6 +765,9 @@ class CsmplMixin(object):
             noise trigger and try for another gap. In this case, we will include one less time stamp than the parameter
             nmbr. This procedure prevents infinite loops due to a too high nmbr parameter.
         :type max_attempts: int
+        :param no_pileup: If activated, not only test pulses but also triggered events are excluded from the noise
+            trigger windows.
+        :type no_pileup: bool
         """
 
         if record_window_length is None:
@@ -774,11 +779,14 @@ class CsmplMixin(object):
 
         # open file stream
         with h5py.File(self.path_h5, 'r+') as h5f:
-            trigger_stamps = h5f['stream']['trigger_hours']
             test_stamps = h5f['stream']['tp_hours']
 
-            all_stamps = np.concatenate((trigger_stamps, test_stamps))
-            all_stamps.sort(kind='mergesort')
+            if no_pileup:
+                trigger_stamps = h5f['stream']['trigger_hours']
+                all_stamps = np.concatenate((trigger_stamps, test_stamps))
+                all_stamps.sort(kind='mergesort')
+            else:
+                all_stamps = test_stamps
             gaps = np.diff(all_stamps)
             gaps_idx = np.arange(start=0, stop=len(gaps), step=1)
             good_gaps_flag = np.logical_and(gaps > 2 * min_distance + record_window_length,
