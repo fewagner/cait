@@ -117,6 +117,10 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     if down > 1:
         length = int(length/down)
         events_array = np.mean(events_array.reshape(len(events_array), length, down), axis=2)
+        stdevent = np.mean(stdevent.reshape(length, down), axis=1)
+        nps_offset = nps[0]
+        nps = np.mean(nps[1:].reshape(int(length/2), down), axis=1)
+        nps = np.concatenate(([nps_offset], nps))
 
     # calc transition function
     transition_function = optimal_transfer_function(stdevent, nps)

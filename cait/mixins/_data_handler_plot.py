@@ -476,7 +476,8 @@ class PlotMixin(object):
                     xran=None,
                     yran=None,
                     save_path=None,
-                    dpi=150):
+                    dpi=150,
+                    scale='linear'):
         """
         Shows a histogram of some values from the HDF5 file
 
@@ -517,6 +518,8 @@ class PlotMixin(object):
         :type save_path: string
         :param dpi: The dots per inch of the plot.
         :type dpi: int
+        :param scale: Put 'linear' for non-log plot and 'log' for log plot.
+        :type scale: string
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
@@ -562,6 +565,7 @@ class PlotMixin(object):
             if title is not None:
                 plt.title(title)
             plt.xlim(xran)
+            plt.yscale(scale)
             plt.ylim(yran)
             if save_path is not None:
                 plt.savefig(save_path)
