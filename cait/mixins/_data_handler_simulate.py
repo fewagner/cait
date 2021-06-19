@@ -8,6 +8,7 @@ from ..simulate._sim_pulses import simulate_events
 from ..features._mp import calc_main_parameters
 from ..data._baselines import calculate_mean_nps
 from ..fit._saturation import scale_factor
+import warnings
 
 
 # -----------------------------------------------------------
@@ -28,6 +29,7 @@ class SimulateMixin(object):
                         size_noise=0,
                         ev_ph_intervals=[[0, 1], [0, 1]],
                         ev_discrete_phs=None,
+                        name_appendix='',
                         exceptional_sev_naming=None,
                         channels_exceptional_sev=[0],
                         tp_ph_intervals=[[0, 1], [0, 1]],
@@ -35,7 +37,7 @@ class SimulateMixin(object):
                         t0_interval=[-20, 20],  # in ms
                         fake_noise=False,
                         store_of=False,
-                        rms_thresholds=[1, 0.5],
+                        rms_thresholds=[1, 1],
                         lamb=0.01,
                         sample_length=None,
                         assign_labels=[1],
@@ -64,11 +66,16 @@ class SimulateMixin(object):
         :param ev_discrete_phs:  - the discrete values, from which the pulse heights
             are uniformly sampled. if the ph_intervals argument is set, this option will be ignored
         :type ev_discrete_phs: list of NMBR_CHANNELS lists
-        :param exceptional_sev_naming: , if set, this is the full group name in the HDF5 set for the
+        :param name_appendix: A string that is appended to the group name stdevent, which contains the standard event
+            that is used for simulation. This concerns only the simulation of event pulses and has no effect on the
+            test pulses.
+        :type name_appendix: string
+        :param exceptional_sev_naming: If set, this is the full group name in the HDF5 set for the
             sev used for the simulation of events - by setting this, e.g. carrier events can be
-            simulated
+            simulated. Attention! The exceptional standard events are with version 1.0 no longer maintained. Please use
+            the name_appendix argument instead!
         :type exceptional_sev_naming: string or None
-        :param channel_exceptional_sev: , the channels for that the exceptional sev is
+        :param channel_exceptional_sev: The channels for that the exceptional sev is
             used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1]
         :type channel_exceptional_sev: list of ints
         :param tp_ph_intervals: analogous to ev_ph_intervals, but for the testpulses
@@ -112,8 +119,12 @@ class SimulateMixin(object):
         :type dtype: string
         """
 
+        if exceptional_sev_naming is not None:
+            warnings.warn('The exceptional standard events are with version 1.0 depricated. '
+                          'Please use the name_appendix argument instead!')
+
         if sample_length is None:
-            sample_length = 1000/self.sample_frequency
+            sample_length = 1000 / self.sample_frequency
 
         # create file handle
         with h5py.File(path_sim, 'w') as f, h5py.File(self.path_h5, 'r') as f_read:
@@ -145,24 +156,26 @@ class SimulateMixin(object):
                                         dtype=float)
 
                 for i in range(pulses_per_bl):
-                    events, phs, t0s, nmbr_thrown_events, hours, time_s, time_mus = simulate_events(path_h5=self.path_h5,
-                                                                           type='events',
-                                                                           size=size_events,
-                                                                           record_length=self.record_length,
-                                                                           nmbr_channels=self.nmbr_channels,
-                                                                           ph_intervals=ev_ph_intervals,
-                                                                           discrete_ph=ev_discrete_phs,
-                                                                           exceptional_sev_naming=exceptional_sev_naming,
-                                                                           channels_exceptional_sev=channels_exceptional_sev,
-                                                                           t0_interval=t0_interval,  # in ms
-                                                                           fake_noise=fake_noise,
-                                                                           use_bl_from_idx=start_from_bl_idx,
-                                                                           rms_thresholds=rms_thresholds,
-                                                                           lamb=lamb,
-                                                                           sample_length=sample_length,
-                                                                           saturation=saturation,
-                                                                           reuse_bl=reuse_bl,
-                                                                           ps_dev=ps_dev)
+                    events, phs, t0s, nmbr_thrown_events, hours, time_s, time_mus = simulate_events(
+                        path_h5=self.path_h5,
+                        type='events',
+                        name_appendix=name_appendix,
+                        size=size_events,
+                        record_length=self.record_length,
+                        nmbr_channels=self.nmbr_channels,
+                        ph_intervals=ev_ph_intervals,
+                        discrete_ph=ev_discrete_phs,
+                        exceptional_sev_naming=exceptional_sev_naming,
+                        channels_exceptional_sev=channels_exceptional_sev,
+                        t0_interval=t0_interval,  # in ms
+                        fake_noise=fake_noise,
+                        use_bl_from_idx=start_from_bl_idx,
+                        rms_thresholds=rms_thresholds,
+                        lamb=lamb,
+                        sample_length=sample_length,
+                        saturation=saturation,
+                        reuse_bl=reuse_bl,
+                        ps_dev=ps_dev)
 
                     if not fake_noise:
                         data['hours'][i * size_events:(i + 1) * size_events] = hours
@@ -204,11 +217,11 @@ class SimulateMixin(object):
 
                 # store sev
 
-                sev = f_read['stdevent']['event']
-                mp = f_read['stdevent']['mainpar']
-                fitpar = f_read['stdevent']['fitpar']
+                sev = f_read['stdevent' + name_appendix]['event']
+                mp = f_read['stdevent' + name_appendix]['mainpar']
+                fitpar = f_read['stdevent' + name_appendix]['fitpar']
 
-                data = f.create_group('stdevent')
+                data = f.create_group('stdevent' + name_appendix)
                 data.create_dataset(name='event', data=sev)
                 data.create_dataset(name='mainpar', data=mp)
                 data.create_dataset(name='fitpar', data=fitpar)
@@ -216,22 +229,23 @@ class SimulateMixin(object):
             if size_tp > 0:
                 print('Simulating Testpulses.')
                 data = f.create_group('testpulses')
-                events, phs, t0s, nmbr_thrown_testpulses, hours, time_s, time_mus = simulate_events(path_h5=self.path_h5,
-                                                                           type='testpulses',
-                                                                           size=size_tp,
-                                                                           record_length=self.record_length,
-                                                                           nmbr_channels=self.nmbr_channels,
-                                                                           ph_intervals=tp_ph_intervals,
-                                                                           discrete_ph=tp_discrete_phs,
-                                                                           t0_interval=[-20, 20],  # in ms
-                                                                           fake_noise=fake_noise,
-                                                                           use_bl_from_idx=start_from_bl_idx + size_events + nmbr_thrown_events,
-                                                                           rms_thresholds=rms_thresholds,
-                                                                           lamb=lamb,
-                                                                           sample_length=sample_length,
-                                                                           saturation=saturation,
-                                                                           reuse_bl=reuse_bl,
-                                                                           ps_dev=ps_dev)
+                events, phs, t0s, nmbr_thrown_testpulses, hours, time_s, time_mus = simulate_events(
+                    path_h5=self.path_h5,
+                    type='testpulses',
+                    size=size_tp,
+                    record_length=self.record_length,
+                    nmbr_channels=self.nmbr_channels,
+                    ph_intervals=tp_ph_intervals,
+                    discrete_ph=tp_discrete_phs,
+                    t0_interval=[-20, 20],  # in ms
+                    fake_noise=fake_noise,
+                    use_bl_from_idx=start_from_bl_idx + size_events + nmbr_thrown_events,
+                    rms_thresholds=rms_thresholds,
+                    lamb=lamb,
+                    sample_length=sample_length,
+                    saturation=saturation,
+                    reuse_bl=reuse_bl,
+                    ps_dev=ps_dev)
                 data.create_dataset(name='event', data=events, dtype=dtype)
                 data.create_dataset(name='true_ph', data=phs)
                 if not fake_noise:
@@ -293,19 +307,19 @@ class SimulateMixin(object):
                 print('Simulating Noise.')
 
                 events, phs, t0s, nmbr_thrown_noise, hours, time_s, time_mus = simulate_events(path_h5=self.path_h5,
-                                                                      type='noise',
-                                                                      size=size_noise,
-                                                                      record_length=self.record_length,
-                                                                      nmbr_channels=self.nmbr_channels,
-                                                                      fake_noise=fake_noise,
-                                                                      use_bl_from_idx=start_from_bl_idx + size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
-                                                                      rms_thresholds=rms_thresholds,
-                                                                      lamb=lamb,
-                                                                      sample_length=sample_length,
-                                                                      saturation=saturation,
-                                                                      reuse_bl=reuse_bl,
-                                                                      ps_dev=ps_dev
-                                                                      )
+                                                                                               type='noise',
+                                                                                               size=size_noise,
+                                                                                               record_length=self.record_length,
+                                                                                               nmbr_channels=self.nmbr_channels,
+                                                                                               fake_noise=fake_noise,
+                                                                                               use_bl_from_idx=start_from_bl_idx + size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
+                                                                                               rms_thresholds=rms_thresholds,
+                                                                                               lamb=lamb,
+                                                                                               sample_length=sample_length,
+                                                                                               saturation=saturation,
+                                                                                               reuse_bl=reuse_bl,
+                                                                                               ps_dev=ps_dev
+                                                                                               )
                 if not fake_noise:
                     data.create_dataset(name='hours', data=hours)
                     data.create_dataset(name='time_s', data=time_s)

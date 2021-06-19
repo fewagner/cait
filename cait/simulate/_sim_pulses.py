@@ -9,6 +9,7 @@ from ._generate_pm_par import generate_ps_par
 
 def simulate_events(path_h5,
                     type,
+                    name_appendix,
                     size,
                     record_length,
                     nmbr_channels,
@@ -153,7 +154,7 @@ def simulate_events(path_h5,
             used_exept_sevs = 0  # this counts to get the exceptional event at correct index
             for c in range(nmbr_channels):
                 if exceptional_sev_naming is None:
-                    par = h5f['stdevent']['fitpar'][c]
+                    par = h5f['stdevent' + name_appendix]['fitpar'][c]
                 else:
                     if c in channels_exceptional_sev:
                         if len(channels_exceptional_sev) == 1:
@@ -162,7 +163,7 @@ def simulate_events(path_h5,
                             par = h5f[exceptional_sev_naming]['fitpar'][used_exept_sevs]
                             used_exept_sevs += 1
                     else:
-                        par = h5f['stdevent']['fitpar'][c]
+                        par = h5f['stdevent' + name_appendix]['fitpar'][c]
                 for e in range(size):
                     if ps_dev and c == 0:  # so far this only works for the phonon channel
                         if phs[c, e] != 0:
