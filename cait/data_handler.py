@@ -13,6 +13,7 @@ from .mixins._data_handler_analysis import AnalysisMixin
 from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
+import warnings
 
 
 # -----------------------------------------------------------
@@ -35,12 +36,14 @@ class DataHandler(SimulateMixin,
     and stores all data from the recorded binary files (*.rdt, ...), as well as the calculated features
     (main parameters, standard events, ...) in the file.
 
-    :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
-    :type channels: list of integers
     :param record_length: The number of samples in one record window. To ensure performance of all features, this should be a power of 2.
     :type record_length: int
     :param sample_frequency: The sampling frequency of the recording.
     :type sample_frequency: int
+    :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
+    :type channels: list of integers or None
+    :param nmbr_channels: The total number of channels.
+    :type nmbr_channel: int or None
     :param run: The number of the measurement run. This is a optional argument, to identify a measurement with a
         given module uniquely. Providing this argument has no effect, but might be useful in case you start multiple
         DataHandlers at once, to stay organized.
@@ -79,13 +82,28 @@ class DataHandler(SimulateMixin,
     Most of the methods are included via parent mixin classes (see folder cait/mixins).
     """
 
-    def __init__(self, channels: list = [0, 1],
-                 record_length: int = 16384, sample_frequency: int = 25000, run: str = None, module: str = None):
+    def __init__(self,
+                 record_length: int = 16384,
+                 sample_frequency: int = 25000,
+                 channels: list = None,
+                 nmbr_channels: int = None,
+                 run: str = None,
+                 module: str = None):
+
+        assert channels is not None or nmbr_channels is not None, 'You need to specify either the channels numbers or the number' \
+                                                           ' of channels!'
+
         self.run = run
         self.module = module
         self.record_length = record_length
-        self.nmbr_channels = len(channels)
-        self.channels = channels
+        if channels is not None:
+            self.channels = channels
+            self.nmbr_channels = len(channels)
+            if nmbr_channels is not None:
+                warnings.warn("If channels are specified, the number of channels is taken from the length of this list,"
+                              "not from the nmbr_channels argument!")
+        elif nmbr_channels is not None:
+            self.nmbr_channels = nmbr_channels
         self.sample_frequency = sample_frequency
         self.sample_length = 1000 / self.sample_frequency
         self.t = (np.arange(0, self.record_length, dtype=float) -
@@ -109,7 +127,8 @@ class DataHandler(SimulateMixin,
     def set_filepath(self,
                      path_h5: str,
                      fname: str,
-                     appendix=True):
+                     appendix: bool = True,
+                     channels: list = None):
         """
         Set the path to the *.h5 file for further processing.
 
@@ -122,9 +141,15 @@ class DataHandler(SimulateMixin,
         :type fname: string
         :param appendix: If true, an appendix like "-P_ChX-[...]" is automatically appended to the path_h5 string.
         :type appendix: bool
+        :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
+        :type channels: list of integers or None
 
         >>> dh.set_filepath(path_h5='./', fname='test_001')
         """
+
+        if channels is not None:
+            self.channels = channels
+
         if path_h5 == '':
             path_h5 = './'
         if path_h5[-1] != '/':
@@ -132,6 +157,8 @@ class DataHandler(SimulateMixin,
 
         app = ''
         if appendix:
+            assert self.channels is not None, 'To generate the file appendix automatically, you need to specify the channel' \
+                                          'numbers.'
             if self.nmbr_channels == 2:
                 app = '-P_Ch{}-L_Ch{}'.format(*self.channels)
             else:
@@ -394,13 +421,13 @@ class DataHandler(SimulateMixin,
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
-    def drop(self, group: str, dataset: str):
+    def drop(self, group: str, dataset: str = None):
         """
         Delete a dataset from a specified group in the HDF5 file.
 
         :param group: The name of the group in the HDF5 file.
         :type group: string
-        :param dataset: The name of the dataset in the HDF5 file.
+        :param dataset: The name of the dataset in the HDF5 file. If None, the would group is deleted.
         :type dataset: string
         """
 
@@ -519,9 +546,11 @@ class DataHandler(SimulateMixin,
             elif dataset == 'onset':
                 data = np.array((f[group]['mainpar'][:, :, 1] - self.record_length / 4) / self.sample_frequency * 1000)
             elif dataset == 'rise_time':
-                data = np.array((f[group]['mainpar'][:, :, 2] - f[group]['mainpar'][:, :, 1]) / self.sample_frequency * 1000)
+                data = np.array(
+                    (f[group]['mainpar'][:, :, 2] - f[group]['mainpar'][:, :, 1]) / self.sample_frequency * 1000)
             elif dataset == 'decay_time':
-                data = np.array((f[group]['mainpar'][:, :, 6] - f[group]['mainpar'][:, :, 4]) / self.sample_frequency * 1000)
+                data = np.array(
+                    (f[group]['mainpar'][:, :, 6] - f[group]['mainpar'][:, :, 4]) / self.sample_frequency * 1000)
             elif dataset == 'slope':
                 data = np.array(f[group]['mainpar'][:, :, 8] * self.record_length)
             else:
@@ -556,3 +585,64 @@ class DataHandler(SimulateMixin,
                     shape = f[group]['mainpar'].shape[:2]
                     for dataset in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
                         print(f'dataset: {dataset}, shape: {shape}')
+
+    def generate_startstop(self):
+        """
+        Generate a startstop data set in the metainfo group from the testpulses time stamps.
+        """
+
+        print('Generating Start Stop Metainfo.')
+
+        with h5py.File(self.path_h5, 'r+') as f:
+
+            assert 'testpulses' in f, 'No testpulses in file!'
+
+            if 'origin' in f['testpulses']:
+                origin = []
+                first_idx = []
+                last_idx = []
+                for i, fname in enumerate(f['testpulses']['origin']):
+                    if fname not in origin:
+                        origin.append(fname)
+                        first_idx.append(i)
+                        last_idx.append(i-1)
+
+                del last_idx[0]
+                last_idx.append(len(f['testpulses']['origin']) - 1)
+
+                origin = [name.decode('UTF-8') for name in origin]
+
+                print('Unique Files: ', origin)
+
+                startstop_hours = np.empty((len(origin), 2), dtype=float)
+                startstop_s = np.empty((len(origin), 2), dtype=int)
+                startstop_mus = np.empty((len(origin), 2), dtype=int)
+
+                for i, fname in enumerate(origin):
+                    startstop_hours[i, :] = (f['testpulses']['hours'][first_idx[i]],
+                                             f['testpulses']['hours'][last_idx[i]])
+                    startstop_s[i, :] = (f['testpulses']['time_s'][first_idx[i]],
+                                         f['testpulses']['time_s'][last_idx[i]])
+                    startstop_mus[i, :] = (f['testpulses']['time_mus'][first_idx[i]],
+                                           f['testpulses']['time_mus'][last_idx[i]])
+
+            else:
+                print('One unique file detected.')
+
+                startstop_hours = np.array([[f['testpulses']['hours'][0],
+                                             f['testpulses']['hours'][-1]]])
+                startstop_s = np.array([[f['testpulses']['time_s'][0],
+                                         f['testpulses']['time_s'][-1]]])
+                startstop_mus = np.array([[f['testpulses']['time_mus'][0],
+                                           f['testpulses']['time_mus'][-1]]])
+
+            metainfo = f.require_group('metainfo')
+
+            datasets = ["startstop_hours", "startstop_s", "startstop_mus"]
+            if 'origin' in f['testpulses']:
+                datasets.append("origin")
+
+            for name in datasets:
+                if name in metainfo:
+                    del metainfo[name]
+                metainfo.create_dataset(name, data=eval(name))

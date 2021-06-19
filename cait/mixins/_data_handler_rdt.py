@@ -253,15 +253,15 @@ class RdtMixin(object):
                         fname,
                         path_h5,
                         tpa_list=[0, 1, -1],
-                        calc_mp=True,
+                        calc_mp=False,
                         calc_fit=False,
                         calc_sev=False,
-                        calc_nps=True,
+                        calc_nps=False,
                         processes=4,
                         event_dtype='float32',
                         ints_in_header=7,
                         lazy_loading=True,
-                        memsafe=False,
+                        memsafe=True,
                         dvm_channels=0,
                         batch_size=1000,
                         trace=False,
@@ -303,6 +303,9 @@ class RdtMixin(object):
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
         """
+
+        assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
+                                      'instanciation or when setting the file path for this instance!'
 
         print('Start converting.')
 
@@ -381,7 +384,7 @@ class RdtMixin(object):
 
     # include rdt infos to existing hdf5
     def include_rdt(self, path_data, fname, ints_in_header=7, tpa_list=[0, 1, -1],
-                    event_dtype='float32', lazy_loading=True, origin=None):
+                    event_dtype='float32', lazy_loading=True, origin=None, channels=None):
         """
         Read the content of an rdt file an add to HDF5.
 
@@ -405,10 +408,16 @@ class RdtMixin(object):
         """
         print('Accessing RDT File ...')
 
+        assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
+                                      'instanciation or when setting the file path for this instance!'
+
+        if channels is None:
+            channels = self.channels
+
         metainfo, pulse = \
             read_rdt_file(fname=fname,
                           path=path_data,
-                          channels=self.channels,
+                          channels=channels,
                           store_as_int=False,
                           ints_in_header=ints_in_header,
                           lazy_loading=lazy_loading
@@ -416,7 +425,7 @@ class RdtMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             # events
-            if 0.0 in tpa_list:
+            if 0.0 in tpa_list and not "event" in h5f["events"]:
 
                 metainfo_event = metainfo[:, metainfo[0, :, 12] == 0, :]
                 pulse_event = pulse[:, metainfo[0, :, 12] == 0, :]
@@ -427,7 +436,10 @@ class RdtMixin(object):
                 events = h5f.require_group('events')
 
                 if origin is not None:
-                    idx = np.array([st.decode() == origin for st in events['origin'][:]]).nonzero()[0]
+                    try:
+                        idx = np.array([st == origin for st in events['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st.decode() == origin for st in events['origin'][:]]).nonzero()[0]
                     events.require_dataset('event',
                                            shape=(self.nmbr_channels, len(events['hours']), self.record_length),
                                            dtype=event_dtype)
@@ -444,7 +456,7 @@ class RdtMixin(object):
                     events['time_mus'][...] = np.array(metainfo_event[0, :, 5], dtype='int32')
 
             # noise
-            if -1.0 in tpa_list:
+            if -1.0 in tpa_list and not "event" in h5f["noise"]:
 
                 metainfo_noise = metainfo[:, metainfo[0, :, 12] == -1.0, :]
                 pulse_noise = pulse[:, metainfo[0, :, 12] == -1.0, :]
@@ -472,10 +484,11 @@ class RdtMixin(object):
                     noise['time_mus'][...] = np.array(metainfo_noise[0, :, 5], dtype='int32')
 
             # testpulses
-            if any(el > 0 for el in tpa_list):
+            if any(el > 0 for el in tpa_list) and not "event" in h5f["testpulses"]:
 
-                tp_list = np.logical_and(
-                    metainfo[0, :, 12] != -1.0, metainfo[0, :, 12] != 0.0)
+                tp_list = metainfo[0, :, 12] > 0.0
+                # np.logical_and(
+                #     metainfo[0, :, 12] != -1.0, metainfo[0, :, 12] != 0.0)
 
                 metainfo_tp = metainfo[:, tp_list, :]
                 pulse_tp = pulse[:, tp_list, :]
@@ -560,6 +573,9 @@ class RdtMixin(object):
         """
 
         print('Accessing CON File...')
+
+        assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
+                                      'instanciation or when setting the file path for this instance!'
 
         if clock_frequency is None:
             if ints_in_header == 7:
