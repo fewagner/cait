@@ -243,7 +243,7 @@ class sev_fit_template:
         :rtype: array
         """
 
-        event, t0 = pars
+        event, t0, t0_start = pars
 
         if self.down > 1:
             event = np.mean(event.reshape(int(len(event) / self.down), self.down), axis=1)
@@ -253,20 +253,25 @@ class sev_fit_template:
 
         if self.truncation_level is not None:
             truncation_flag = event < self.truncation_level
+            if np.any(truncation_flag is False):
+                last_saturated = np.where(truncation_flag is False)[-1]
+                h0 = self.truncation_level/sec(self.t, 1, t0_start, 0, 0, 0, 0, *self.pm_par)[last_saturated]
+            else:
+                h0 = np.max(event)
         else:
             truncation_flag = np.ones(len(event), dtype=bool)
+            h0 = np.max(event)
 
         # find d, height and k approx
         a00 = 0  # np.mean(event[:1000])
-        h0 = np.max(event)
-        a10 = (event[-1] - sec(self.t, h0, 0, 0, 0, 0, 0, *self.pm_par)[-1] - event[0]) / (self.t[-1] - self.t[0])
+        a10 = (event[-1] - sec(self.t, h0, t0_start, 0, 0, 0, 0, *self.pm_par)[-1] - event[0]) / (self.t[-1] - self.t[0])
         a20 = 0
         a30 = 0
 
         if t0 is None:
             # fit t0
             res = minimize(fun=self._t0_minimizer,
-                           x0=np.array([-3]),
+                           x0=np.array([t0_start]),
                            method='nelder-mead',
                            args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
                                  self.low, self.up, self.pm_par, truncation_flag,),

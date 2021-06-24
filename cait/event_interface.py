@@ -676,7 +676,7 @@ class EventInterface:
                     fp = f[type]['sev_fit_par{}'.format(
                         self.name_appendix)][:, idx, :]
                     for c in range(self.nmbr_channels):
-                        sev_fit.append(self.fit_models[c].wrap_sec(*fp[c]))
+                        sev_fit.append(self.fit_models[c]._wrap_sec(*fp[c]))
                 except AttributeError:
                     raise AttributeError('No name_appendix attribute, did you load the SEV fit parameters?')
 

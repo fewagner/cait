@@ -16,7 +16,7 @@ from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbin
 from ..fit._saturation import logistic_curve
 from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
-
+import warnings
 
 # -----------------------------------------------------------
 # CLASS
@@ -145,8 +145,15 @@ class FitMixin(object):
             sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
+            # get start values for t0
+            if 'mainpar' in f[type]:
+                t0_start = (np.array(f[type]['mainpar'][:, :, 1]) - self.record_length/4)/self.sample_frequency
+            else:
+                t0_start = [-3 for i in range(events.shape[1])]
+                warnings.warn('No main parameters calculated. With main parameters, the fit will work much better!')
+
             # apply fit for all channels, save parameters
-            par = np.zeros([self.nmbr_channels, len(events[0]), int(order_bl_polynomial + 3)])
+            par = np.zeros([self.nmbr_channels, events.shape[1], int(order_bl_polynomial + 3)])
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
                         if verb:
@@ -159,11 +166,11 @@ class FitMixin(object):
                         # fit all
                         with Pool(processes) as p:
                             if first_channel_dominant and c != 0:
-                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], par[0, :, 1])),
-                                                        total=len(events[c])))
+                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], par[0, :, 1], t0_start[c])),
+                                                        total=events.shape[1]))
                             else:
-                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], [None for i in range(len(events[c]))])),
-                                                        total=len(events[c])))
+                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], [None for i in range(events.shape[1])], t0_start[c])),
+                                                        total=events.shape[1]))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='sev_fit_par{}'.format(name_appendix),
