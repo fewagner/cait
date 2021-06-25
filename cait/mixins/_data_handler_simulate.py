@@ -232,6 +232,7 @@ class SimulateMixin(object):
                 events, phs, t0s, nmbr_thrown_testpulses, hours, time_s, time_mus = simulate_events(
                     path_h5=self.path_h5,
                     type='testpulses',
+                    name_appendix='',
                     size=size_tp,
                     record_length=self.record_length,
                     nmbr_channels=self.nmbr_channels,
@@ -308,6 +309,7 @@ class SimulateMixin(object):
 
                 events, phs, t0s, nmbr_thrown_noise, hours, time_s, time_mus = simulate_events(path_h5=self.path_h5,
                                                                                                type='noise',
+                                                                                               name_appendix='',
                                                                                                size=size_noise,
                                                                                                record_length=self.record_length,
                                                                                                nmbr_channels=self.nmbr_channels,
