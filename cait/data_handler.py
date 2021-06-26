@@ -540,7 +540,7 @@ class DataHandler(SimulateMixin,
         :return: The dataset from the HDF5 file
         :rtype: numpy array
         """
-        with h5py.File(self.path_h5, 'r+') as f:
+        with h5py.File(self.path_h5, 'r') as f:
             if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][:, :, 0])
             elif dataset == 'onset':
