@@ -94,6 +94,7 @@ class FeaturesMixin(object):
                  remove_offset=True,
                  verb=True,
                  scale_fit_height=True,
+                 scale_to_unit=None,
                  sample_length=None,
                  t0_start=None,
                  opt_start=False):
@@ -136,6 +137,8 @@ class FeaturesMixin(object):
         :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
             the fit is done.
         :type scale_fit_height: bool
+        :param scale_to_unit: If True corresponding to a channel, the standard event is scaled to 1. Default True.
+        :type scale_to_unit: bool list of length nmbr_channels or None
         :param sample_length: The length of one sample in milliseconds. If None, this is calculated from the sample
             frequency.
         :type sample_length: float
@@ -144,6 +147,9 @@ class FeaturesMixin(object):
         :param opt_start: If true, a pre-fit is applied to find optimal start values.
         :type opt_start: bool
         """
+
+        if scale_to_unit is None:
+            scale_to_unit = [True for i in range(self.nmbr_channels)]
 
         if sample_length is None:
             sample_length = 1 / self.sample_frequency * 1000
@@ -204,6 +210,7 @@ class FeaturesMixin(object):
                                                        remove_offset=remove_offset,
                                                        verb=verb,
                                                        scale_fit_height=scale_fit_height,
+                                                       scale_to_unit=scale_to_unit[c],
                                                        sample_length=sample_length,
                                                        t0_start=t0_start[c],
                                                        opt_start=opt_start,

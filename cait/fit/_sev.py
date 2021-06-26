@@ -23,6 +23,7 @@ def generate_standard_event(events,
                             remove_offset=True,
                             verb=False,
                             scale_fit_height=True,
+                            scale_to_unit=True,
                             sample_length=0.04,
                             t0_start=None,
                             opt_start=False):
@@ -112,7 +113,8 @@ def generate_standard_event(events,
 
     # generate the standardevent
     standardevent = np.mean(events[use_indices == 1], axis=0)
-    standardevent /= np.max(standardevent)
+    if scale_to_unit:
+        standardevent /= np.max(standardevent)
 
     if t0_start is None:
         t0_start = -3
