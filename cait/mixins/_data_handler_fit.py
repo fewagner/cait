@@ -285,6 +285,7 @@ class FitMixin(object):
                                    channel,
                                    detector_mass,
                                    allowed_noise_triggers=1,
+                                   sigma_x0=2,
                                    method='of',
                                    bins=200,
                                    yran=None,
@@ -317,7 +318,9 @@ class FitMixin(object):
         :param detector_mass: The mass of the detector in kg.
         :type detector_mass: float
         :param allowed_noise_triggers: The number of noise triggers that are allowed per kg day exposure.
-        :type allowed_noise_triggers: floatf
+        :type allowed_noise_triggers: float
+        :param sigma_x0: A start value for the baseline resolution. Is only used for the unbinned fit.
+        :type sigma_x0: float
         :param method: Either 'of' for estimating the noise triggers after optimal filtering or 'ph' for taking the
             maximum value of the raw data.
         :type method: string
@@ -395,6 +398,7 @@ class FitMixin(object):
         else:
             pars = get_noise_parameters_unbinned(events=phs,
                                                  model=model,
+                                                 sigma_x0=sigma_x0,
                                                  )
 
         x_grid, \
