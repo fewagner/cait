@@ -156,6 +156,48 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                             g[set].attrs.create(name='Sharp_Light_Event', data=20)
                             g[set].attrs.create(name='unknown/other', data=99)
 
+                        # add the mainpar labels
+                        if len(set) >= 7:
+                            if set[:7] == 'mainpar':
+                                g[set].attrs.create(name='pulse_height', data=0)
+                                g[set].attrs.create(name='t_zero', data=1)
+                                g[set].attrs.create(name='t_rise', data=2)
+                                g[set].attrs.create(name='t_max', data=3)
+                                g[set].attrs.create(name='t_decaystart', data=4)
+                                g[set].attrs.create(name='t_half', data=5)
+                                g[set].attrs.create(name='t_end', data=6)
+                                g[set].attrs.create(name='offset', data=7)
+                                g[set].attrs.create(name='linear_drift', data=8)
+                                g[set].attrs.create(name='quadratic_drift', data=9)
+
+                         # add the additional mainpar labels
+                        if len(set) >= 11:
+                            if set[:11] == 'add_mainpar':
+                                g[set].attrs.create(name='array_max', data=0)
+                                g[set].attrs.create(name='array_min', data=1)
+                                g[set].attrs.create(name='var_first_eight', data=2)
+                                g[set].attrs.create(name='mean_first_eight', data=3)
+                                g[set].attrs.create(name='var_last_eight', data=4)
+                                g[set].attrs.create(name='mean_last_eight', data=5)
+                                g[set].attrs.create(name='var', data=6)
+                                g[set].attrs.create(name='mean', data=7)
+                                g[set].attrs.create(name='skewness', data=8)
+                                g[set].attrs.create(name='max_derivative', data=9)
+                                g[set].attrs.create(name='ind_max_derivative', data=10)
+                                g[set].attrs.create(name='min_derivative', data=11)
+                                g[set].attrs.create(name='ind_min_derivative', data=12)
+                                g[set].attrs.create(name='max_filtered', data=13)
+                                g[set].attrs.create(name='ind_max_filtered', data=14)
+                                g[set].attrs.create(name='skewness_filtered_peak', data=15)
+
+                            if set[:11] == 'sev_fit_par':
+                                g[set].attrs.create(name='pulse_height', data=0)
+                                g[set].attrs.create(name='onset', data=1)
+                                g[set].attrs.create(name='constant_coefficient', data=2)
+                                g[set].attrs.create(name='linear_coefficient', data=3)
+                                g[set].attrs.create(name='quadratic_coefficient', data=4)
+                                g[set].attrs.create(name='cubic_coefficient', data=5)
+
                 if 'event' in a[group] and 'event' in b[group]:
 
                     nmbr_a = len(a[group]['event'][0])
