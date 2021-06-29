@@ -461,6 +461,7 @@ def nll_fraction_gauss(pars, x):
 
 def get_noise_parameters_unbinned(events,
                                   model='gauss',
+                                  sigma_x0 = 2,
                                   ):
     """
     Find the maximum likelihood estimators of all noise trigger model parameters in an unbinned maximum likelihood fit.
@@ -474,6 +475,8 @@ def get_noise_parameters_unbinned(events,
         - 'pollution_gauss': Gaussian noise model with an Gaussian distributed pollution.
         - 'fraction_gauss': Gaussian mixture noise model.
     :type model: string
+    :param sigma_x0: The start value for the baseline resolution.
+    :type sigma_x0: float
     :return: The fitted parameters. These are different for each model and compatible with the functions gauss_noise,
         pollution_exponential_noise, fraction_exponential_noise and pollution_gauss_noise.
     :rtype: 1D array
@@ -482,23 +485,23 @@ def get_noise_parameters_unbinned(events,
     if model == 'gauss':
         # d, sigma
         minimizer = nll_gauss
-        x0 = np.array([400, 2])
+        x0 = np.array([400, sigma_x0])
     elif model == 'pollution_exponential':
         # d, sigma, lamb
         minimizer = nll_pollution_exponential
-        x0 = np.array([400, 2, 2])
+        x0 = np.array([400, sigma_x0, 2])
     elif model == 'fraction_exponential':
         # d, sigma, lamb, w
         minimizer = nll_fraction_exponential
-        x0 = np.array([400, 2, 2, 0.9])
+        x0 = np.array([400, sigma_x0, 2, 0.9])
     elif model == 'pollution_gauss':
         # d, sigma, mu, sigma_2
         minimizer = nll_pollution_gauss
-        x0 = np.array([400, 2, 0, 2])
+        x0 = np.array([400, sigma_x0, 0, 2])
     elif model == 'fraction_gauss':
         # d, sigma, mu, sigma_2, w
         minimizer = nll_fraction_gauss
-        x0 = np.array([400, 2, 0, 2, 0.5])
+        x0 = np.array([400, sigma_x0, 0, 2, 0.5])
     else:
         raise NotImplementedError('This model is not implemented!')
 
