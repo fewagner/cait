@@ -107,7 +107,7 @@ class EventInterface:
     def load_h5(self,
                 path: str,
                 fname: str,
-                channels: list,
+                channels: list=None,
                 appendix=True,
                 which_to_label=['events']):
         """
@@ -130,6 +130,8 @@ class EventInterface:
         :type which_to_label: list of strings
         """
 
+        assert not appendix or channels is not None, 'If you want an automatically appendix you must hand the channels!'
+
         if appendix:
             if self.nmbr_channels == 2:
                 app = '-P_Ch{}-L_Ch{}'.format(*channels)
@@ -149,9 +151,10 @@ class EventInterface:
 
         self.fname = fname
 
-        if not len(channels) == self.nmbr_channels:
-            raise ValueError('List of channels must vale length {}.'.format(
-                self.nmbr_channels))
+        if channels is not None:
+            if not len(channels) == self.nmbr_channels:
+                raise ValueError('List of channels must vale length {}.'.format(
+                    self.nmbr_channels))
 
         if path == '':
             path = './'
@@ -161,7 +164,8 @@ class EventInterface:
         self.path_h5 = path_h5
 
         with h5py.File(path_h5, 'r') as f:
-            self.channels = channels
+            if channels is not None:
+                self.channels = channels
 
             self.nmbrs = {}
 

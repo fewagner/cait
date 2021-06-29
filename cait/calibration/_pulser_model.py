@@ -389,10 +389,13 @@ class PulserModel:
         return energies, energies_sigma, tpa_equivalent, tpa_equivalent_sigma
 
     def plot(self,
-             dpi=150,
+             dpi=None,
              plot_only_first_poly=True,
+             plot_poly_timestamp=None,
              interpolation_method = 'linear',
              poly_order=3,
+             ylim=None,
+             xlim=None,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -402,11 +405,17 @@ class PulserModel:
         :param plot_only_first_poly: If true, only the polynomial from the middle of the first consecutive record
             interval is plotted, otherwise all are plotted.
         :type plot_only_first_poly: bool
+        :param plot_poly_timestamp: Time stamp at which the polynomial is plotted.
+        :type plot_poly_timestamp: float
         :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
             the interpolation of test pulse pulse height.
         :type interpolation_method: string
         :param poly_order: The order of the polynomial to fit in the TPA/PH plane.
         :type poly_order: int
+        :param ylim: The limits on the y axis.
+        :type ylim: 2-tuple
+        :param xlim: The limits on the x axis.
+        :type xlim: 2-tuple
         """
 
         if interpolation_method == 'linear':
@@ -424,7 +433,11 @@ class PulserModel:
                     plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
                     plt.axvline(iv[1], color='green', linewidth=1, zorder=15)
             make_grid()
-            plt.ylim([0, self.start_saturation])
+            if ylim is None:
+                plt.ylim([0, self.start_saturation])
+            else:
+                plt.ylim(ylim)
+            plt.xlim(xlim)
             plt.xlabel('Hours (h)')
             plt.ylabel('Pulse Height (V)')
             plt.show()
@@ -433,7 +446,10 @@ class PulserModel:
             for i, iv in enumerate(self.intervals):
                 plt.close()
                 x_data, x_sigma = [], []
-                plot_timestamp = (iv[1] - iv[0]) / 2
+                if plot_poly_timestamp is None:
+                    plot_timestamp = (iv[1] - iv[0]) / 2
+                else:
+                    plot_timestamp = np.copy(plot_poly_timestamp)
                 print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
                 for s in self.all_regs[i]:
                     xl, x, xu = s.y_sigma(plot_timestamp)
@@ -450,12 +466,15 @@ class PulserModel:
                 plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
                 plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
                 make_grid()
-                plt.ylim([0, y[-1]])
+                if ylim is None:
+                    plt.ylim([0, y[-1]])
+                else:
+                    plt.ylim(ylim)
                 plt.ylabel('Testpulse Amplitude (V)')
                 plt.xlabel('Pulse Height (V)')
                 plt.show()
 
-                if plot_only_first_poly:
+                if plot_only_first_poly or plot_poly_timestamp is not None:
                     break
 
         elif interpolation_method == 'tree':
@@ -472,7 +491,9 @@ class PulserModel:
                 plt.plot(t, y, color='red', linewidth=2, zorder=15)
                 plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
             make_grid()
-            plt.ylim(0, self.start_saturation)
+            if ylim is None:
+                plt.ylim([0, self.start_saturation])
+            plt.xlim(xlim)
             plt.ylabel('Pulse Height (V)')
             plt.xlabel('Time (h)')
             plt.show()
@@ -480,7 +501,10 @@ class PulserModel:
             # plot the polynomials
             plt.close()
             x_data, x_sigma = [], []
-            plot_timestamp = self.tp_hours[-1] / 2
+            if plot_poly_timestamp is None:
+                plot_timestamp = self.tp_hours[-1] / 2
+            else:
+                plot_timestamp = np.copy(plot_poly_timestamp)
             for l, m, u in zip(self.lower_regs, self.mean_regs, self.upper_regs):
                 xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(np.array([[plot_timestamp]])), u.predict(
                     np.array([[plot_timestamp]]))
@@ -501,7 +525,10 @@ class PulserModel:
             plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
             plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
             make_grid()
-            plt.ylim([0, y[-1]])
+            if ylim is None:
+                plt.ylim([0, y[-1]])
+            else:
+                plt.ylim(ylim)
             plt.ylabel('Testpulse Amplitude (V)')
             plt.xlabel('Pulse Height (V)')
             plt.show()
