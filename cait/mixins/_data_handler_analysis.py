@@ -283,7 +283,7 @@ class AnalysisMixin(object):
     def calc_calibration(self,
                          starts_saturation: list,  #
                          cpe_factor: list,
-                         max_dist: float = 1,  # in hours
+                         max_dist: float = 0.5,  # in hours
                          exclude_tpas: list = [],
                          plot: bool = False,
                          only_stable: bool = False,
@@ -353,7 +353,7 @@ class AnalysisMixin(object):
         :type name_appendix_tp: string
         :param return_pulser_models: If set to true, a list of the used PulserModels is returned.
         :type return_pulser_models: bool
-        :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful is case the
+        :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful in case the
             Calibration is done on one file with test pulses, but you want to predict the TPA equivalent values of another
             data set, e.g. the resolution data set, with the same pulser models.
         :type pulser_models: list of instances of PulserModel
@@ -398,32 +398,37 @@ class AnalysisMixin(object):
 
             if method == 'ph':
                 evhs = np.array(f['events']['mainpar' + name_appendix_ev][:, :, 0])
-                tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
+                if pulser_models is not None:
+                    tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
             elif method == 'of':
                 evhs = np.array(f['events']['of_ph' + name_appendix_ev])
-                tphs = np.array(f['testpulses']['of_ph' + name_appendix_tp])
+                if pulser_models is not None:
+                    tphs = np.array(f['testpulses']['of_ph' + name_appendix_tp])
             elif method == 'sef':
                 evhs = np.array(f['events']['sev_fit_par' + name_appendix_ev][:, :, 0])
-                tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
+                if pulser_models is not None:
+                    tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
             elif method == 'true_ph':
                 evhs = np.array(f['events']['true_ph'])
-                if 'true_ph' in f['testpulses']:
-                    tphs = np.array(f['testpulses']['true_ph'])
-                else:
-                    tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
+                if pulser_models is not None:
+                    if 'true_ph' in f['testpulses']:
+                        tphs = np.array(f['testpulses']['true_ph'])
+                    else:
+                        tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
             else:
-                raise KeyError('Pulse Height Estimation method not implemented, try ph, of or sef.')
+                raise KeyError('Pulse Height Estimation method not implemented, try ph, of, sef or true_ph.')
 
-            tpas = np.array(f['testpulses']['testpulseamplitude'])
             ev_hours = np.array(f['events']['hours'])
-            tp_hours = np.array(f['testpulses']['hours'])
+            if pulser_models is not None:
+                tpas = np.array(f['testpulses']['testpulseamplitude'])
+                tp_hours = np.array(f['testpulses']['hours'])
 
-            if only_stable:
-                stable = np.array(f['testpulses']['testpulse_stability'], dtype=bool)
-            else:
-                stable = np.ones([self.nmbr_channels, len(tpas)], dtype=bool)
-            if cut_flag is not None:
-                stable = np.logical_and(stable, cut_flag)
+                if only_stable:
+                    stable = np.array(f['testpulses']['testpulse_stability'], dtype=bool)
+                else:
+                    stable = np.ones([self.nmbr_channels, len(tpas)], dtype=bool)
+                if cut_flag is not None:
+                    stable = np.logical_and(stable, cut_flag)
 
             f['events'].require_dataset(name='recoil_energy' + name_appendix_energy,
                                         shape=(self.nmbr_channels, len(ev_hours)),

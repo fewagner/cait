@@ -739,7 +739,7 @@ class CsmplMixin(object):
                                max_distance=60,
                                record_window_length=None,
                                max_attempts=5,
-                               no_pileup=True,
+                               no_pileup=False,
                                ):
         """
         Include a number of random triggers from the Stream.
@@ -752,7 +752,7 @@ class CsmplMixin(object):
         :param nmbr: The number of noise triggers we want to include.
         :type nmbr: int
         :param min_distance: The minimal distance in seconds of the start and end of a noise trigger window from a
-            test pulse. If you choose record_length * 1.5 or higher, you avoid pile up.
+            test pulse. If you choose record_length * 0.8 or higher, you avoid pile up.
         :type min_distance: float
         :param max_distance: The maximal distance of two test pulses in seconds, such that the interval in between still
             counts as measurement time.
@@ -864,7 +864,8 @@ class CsmplMixin(object):
                              csmpl_paths,
                              datatype='float32',
                              origin=None,
-                             down=1):
+                             down=1,
+                             ):
         """
         Include the events corresponding to chosen noise triggers.
 
@@ -912,7 +913,6 @@ class CsmplMixin(object):
                 hours_h5[...] = noise_hours
                 time_s_h5[...] = noise_time_s
                 time_mus_h5[...] = noise_time_mus
-
 
             # get the record windows
             print('Include the triggered events.')

@@ -22,6 +22,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   a_name='keep',
                   b_name='keep',
                   continue_hours=True,
+                  second_file_start=None,
                   keep_original_files=True,
                   verb=False,
                   trace=False,
@@ -56,6 +57,9 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :type b_name: string
     :param continue_hours: If True, the value of the last hours in a is added to the hours in b.
     :type continue_hours: bool
+    :param second_file_start: The hours value at which the second file starts. If this is not handed and continue_hours
+        is activated, the value is extracted from the test pulses.
+    :type second_file_start: float or None
     :param keep_original_files: If False, the original files are deleted after the merge.
     :type keep_original_files: bool
     :param verb: If True, verbal feedback about the process of the merge is given.
@@ -76,13 +80,15 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
 
         # define hours gap
         if continue_hours:
-            if 'testpulses' in a and 'testpulses' in b:
-                second_file_hours = a['testpulses']['hours'][-1] + (
-                        b['testpulses']['time_s'][0] + 10e-6 * b['testpulses']['time_mus'][0] -
-                        a['testpulses']['time_s'][-1] - 10e-6 * a['testpulses']['time_mus'][
-                            -1]) / 3600
-            else:
-                raise KeyError('continue_hours argument requires testpulses group in both files!')
+            if second_file_start is None:
+                if 'testpulses' in a and 'testpulses' in b:
+                    second_file_start = a['testpulses']['hours'][-1] + (
+                            b['testpulses']['time_s'][0] + 10e-6 * b['testpulses']['time_mus'][0] -
+                            a['testpulses']['time_s'][-1] - 10e-6 * a['testpulses']['time_mus'][
+                                -1]) / 3600
+                else:
+                    raise KeyError('continue_hours argument requires testpulses group in both files, or needs the start of'
+                                   'the second file (second_file_hours) handed seperately!')
 
         # merge the groups
         for group in groups_to_merge:
@@ -122,7 +128,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                         # write data to new file
                         if continue_hours and set in ['hours', 'trigger_hours', 'tp_hours']:
                             g[set][:shape_a[0]] = a[group][set][:]
-                            g[set][shape_a[0]:] = b[group][set][:] + second_file_hours
+                            g[set][shape_a[0]:] = b[group][set][:] + second_file_start
                         elif concatenate_axis[i] == 0:
                             g[set][:shape_a[0]] = a[group][set][:]
                             g[set][shape_a[0]:] = b[group][set][:]
