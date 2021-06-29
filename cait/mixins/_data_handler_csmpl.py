@@ -674,7 +674,7 @@ class CsmplMixin(object):
         """
 
         # open file stream
-        with h5py.File(self.path_h5, 'r+') as h5f:
+        with h5py.File(self.path_h5, 'a') as h5f:
             h5f.require_group('stream')
 
             # get start second from sql
