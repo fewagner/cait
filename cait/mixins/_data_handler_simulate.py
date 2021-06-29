@@ -36,7 +36,7 @@ class SimulateMixin(object):
                         tp_discrete_phs=None,
                         t0_interval=[-20, 20],  # in ms
                         fake_noise=False,
-                        store_of=False,
+                        store_of=True,
                         rms_thresholds=[1, 1],
                         lamb=0.01,
                         sample_length=None,
@@ -232,6 +232,7 @@ class SimulateMixin(object):
                 events, phs, t0s, nmbr_thrown_testpulses, hours, time_s, time_mus = simulate_events(
                     path_h5=self.path_h5,
                     type='testpulses',
+                    name_appendix='',
                     size=size_tp,
                     record_length=self.record_length,
                     nmbr_channels=self.nmbr_channels,
@@ -308,6 +309,7 @@ class SimulateMixin(object):
 
                 events, phs, t0s, nmbr_thrown_noise, hours, time_s, time_mus = simulate_events(path_h5=self.path_h5,
                                                                                                type='noise',
+                                                                                               name_appendix='',
                                                                                                size=size_noise,
                                                                                                record_length=self.record_length,
                                                                                                nmbr_channels=self.nmbr_channels,
@@ -351,11 +353,11 @@ class SimulateMixin(object):
                     name='Sharp_Light_Event', data=20)
                 data['labels'].attrs.create(name='unknown/other', data=99)
 
-            if store_of == 0:
+            if store_of is True:
                 print('Store OF.')
-                of_real = f_read['optimumfilter']['optimumfilter_real']
-                of_imag = f_read['optimumfilter']['optimumfilter_imag']
-                data = f.create_group('optimumfilter')
+                of_real = f_read['optimumfilter' + name_appendix]['optimumfilter_real']
+                of_imag = f_read['optimumfilter' + name_appendix]['optimumfilter_imag']
+                data = f.create_group('optimumfilter' + name_appendix)
                 data.create_dataset(name='optimumfilter_real', data=of_real)
                 data.create_dataset(name='optimumfilter_imag', data=of_imag)
 
