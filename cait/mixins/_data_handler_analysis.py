@@ -398,19 +398,19 @@ class AnalysisMixin(object):
 
             if method == 'ph':
                 evhs = np.array(f['events']['mainpar' + name_appendix_ev][:, :, 0])
-                if pulser_models is not None:
+                if pulser_models is None:
                     tphs = np.array(f['testpulses']['mainpar' + name_appendix_tp][:, :, 0])
             elif method == 'of':
                 evhs = np.array(f['events']['of_ph' + name_appendix_ev])
-                if pulser_models is not None:
+                if pulser_models is None:
                     tphs = np.array(f['testpulses']['of_ph' + name_appendix_tp])
             elif method == 'sef':
                 evhs = np.array(f['events']['sev_fit_par' + name_appendix_ev][:, :, 0])
-                if pulser_models is not None:
+                if pulser_models is None:
                     tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
             elif method == 'true_ph':
                 evhs = np.array(f['events']['true_ph'])
-                if pulser_models is not None:
+                if pulser_models is None:
                     if 'true_ph' in f['testpulses']:
                         tphs = np.array(f['testpulses']['true_ph'])
                     else:
@@ -419,7 +419,7 @@ class AnalysisMixin(object):
                 raise KeyError('Pulse Height Estimation method not implemented, try ph, of, sef or true_ph.')
 
             ev_hours = np.array(f['events']['hours'])
-            if pulser_models is not None:
+            if pulser_models is None:
                 tpas = np.array(f['testpulses']['testpulseamplitude'])
                 tp_hours = np.array(f['testpulses']['hours'])
 
