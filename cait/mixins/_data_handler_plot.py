@@ -421,7 +421,10 @@ class PlotMixin(object):
             elif which_quantity == 'recoil_energy':
                 vals = hf5['events']['recoil_energy'][channel]
             else:
-                raise NotImplementedError('Only methods ph, of and sef are implemented!')
+                try:
+                    vals = hf5['events'][which_quantity][channel]
+                except:
+                    raise KeyError(f'A dataset with name {which_quantity} is not in the HDF5 set.')
 
         all, bins = np.histogram(vals, bins=bins, range=range)
         surviving, _ = np.histogram(vals[cut_flag], bins=bins)

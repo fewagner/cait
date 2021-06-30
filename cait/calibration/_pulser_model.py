@@ -289,11 +289,11 @@ class PulserModel:
                     self.linear_tpas.append(tpa)
 
                     self.lower_regs.append(GradientBoostingRegressor(loss="quantile",
-                                                                alpha=LOWER_ALPHA))
+                                                                     alpha=LOWER_ALPHA))
                     self.mean_regs.append(GradientBoostingRegressor(loss="quantile",
-                                                               alpha=MIDDLE_ALPHA))
+                                                                    alpha=MIDDLE_ALPHA))
                     self.upper_regs.append(GradientBoostingRegressor(loss="quantile",
-                                                                alpha=UPPER_ALPHA))
+                                                                     alpha=UPPER_ALPHA))
 
                     # Fit models
                     self.lower_regs[-1].fit(tp_hours[tpas == tpa].reshape(-1, 1), tphs[tpas == tpa])
@@ -392,7 +392,7 @@ class PulserModel:
              dpi=None,
              plot_only_first_poly=True,
              plot_poly_timestamp=None,
-             interpolation_method = 'linear',
+             interpolation_method='linear',
              poly_order=3,
              ylim=None,
              xlim=None,
@@ -469,7 +469,7 @@ class PulserModel:
                 if ylim is None:
                     plt.ylim([0, y[-1]])
                 else:
-                    plt.ylim(ylim)
+                    plt.xlim(ylim)
                 plt.ylabel('Testpulse Amplitude (V)')
                 plt.xlabel('Pulse Height (V)')
                 plt.show()
@@ -528,7 +528,7 @@ class PulserModel:
             if ylim is None:
                 plt.ylim([0, y[-1]])
             else:
-                plt.ylim(ylim)
+                plt.xlim(ylim)
             plt.ylabel('Testpulse Amplitude (V)')
             plt.xlabel('Pulse Height (V)')
             plt.show()
