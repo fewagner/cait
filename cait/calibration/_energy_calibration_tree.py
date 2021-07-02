@@ -6,6 +6,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from ..styles._plt_styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
 from ._energy_calibration_linear import PolyModel
+import warnings
 
 
 # functions
@@ -25,6 +26,8 @@ def energy_calibration_tree(evhs,
     """
     Attention! This function is depricated!
     """
+
+    warnings.warn('Attention, this function is depricated!')
 
     unique_tpas = np.unique(tpas)
     unique_tpas = unique_tpas[np.logical_not(np.in1d(unique_tpas, exclude_tpas))]

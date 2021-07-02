@@ -11,37 +11,31 @@ import pickle
 
 class ModelHandler:
     """
-    Wrapper class to store ML models and scalers
+    Wrapper class to store ML models and scalers, as they are typically used by the Scikit-Learn Library.
+
+    # TODO add citation
+
+    :param model_type: The type of the model, e.g. RF or SVM.
+    :type model_type: string
+    :param nmbr_channels: The number of channels of the detector module.
+    :type nmbr_channels: int
+    :param record_length: The number of samples per record window.
+    :type record_length: int
+    :param sample_frequency: THe sample frequency of the measurement.
+    :type sample_frequency: int
+    :param run: The number of the run of the experiment.
+    :type run: string
+    :param module: The name of the detector module.
+    :type module: string
+    :param info: Additional information about this model, e.g. training set size.
+    :type info: string
     """
 
-    def __init__(self, model_type, run: str = '01', module: str = 'Test', record_length: int = 16384,
-                 sample_frequency: int = 25000, nmbr_channels=2):
-        """
-        TODO
-
-        :param run:
-        :type run:
-        :param module:
-        :type module:
-        :param model_type:
-        :type model_type:
-        :param record_length:
-        :type record_length:
-        :param nmbr_channels:
-        :type nmbr_channels:
-        :param sample_frequency:
-        :type sample_frequency:
-        :param down:
-        :type down:
-        :param model1:
-        :type model1:
-        :param model2:
-        :type model2:
-        :param model3:
-        :type model3:
-        :param classes:
-        :type classes:
-        """
+    def __init__(self, model_type: str = None, nmbr_channels: int = None,
+                 record_length: int = 16384,
+                 sample_frequency: int = 25000,
+                 run: str = None, module: str = None,
+                 info:str = None):
         self.run = run
         self.module = module
         self.model_type = model_type
@@ -50,39 +44,34 @@ class ModelHandler:
         self.models = {}
         self.nmbr_channels = nmbr_channels
         self.scalers = {}
-        self.info = ''
+        self.info = info
 
         print('MLModel Instance created.')
 
     # setters
 
-    def add_model(self, channel, model):
+    def add_model(self, model, channel):
         """
-        TODO
+        Add a model to the model handler.
 
-        :param channel:
-        :type channel:
-        :param model:
-        :type model:
-        :param down:
-        :type down:
-        :return:
-        :rtype:
+        :param channel: The channel number that the model corresponds to.
+        :type channel: int
+        :param model: The model that you want to store.
+        :type model: object
         """
 
         # add the model
         self.models[channel] = model
+        print('Added model for channel {}.'.format(channel))
 
     def add_scaler(self, scaler, channel):
         """
-        TODO
+        Add a scaler to the model handler.
 
-        :param scaler:
-        :type scaler:
-        :param channel:
-        :type channel:
-        :return:
-        :rtype:
+        :param channel: The channel number that the model corresponds to.
+        :type channel: int
+        :param model: The model that you want to store.
+        :type model: object
         """
         self.scalers[channel] = scaler
         print('Added scaler for channel {}.'.format(channel))
@@ -91,41 +80,36 @@ class ModelHandler:
 
     def get_model(self, channel):
         """
-        TODO
+        Return a model from the model handler.
 
-        :param channel:
-        :type channel:
-        :return:
-        :rtype:
+        :param channel: The number of the channel from that we want the model.
+        :type channel: int
+        :return: The model.
+        :rtype: object
         """
         return self.models[channel]
 
     def get_scaler(self, channel):
         """
-        TODO
+        Return a scaler from the model handler.
 
-        :param channel:
-        :type channel:
-        :return:
-        :rtype:
+        :param channel: The number of the channel from that we want the scaler.
+        :type channel: int
+        :return: The scaler.
+        :rtype: object
         """
         return self.scalers[channel]
 
-    def save(self, path, name_app=None):
+    def save(self, path, info=None):
         """
-        TODO
+        Save the model handler with pickle.
 
-        :param path:
-        :type path:
-        :param name_app:
-        :type name_app:
-        :return:
-        :rtype:
+        :param path: The path to the directory where we want to save the model handler.
+        :type path: string
+        :param info: Additional information about this model, e.g. training set size.
+        :type info: string
         """
 
-        self.info = input('Write info about this instance: ')
-        path_model = '{}/{}_run{}_{}'.format(path, self.model_type, self.run, self.module)
-        if name_app is not None:
-            path_model += '{}'.format(name_app)
-        pickle.dump(self, open(path_model, 'wb'), pickle.HIGHEST_PROTOCOL)
-        print('Save Model to {}.'.format(path_model))
+        self.info = info
+        pickle.dump(self, open(path, 'wb'), pickle.HIGHEST_PROTOCOL)
+        print('Save Model to {}.'.format(path))

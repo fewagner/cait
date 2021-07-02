@@ -16,38 +16,39 @@ import numpy as np
 
 class RNNModule(LightningModule):
     """
-    Lightning module for the training of an RNN model for classification or regression
-    For classification, the classes need to get one hot encoded, best with the corresponding transform
+    Lightning module for the training of an RNN model for classification or regression.
+
+    For classification, the classes need to get one hot encoded, best with the corresponding transform.
 
     TODO add citation
 
-    :param input_size: the number of features that get passed to the RNN in one time step
+    :param input_size: The number of features that get passed to the RNN in one time step.
     :type input_size: int
-    :param hidden_size: the number of nodes in the hidden layer of the RNN
+    :param hidden_size: The number of nodes in the hidden layer of the RNN.
     :type hidden_size: int
-    :param num_layers: the number of RNN layers
+    :param num_layers: The number of RNN layers.
     :type num_layers: int
-    :param seq_steps: the number of time steps
+    :param seq_steps: The number of time steps.
     :type seq_steps: int
-    :param device_name: the device on that the NN is trained
+    :param device_name: The device on that the NN is trained.
     :type device_name: string, either 'cpu' or 'cude'
-    :param nmbr_out: the number of output nodes the last linear layer after the RNN has
+    :param nmbr_out: The number of output nodes the last linear layer after the RNN has.
     :type nmbr_out: int
-    :param label_keys: the keys of the dataset that are used as labels
+    :param label_keys: The keys of the dataset that are used as labels.
     :type label_keys: list of strings
-    :param feature_keys: the keys of the dataset that are used as nn inputs
+    :param feature_keys: The keys of the dataset that are used as nn inputs.
     :type feature_keys: list of strings
-    :param lr: the learning rate for the neural network training
+    :param lr: The learning rate for the neural network training.
     :type lr: float between 0 and 1
-    :param is_classifier: if true, the output of the nn gets an additional softmax activation
+    :param is_classifier: If true, the output of the nn gets an additional softmax activation.
     :type is_classifier: bool
-    :param down: the downsample factor of the training data set, if one is applied
+    :param down: The downsample factor of the training data set, if one is applied.
     :type down: int
-    :param down_keys: the keys of the data that is to downsample (usually the event time series)
+    :param down_keys: The keys of the data that is to downsample (usually the event time series).
     :type down_keys: list of string
-    :param norm_vals: the keys of this dictionary get scaled in the sample with (x - mu)/sigma
+    :param norm_vals: The keys of this dictionary get scaled in the sample with (x - mu)/sigma.
     :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
-    :param offset_keys: the keys in the sample from that we want to subtract the baseline offset level
+    :param offset_keys: The keys in the sample from that we want to subtract the baseline offset level.
     :type offset_keys: list of strings
     :param weight_decay: The weight decay parameter for the optimizer.
     :type weight_decay: float
@@ -78,11 +79,11 @@ class RNNModule(LightningModule):
 
     def forward(self, x):
         """
-        The forward pass in the neural network
+        The forward pass in the neural network.
 
-        :param x: the input features
+        :param x: The input features.
         :type x: torch tensor of size (batchsize, nmbr_features)
-        :return: the ouput of the neural network
+        :return: The ouput of the neural network.
         :rtype: torch tensor of size (batchsize, nmbr_outputs)
         """
         batchsize = x.size(0)
@@ -160,9 +161,9 @@ class RNNModule(LightningModule):
         """
         Give a prediction for incoming data array or batch of arrays, does all essential transforms
 
-        :param sample: the features for one (1D case) or more (2D case) samples
+        :param sample: The features for one (1D case) or more (2D case) samples.
         :type sample: 1D numpy array or batch of arrays, i.e. then 2D array
-        :return: the prediction
+        :return: The prediction.
         :rtype: torch tensor of size (batchsize - 1 if no batch, nn_output_size)
         """
 

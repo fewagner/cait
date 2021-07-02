@@ -11,19 +11,19 @@ def rate_cut(timestamps,
              significance=3,
              min=0, max=60):
     """
-    Return a bool array for all timestamps, with true for events that are in intervals with sigma rate
+    Return a bool array for all timestamps, with true for events that are in intervals with sigma rate.
 
-    :param timestamps: the array of the time stamps in minutes
+    :param timestamps: The array of the time stamps in minutes.
     :type timestamps: 1D array
-    :param interval: in minutes, the interval we compare
+    :param interval: In minutes, the interval we compare.
     :type interval: float
-    :param significance: all intervals, that have an event rate not within significance-sigma of mean event rate, are cut
+    :param significance: All intervals, that have an event rate not within significance-sigma of mean event rate, are cut.
     :type significance: float
-    :param min: intervals with lower rate than this are excluded from the calculation
+    :param min: Intervals with lower rate than this are excluded from the calculation.
     :type min: float
-    :param max: intervals with higher rate than this are excluded from the calculation
+    :param max: Intervals with higher rate than this are excluded from the calculation.
     :param max: float
-    :return: true if event survives rate cut, false if not
+    :return: True if event survives rate cut, false if not.
     :rtype: boolean array of same size as timestamps
     """
     print('Do Rate Cut.')

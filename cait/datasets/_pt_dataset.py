@@ -6,24 +6,31 @@ import torch
 
 class H5CryoData(Dataset):
     """
-    Pytorch Dataset for the processing of raw data from hdf5 files
+    Pytorch Dataset for the processing of raw data from hdf5 files with a Cait-like file structure.
 
-    TODO add citation
-
-    :param type: string, either events or testpulses or noise - the group index of the hd5 data set
-    :param keys: list of strings, the keys that are accessed in the hdf5 group
-    :param channel_indices: list of lists or Nones, must have same length than the keys list, the channel indices
-        of the data sets in the group, if None then no index is set (i.e. if the h5 data set does not belong to
-        a specific channel)
-    :param feature_indices: list of lists or Nones, must have same length than the keys list, the feature indices
-        of the data sets in the group (third idx),
-        if None then no index is set (i.e. there is no third index in the set or all features are chosen)
-    :param keys_one_hot: list of strings, the keys that get one hot encoded - important for correct size
-    :param hdf5_path: string or None, full path to the hdf5 data set, need be provided if no file handle is set
-    :param transform: pytorch transforms class, get applied to every sample when getitem is called
-    :param nmbr_events: int or None, if set this is the number of events in the data set, if not it is extracted
-        from the hdf5 file with len(self.f['events/event'][0])
-    :param double: bool, if true all events are cast to double before calculations
+    :param type: Either events or testpulses or noise - the group index of the hd5 data set.
+    :type type: string,
+    :param keys: The keys that are accessed in the hdf5 group.
+    :type keys: list of strings
+    :param channel_indices: Must have same length than the keys list, the channel indices
+        of the data sets in the group. If None then no index is set (i.e. if the h5 data set does not belong to
+        a specific channel).
+    :type channel_indices: list of lists or Nones
+    :param feature_indices: Must have same length than the keys list, the feature indices
+        of the data sets in the group (third idx).
+        If None then no index is set (i.e. there is no third index in the set or all features are chosen).
+    :type feature_indices: list of lists or Nones
+    :param keys_one_hot: The keys that get one hot encoded - important for correct size.
+    :type keys_one_hot: list of strings
+    :param hdf5_path: Full path to the hdf5 data set, need be provided if no file handle is set.
+    :type hdf5_path: string or None
+    :param transform: Get applied to every sample when getitem is called.
+    :type transform: pytorch transforms class
+    :param nmbr_events: If set this is the number of events in the data set, if not it is extracted
+        from the hdf5 file with len(self.f['events/event'][0]).
+    :type nmbr_events: int or None
+    :param double: If true all events are cast to double before calculations.
+    :type double: bool
     """
 
     def __init__(self, type, keys, channel_indices, feature_indices=None,
@@ -53,18 +60,18 @@ class H5CryoData(Dataset):
 
     def __len__(self):
         """
-        Returns the number of events in the data set
+        Returns the number of events in the data set.
         """
         return self.nmbr_events
 
     def get_item_no_cache(self, idx):
         """
-        TODO
+        Returns the sample of the dataset at idx, without caching the file stream.
 
-        :param idx:
-        :type idx:
-        :return:
-        :rtype:
+        :param idx: The index at which we want to get the event.
+        :type idx: int
+        :return: Each element is a numpy array.
+        :rtype: dict
         """
         with h5py.File(self.hdf5_path, 'r') as f:
             sample = self.build_sample(f, idx)
@@ -83,14 +90,14 @@ class H5CryoData(Dataset):
 
     def build_sample(self, f, idx):
         """
-        TODO
+        Build a sample that is handed to the pytorch model.
 
-        :param f:
-        :type f:
-        :param idx:
-        :type idx:
-        :return:
-        :rtype:
+        :param f: The file handle to the HDF5 data set.
+        :type f: hdf5 file stream
+        :param idx: The index of the event to process from the HDF5 data set.
+        :type idx: int
+        :return: A dictionary with the data from the HDF5 data set.
+        :rtype: dict
         """
         sample = {}
         for i, key in enumerate(self.keys):  # all the elements of the dict have size (nmbr_features)
@@ -127,10 +134,12 @@ class H5CryoData(Dataset):
 
     def __getitem__(self, idx):
         """
-        Returns the sample of the dataset at idx
+        Returns the sample of the dataset at idx.
 
-        :param idx: int, the index at which we want to get the event
-        :return: dict, each element is a numpy array
+        :param idx: The index at which we want to get the event.
+        :type idx: int
+        :return: Each element is a numpy array.
+        :rtype: dict
         """
 
         if self.h5_set is None:

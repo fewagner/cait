@@ -16,32 +16,35 @@ def nn_predict(h5_path: str,
                no_channel_idx_in_pred: bool = False,
                ):
     """
-    TODO
+    Add predictions from a PyTorch model to the HDF5 set.
 
-    :param h5_path:
-    :type h5_path:
-    :param feature_channel:
-    :type feature_channel:
-    :param model:
-    :type model:
-    :param ptl_module:
-    :type ptl_module:
-    :param ptl_ckp_path:
-    :type ptl_ckp_path:
-    :param group_name:
-    :type group_name:
-    :param prediction_name:
-    :type prediction_name:
-    :param keys:
-    :type keys:
-    :param chunk_size:
-    :type chunk_size:
-    :param no_channel_idx_in_pred:
-    :type no_channel_idx_in_pred:
+    :param h5_path: The path to the HDF5 file.
+    :type h5_path: string
+    :param feature_channel: The channel of the detector module on that we make the predictions.
+    :type feature_channel: int
+    :param model: A trained PyTorch Lightning module or Pytorch model.
+    :type model: object
+    :param ptl_module: A Pytorch lightning model class.
+    :type ptl_module: object
+    :param ptl_ckp_path: A path to the checkpoint from where we load the PyTorch lightning model parameters.
+    :type ptl_ckp_path: string
+    :param group_name: The name of the group within the HDF5 file.
+    :type group_name: string
+    :param prediction_name: The name of the prediction that is saved to the HDF5 set.
+    :type prediction_name: string
+    :param keys: The keys from the HDF5 set that are included as features into every sample handed to the neural network.
+    :type keys: list
+    :param chunk_size: The size of the chunks to predict at once.
+    :type chunk_size: int
+    :param no_channel_idx_in_pred: If True, then we assume that there is no channel index in the data set from the HDF5
+        file.
+    :type no_channel_idx_in_pred: bool
     """
 
-    if model is None and (ptl_module is None or ptl_ckp_path is None):
-        raise KeyError('You need provide either model or ptl_module path and ptl_model_path!')
+    assert model is not None or (ptl_module is not None and ptl_ckp_path is not None), \
+        'You need provide either model or ptl_module path and ptl_model_path!'
+    assert model is not None and ptl_module is not None, \
+        'You cannot provide both a model and a checkpoint to laod a model from!'
 
     if model is None:
         model = ptl_module.load_from_checkpoint(ptl_ckp_path)
@@ -96,34 +99,57 @@ def nn_predict(h5_path: str,
                 data[prediction_name][feature_channel, count:] = prediction.reshape(-1)
             pbar.update(chunk_size)
 
+        data[prediction_name].attrs.create(name='unlabeled', data=0)
+        data[prediction_name].attrs.create(name='Event_Pulse', data=1)
+        data[prediction_name].attrs.create(name='Test/Control_Pulse', data=2)
+        data[prediction_name].attrs.create(name='Noise', data=3)
+        data[prediction_name].attrs.create(name='Squid_Jump', data=4)
+        data[prediction_name].attrs.create(name='Spike', data=5)
+        data[prediction_name].attrs.create(name='Early_or_late_Trigger', data=6)
+        data[prediction_name].attrs.create(name='Pile_Up', data=7)
+        data[prediction_name].attrs.create(name='Carrier_Event', data=8)
+        data[prediction_name].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+        data[prediction_name].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+        data[prediction_name].attrs.create(name='Decaying_Baseline', data=11)
+        data[prediction_name].attrs.create(name='Temperature_Rise', data=12)
+        data[prediction_name].attrs.create(name='Stick_Event', data=13)
+        data[prediction_name].attrs.create(name='Sawtooth_Cycle', data=14)
+        data[prediction_name].attrs.create(name='Human_Disturbance', data=15)
+        data[prediction_name].attrs.create(name='Large_Sawtooth', data=16)
+        data[prediction_name].attrs.create(name='Cosinus_Tail', data=17)
+        data[prediction_name].attrs.create(name='Light_only_Event', data=18)
+        data[prediction_name].attrs.create(name='Ring_Light_Event', data=19)
+        data[prediction_name].attrs.create(name='Sharp_Light_Event', data=20)
+        data[prediction_name].attrs.create(name='unknown/other', data=99)
+
         print('{} written to file {}.'.format(prediction_name, h5_path))
 
 
 def mh_predict(h5_path: str,
                feature_channel: int,
-               type:str = 'events',
-               model_type: str = 'model',
+               group_name: str = 'events',
+               prediction_name: str = 'prediction',
                model_handler: object = None,
                mh_path: str = None,
                which_data: str = 'mainpar',
                ):
     """
-    TODO
+    Add predictions from a Scikit-Learn model to the HDF5 set.
 
-    :param h5_path:
-    :type h5_path:
-    :param feature_channel:
-    :type feature_channel:
-    :param type:
-    :type type:
-    :param model_type:
-    :type model_type:
-    :param model_handler:
-    :type model_handler:
-    :param mh_path:
-    :type mh_path:
-    :param which_data:
-    :type which_data:
+    :param h5_path: The path to the HDF5 file.
+    :type h5_path: string
+    :param feature_channel: The channel of the detector module on that we make the predictions.
+    :type feature_channel: int
+    :param group_name: The name of the group within the HDF5 file.
+    :type group_name: string
+    :param prediction_name: The name of the prediction that is saved to the HDF5 set.
+    :type prediction_name: string
+    :param model_handler: A model handler with that we want to make predictions.
+    :type model_handler: object
+    :param mh_path: A path to load a model handler from.
+    :type mh_path: string
+    :param which_data: Used for the evaluation tools instance, to tell which data is used for the prediction.
+    :type which_data: string
     """
 
     if model_handler is None and mh_path is None:
@@ -145,60 +171,38 @@ def mh_predict(h5_path: str,
 
     with h5py.File(h5_path, 'r+') as f_handle:
 
-        nmbr_channels = f_handle[type]['mainpar'].shape[0]
-        nmbr_events = f_handle[type]['mainpar'].shape[1]
+        nmbr_channels = f_handle[group_name]['mainpar'].shape[0]
+        nmbr_events = f_handle[group_name]['mainpar'].shape[1]
 
-        data = f_handle[type]
+        data = f_handle[group_name]
 
-        data.require_dataset(
-            "{}_predictions".format(model_type),
+        data.require_dataset(prediction_name,
             shape=(nmbr_channels, nmbr_events),
             dtype=float)
-        data["{}_predictions".format(model_type)][feature_channel, ...] = predictions
 
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='unlabeled', data=0)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Event_Pulse', data=1)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Test/Control_Pulse', data=2)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Noise', data=3)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Squid_Jump', data=4)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Spike', data=5)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Early_or_late_Trigger', data=6)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Pile_Up', data=7)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Carrier_Event', data=8)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Strongly_Saturated_Event_Pulse', data=9)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Strongly_Saturated_Test/Control_Pulse', data=10)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Decaying_Baseline', data=11)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Temperature_Rise', data=12)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Stick_Event', data=13)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Sawtooth_Cycle', data=14)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Human_Disturbance', data=15)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Large_Sawtooth', data=16)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Cosinus_Tail', data=17)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Light_only_Event', data=18)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Ring_Light_Event', data=19)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='Sharp_Light_Event', data=20)
-        data["{}_predictions".format(model_type)].attrs.create(
-            name='unknown/other', data=99)
+        data[prediction_name][:] = predictions
 
-        print('Added {} Predictions.'.format(model_type))
+        data[prediction_name].attrs.create(name='unlabeled', data=0)
+        data[prediction_name].attrs.create(name='Event_Pulse', data=1)
+        data[prediction_name].attrs.create(name='Test/Control_Pulse', data=2)
+        data[prediction_name].attrs.create(name='Noise', data=3)
+        data[prediction_name].attrs.create(name='Squid_Jump', data=4)
+        data[prediction_name].attrs.create(name='Spike', data=5)
+        data[prediction_name].attrs.create(name='Early_or_late_Trigger', data=6)
+        data[prediction_name].attrs.create(name='Pile_Up', data=7)
+        data[prediction_name].attrs.create(name='Carrier_Event', data=8)
+        data[prediction_name].attrs.create(name='Strongly_Saturated_Event_Pulse', data=9)
+        data[prediction_name].attrs.create(name='Strongly_Saturated_Test/Control_Pulse', data=10)
+        data[prediction_name].attrs.create(name='Decaying_Baseline', data=11)
+        data[prediction_name].attrs.create(name='Temperature_Rise', data=12)
+        data[prediction_name].attrs.create(name='Stick_Event', data=13)
+        data[prediction_name].attrs.create(name='Sawtooth_Cycle', data=14)
+        data[prediction_name].attrs.create(name='Human_Disturbance', data=15)
+        data[prediction_name].attrs.create(name='Large_Sawtooth', data=16)
+        data[prediction_name].attrs.create(name='Cosinus_Tail', data=17)
+        data[prediction_name].attrs.create(name='Light_only_Event', data=18)
+        data[prediction_name].attrs.create(name='Ring_Light_Event', data=19)
+        data[prediction_name].attrs.create(name='Sharp_Light_Event', data=20)
+        data[prediction_name].attrs.create(name='unknown/other', data=99)
+
+    print('Added Predictions: {}.'.format(prediction_name))

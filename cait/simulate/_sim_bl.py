@@ -15,18 +15,25 @@ def simulate_baselines(path_h5,
                        sim_poly=True,
                        verb=False):
     """
-    Creates fake baselines with given nps and drift structure
+    Creates fake baselines with given nps and drift structure.
 
-    :param path_h5: string, path to the file from which nps and bl drifts come
-    :param size: int, nmbr of baselines to simulate
-    :param rms_thresholds: list of two ints, threshold for the bl rms fit
-        error above which they get not included in the nps and drifts
-    :param lamb: float, parameter for the noise simulation method
-    :param kde: bool, if True we sample the coefficients of the bl fit with a kernel density estimation
-    :param sim_poly: pool, if True we simulate the polynomials for the baselines
-    :param verb: bool, if true feedback about progress in code
-    :return: tuple (3D array - (ch_nmbr, size bl, rec_len) of the simulated baselines,
-                    3D array - (ch_nmbr, size bl, rec_len) of the simulated polynomials)
+    :param path_h5: Path to the file from which nps and bl drifts come.
+    :type path_h5: string
+    :param size: Nmbr of baselines to simulate.
+    :type size: int
+    :param rms_thresholds: Threshold for the bl rms fit
+        error above which they get not included in the nps and drifts.
+    :type rms_thresholds: list of two ints
+    :param lamb: Parameter for the noise simulation method.
+    :type lamb: float
+    :param kde: If True we sample the coefficients of the bl fit with a kernel density estimation.
+    :type kde: bool
+    :param sim_poly: If True we simulate the polynomials for the baselines.
+    :type sim_poly: pool
+    :param verb: If true feedback about progress in code.
+    :type verb: bool
+    :return: (ch_nmbr, size bl, rec_len) of the simulated baselines, (ch_nmbr, size bl, rec_len) of the simulated polynomials.
+    :type: tuple (3D array, 3D array)
     """
 
     # kernel density estimator

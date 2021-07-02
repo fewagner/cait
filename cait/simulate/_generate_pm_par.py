@@ -1,6 +1,7 @@
 
 import scipy.stats as sci
 import numpy as np
+import warnings
 
 def norm(x, mu, sigma):
     return (x - mu) / sigma
@@ -12,13 +13,15 @@ def denorm(x, mu, sigma):
 
 def generate_ps_par(h):
     """
-    Simulate PS parameters modelled after the TUM40 phonon detector
+    Simulate PS parameters modelled after the TUM40 phonon detector.
 
-    :param h: array of pulse heights
+    :param h: Array of pulse heights.
     :type h: 1D array
     :return: (t0, An, At, tau_n, tau_in, tau_t)
     :rtype: list of 6 1D arrays
     """
+
+    warnings.warn('Watch out, this function is not fully tested!')
 
     SAMPLE_SIZE = len(h)
 

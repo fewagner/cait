@@ -18,14 +18,20 @@ def convert_to_V(event,
                  min=-10,
                  offset=0):
     """
-    Converts an event from int to volt
+    Converts an event from int to volt.
 
-    :param event: 1D array of the event
-    :param bits: int, number of bits in each sample
-    :param max: int, the max volt value
-    :param min: int, the min volt value
-    :param offset: int, the offset of the volt signal
-    :return: 1D array, the converted event array
+    :param event: The event we want to convert.
+    :type event: 1D array
+    :param bits: Nnumber of bits in each sample.
+    :type bits: int,
+    :param max: The max volt value.
+    :type max: int
+    :param min: The min volt value.
+    :type min: int
+    :param offset: The offset of the volt signal.
+    :type offset: int
+    :return: The converted event array.
+    :rtype: 1D array
     """
     a = 2 ** (bits - 1)
     b = (max - min) / 2 ** bits
@@ -39,14 +45,20 @@ def convert_to_V(event,
 @nb.njit
 def convert_to_int(event, bits=16, max=10, min=-10, offset=0):
     """
-    Converts an event from volt to int
+    Converts an event from volt to int.
 
-    :param event: 1D array of the event
-    :param bits: int, number of bits in each sample
-    :param max: int, the max volt value
-    :param min: int, the min volt value
-    :param offset: int, the offset of the volt signal
-    :return: 1D array, the converted event array
+    :param event: The event we want to convert.
+    :type event: 1D array
+    :param bits: Nnumber of bits in each sample.
+    :type bits: int,
+    :param max: The max volt value.
+    :type max: int
+    :param min: The min volt value.
+    :type min: int
+    :param offset: The offset of the volt signal.
+    :type offset: int
+    :return: The converted event array.
+    :rtype: 1D array
     """
     a = 2 ** (bits - 1)
     b = (max - min) / 2 ** bits

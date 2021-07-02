@@ -15,11 +15,11 @@ from tqdm.auto import tqdm
 
 def get_nps(x):
     """
-    Calculates the Noise Power Spectrum (NPS) of a given array
+    Calculates the Noise Power Spectrum (NPS) of a given array.
 
-    :param x: the time series
+    :param x: The time series.
     :type x: 1D numpy array of size N
-    :return: the noise power spectrum
+    :return: The noise power spectrum.
     :rtype: 1D numpy array of size N/2 + 1
     """
     x = np.fft.rfft(x)
@@ -33,9 +33,9 @@ def noise_function(nps):
     with a given Noise Power Spectrum (NPS)
     see arXiv:1006.3289, eq (4) and (5)
 
-    :param f: the noise power spectrum
+    :param f: The noise power spectrum.
     :type f: real valued 1D array of size N/2 + 1
-    :return: Noise Baselines
+    :return: Noise Baselines.
     :rtype: real valued 1D array of size N
     """
     f = np.sqrt(nps)
@@ -54,14 +54,14 @@ def get_cc_noise(nmbr_noise,
     """
     Simulation of a noise baseline, according to Carretoni Cremonesi: arXiv:1006.3289
 
-    :param nmbr_noise: number of noise baselines to simualte
+    :param nmbr_noise: Number of noise baselines to simulate.
     :type nmbr_noise: int > 0
     :param nps: Noise power spectrum of the baselines,
-        e.g. generated with scipy.fft.rfft()
+        e.g. generated with scipy.fft.rfft().
     :type nps: 1D array of odd size
-    :param lamb: parameter of the method (overlap between )
+    :param lamb: Parameter of the method (overlap between ).
     :type lamb: integer > 0
-    :return: the simulated baselines
+    :return: The simulated baselines.
     :rtype: 2D array of size (nmbr_noise, 2*(len(nps)-1))
     """
 
@@ -90,25 +90,25 @@ def calculate_mean_nps(baselines,
                        rms_cutoff=None):
     """
     Calculates the mean Noise Power Spectrum (mNPS) of a set of baselines,
-    after cleaning them from artifacts with a polynomial fit
+    after cleaning them from artifacts with a polynomial fit.
 
-    :param baselines: the baselines for the mean NPS
+    :param baselines: The baselines for the mean NPS.
     :type baselines: 2D array of size (nmbr_baselines, record_length)
-    :param order_polynom: 2 or 3, the order of the fitted polynomial
+    :param order_polynom: 2 or 3, the order of the fitted polynomial.
     :type order_polynom: int
-    :param clean: if True the baselines are cleaned from artifacts with a poly fit
+    :param clean: If True the baselines are cleaned from artifacts with a poly fit.
     :type clean: boolean
-    :param percentile: the percentile of the Fit RMS that is still used
-        for the calculation of the mNPS
+    :param percentile: The percentile of the Fit RMS that is still used
+        for the calculation of the mNPS.
     :type percentile: float between 0 and 1
-    :param down: downsample the baselines befor the calculation of the NPS - must be 2^x
+    :param down: Downsample the baselines before the calculation of the NPS - must be 2^x.
     :type down: int
-    :param sample_length: the length of one sample from the time series in seconds
+    :param sample_length: The length of one sample from the time series in seconds.
     :type sample_length: float
     :param rms_cutoff: Only baselines with a fit rms below this values are included in the NPS calculation. This
             will overwrite the percentile argument, if it is not set to None.
     :type rms_cutoff: float
-    :return: tuple (the mean NPS, the cleaned baselines)
+    :return: Tuple of (the mean NPS, the cleaned baselines).
     :rtype: (1D array of size (record_length/2 + 1), 2D array of size (percentile*nmbr_baselines, record_length))
     """
 

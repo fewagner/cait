@@ -66,7 +66,7 @@ class PolyModel:
 
     def y_pred(self, x):
         """
-        Evaluate the fitted polynomial for a given x value and return the +/i 1 sigma prediction interval.
+        Evaluate the fitted polynomial for a given x value and return the +/- 1 sigma prediction interval.
 
         :param x: The x values for which we evaluate the fitted polynomial.
         :type x: 1D array
@@ -143,7 +143,7 @@ class LinearModel:
 
     def y_sigma(self, x):
         """
-        Evaluate the fitted linear model for a given x value and return the +/i 1 sigma accumulated uncertainties (confidence and prediction uncertainty).
+        Evaluate the fitted linear model for a given x value and return the +/- 1 sigma accumulated uncertainties (confidence and prediction uncertainty).
 
         :param x:  The x values for which we evaluate the fitted polynomial.
         :type x: 1D array

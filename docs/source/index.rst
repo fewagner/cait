@@ -27,8 +27,23 @@
    tutorials/07classification
    tutorials/08ptl_classification
    tutorials/09regression
-   tutorials/10bandfit
-   tutorials/11limit
+   tutorials/10limit
+   tutorials/Zbandfit
+
+.. toctree::
+   :caption: Templates
+   :maxdepth: 1
+
+   templates/abouttemplates
+   templates/conversion
+   templates/viewer
+   templates/tsne
+   templates/hardware_analysis
+   templates/estimate_noise_trigger_rate
+   templates/trigger
+   templates/efficiency_simulation
+   templates/stream_analysis
+   templates/full_analysis
 
 .. toctree::
    :caption: Documentation

@@ -10,20 +10,18 @@ from tqdm.auto import tqdm
 
 def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=None):
     """
-    TODO
+    Use the pyplot plot style that is used within the Cait plotting routines.
 
-    :param x_size:
-    :type x_size:
-    :param y_size:
-    :type y_size:
-    :param fontsize:
-    :type fontsize:
-    :param autolayout:
-    :type autolayout:
-    :param dpi:
-    :type dpi:
-    :return:
-    :rtype:
+    :param x_size: The width of the plot in cm.
+    :type x_size: float
+    :param y_size: The height of the plot in cm.
+    :type y_size: float
+    :param fontsize: The font size of the plot.
+    :type fontsize: int
+    :param autolayout: Activate autolayout.
+    :type autolayout: bool
+    :param dpi: The dots per inch for the plot.
+    :type dpi: int
     """
     plt.style.use('seaborn-paper')
     mpl.rcParams['xtick.labelsize'] = fontsize
@@ -46,12 +44,10 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=No
 
 def make_grid(ax=None):
     """
-    TODO
+    Produce the pyplot plot grid that is used within the Cait plotting routines.
 
-    :param ax:
-    :type ax:
-    :return:
-    :rtype:
+    :param ax: A pyplot axis object, optional.
+    :type ax: object
     """
     if ax is None:
         # major grid lines
@@ -69,26 +65,26 @@ def make_grid(ax=None):
 
 def scatter_img(x_data, y_data, height=2800, width=2800, alpha=0.3, xlims=None, ylims=None):
     """
-    TODO
+    Produce a scatter plot to plot as an image with pyplot.imshow.
 
-    TODO add stack link
+    This code is taken from TODO add stack link
 
-    :param x_data:
-    :type x_data:
-    :param y_data:
-    :type y_data:
-    :param height:
-    :type height:
-    :param width:
-    :type width:
-    :param alpha:
-    :type alpha:
-    :param xlims:
-    :type xlims:
-    :param ylims:
-    :type ylims:
-    :return:
-    :rtype:
+    :param x_data: The values for the x axis.
+    :type x_data: 1D array
+    :param y_data: The values for the x axis.
+    :type y_data: 1D array
+    :param height: The number of pixels on the x axis.
+    :type height: int
+    :param width: The number of pixels on the y axis.
+    :type width: int
+    :param alpha: The occupacity of one event inside a pixel, between 0 and 1.
+    :type alpha: float
+    :param xlims: The limits on the x axis.
+    :type xlims: 2-tuple
+    :param ylims: The limits on the y axis.
+    :type ylims: 2-tuple
+    :return: List of the x limits, the y limits and the density values for the image plot.
+    :rtype: list of (2-tuple, 2-tuple, 2D matrix)
     """
     if xlims is None:
         xlims = (x_data.min(), x_data.max())

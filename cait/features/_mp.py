@@ -15,18 +15,28 @@ from ..filter._of import filter_event
 
 class MainParameters():
     """
-    Class to contain the main parameters
+    Class to contain the main parameters.
 
     :param pulse_height: float, the height of the event
+
     :param t_zero: int, the sample index where the rise starts
+
     :param t_rise: int, the sample index where the rise reaches 80%
+
     :param t_max: int, the sample index of the max event
+
     :param t_decaystart: int, the sample index where the peak falls down to 90%
+
     :param t_half: int, the sample index where the peak falls down to 73%
+
     :param t_end: int, the sample index where the peak falls down to 36%
+
     :param offset: float, the mean of the first 1/8 of the record length
+
     :param linear_drift: float, the linear slope of the event baseline
+
     :param quadratic_drift: float, the quadratic slope of the event baseline
+
     """
 
     def __init__(self,
@@ -68,10 +78,12 @@ class MainParameters():
 
     def compare(self, other):
         """
-        Method to compare the main parameters with those of another instance
+        Method to compare the main parameters with those of another instance.
 
         :param other: the other instance of main parameters
+
         :return: bool, states if the main parameters are the same
+
         """
         if self.pulse_height != other.pulse_height:
             return False

@@ -30,25 +30,39 @@ def generate_standard_event(events,
     """
     Calculates the standard event and fits the pulse shape model.
 
-    :param events: 2D array (nmbr_events, record_length), the events to calculate the SEV from
-    :param main_parameters: 2D array (nmbr_events, nmbr_mp=10), the mp of the events
-    :param labels: None or 1D array (nmbr_events), the labels of the events, if set only the correct
-        labels are included in the SEV generation
-    :param correct_label: int, the correct label to calc SEV from, 1==events, 2==testpulses
-    :param pulse_height_interval: None or 2-tuple or list, the interval in which the PH may be to be included
-    :param left_right_cutoff: None or float, the maximal abs(R - L) baseline difference of the event
-    :param rise_time_interval: None or 2-tuple or list, the interval in ms in which the rise time may be to be included
-    :param decay_time_interval: None or 2-tuple or list, the interval in ms in which the decay time may be to be included
-    :param onset_interval: None or 2-tuple or list, the interval in which the onset time in ms may be to be included
-    :param remove_offset: bool, if True the offset of the events is removed before building mean for SEV;
+    :param events: The events to calculate the SEV from.
+    :type events: 2D array of shape (nmbr_events, record_length)
+    :param main_parameters: The main parameters of the events.
+    :type main_parameters: 2D array of shape (nmbr_events, nmbr_mp=10)
+    :param labels: The labels of the events, if set only the correct labels are included in the SEV generation.
+    :type labels: None or 1D array of shape (nmbr_events)
+    :param correct_label: The correct label to calc SEV from, 1==events, 2==testpulses.
+    :type correct_label: int
+    :param pulse_height_interval: The interval in which the PH may be to be included.
+    :type pulse_height_interval: None or 2-tuple or list
+    :param left_right_cutoff: The maximal abs(R - L) baseline difference of the event.
+    :type left_right_cutoff: None or float
+    :param rise_time_interval: The interval in ms in which the rise time may be to be included.
+    :type rise_time_interval: None or 2-tuple or list
+    :param decay_time_interval: The interval in ms in which the decay time may be to be included.
+    :type decay_time_interval: None or 2-tuple or list
+    :param onset_interval: The interval in which the onset time in ms may be to be included.
+    :type onset_interval: None or 2-tuple or list
+    :param remove_offset: If True the offset of the events is removed before building mean for SEV;
         highly recommended!
-    :param verb: bool, if True verbal feedback about the progress of the program is provided
-    :param scale_fit_height: bool, if True the fitpar of the sev are scaled to height 1 after the fit
-    :param sample_length: float, the length of one sample in milliseconds --> needed for the fit!
-    :param t0_start: float, the start value for t0
-    :param opt_start: bool, if activated the starting values are searched with a differential evolution algorithm
-    :return: tuple of (sev, fitpar): sev is 1D array with len=record_length ... the calculated sev,
-        fitpar is 1D array with len=parameters of fit (i think 6) ... the fit parameters
+    :type remove_offset: bool
+    :param verb: If True verbal feedback about the progress of the program is provided.
+    :type verb: bool
+    :param scale_fit_height: If True the fitpar of the sev are scaled to height 1 after the fit.
+    :type scale_fit_height: bool
+    :param sample_length: The length of one sample in milliseconds --> needed for the fit!
+    :type sample_length: float
+    :param t0_start: The start value for t0.
+    :type t0_start: float
+    :param opt_start: If activated the starting values are searched with a differential evolution algorithm.
+    :type opt_start: bool
+    :return: The calculated sev, the fit parameters.
+    :rtype: tuple of two 1D arrays with shape (record_length, nmbr_fitpar)
     """
     if verb:
         print('{} Events handed.'.format(len(main_parameters)))

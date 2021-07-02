@@ -1,53 +1,78 @@
 # imports
 
 import numpy as np
+import numba as nb
 
 
 # functions
 
-def logistic_curve(x, max, slope):
+@nb.njit
+def logistic_curve(x, A, K, C, Q, B, nu):
     """
     Returns the evaluated logistics curve at x.
 
-    :param x: the x value or grid
+    :param x: The x value or grid.
     :type x: scalar or 1D numpy array
-    :param max: the upper limit of the log curve
-    :type max: float
-    :param slope: the factor is multiplied to x
-    :type slope: float
-    :return: the evaluated log curve at x
+    :param A: A parameter of the generalized logistics curve.
+    :type A: float
+    :param K: A parameter of the generalized logistics curve.
+    :type K: float
+    :param C: A parameter of the generalized logistics curve.
+    :type C: float
+    :param Q: A parameter of the generalized logistics curve.
+    :type Q: float
+    :param B: A parameter of the generalized logistics curve.
+    :type B: float
+    :param nu: A parameter of the generalized logistics curve.
+    :type nu: float
+    :return: The evaluated log curve at x.
     :rtype: scalar or 1D numpy array
     """
-    return max * (1 / (1 + np.exp(-slope * x)) - 0.5)
+    return A + (K - A) / (C + Q * np.exp(-B * x)) ** (1 / nu)
 
-
-# derivative at 0 is k*l*np.exp(k*x0)/(1+np.exp(k*x0))**2
-
-def scaled_logistic_curve(x, max, slope):
+@nb.njit
+def scaled_logistic_curve(x, A, K, C, Q, B, nu):
     """
     Logistics Curve scaled to max derivative 1, evaluated at x.
 
-    :param x: the x value or grid
+    :param x: The x value or grid.
     :type x: scalar or 1D numpy array
-    :param max: the upper limit of the log curve
-    :type max: float
-    :param slope: the factor is multiplied to x
-    :type slope: float
-    :return: the evaluated scaled log curve at x
+    :param A: A parameter of the generalized logistics curve.
+    :type A: float
+    :param K: A parameter of the generalized logistics curve.
+    :type K: float
+    :param C: A parameter of the generalized logistics curve.
+    :type C: float
+    :param Q: A parameter of the generalized logistics curve.
+    :type Q: float
+    :param B: A parameter of the generalized logistics curve.
+    :type B: float
+    :param nu: A parameter of the generalized logistics curve.
+    :type nu: float
+    :return: The evaluated scaled log curve at x.
     :rtype: scalar or 1D numpy array
     """
-    return logistic_curve(x / scale_factor(max, slope), max, slope)
+    return logistic_curve(x / scale_factor(A, K, C, Q, B, nu), A, K, C, Q, B, nu)
 
-
-def scale_factor(max, slope):
+@nb.njit
+def scale_factor(A, K, C, Q, B, nu):
     """
-    "Returns the slope of the logistics curve at x=0."
+    Returns the slope of the logistics curve at x=0.
 
-    :param max: the upper limit of the log curve
-    :type max: float
-    :param slope: the factor is multiplied to x
-    :type slope: float
-    :return: the slope of the log curve at x=0
+    :param A: A parameter of the generalized logistics curve.
+    :type A: float
+    :param K: A parameter of the generalized logistics curve.
+    :type K: float
+    :param C: A parameter of the generalized logistics curve.
+    :type C: float
+    :param Q: A parameter of the generalized logistics curve.
+    :type Q: float
+    :param B: A parameter of the generalized logistics curve.
+    :type B: float
+    :param nu: A parameter of the generalized logistics curve.
+    :type nu: float
+    :return: The slope of the log curve at x=0.
     :rtype: float
     """
-    return 0.25 * slope * max
+    # (B * Q * (K - A) * np.exp(-B * x) * (Q * np.exp(-B * x) + C)**(-1/nu - 1))/nu ... at x = 0
+    return (B * Q * (K - A) * (Q + C)**(-1/nu - 1))/nu

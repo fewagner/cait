@@ -18,6 +18,7 @@ from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
 import warnings
 
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -92,7 +93,8 @@ class FitMixin(object):
     # apply sev fit
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
-                      verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False):
+                      verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
+                      use_saturation=False):
         """
         Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
         The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
@@ -141,13 +143,16 @@ class FitMixin(object):
 
         # open the dataset
         with h5py.File(self.path_h5, 'r+') as f:
+            assert not use_saturation or 'saturation' in f, 'For using the saturation you need to calculate ' \
+                                                            'the saturation curve first!'
+
             events = f[type]['event']
             sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
             # get start values for t0
             if 'mainpar' in f[type]:
-                t0_start = (np.array(f[type]['mainpar'][:, :, 1]) - self.record_length/4)/self.sample_frequency
+                t0_start = (np.array(f[type]['mainpar'][:, :, 1]) - self.record_length / 4) / self.sample_frequency
             else:
                 t0_start = [-3 for i in range(events.shape[1])]
                 warnings.warn('No main parameters calculated. With main parameters, the fit will work much better!')
@@ -156,21 +161,31 @@ class FitMixin(object):
             par = np.zeros([self.nmbr_channels, events.shape[1], int(order_bl_polynomial + 3)])
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
-                        if verb:
-                            print('Fitting channel {}.'.format(c))
-                        # create instance of fit model
-                        fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds,
-                                                     truncation_level=truncation_level[c],
-                                                     interval_restriction_factor=interval_restriction_factor)
+                    if verb:
+                        print('Fitting channel {}.'.format(c))
 
-                        # fit all
-                        with Pool(processes) as p:
-                            if first_channel_dominant and c != 0:
-                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], par[0, :, 1], t0_start[c])),
-                                                        total=events.shape[1]))
-                            else:
-                                par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic, zip(events[c], [None for i in range(events.shape[1])], t0_start[c])),
-                                                        total=events.shape[1]))
+                    if use_saturation:
+                        saturation_pars = f['saturation']['fitpar'][c]
+                    else:
+                        saturation_pars = None
+
+                        # create instance of fit model
+                    fit_model = sev_fit_template(pm_par=sev_par[c], t=t, down=down, t0_bounds=t0_bounds,
+                                                 truncation_level=truncation_level[c],
+                                                 interval_restriction_factor=interval_restriction_factor,
+                                                 saturation_pars=saturation_pars)
+
+                    # fit all
+                    with Pool(processes) as p:
+                        if first_channel_dominant and c != 0:
+                            par[c, ...] = list(
+                                tqdm(p.imap(fit_model.fit_cubic, zip(events[c], par[0, :, 1], t0_start[c])),
+                                     total=events.shape[1]))
+                        else:
+                            par[c, ...] = list(tqdm(p.imap(fit_model.fit_cubic,
+                                                           zip(events[c], [None for i in range(events.shape[1])],
+                                                               t0_start[c])),
+                                                    total=events.shape[1]))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='sev_fit_par{}'.format(name_appendix),
@@ -266,12 +281,19 @@ class FitMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             if only_idx is None:
-                only_idx = list(range(len(h5f['testpulses']['testpulseamplitude'])))
+                only_idx = np.arange(h5f['testpulses']['testpulseamplitude'].shape[0])
+
+            tphs = h5f['testpulses']['mainpar'][channel, only_idx, 0]
+            tpas = h5f['testpulses']['testpulseamplitude'][only_idx]
 
             par, _ = curve_fit(logistic_curve,
-                               xdata=h5f['testpulses']['testpulseamplitude'][only_idx],
-                               ydata=h5f['testpulses']['mainpar'][channel, only_idx, 0],
-                               bounds=(0, [np.inf, np.inf, ]))
+                               xdata=tpas,
+                               ydata=tphs,
+                               # A K C Q B nu
+                               bounds=([-np.inf, 0, 0, 0, 0, 0],
+                                       [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]))
+
+            print('Saturation calculated: A {} K {} C {} Q {} B {} nu {}'.format(*par))
 
             sat = h5f.require_group('saturation')
             sat.require_dataset(name='fitpar',
@@ -279,7 +301,12 @@ class FitMixin(object):
                                 dtype=np.float)
             sat['fitpar'][channel, ...] = par
 
-        print('Saturation saved.')
+            sat['fitpar'].attrs.create(name='A', data=0)
+            sat['fitpar'].attrs.create(name='K', data=1)
+            sat['fitpar'].attrs.create(name='C', data=2)
+            sat['fitpar'].attrs.create(name='Q', data=3)
+            sat['fitpar'].attrs.create(name='B', data=4)
+            sat['fitpar'].attrs.create(name='nu', data=5)
 
     def estimate_trigger_threshold(self,
                                    channel,
@@ -365,7 +392,7 @@ class FitMixin(object):
         """
 
         if sample_length is None:
-            sample_length = 1/self.sample_frequency
+            sample_length = 1 / self.sample_frequency
 
         if record_length is None:
             record_length = self.record_length

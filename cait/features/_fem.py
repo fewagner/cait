@@ -12,26 +12,34 @@ import matplotlib.pyplot as plt
 
 def interpol(x, b, a, yb, ya):
     """
-    Return a the value of a linear interpolation between (ya,yb) in the interval (a,b) at position x
+    Return a the value of a linear interpolation between (ya,yb) in the interval (a,b) at position x.
 
-    :param x: float, the position where we evaluate the interpolation
-    :param b: float, the upper limit of the interpolation interval
-    :param a: float, the lower limit of the interpolation interval
-    :param yb: float, the value at the upper limit of the interpolation interval
-    :param ya: float, the value at the lower limit of the interpolation interval
-    :return: float, the interpolated value
+    :param x: The position where we evaluate the interpolation.
+    :type x: float
+    :param b: The upper limit of the interpolation interval.
+    :type b: float
+    :param a: The lower limit of the interpolation interval.
+    :type a: float
+    :param yb: The value at the upper limit of the interpolation interval.
+    :type yb: float
+    :param ya: The value at the lower limit of the interpolation interval.
+    :type ya: float
+    :return: The interpolated value.
+    :rtype: float
     """
     return (yb - ya) / (b - a) * (x - a) + ya
 
 
 def plot_S1(this_event, elements, color='r', xlim=None, offset=0):
     """
-    Plot the function projected to S1 elements, i.e. piecewise affine
+    Plot the function projected to S1 elements, i.e. piecewise affine.
 
-    :param this_event: 1D array, the event that we project on S1
-    :param elements: List of 2-tuples or lists, the elements of the grid
-    :param color: string, the color in which we plot the refinement
-    :return: -
+    :param this_event: The event that we project on S1.
+    :type this_event: 1D array
+    :param elements: The elements of the grid.
+    :type elements: List of 2-tuples or lists
+    :param color: The color in which we plot the refinement.
+    :param color: string
     """
     x_val = [el[0] for el in elements]
     y_val = [this_event[el[0]] for el in elements]
@@ -50,11 +58,14 @@ def plot_S1(this_event, elements, color='r', xlim=None, offset=0):
 
 def refine(elements, to_refine):
     """
-    Refines a given grid
+    Refines a given grid.
 
-    :param elements: List of 2-tuples or lists, the current elements of the grid
-    :param to_refine: List of bools, same length as elements, flags all elements that are to refine
-    :return: List of 2-tuples or lists, the elements of the refined grid
+    :param elements: The current elements of the grid.
+    :param elements: List of 2-tuples or lists
+    :param to_refine: Same length as elements, flags all elements that are to refine.
+    :type to_refine: List of bools
+    :return: The elements of the refined grid.
+    :rtype: List of 2-tuples or lists
     """
     new_elements = []
 
@@ -71,11 +82,14 @@ def refine(elements, to_refine):
 
 def calc_stds(this_event, elements):
     """
-    Calculate the standard deviations of the event from the S1 projection to the elements
+    Calculate the standard deviations of the event from the S1 projection to the elements.
 
-    :param this_event: 1D array, the event
-    :param elements: list of 2-tuples or lists, the elements
-    :return: 1D array, the standard deviations for all the elements
+    :param this_event: The event.
+    :type this_event: 1D array
+    :param elements: The elements.
+    :param elements: list of 2-tuples or lists
+    :return: The standard deviations for all the elements.
+    :return: 1D array
     """
     stds = []
 
@@ -95,12 +109,16 @@ def calc_stds(this_event, elements):
 def get_elements(this_event, std_thres, verb=False):
     """
     Calculate the projection to S1 with algorithm for automatic refinement, depending on
-    given standard deviation threshold
+    given standard deviation threshold.
 
-    :param this_event: 1D array, the event to project on S1
-    :param std_thres: float, the threshold for the standard deviation of the deviation proj-true
-    :param verb: bool, if true give verbal feedback about the progress
-    :return: list of 2-tuples of lists, the elements of the grid of the S1 projection
+    :param this_event: The event to project on S1.
+    :param this_event: 1D array
+    :param std_thres: The threshold for the standard deviation of the deviation proj-true.
+    :param std_thres: float
+    :param verb: If true give verbal feedback about the progress.
+    :param verb: bool
+    :return: The elements of the grid of the S1 projection.
+    :return: list of 2-tuples of lists
     """
     event_length = len(this_event)
 

@@ -3,9 +3,10 @@ import numpy as np
 
 def make_features(X):
     """
-    Takes a list of chosen features and attaches them to one another
+    Takes a list of chosen features and attaches them to one another.
 
-    :param X: list of arrays of same length
+    :param X: The features we want to attach to each other.
+    :type X: list of arrays of same length
     """
     for i, x in enumerate(X):
         # want to convert 1D arrays to shape (n,1)

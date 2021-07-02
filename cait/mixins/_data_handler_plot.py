@@ -1005,7 +1005,7 @@ class PlotMixin(object):
                         marker=marker, s=s, label='TPA vs PH', zorder=10, alpha=alpha)
             if show_fit:
                 fitpar = f_h5['saturation']['fitpar'][channel]
-                plt.plot(x, logistic_curve(x, *fitpar),
+                plt.plot(x, logistic_curve(x, *fitpar), color='red', alpha=0.5,
                          label='Fitted Log Curve', zorder=10)
             make_grid()
             plt.xlabel('Test Pulse Amplitude (V)')

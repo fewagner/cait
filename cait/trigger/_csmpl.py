@@ -85,7 +85,7 @@ def get_max_index(stream,  # memmap array
                   block,  # in samples
                   transfer_function,  # if use down, this must already be downsampled
                   down=1,
-                  window=False,
+                  window=True,
                   ):
     """
     Filter a record window from the stream array and return the maximum and maximum position.
@@ -154,7 +154,7 @@ def trigger_csmpl(paths,
                   trigger_block=16384,
                   return_info=False,
                   down=1,
-                  window=False,
+                  window=True,
                   ):
     """
     Trigger a number of CSMPL file of one channel and return the time stamps of all triggers.

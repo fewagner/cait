@@ -13,11 +13,11 @@ def simulate_events(path_h5,
                     size,
                     record_length,
                     nmbr_channels,
-                    ph_intervals=[[0, 1], [0, 1]],
+                    ph_intervals=[(0, 1), (0, 1)],
                     discrete_ph=None,
                     exceptional_sev_naming=None,
                     channels_exceptional_sev=[0],
-                    t0_interval=[-20, 20],  # in ms
+                    t0_interval=(-20, 20),  # in ms
                     fake_noise=True,
                     use_bl_from_idx=0,
                     rms_thresholds=[1, 1],
@@ -27,39 +27,60 @@ def simulate_events(path_h5,
                     reuse_bl=False,
                     ps_dev=False):
     """
-    Simulates pulses on a noise baseline. Options are to take measured noise baselines
+    Simulates pulses on a noise baseline.
+
+    Options are to take measured noise baselines
     or fake bl, sev of events or testpulses, pulse heights, onset intervals.
 
-    :param path_h5: string, path of the dataset on which the sim is based on
-    :param type: string, either events, testpulses or noise - what type
-        of event is simulated; if testpulses the other channels than the first will beignored for the PHs
-    :param size: integer > 0, size of the simulated dataset, if fake_noise is False it
-        must be smaller than the number of noise baselines in the hdf5 file
-    :param record_length: integer, length of the record window in the hdf5 datset
-    :param nmbr_channels: integer, the number of channels in the hdf5 dataset
-    :param ph_intervals: list of c intervals for the simulated pulse heights,
-        with c the nmbr_channels; the heights are samples uniformly from these intervals
+    :param path_h5: Path of the dataset on which the sim is based on.
+    :type path_h5: string
+    :param type: Either events, testpulses or noise - what type
+        of event is simulated; if testpulses the other channels than the first will beignored for the PHs.
+    :type type: string
+    :param size: Size of the simulated dataset, if fake_noise is False it
+        must be smaller than the number of noise baselines in the hdf5 file.
+    :type size: integer > 0
+    :param record_length: Length of the record window in the hdf5 datset.
+    :type record_length: integer
+    :param nmbr_channels: The number of channels in the hdf5 dataset.
+    :type nmbr_channels: integer
+    :param ph_intervals: Intervals for the simulated pulse heights,
+        with c the nmbr_channels; the heights are samples uniformly from these intervals.
+    :type ph_intervals: list of c intervals
     :param discrete_ph: c Lists of values for the pulse heights for the c channels
-        or None for ph intervals; the heights are sampled uniformly for the list
-    :param exceptional_sev_naming: string or None, if set, this is full group name in the HDF5 set for the
+        or None for ph intervals; the heights are sampled uniformly for the list.
+    :type discrete_ph: list of intervals
+    :param exceptional_sev_naming: If set, this is full group name in the HDF5 set for the
         sev used for the simulation of events - by setting this, e.g. carrier events can be
-        simulated
-    :param channel_exceptional_sev: list of ints, the channels for that the exceptional sev is
-        used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1]
-    :param t0_interval: Interval (l,u) with l lower bound for onset and u upper bound;
-        the onsets are sampled uniformly from the interval; in ms;
-    :param fake_noise: bool, if true use simulated noise baselines, otherwise measured ones
-    :param use_bl_from_idx: the start index of the baselines that are used
-    :param rms_threshold: float, above which value noise baselines are excluded for the
+        simulated.
+    :type exceptional_sev_naming: string
+    :param channel_exceptional_sev: The channels for that the exceptional sev is
+        used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1].
+    :type channel_exceptional_sev: list of ints
+    :param t0_interval: Interval (l,u) with l lower bound for onset and u upper bound.
+        The onsets are sampled uniformly from the interval. In ms.
+    :type t0_interval: tuple
+    :param fake_noise: If true use simulated noise baselines, otherwise measured ones.
+    :type fake_noise: bool
+    :param use_bl_from_idx: The start index of the baselines that are used.
+    :type use_bl_from_idx: int
+    :param rms_threshold: Above which value noise baselines are excluded for the
         distribution of polynomial coefficients; also, a cut value for the baselines if not the
-        fake ones but the ones from the h5 set are taken
-    :param lamb: float, the parameter for the bl simulation method
-    :param sample_length: float, the length in ms of one sample from an event
-    :param saturation: bool, if True the logistic curve is applied to the pulses
-    :param reuse_bl: bool, if True the same baselines are used multiple times to have enough of them
-        (use this with care to not have identical copies of events)
-    :param ps_dev: bool, if True the pulse shape parameters are modelled with deviations
-    :return: (3D array of size (nmbr channels, size, record_length), the simulated events,
+        fake ones but the ones from the h5 set are taken.
+    :type rms_threshold: float
+    :param lamb: The parameter for the bl simulation method.
+    :type lamb: float
+    :param sample_length: The length in ms of one sample from an event.
+    :type sample_length: float
+    :param saturation: If True the logistic curve is applied to the pulses.
+    :type saturation: bool
+    :param reuse_bl: If True the same baselines are used multiple times to have enough of them
+        (use this with care to not have identical copies of events).
+    :type reuse_bl: bool
+    :param ps_dev: If True the pulse shape parameters are modelled with deviations.
+    :type ps_dev: bool
+    :return: The simulated events,  the true pulse heights, the onsets of the events.
+    :rtype: (3D array of size (nmbr channels, size, record_length), the simulated events,
                 2D array of size (nmbr channels, size), the true pulse heights,
                 1D array (size), the onsets of the events)
     """
