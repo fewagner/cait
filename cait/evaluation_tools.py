@@ -24,6 +24,18 @@ from .styles._plt_styles import use_cait_style, make_grid
 
 from .features._mp import *
 
+
+
+
+import json
+import dash
+import dash_core_components as dcc
+import dash_html_components as html
+from dash.dependencies import Input, Output
+import plotly.express as px
+from plotly.subplots import make_subplots
+import pandas as pd
+
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -32,45 +44,42 @@ from .features._mp import *
 class EvaluationTools:
     """
     The Class EvaluationTools provides a easier way to handle the data.
-
     Especially for hdf5-files as widely used in this library.
     Besides that it also provides a easy way to organize predictions as well
     as visualize the results via confusion matrix and TSNE or PCA plots to depict high dimensional data.
     How it is used is best seen in the tutorial 'Machine Learning-based Event Selection'.
     """
 
-    def __init__(self):
+    save_plot_dir = './'
+    save_as = False
 
-        self.save_plot_dir = './'
-        self.save_as = False
+    event_nbrs = None  # numeration of all events
 
-        self.event_nbrs = None  # numeration of all events
+    data = None  # can contain part of mainpar or events
+    features = None  # normalized 'data'
 
-        self.data = None  # can contain part of mainpar or events
-        self.features = None  # normalized 'data'
+    events = None  # 'events/event' from hdf5 file
+    mainpar = None  # 'events/mainpar' from hdf5 file
+    mainpar_labels = None  # 'events/mainpar'.attrs from hdf5 file
 
-        self.events = None  # 'events/event' from hdf5 file
-        self.mainpar = None  # 'events/mainpar' from hdf5 file
-        self.mainpar_labels = None  # 'events/mainpar'.attrs from hdf5 file
+    pl_channel = None
+    files = None
+    file_nbrs = None
+    events_per_file = None
 
-        self.pl_channel = None
-        self.files = None
-        self.file_nbrs = None
-        self.events_per_file = None
+    label_nbrs = None
+    labels = None
+    labels_color_map = None
 
-        self.label_nbrs = None
-        self.labels = None
-        self.labels_color_map = None
+    test_size = 0.50
+    is_train_valid = False
+    is_train = None
+    predictions = None
+    perdiction_true_labels = None
 
-        self.test_size = 0.50
-        self.is_train_valid = False
-        self.is_train = None
-        self.predictions = None
-        self.perdiction_true_labels = None
+    color_order = mpl_default_colors
 
-        self.color_order = mpl_default_colors
-
-        self.scaler = StandardScaler()
+    scaler = StandardScaler()
 
     # ################### PRIVATE ###################
 
@@ -262,13 +271,13 @@ class EvaluationTools:
 
             if (type(which_data) is str) and (which_data == 'mainpar'):
                 self.__add_data(
-                    np.delete(ds['events']['mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
+                    np.delete(ds['events/mainpar'][channel, use_idx, :], ds['events/mainpar'].attrs['offset'], axis=1))
             if (type(which_data) is str) and (which_data == 'add_mainpar'):
                 self.__add_data(
-                    np.copy(ds['events']['add_mainpar'][channel, use_idx, :]))
+                    np.copy(ds['events/add_mainpar'][channel, use_idx, :]))
             elif (type(which_data) is str) and (which_data == 'timeseries'):
                 self.__add_data(
-                    np.copy(ds['events']['event'][channel, use_idx, :]))
+                    np.copy(ds['events/event'][channel, use_idx, :]))
             # elif which_data is None:
             # self.__add_data(np.array([]))
             # do nothing
@@ -304,7 +313,7 @@ class EvaluationTools:
 
             # if there are no labels, add the events all as unlabeled
             else:
-                self.__add_label_nbrs([0] * nbr_events_added)
+                self.__add_label_nbrs(['unlabeled'] * nbr_events_added)
                 self.__add_labels([('unlabeled', 0)])
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "In the provided hdf5 file are no label_nbrs available and therefore are set to 'unlabeled'.")
@@ -941,27 +950,6 @@ class EvaluationTools:
     # ################### PLOT ###################
 
     def plot_event(self, index, what='all', plot_mainpar=False, text=None, verb=False):
-        """
-        Plots a single event specified by the index from all available events.
-        It is also used for the interactiv plot functions, called 'plt_pred_with_tsne' and 'plt_pred_with_pca'.
-        If the parameter plot_mainpar is set to True some main parameters are added to the plot. 
-
-        :param verb: enables addiational output which can be usefull for debugging, defaults to False
-        :type verb: bool, optional
-        :return: tuple of size 6, where every entry in this tuple is an array
-        :rtype: tuple
-
-        :param index: index of event to be plotted from the list of events
-        :type index: integer
-        :param what: usually the index from 'all' (default) is used, but for special cases it might be needed to use the index of all events of the 'test' or 'train' set
-        :type what: str, optional
-        :param plot_mainpar: adds some of the main parameters to the plot; by default this parameter is False
-        :type plot_mainpar: bool, optional
-        :param text: defines the title of the plot; if set to None (default) no title is added 
-        :type text: str, optional
-        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
-        :type verb: bool, optional
-        """
 
         if verb:
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
@@ -1010,15 +998,15 @@ class EvaluationTools:
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    Required                  : prediction method should be used
-        :param what:            Required                  : which data is plotted
-        :param plt_labels:      Optional, default True    : adds subplot with labels.
-        :param figsize:         Optional, default None    : sets figure size of plot.
-        :param perplexity:      Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          Optional, default None    : Random seed for numpy random.
-        :param dot_size:        Optional, default 5       : Size of the point in the scatter plot.
-        :param verb:            Optional, default False   : additional output is printed
+        :param pred_methods:    - Required                  : prediction method should be used
+        :param what:        - Required                  : which data is plotted
+        :param plt_labels:      - Optional, default True    : adds subplot with labels.
+        :param figsize:         - Optional, default None    : sets figure size of plot.
+        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          - Optional, default None    : Random seed for numpy random.
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
+        :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
@@ -1281,16 +1269,16 @@ class EvaluationTools:
         Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    Required                  : prediction method should be used
-        :param xy_comp:         Optional, default (1,2)   : select with pc's are used for x and y axis
-        :param what:            Optional, default 'all'   : which data is plotted
-        :param plt_labels:      Optional, default True    : adds subplot with labels.
-        :param figsize:         Optional, default None    : sets figure size of plot.
-        :param perplexity:      Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          Optional, default None    : Random seed for numpy random.
-        :param dot_size:        Optional, default 5       : Size of the point in the scatter plot.
-        :param verb:            Optional, default False   : additional output is printed
+        :param pred_methods:    - Required                  : prediction method should be used
+        :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
+        :param what:            - Optional, default 'all'   : which data is plotted
+        :param plt_labels:      - Optional, default True    : adds subplot with labels.
+        :param figsize:         - Optional, default None    : sets figure size of plot.
+        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          - Optional, default None    : Random seed for numpy random.
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
+        :param verb:            - Optional, default False   : additional output is printed
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
@@ -1399,7 +1387,7 @@ class EvaluationTools:
                             self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
                             text=text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
-                                                             self.get_label_nbrs(what, verb=verb)[id])
+                                                           self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(what, verb=verb)[id],
@@ -1563,11 +1551,11 @@ class EvaluationTools:
         Plots a histogram for all labels of the pulse hights in different
         subplots.
 
-        :param ncols:       optional, default 2 : number of plots side by side.
-        :param extend_plot: optional, default False : sets the x axis of all histograms to the same limits.
-        :param figsize:     optional, default None : changes the overall figure size.
-        :param bins:        optional, default auto : bins for the histograms.
-        :param verb:        optional, default False : ouputs additional information.
+        :param ncols:       - optional, default 2 : number of plots side by side.
+        :param extend_plot: - optional, default False : sets the x axis of all histograms to the same limits.
+        :param figsize:     - optional, default None : changes the overall figure size.
+        :param bins:        - optional, default auto : bins for the histograms.
+        :param verb:        - optional, default False : ouputs additional information.
         """
         max_height=self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
@@ -1623,9 +1611,9 @@ class EvaluationTools:
         Plots a histogram for all event pulses and strongly saturated event pulses
         in a single plot.
 
-        :param figsize:         optional, default None : changes the overall figure size.
-        :param bins:            optional, default auto : bins for the histograms.
-        :param ylog:            optional, default False : if True the y axis is in log scale.
+        :param figsize:         - optional, default None : changes the overall figure size.
+        :param bins:            - optional, default auto : bins for the histograms.
+        :param ylog:            - optional, default False : if True the y axis is in log scale.
         """
 
         plt.close()
@@ -1688,13 +1676,13 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for every label.
 
-        :param pred_method:     Required : Name of the predictions method.
-        :param what:            Optional, default all : test or train data or all.
-        :param bin_size:        Optional, default 4 : bin size for calculating the average.
-        :param ncols:           Optional, default 2 : number of plots side by side.
-        :param figsize:         Optional, default None : Size of the figure for matplotlib.
-        :param extend_plot:     Optional, default False : if True x limits is set to the same for all subplots.
-        :param verb:            Optional, default False : if True additional information is printed on the console.
+        :param pred_method:     - Required : Name of the predictions method.
+        :param what:            - Optional, default all : test or train data or all.
+        :param bin_size:        - Optional, default 4 : bin size for calculating the average.
+        :param ncols:           - Optional, default 2 : number of plots side by side.
+        :param figsize:         - Optional, default None : Size of the figure for matplotlib.
+        :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
+        :param verb:            - Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -1804,13 +1792,13 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for events.
 
-        :param pred_method: Required : Name of the predictions method.
-        :param what:        Optional, default all : test or train data or all.
-        :param bin_size:    Optional, default 4 : bin size for calculating the average.
-        :param ncols:       Optional, default 2 : number of plots side by side.
-        :param extend_plot: Optional, default False : if True x limits is set to the same for all subplots.
-        :param figsize:     optional, default None : changes the overall figure size.
-        :param verb:        Optional, default False : if True additional information is printed on the console.
+        :param pred_method: - Required : Name of the predictions method.
+        :param what:        - Optional, default all : test or train data or all.
+        :param bin_size:    - Optional, default 4 : bin size for calculating the average.
+        :param ncols:       - Optional, default 2 : number of plots side by side.
+        :param extend_plot: - Optional, default False : if True x limits is set to the same for all subplots.
+        :param figsize:     - optional, default None : changes the overall figure size.
+        :param verb:        - Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -1916,12 +1904,12 @@ class EvaluationTools:
         When clicking on a matrix element the event number and from which file
         is printed out in the console
 
-        :param pred_method:          Required : Name of the predictions method.
-        :param what:                 Optional, default all : test or train data or all.
-        :param rotation_xticklabels: Optional, default 0 : lets you rotate the x tick labels.
-        :param force_xlabelnbr:      Optional, default False : uses the number instead of the labels for better readability.
-        :param figsize:              optional, default None : changes the overall figure size.
-        :param verb:                 Optional, default False : if True additional information is printed on the console.
+        :param pred_method:          - Required : Name of the predictions method.
+        :param what:                 - Optional, default all : test or train data or all.
+        :param rotation_xticklabels: - Optional, default 0 : lets you rotate the x tick labels.
+        :param force_xlabelnbr:      - Optional, default False : uses the number instead of the labels for better readability.
+        :param figsize:              - optional, default None : changes the overall figure size.
+        :param verb:                 - Optional, default False : if True additional information is printed on the console.
         """
 
         plt.close()
@@ -2085,7 +2073,7 @@ class EvaluationTools:
         Uses a bar graph to visualize how often a label occures in the
         dataset
 
-        :param figsize: optional, default None : changes the overall figure size.
+        :param figsize: - optional, default None : changes the overall figure size.
         """
 
         plt.close()
@@ -2136,3 +2124,301 @@ class EvaluationTools:
         else:
             plt.show()
         plt.close()
+
+
+    def plt_pred_with_tsne_plotly(self, pred_methods, what='all', plt_labels=True,
+                           figsize=None, perplexity=30, as_cols=False, rdseed=None,
+                           dot_size=5, verb=False):
+        """
+        Plots data with TSNE when given a one or a list of predictions method
+        to compare different labels.
+
+        :param pred_methods:    - Required                  : prediction method should be used
+        :param what:        - Required                  : which data is plotted
+        :param plt_labels:      - Optional, default True    : adds subplot with labels.
+        :param figsize:         - Optional, default None    : sets figure size of plot.
+        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
+        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
+        :param rdseed:          - Optional, default None    : Random seed for numpy random.
+        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
+        :param verb:            - Optional, default False   : additional output is printed
+        """
+
+        if type(rdseed) == int:
+            np.random.seed(seed=rdseed)  # fixing random seed
+        elif rdseed is not None:
+            raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
+                 "Seed has to be of type int.")
+
+
+        if type(dot_size) != int:
+            dot_size=5
+            print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                  "Value of 'dot_size' has to be of type int. It is set to 5.")
+
+        if type(pred_methods) is not list and type(pred_methods) is not str:
+            if verb:
+                print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                      "'pred_methods' has to of type list or string.")
+
+        if type(pred_methods) is str:
+            pred_methods=[pred_methods]
+
+        for m in pred_methods:
+            if m not in self.predictions.keys():
+                raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
+                                 "Prediction method {} is not in the predictions dictionary.\n".format(m) +
+                                 "Valid options are: {}".format(self.predictions.keys()))
+
+        nrows=len(pred_methods)
+        ncols=1
+        subtitles=[''] * nrows
+
+        if plt_labels:
+            subtitles=['Labels'] + pred_methods
+            nrows=nrows + 1  # take the true labels into account
+
+        # switch rows and cols
+        if as_cols:
+            temp=nrows
+            nrows=ncols
+            ncols=temp
+
+        if what not in ['all', 'test', 'train']:
+            what='all'
+            if verb:
+                print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
+                      "If the value of 'what' is not 'train' or 'test' then all are shown.")
+
+
+        # -------- PLOT --------
+        # TSNE
+        princcomp=TSNE(n_components=2, perplexity=perplexity).fit_transform(
+            self.get_features(what, verb=verb))
+
+
+        external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+        app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+        styles = {
+            'pre': {
+                'border': 'thin lightgrey solid',
+                'overflowX': 'scroll'
+            }
+        }
+
+
+        labels = [self.labels[i] for i in self.get_label_nbrs(what, verb=verb)]
+        df = pd.DataFrame({
+            "x": princcomp[:, 0],
+            "y": princcomp[:, 1],
+            "label_nbrs": self.get_label_nbrs(what=what, verb=verb),
+            "labels": labels,
+            "color": self.get_label_nbrs(what=what, verb=verb).astype(str)
+        })
+
+        fig = px.scatter(df,
+                         x="x",
+                         y="y",
+                         color="color",
+                         hover_name="labels"
+                         # custom_data=["labels"]
+                        )
+        # fig.update_layout(clickmode='event+select')
+
+        # fig.update_traces(marker_size=20)
+
+        app.layout = html.Div([
+            html.Div([
+                dcc.Graph(
+                    id='labled-graph',
+                    figure=fig
+                ),
+                html.Div([
+                    dcc.Dropdown(
+                        id='pred_meth-dropdown',
+                        options=[{'label': i, 'value': i} for i in pred_methods],
+                        value='Prediction method'
+                    ),
+                ]),
+                html.Div([
+                    dcc.Graph(
+                        id='pred_meth-graph'
+                    ),
+                ]),
+            ], style={'width': '49%', 'display': 'inline-block'}),
+
+            html.Div(className='row', children=[
+                html.Div([
+                    dcc.Markdown("""
+                        **Click Data**
+
+                        Click on points in the graph.
+                    """),
+                    html.Pre(id='click-data', style=styles['pre']),
+                    html.Div(id='textarea-click-data', style={'whiteSpace': 'pre-line'}),
+                ], className='three columns', style={'width': '100%'}),
+                html.Div([
+                    dcc.Graph(id='clicked-event'),
+                ], className='three columns', style={'width': '100%'}),
+            ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'})
+        ])
+
+        @app.callback(
+            Output('textarea-click-data', 'children'),
+            Input('labled-graph', 'clickData'))
+        def display_click_data(clickData):
+            return "{}".format(clickData['points'][0]['pointIndex'])
+
+        @app.callback(
+            Output('click-data', 'children'),
+            Input('labled-graph', 'clickData'))
+        def display_click_data(clickData):
+            return json.dumps(clickData, indent=2)
+
+        @app.callback(
+            Output('clicked-event', 'figure'),
+            Input('labled-graph', 'clickData'))
+        def display_click_data(clickData):
+            index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
+            event=self.get_events(what)[index]
+            # dff = self.get_events(what)[clickData['points']['pointIndex']]
+            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
+            # fig.update_traces(mode='lines+markers')
+            # fig.update_xaxes(showgrid=False)
+            # fig.update_yaxes(type='linear' if axis_type == 'Linear' else 'log')
+            # fig.add_annotation(x=0, y=0.85, xanchor='left', yanchor='bottom',
+            #                    xref='paper', yref='paper', showarrow=False, align='left',
+            #                    text=title)
+            # fig.update_layout(height=225, margin={'l': 20, 'b': 30, 'r': 10, 't': 10})
+
+            return fig_event
+
+        @app.callback(
+            dash.dependencies.Output('pred_meth-graph', 'figure'),
+            [dash.dependencies.Input('pred_meth-dropdown', 'value')])
+        def update_pred_meth_fig(pred_meth):
+            # if
+
+            fig_pred_meth = px.scatter(df,
+                                       x="x",
+                                       y="y",
+                                       color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
+                                       # hover_name="labels"
+                                       # custom_data=["labels"]
+                                      )
+            return fig_pred_meth
+
+
+
+
+        app.run_server()
+        # app.run_server(debug=True)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        #
+        # if type(figsize) is not tuple:
+        #     fig, ax=plt.subplots(
+        #         nrows=nrows, ncols=ncols, sharex=True, sharey=True)
+        # else:
+        #     fig, ax=plt.subplots(
+        #         nrows=nrows, ncols=ncols, sharex=True, sharey=True)
+        #
+        # annot=[None] * nrows * ncols
+        # sc=[None] * nrows * ncols
+        #
+        # if nrows * ncols == 1:
+        #     ax=[ax]
+        #
+        # start_i=0
+        # if plt_labels:
+        #     start_i=1
+        #     ax[0].set_title(subtitles[0])
+        #     _, _, leg=self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
+        #                                               verb=verb)
+        #
+        #     if self.save_as != False:
+        #         sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+        #                               c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
+        #     else:
+        #         sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+        #                               c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
+        #     pop=[None] * leg.shape[1]
+        #     for i in range(leg.shape[1]):
+        #         # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
+        #         pop[i]=mpl.patches.Patch(color=leg[2, i],
+        #                                  label="{} ({})".format(leg[0, i],
+        #                                                         leg[1, i])
+        #                                 )
+        #     ax[0].legend(handles=pop, framealpha=0.3)
+        #
+        # for i in range(start_i, nrows * ncols):
+        #     ax[i].set_title(subtitles[i])
+        #
+        #     if self.save_as != False:
+        #         sc[i]=ax[i].scatter(princcomp[:, 0],
+        #                             princcomp[:, 1],
+        #                             c=self.get_pred_in_color(pred_methods[i - start_i],
+        #                                                      what=what, verb=verb),
+        #                             s=dot_size,
+        #                             alpha=0.7)
+        #     else:
+        #         sc[i]=ax[i].scatter(princcomp[:, 0],
+        #                             princcomp[:, 1],
+        #                             c=self.get_pred_in_color(pred_methods[i - start_i],
+        #                                                      what=what, verb=verb),
+        #                             s=dot_size,
+        #                             alpha=0.7)
+        #
+        # for i in range(nrows * ncols):
+        #     annot[i]=ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+        #                             bbox=dict(boxstyle="round", fc="w"),
+        #                             arrowprops=dict(arrowstyle="->"))
+        #     annot[i].set_visible(False)
+        #     ax[i].tick_params(left=False,
+        #                     bottom=False,
+        #                     labelleft=False,
+        #                     labelbottom=False)
+        #
+        #
+        # fig.tight_layout()
+        # plt.tight_layout()
+        # if self.save_as != False:
+        #     if plt_labels:
+        #         plt.gcf().subplots_adjust(top=0.95, right=0.5)
+        #         ax[0].legend(handles=pop, framealpha=0.3,
+        #                      loc='center left', bbox_to_anchor=(1.0, 0.5))
+        #
+        #     # set_mpl_backend_fontsize(10)
+        #     if pred_methods == [] and plt_labels:
+        #         # plt.savefig(
+        #         #     '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
+        #         plt.savefig(
+        #             '{}tsne-{}.{}'.format(self.save_plot_dir, 'labels', self.save_as))
+        #     else:
+        #         # plt.savefig(
+        #         #     '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
+        #         plt.savefig(
+        #             '{}tsne-{}.{}'.format(self.save_plot_dir, '_'.join(pred_methods), self.save_as))
+        # else:
+        #     fig.canvas.mpl_connect('key_press_event', on_key)
+        #     fig.canvas.mpl_connect("motion_notify_event", hover)
+        #     fig.canvas.mpl_connect('button_press_event', onclick)
+        #     plt.show()
+        # plt.close()
