@@ -396,6 +396,7 @@ class PulserModel:
              poly_order=3,
              ylim=None,
              xlim=None,
+             energy_range=None,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -469,7 +470,8 @@ class PulserModel:
                 if ylim is None:
                     plt.ylim([0, y[-1]])
                 else:
-                    plt.xlim(ylim)
+                    plt.ylim(ylim)
+                plt.xlim(energy_range)
                 plt.ylabel('Testpulse Amplitude (V)')
                 plt.xlabel('Pulse Height (V)')
                 plt.show()
