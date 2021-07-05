@@ -38,12 +38,11 @@
    templates/conversion
    templates/viewer
    templates/tsne
-   templates/hardware_analysis
+   templates/hw_analysis
    templates/estimate_noise_trigger_rate
    templates/trigger
-   templates/efficiency_simulation
    templates/stream_analysis
-   templates/full_analysis
+   templates/efficiency_simulation
 
 .. toctree::
    :caption: Documentation

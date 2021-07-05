@@ -94,11 +94,20 @@ class LogicalCut:
         """
         return self.all_idx[self.cut_flag]
 
-    def counts(self):
+    def total(self):
         """
-        Return the number of events that survive all events.
+        Return the total number of events.
 
-        :return: The number of events that survive all events.
+        :return: The total number of events.
         :rtype: int
         """
-        return len(self.get_idx())
+        return self.get_flag().shape[0]
+
+    def counts(self):
+        """
+        Return the number of events that survive all cuts.
+
+        :return: The number of events that survive all cuts.
+        :rtype: int
+        """
+        return self.get_idx().shape[0]
