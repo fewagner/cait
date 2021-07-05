@@ -13,7 +13,7 @@ from scipy.optimize import curve_fit
 from ..fit._bl_fit import get_rms
 from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbinned, \
     plot_noise_trigger_model, calc_threshold
-from ..fit._saturation import logistic_curve
+from ..fit._saturation import logistic_curve_zero, A_zero
 from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
 import warnings
@@ -286,20 +286,23 @@ class FitMixin(object):
             tphs = h5f['testpulses']['mainpar'][channel, only_idx, 0]
             tpas = h5f['testpulses']['testpulseamplitude'][only_idx]
 
-            par, _ = curve_fit(logistic_curve,
+            par, _ = curve_fit(logistic_curve_zero,
                                xdata=tpas,
                                ydata=tphs,
-                               # A K C Q B nu
-                               bounds=([-np.inf, 0, 0, 0, 0, 0],
-                                       [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]))
+                               # (A) K C Q B nu - A is not fitted
+                               bounds=([0, 0, 0, 0, 0],
+                                       [np.inf, np.inf, np.inf, np.inf, np.inf]))
 
-            print('Saturation calculated: A {} K {} C {} Q {} B {} nu {}'.format(*par))
+            A = A_zero(*par)
+
+            print('Saturation calculated: A {} K {} C {} Q {} B {} nu {}'.format(A, *par))
 
             sat = h5f.require_group('saturation')
             sat.require_dataset(name='fitpar',
-                                shape=(self.nmbr_channels, len(par)),
+                                shape=(self.nmbr_channels, len(par) + 1),
                                 dtype=np.float)
-            sat['fitpar'][channel, ...] = par
+            sat['fitpar'][channel, 0] = A
+            sat['fitpar'][channel, 1:] = par
 
             sat['fitpar'].attrs.create(name='A', data=0)
             sat['fitpar'].attrs.create(name='K', data=1)

@@ -113,6 +113,7 @@ def get_max_index(stream,  # memmap array
 
     # get record window
     record = stream[counter:counter + record_length]
+
     # downsample
     if down > 1:
         record = np.mean(record.reshape((int(len(record) / down), down)), axis=1)
@@ -254,12 +255,14 @@ def trigger_csmpl(paths,
                                                      down=down,
                                                      window=window,
                                                      )
+                        if height > trigger_tres:
 
-                        triggers.append(start_hours + sample_to_time(counter + trig, sample_duration=sample_length))
-                        trigger_heights.append(height)
-                        record_starts.append(start_hours + sample_to_time(counter, sample_duration=sample_length))
-                        blocks.append(block)
-                        block += trig + trigger_block
+                            triggers.append(start_hours + sample_to_time(counter + trig, sample_duration=sample_length))
+                            trigger_heights.append(height)
+                            record_starts.append(start_hours + sample_to_time(counter, sample_duration=sample_length))
+                            blocks.append(block)
+
+                            block += trig + trigger_block
 
                     # increment
                     counter += record_length - 2 * overlap

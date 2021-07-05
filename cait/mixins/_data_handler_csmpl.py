@@ -136,8 +136,8 @@ class CsmplMixin(object):
                                csmpl_channels: list = None,
                                sql_file_label: str = None,
                                down: int = 1,
-                               window=True,
-                               overlap=None,
+                               window:bool=True,
+                               overlap:float=None,
                                ):
         """
         Trigger *.csmpl files of a detector module and include them in the HDF5 set.
