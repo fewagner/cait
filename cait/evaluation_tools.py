@@ -34,6 +34,7 @@ import dash_html_components as html
 from dash.dependencies import Input, Output
 import plotly.express as px
 from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 import pandas as pd
 
 # -----------------------------------------------------------
@@ -2207,46 +2208,100 @@ class EvaluationTools:
             }
         }
 
+        # import ipdb; ipdb.set_trace()
 
-        labels = [self.labels[i] for i in self.get_label_nbrs(what, verb=verb)]
-        df = pd.DataFrame({
-            "x": princcomp[:, 0],
-            "y": princcomp[:, 1],
-            "label_nbrs": self.get_label_nbrs(what=what, verb=verb),
-            "labels": labels,
-            "color": self.get_label_nbrs(what=what, verb=verb).astype(str)
-        })
+        def scatter_plot(pred_meth):
+            label_nbrs = self.get_label_nbrs(what, verb=verb)
+            labels = [self.labels[i] for i in label_nbrs]
+            df = pd.DataFrame({
+                "x": princcomp[:, 0],
+                "y": princcomp[:, 1],
+                "label_nbrs": label_nbrs,
+                "labels": labels,
+                "color": label_nbrs.astype(str)
+            })
+            fig=None
+            # import ipdb; ipdb.set_trace()
+            if pred_meth is None:
+                fig = px.scatter(df,
+                                 x="x",
+                                 y="y",
+                                 color="labels",
+                                 hover_name="labels",
+                                 custom_data=["label_nbrs"]
+                                )
+                # fig.update_layout(yaxis={visible:False})# coloraxis=dict(colorscale=dict_colors))
+                fig.update_yaxes(visible=False)# coloraxis=dict(colorscale=dict_colors))
+            else:
+                fig = make_subplots(rows=2, cols=1,
+                    shared_xaxes=True,
+                    shared_yaxes=True,
+                    vertical_spacing=0.02)
 
-        fig = px.scatter(df,
-                         x="x",
-                         y="y",
-                         color="color",
-                         hover_name="labels"
-                         # custom_data=["labels"]
-                        )
-        # fig.update_layout(clickmode='event+select')
+                unique_label_nbrs = np.unique([label_nbrs,self.get_pred(pred_meth, what=what, verb=verb)])
+                # import ipdb; ipdb.set_trace()
+                dict_colors = dict([[j, self.color_order[i]] for i,j in enumerate(unique_label_nbrs)])
+                groupname = "Labels"
+                for i in np.unique(self.get_label_nbrs(what,verb)):
+                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                    fig.add_trace(go.Scatter(
+                                     x=princcomp[sep, 0],
+                                     y=princcomp[sep, 1],
+                                     name=self.labels[i],
+                                     # color=label_nbrs,
+                                     mode='markers',
+                                     # marker=dict(color=label_nbrs, coloraxis="coloraxis")
+                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
+                                     legendgroup=groupname,
+                                     # hover_name="labels"
+                                     # custom_data=["labels"]
+                                    ),
+                                  row=1,
+                                  col=1,
+                                 )
 
-        # fig.update_traces(marker_size=20)
+                if not self.get_pred_true_labels(pred_meth):
+                    groupname = "Clusters"
+
+                for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
+                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                    name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
+
+                    fig.add_trace(go.Scatter(
+                                     x=princcomp[sep, 0],
+                                     y=princcomp[sep, 1],
+                                     name=name,
+                                     # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
+                                     mode='markers',
+                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
+                                     legendgroup=groupname,
+                                     # hover_name="labels"
+                                     # custom_data=["labels"]
+                                    ),
+                                  row=2,
+                                  col=1,
+                                 )
+
+                fig.update_layout(showlegend=True,height=600)# coloraxis=dict(colorscale=dict_colors))
+            return fig
+
 
         app.layout = html.Div([
             html.Div([
-                dcc.Graph(
-                    id='labled-graph',
-                    figure=fig
-                ),
                 html.Div([
                     dcc.Dropdown(
                         id='pred_meth-dropdown',
                         options=[{'label': i, 'value': i} for i in pred_methods],
-                        value='Prediction method'
+                        value=None
                     ),
                 ]),
                 html.Div([
                     dcc.Graph(
-                        id='pred_meth-graph'
+                        id='scatter-graph',
+                        figure=scatter_plot(None)
                     ),
                 ]),
-            ], style={'width': '49%', 'display': 'inline-block'}),
+            ], style={'width': '60%', 'height': '70%', 'display': 'inline-block'}),
 
             html.Div(className='row', children=[
                 html.Div([
@@ -2259,26 +2314,26 @@ class EvaluationTools:
                     html.Div(id='textarea-click-data', style={'whiteSpace': 'pre-line'}),
                 ], className='three columns', style={'width': '100%'}),
                 html.Div([
-                    dcc.Graph(id='clicked-event'),
+                    dcc.Graph(id='event-graph'),
                 ], className='three columns', style={'width': '100%'}),
-            ], style={'width': '49%', 'float': 'right', 'display': 'inline-block'})
+            ], style={'width': '39%', 'float': 'right', 'display': 'inline-block'})
         ])
 
         @app.callback(
             Output('textarea-click-data', 'children'),
-            Input('labled-graph', 'clickData'))
+            Input('scatter-graph', 'clickData'))
         def display_click_data(clickData):
             return "{}".format(clickData['points'][0]['pointIndex'])
 
         @app.callback(
             Output('click-data', 'children'),
-            Input('labled-graph', 'clickData'))
+            Input('scatter-graph', 'clickData'))
         def display_click_data(clickData):
             return json.dumps(clickData, indent=2)
 
         @app.callback(
-            Output('clicked-event', 'figure'),
-            Input('labled-graph', 'clickData'))
+            Output('event-graph', 'figure'),
+            Input('scatter-graph', 'clickData'))
         def display_click_data(clickData):
             index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
             event=self.get_events(what)[index]
@@ -2294,22 +2349,26 @@ class EvaluationTools:
 
             return fig_event
 
+        # @app.callback(
+        #     dash.dependencies.Output('pred_meth-graph', 'figure'),
+        #     [dash.dependencies.Input('pred_meth-dropdown', 'value')])
+        # def update_pred_meth_fig(pred_meth):
+        #     # if
+        #
+        #     fig_pred_meth = px.scatter(df,
+        #                                x="x",
+        #                                y="y",
+        #                                color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
+        #                                # hover_name="labels"
+        #                                # custom_data=["labels"]
+        #                               )
+        #     return fig_pred_meth
+
         @app.callback(
-            dash.dependencies.Output('pred_meth-graph', 'figure'),
-            [dash.dependencies.Input('pred_meth-dropdown', 'value')])
-        def update_pred_meth_fig(pred_meth):
-            # if
-
-            fig_pred_meth = px.scatter(df,
-                                       x="x",
-                                       y="y",
-                                       color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
-                                       # hover_name="labels"
-                                       # custom_data=["labels"]
-                                      )
-            return fig_pred_meth
-
-
+            Output('scatter-graph', 'figure'),
+            Input('pred_meth-dropdown', 'value'))
+        def display_scatter_plot(pred_meth):
+            return scatter_plot(pred_meth)
 
 
         app.run_server()
