@@ -2285,6 +2285,23 @@ class EvaluationTools:
                 fig.update_layout(showlegend=True,height=800)# coloraxis=dict(colorscale=dict_colors))
             return fig
 
+        def click_event(clickData = {"points":[{"pointIndex":0}]}):
+            index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
+            event=self.get_events(what)[index]
+            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
+            return fig_event
+
+        def click_data(clickData = {"points":[{"pointIndex":0}]}):
+            index = clickData['points'][0]['pointIndex']
+            event_nbr = self.get_event_nbrs(what,verb)[index]
+            file = self.files[self.get_file_nbrs(what, verb)[index]]
+            label_nbr = self.get_label_nbrs(what,verb)[index]
+            label = self.labels[label_nbr]
+            return """Index: {}
+                      Event number: {}
+                      Event type: {}, {}
+                      File: {}
+                   """.format(index, event_nbr, label, label_nbr, file)
 
         app.layout = html.Div([
             html.Div([
@@ -2305,10 +2322,12 @@ class EvaluationTools:
 
             html.Div(className='row', children=[
                 html.Div([
-                    html.Div(id='textarea-click-data', style={'whiteSpace': 'pre-line'}),
+                    html.Div(id='textarea-click-data',
+                             children=[click_data()],
+                             style={'whiteSpace': 'pre-line'}),
                 ], className='three columns', style={'width': '100%'}),
                 html.Div([
-                    dcc.Graph(id='event-graph'),
+                    dcc.Graph(id='event-graph', figure=click_event()),
                 ], className='three columns', style={'width': '100%'}),
             ], style={'width': '39%', 'float': 'right', 'display': 'inline-block'})
         ])
@@ -2317,25 +2336,13 @@ class EvaluationTools:
             Output('textarea-click-data', 'children'),
             Input('scatter-graph', 'clickData'))
         def display_click_data(clickData):
-            index = clickData['points'][0]['pointIndex']
-            event_nbr = self.get_event_nbrs(what,verb)[index]
-            file = self.files[self.get_file_nbrs(what, verb)[index]]
-            label_nbr = self.get_label_nbrs(what,verb)[index]
-            label = self.labels[label_nbr]
-            return """Index: {}
-                      Event number: {}
-                      Event type: {}, {}
-                      File: {}
-                   """.format(index, event_nbr, label, label_nbr, file)
+            return click_data(clickData)
 
         @app.callback(
             Output('event-graph', 'figure'),
             Input('scatter-graph', 'clickData'))
-        def display_click_data(clickData):
-            index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
-            event=self.get_events(what)[index]
-            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
-            return fig_event
+        def display_click_event(clickData):
+            return click_event(clickData)
 
         @app.callback(
             Output('scatter-graph', 'figure'),
@@ -2344,6 +2351,7 @@ class EvaluationTools:
             return scatter_plot(pred_meth)
 
         app.run_server()
+
 
 
 
@@ -2509,6 +2517,23 @@ class EvaluationTools:
                 fig.update_layout(showlegend=True,height=800)# coloraxis=dict(colorscale=dict_colors))
             return fig
 
+        def click_event(clickData = {"points":[{"pointIndex":0}]}):
+            index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
+            event=self.get_events(what)[index]
+            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
+            return fig_event
+
+        def click_data(clickData = {"points":[{"pointIndex":0}]}):
+            index = clickData['points'][0]['pointIndex']
+            event_nbr = self.get_event_nbrs(what,verb)[index]
+            file = self.files[self.get_file_nbrs(what, verb)[index]]
+            label_nbr = self.get_label_nbrs(what,verb)[index]
+            label = self.labels[label_nbr]
+            return """Index: {}
+                      Event number: {}
+                      Event type: {}, {}
+                      File: {}
+                   """.format(index, event_nbr, label, label_nbr, file)
 
         app.layout = html.Div([
             html.Div([
@@ -2529,10 +2554,12 @@ class EvaluationTools:
 
             html.Div(className='row', children=[
                 html.Div([
-                    html.Div(id='textarea-click-data', style={'whiteSpace': 'pre-line'}),
+                    html.Div(id='textarea-click-data',
+                             children=[click_data()],
+                             style={'whiteSpace': 'pre-line'}),
                 ], className='three columns', style={'width': '100%'}),
                 html.Div([
-                    dcc.Graph(id='event-graph'),
+                    dcc.Graph(id='event-graph', figure=click_event()),
                 ], className='three columns', style={'width': '100%'}),
             ], style={'width': '39%', 'float': 'right', 'display': 'inline-block'})
         ])
@@ -2541,25 +2568,13 @@ class EvaluationTools:
             Output('textarea-click-data', 'children'),
             Input('scatter-graph', 'clickData'))
         def display_click_data(clickData):
-            index = clickData['points'][0]['pointIndex']
-            event_nbr = self.get_event_nbrs(what,verb)[index]
-            file = self.files[self.get_file_nbrs(what, verb)[index]]
-            label_nbr = self.get_label_nbrs(what,verb)[index]
-            label = self.labels[label_nbr]
-            return """Index: {}
-                      Event number: {}
-                      Event type: {}, {}
-                      File: {}
-                   """.format(index, event_nbr, label, label_nbr, file)
+            return click_data(clickData)
 
         @app.callback(
             Output('event-graph', 'figure'),
             Input('scatter-graph', 'clickData'))
-        def display_click_data(clickData):
-            index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
-            event=self.get_events(what)[index]
-            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
-            return fig_event
+        def display_click_event(clickData):
+            return click_event(clickData)
 
         @app.callback(
             Output('scatter-graph', 'figure'),
