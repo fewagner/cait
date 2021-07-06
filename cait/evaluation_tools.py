@@ -2232,6 +2232,7 @@ class EvaluationTools:
                                 )
                 # fig.update_layout(yaxis={visible:False})# coloraxis=dict(colorscale=dict_colors))
                 fig.update_yaxes(visible=False)# coloraxis=dict(colorscale=dict_colors))
+                fig.update_layout(height=600)# coloraxis=dict(colorscale=dict_colors))
             else:
                 fig = make_subplots(rows=2, cols=1,
                     shared_xaxes=True,
@@ -2282,7 +2283,7 @@ class EvaluationTools:
                                   col=1,
                                  )
 
-                fig.update_layout(showlegend=True,height=600)# coloraxis=dict(colorscale=dict_colors))
+                fig.update_layout(showlegend=True,height=800)# coloraxis=dict(colorscale=dict_colors))
             return fig
 
 
@@ -2305,12 +2306,12 @@ class EvaluationTools:
 
             html.Div(className='row', children=[
                 html.Div([
-                    dcc.Markdown("""
-                        **Click Data**
-
-                        Click on points in the graph.
-                    """),
-                    html.Pre(id='click-data', style=styles['pre']),
+                    # dcc.Markdown("""
+                    #     **Click Data**
+                    #
+                    #     Click on points in the graph.
+                    # """),
+                    # html.Pre(id='click-data', style=styles['pre']),
                     html.Div(id='textarea-click-data', style={'whiteSpace': 'pre-line'}),
                 ], className='three columns', style={'width': '100%'}),
                 html.Div([
@@ -2323,13 +2324,22 @@ class EvaluationTools:
             Output('textarea-click-data', 'children'),
             Input('scatter-graph', 'clickData'))
         def display_click_data(clickData):
-            return "{}".format(clickData['points'][0]['pointIndex'])
-
-        @app.callback(
-            Output('click-data', 'children'),
-            Input('scatter-graph', 'clickData'))
-        def display_click_data(clickData):
-            return json.dumps(clickData, indent=2)
+            index = clickData['points'][0]['pointIndex']
+            event_nbr = self.get_event_nbrs(what,verb)[index]
+            file = self.files[self.get_file_nbrs(what, verb)[index]]
+            label_nbr = self.get_label_nbrs(what,verb)[index]
+            label = self.labels[label_nbr]
+            return """Index: {}
+                      Event number: {}
+                      Event type: {}, {}
+                      File: {}
+                   """.format(index, event_nbr, label, label_nbr, file)
+        #
+        # @app.callback(
+        #     Output('click-data', 'children'),
+        #     Input('scatter-graph', 'clickData'))
+        # def display_click_data(clickData):
+        #     return json.dumps(clickData, indent=2)
 
         @app.callback(
             Output('event-graph', 'figure'),
