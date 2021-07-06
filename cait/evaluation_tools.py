@@ -314,7 +314,7 @@ class EvaluationTools:
 
             # if there are no labels, add the events all as unlabeled
             else:
-                self.__add_label_nbrs(['unlabeled'] * nbr_events_added)
+                self.__add_label_nbrs([0] * nbr_events_added)
                 self.__add_labels([('unlabeled', 0)])
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "In the provided hdf5 file are no label_nbrs available and therefore are set to 'unlabeled'.")
