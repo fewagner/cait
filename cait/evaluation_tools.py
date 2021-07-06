@@ -951,7 +951,20 @@ class EvaluationTools:
     # ################### PLOT ###################
 
     def plot_event(self, index, what='all', plot_mainpar=False, text=None, verb=False):
+        """
+        Plots a single event from an given index..
 
+        :param index: The event index which should be plotted in respect to the what parameter
+        :type index: int
+        :param what: Defines what should be returned, which is either 'all' for all filepaths, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :type what: str, optional
+        :param plot_mainpar: If True, it adds main parameters to the plot, default False
+        :type plot_mainpar: str, optional
+        :param text: Adds text to the plot, default None
+        :type text: str, optional
+        :param verb: Enables addiational output which can be usefull for debugging, defaults to False
+        :type verb: bool, optional
+        """
         if verb:
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "index='{}'.".format(index))
@@ -1275,7 +1288,6 @@ class EvaluationTools:
         :param what:            - Optional, default 'all'   : which data is plotted
         :param plt_labels:      - Optional, default True    : adds subplot with labels.
         :param figsize:         - Optional, default None    : sets figure size of plot.
-        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
         :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
         :param rdseed:          - Optional, default None    : Random seed for numpy random.
         :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
@@ -2127,21 +2139,16 @@ class EvaluationTools:
         plt.close()
 
 
-    def plt_pred_with_tsne_plotly(self, pred_methods, what='all', plt_labels=True,
-                           figsize=None, perplexity=30, as_cols=False, rdseed=None,
-                           dot_size=5, verb=False):
+    def plt_pred_with_tsne_plotly(self, pred_methods, what='all',
+                           perplexity=30, rdseed=None, verb=False):
         """
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
         :param pred_methods:    - Required                  : prediction method should be used
-        :param what:        - Required                  : which data is plotted
-        :param plt_labels:      - Optional, default True    : adds subplot with labels.
-        :param figsize:         - Optional, default None    : sets figure size of plot.
+        :param what:            - Required                  : which data is plotted
         :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
         :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
         :param verb:            - Optional, default False   : additional output is printed
         """
 
@@ -2150,12 +2157,6 @@ class EvaluationTools:
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                  "Seed has to be of type int.")
-
-
-        if type(dot_size) != int:
-            dot_size=5
-            print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                  "Value of 'dot_size' has to be of type int. It is set to 5.")
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -2170,20 +2171,6 @@ class EvaluationTools:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
-
-        nrows=len(pred_methods)
-        ncols=1
-        subtitles=[''] * nrows
-
-        if plt_labels:
-            subtitles=['Labels'] + pred_methods
-            nrows=nrows + 1  # take the true labels into account
-
-        # switch rows and cols
-        if as_cols:
-            temp=nrows
-            nrows=ncols
-            ncols=temp
 
         if what not in ['all', 'test', 'train']:
             what='all'
@@ -2208,8 +2195,6 @@ class EvaluationTools:
             }
         }
 
-        # import ipdb; ipdb.set_trace()
-
         def scatter_plot(pred_meth):
             label_nbrs = self.get_label_nbrs(what, verb=verb)
             labels = [self.labels[i] for i in label_nbrs]
@@ -2221,7 +2206,6 @@ class EvaluationTools:
                 "color": label_nbrs.astype(str)
             })
             fig=None
-            # import ipdb; ipdb.set_trace()
             if pred_meth is None:
                 fig = px.scatter(df,
                                  x="x",
@@ -2241,7 +2225,11 @@ class EvaluationTools:
                 unique_label_nbrs = np.unique([label_nbrs,self.get_pred(pred_meth, what=what, verb=verb)])
                 # import ipdb; ipdb.set_trace()
                 dict_colors = dict([[j, self.color_order[i]] for i,j in enumerate(unique_label_nbrs)])
-                groupname = "Labels"
+
+                group = "1"
+                group_title = "Labels"
+
+
                 for i in np.unique(self.get_label_nbrs(what,verb)):
                     sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
                     fig.add_trace(go.Scatter(
@@ -2252,7 +2240,8 @@ class EvaluationTools:
                                      mode='markers',
                                      # marker=dict(color=label_nbrs, coloraxis="coloraxis")
                                      marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=groupname,
+                                     legendgroup=group,
+                                     legendgrouptitle_text=group_title,
                                      # hover_name="labels"
                                      # custom_data=["labels"]
                                     ),
@@ -2261,7 +2250,8 @@ class EvaluationTools:
                                  )
 
                 # if not self.get_pred_true_labels(pred_meth):
-                groupname = "Prediction"
+                group = "2"
+                group_title = "Prediction"
 
                 for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
                     sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
@@ -2274,7 +2264,8 @@ class EvaluationTools:
                                      # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
                                      mode='markers',
                                      marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=groupname,
+                                     legendgroup=group,
+                                     legendgrouptitle_text=group_title,
                                      # hover_name="labels"
                                      # custom_data=["labels"]
                                     ),
@@ -2285,13 +2276,20 @@ class EvaluationTools:
                 fig.update_layout(showlegend=True,height=800)# coloraxis=dict(colorscale=dict_colors))
             return fig
 
-        def click_event(clickData = {"points":[{"pointIndex":0}]}):
-            index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
+        def click_event(clickData=None):
+            if clickData is None:
+                clickData = {"points":[{"pointIndex":0}]}
+            index = clickData['points'][0]['pointIndex']
+            event_nbr = self.get_event_nbrs(what,verb)[index]
             event=self.get_events(what)[index]
-            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
+            fig_event = px.line(x=np.arange(event.shape[0]), y=event)
+            fig_event.update_xaxes(title={'text':''})
+            fig_event.update_yaxes(title={'text':''})
             return fig_event
 
-        def click_data(clickData = {"points":[{"pointIndex":0}]}):
+        def click_data(clickData=None):
+            if clickData is None:
+                clickData = {"points":[{"pointIndex":0}]}
             index = clickData['points'][0]['pointIndex']
             event_nbr = self.get_event_nbrs(what,verb)[index]
             file = self.files[self.get_file_nbrs(what, verb)[index]]
@@ -2362,8 +2360,7 @@ class EvaluationTools:
 
 
     def plt_pred_with_pca_plotly(self, pred_methods, xy_comp=(1, 2), what='all',
-                                 plt_labels=True, figsize=None, as_cols=False,
-                                 rdseed=None, dot_size=5, verb=False):
+                                 rdseed=None, verb=False):
         """
         Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
@@ -2371,12 +2368,7 @@ class EvaluationTools:
         :param pred_methods:    - Required                  : prediction method should be used
         :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
         :param what:            - Optional, default 'all'   : which data is plotted
-        :param plt_labels:      - Optional, default True    : adds subplot with labels.
-        :param figsize:         - Optional, default None    : sets figure size of plot.
-        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
         :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
         :param verb:            - Optional, default False   : additional output is printed
         """
 
@@ -2386,12 +2378,6 @@ class EvaluationTools:
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                  "Seed has to be of type int.")
-
-
-        if type(dot_size) != int:
-            dot_size=5
-            print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
-                  "Value of 'dot_size' has to be of type int. It is set to 5.")
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -2406,20 +2392,6 @@ class EvaluationTools:
                 raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
-
-        nrows=len(pred_methods)
-        ncols=1
-        subtitles=[''] * nrows
-
-        if plt_labels:
-            subtitles=['Labels'] + pred_methods
-            nrows=nrows + 1  # take the true labels into account
-
-        # switch rows and cols
-        if as_cols:
-            temp=nrows
-            nrows=ncols
-            ncols=temp
 
         if what not in ['all', 'test', 'train']:
             what='all'
@@ -2473,7 +2445,8 @@ class EvaluationTools:
 
                 unique_label_nbrs = np.unique([label_nbrs,self.get_pred(pred_meth, what=what, verb=verb)])
                 dict_colors = dict([[j, self.color_order[i]] for i,j in enumerate(unique_label_nbrs)])
-                groupname = "Labels"
+                group = "1"
+                group_title = "Labels"
                 for i in np.unique(self.get_label_nbrs(what,verb)):
                     sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
                     fig.add_trace(go.Scatter(
@@ -2484,7 +2457,8 @@ class EvaluationTools:
                                      mode='markers',
                                      # marker=dict(color=label_nbrs, coloraxis="coloraxis")
                                      marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=groupname,
+                                     legendgroup=group,
+                                     legendgrouptitle_text=group_title,
                                      # hover_name="labels"
                                      # custom_data=["labels"]
                                     ),
@@ -2493,7 +2467,8 @@ class EvaluationTools:
                                  )
 
                 # if not self.get_pred_true_labels(pred_meth):
-                groupname = "Predictions"
+                group = "2"
+                group_title = "Predictions"
 
                 for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
                     sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
@@ -2506,7 +2481,8 @@ class EvaluationTools:
                                      # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
                                      mode='markers',
                                      marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=groupname,
+                                     legendgroup=group,
+                                     legendgrouptitle_text=group_title,
                                      # hover_name="labels"
                                      # custom_data=["labels"]
                                     ),
@@ -2514,16 +2490,22 @@ class EvaluationTools:
                                   col=1,
                                  )
 
-                fig.update_layout(showlegend=True,height=800)# coloraxis=dict(colorscale=dict_colors))
+                fig.update_layout(showlegend=True,height=800)
             return fig
 
-        def click_event(clickData = {"points":[{"pointIndex":0}]}):
+        def click_event(clickData=None):
+            if clickData is None:
+                clickData = {"points":[{"pointIndex":0}]}
             index = self.get_event_nbrs(what, verb=verb)[clickData['points'][0]['pointIndex']]
             event=self.get_events(what)[index]
-            fig_event = px.scatter(x=np.arange(event.shape[0]), y=event)
+            fig_event = px.line(x=np.arange(event.shape[0]), y=event)
+            fig_event.update_xaxes(title={'text':''})
+            fig_event.update_yaxes(title={'text':''})
             return fig_event
 
-        def click_data(clickData = {"points":[{"pointIndex":0}]}):
+        def click_data(clickData=None):
+            if clickData is None:
+                clickData = {"points":[{"pointIndex":0}]}
             index = clickData['points'][0]['pointIndex']
             event_nbr = self.get_event_nbrs(what,verb)[index]
             file = self.files[self.get_file_nbrs(what, verb)[index]]
@@ -2583,102 +2565,3 @@ class EvaluationTools:
             return scatter_plot(pred_meth)
 
         app.run_server()
-
-
-
-
-
-
-
-
-
-        #
-        # if type(figsize) is not tuple:
-        #     fig, ax=plt.subplots(
-        #         nrows=nrows, ncols=ncols, sharex=True, sharey=True)
-        # else:
-        #     fig, ax=plt.subplots(
-        #         nrows=nrows, ncols=ncols, sharex=True, sharey=True)
-        #
-        # annot=[None] * nrows * ncols
-        # sc=[None] * nrows * ncols
-        #
-        # if nrows * ncols == 1:
-        #     ax=[ax]
-        #
-        # start_i=0
-        # if plt_labels:
-        #     start_i=1
-        #     ax[0].set_title(subtitles[0])
-        #     _, _, leg=self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
-        #                                               verb=verb)
-        #
-        #     if self.save_as != False:
-        #         sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-        #                               c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
-        #     else:
-        #         sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
-        #                               c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
-        #     pop=[None] * leg.shape[1]
-        #     for i in range(leg.shape[1]):
-        #         # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
-        #         pop[i]=mpl.patches.Patch(color=leg[2, i],
-        #                                  label="{} ({})".format(leg[0, i],
-        #                                                         leg[1, i])
-        #                                 )
-        #     ax[0].legend(handles=pop, framealpha=0.3)
-        #
-        # for i in range(start_i, nrows * ncols):
-        #     ax[i].set_title(subtitles[i])
-        #
-        #     if self.save_as != False:
-        #         sc[i]=ax[i].scatter(princcomp[:, 0],
-        #                             princcomp[:, 1],
-        #                             c=self.get_pred_in_color(pred_methods[i - start_i],
-        #                                                      what=what, verb=verb),
-        #                             s=dot_size,
-        #                             alpha=0.7)
-        #     else:
-        #         sc[i]=ax[i].scatter(princcomp[:, 0],
-        #                             princcomp[:, 1],
-        #                             c=self.get_pred_in_color(pred_methods[i - start_i],
-        #                                                      what=what, verb=verb),
-        #                             s=dot_size,
-        #                             alpha=0.7)
-        #
-        # for i in range(nrows * ncols):
-        #     annot[i]=ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
-        #                             bbox=dict(boxstyle="round", fc="w"),
-        #                             arrowprops=dict(arrowstyle="->"))
-        #     annot[i].set_visible(False)
-        #     ax[i].tick_params(left=False,
-        #                     bottom=False,
-        #                     labelleft=False,
-        #                     labelbottom=False)
-        #
-        #
-        # fig.tight_layout()
-        # plt.tight_layout()
-        # if self.save_as != False:
-        #     if plt_labels:
-        #         plt.gcf().subplots_adjust(top=0.95, right=0.5)
-        #         ax[0].legend(handles=pop, framealpha=0.3,
-        #                      loc='center left', bbox_to_anchor=(1.0, 0.5))
-        #
-        #     # set_mpl_backend_fontsize(10)
-        #     if pred_methods == [] and plt_labels:
-        #         # plt.savefig(
-        #         #     '{}tsne-{}.pgf'.format(self.save_plot_dir, 'labels'))
-        #         plt.savefig(
-        #             '{}tsne-{}.{}'.format(self.save_plot_dir, 'labels', self.save_as))
-        #     else:
-        #         # plt.savefig(
-        #         #     '{}tsne-{}.pgf'.format(self.save_plot_dir, '_'.join(pred_methods)))
-        #         plt.savefig(
-        #             '{}tsne-{}.{}'.format(self.save_plot_dir, '_'.join(pred_methods), self.save_as))
-        # else:
-        #     fig.canvas.mpl_connect('key_press_event', on_key)
-        #     fig.canvas.mpl_connect("motion_notify_event", hover)
-        #     fig.canvas.mpl_connect('button_press_event', onclick)
-        #     plt.show()
-        # plt.close()
