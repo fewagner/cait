@@ -437,8 +437,8 @@ class PlotMixin(object):
             bins = np.linspace(range[0], range[1], bins + 1)
         elif xscale == 'log':
             if range[0] == 0:
-                print('Changing lower end of range from 0 to 10e-3!')
-                range[0] = 10e-3
+                print('Changing lower end of range from 0 to 1e-3!')
+                range[0] = 1e-3
             bins = np.logspace(start=np.log10(range[0]), stop=np.log10(range[1]), num=bins + 1)
         else:
             raise ValueError('The argument of xscale must be either linear or log!')

@@ -297,6 +297,7 @@ class AnalysisMixin(object):
                          return_pulser_models: bool = False,
                          pulser_models: object = None,
                          name_appendix_energy: str = '',
+                         **kwargs,
                          ):
         """
         Calculates the calibrated energies of all events with uncertainties.
@@ -313,6 +314,8 @@ class AnalysisMixin(object):
         which is determined by the CPE factor. In the fitting process with a polynomial, we also include the uncertainties
         in the estimated pulse heights of the test pulses with an orthogonal distance relation, linear error propagation
         and the calculation of a prediction interval.
+
+        Additional key word arguments get passed to the regressor model.
 
         TODO add citation
 
@@ -454,7 +457,8 @@ class AnalysisMixin(object):
 
                 if pulser_models[channel] is None:
                     pulser_models[channel] = PulserModel(start_saturation=starts_saturation[channel],
-                                                         max_dist=max_dist)
+                                                         max_dist=max_dist,
+                                                         **kwargs)
 
                     pulser_models[channel].fit(tphs=tphs[channel, stable[channel]],
                                                tpas=tpas[stable[channel]],
@@ -464,8 +468,7 @@ class AnalysisMixin(object):
                                                )
 
                 if plot:
-                    pulser_models[channel].plot(interpolation_method=interpolation_method,
-                                                poly_order=poly_order)
+                    pulser_models[channel].plot(poly_order=poly_order)
 
                 f['events']['recoil_energy' + name_appendix_energy][channel, ...], \
                 f['events']['recoil_energy_sigma' + name_appendix_energy][channel, ...], \
@@ -473,8 +476,7 @@ class AnalysisMixin(object):
                 f['events']['tpa_equivalent_sigma' + name_appendix_energy][channel, ...] = pulser_models[channel].predict(evhs=evhs[channel],
                                                                                                    ev_hours=ev_hours,
                                                                                                    poly_order=poly_order,
-                                                                                                   cpe_factor=cpe_factor[channel],
-                                                                                                   interpolation_method=interpolation_method,
+                                                                                                   cpe_factor=cpe_factor[channel]
                                                                                                    )
         print('Finished.')
         if return_pulser_models:
