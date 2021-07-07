@@ -118,7 +118,7 @@ def calculate_mean_nps(baselines,
                                               int(len(baselines[0])/down),
                                               down), axis=2)
 
-    record_length = baselines.shape[0]
+    record_length = baselines.shape[1]
 
     # substract offset
     baselines -= np.mean(baselines[:, :int(record_length / 8)], axis=1, keepdims=True)
