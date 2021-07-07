@@ -2198,7 +2198,10 @@ class EvaluationTools:
         def scatter_plot(pred_meth):
             label_nbrs = self.get_label_nbrs(what, verb=verb)
             labels = [self.labels[i] for i in label_nbrs]
+            # import ipdb; ipdb.set_trace()
             df = pd.DataFrame({
+                "id": np.arange(self.get_events(what,verb).shape[0]),
+                "file": [self.files[i] for i in self.get_file_nbrs(what,verb)],
                 "x": princcomp[:, 0],
                 "y": princcomp[:, 1],
                 "label_nbrs": label_nbrs,
@@ -2212,7 +2215,7 @@ class EvaluationTools:
                                  y="y",
                                  color="labels",
                                  hover_name="labels",
-                                 custom_data=["label_nbrs"]
+                                 hover_data=["id", "file"],
                                 )
                 fig.update_yaxes(visible=False)
                 fig.update_layout(height=600)
@@ -2242,8 +2245,15 @@ class EvaluationTools:
                                      marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
                                      legendgroup=group,
                                      legendgrouptitle_text=group_title,
-                                     # hover_name="labels"
-                                     # custom_data=["labels"]
+                                     # hover_name="labels",
+                                     # hover_data=["id", "file"],
+                                     # hovertemplate=
+                                     #    '<b>%{labels}</b><br><br>' +
+                                     #    'index: %{text}<br>' +
+                                     #    'file: %{file}<br>' +
+                                     #    'x: %{x}<br>' +
+                                     #    'y: %{y}',
+                                     customdata=np.array([df['id'][sep]]).T,
                                     ),
                                   row=1,
                                   col=1,
@@ -2266,20 +2276,24 @@ class EvaluationTools:
                                      marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
                                      legendgroup=group,
                                      legendgrouptitle_text=group_title,
-                                     # hover_name="labels"
-                                     # custom_data=["labels"]
+                                     # hover_name="labels",
+                                     # hover_data=["id", "file"],
+                                     # hovertemplate=
+                                     #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
+                                     customdata=np.array([df['id'][sep]]).T,
                                     ),
                                   row=2,
                                   col=1,
                                  )
-
-                fig.update_layout(showlegend=True,height=800)# coloraxis=dict(colorscale=dict_colors))
+                fig.update_layout(showlegend=True,height=800,hovermode='closest')# coloraxis=dict(colorscale=dict_colors))
             return fig
 
         def click_event(clickData=None):
             if clickData is None:
-                clickData = {"points":[{"pointIndex":0}]}
-            index = clickData['points'][0]['pointIndex']
+                # clickData = {"points":[{"pointIndex":0}]}
+                clickData = {"points":[{"customdata":[0]}]}
+            # index = clickData['points'][0]['pointIndex']
+            index = clickData['points'][0]['customdata'][0]
             event_nbr = self.get_event_nbrs(what,verb)[index]
             event=self.get_events(what)[index]
             fig_event = px.line(x=np.arange(event.shape[0]), y=event)
@@ -2289,8 +2303,10 @@ class EvaluationTools:
 
         def click_data(clickData=None):
             if clickData is None:
-                clickData = {"points":[{"pointIndex":0}]}
-            index = clickData['points'][0]['pointIndex']
+                # clickData = {"points":[{"pointIndex":0}]}
+                clickData = {"points":[{"customdata":[0]}]}
+            # index = clickData['points'][0]['pointIndex']
+            index = clickData['points'][0]['customdata'][0]
             event_nbr = self.get_event_nbrs(what,verb)[index]
             file = self.files[self.get_file_nbrs(what, verb)[index]]
             label_nbr = self.get_label_nbrs(what,verb)[index]
@@ -2320,6 +2336,12 @@ class EvaluationTools:
 
             html.Div(className='row', children=[
                 html.Div([
+                    # dcc.Markdown("""
+                    #     **Click Data**
+                    #
+                    #     Click on points in the graph.
+                    # """),
+                    # html.Pre(id='click-data', style=styles['pre']),
                     html.Div(id='textarea-click-data',
                              children=[click_data()],
                              style={'whiteSpace': 'pre-line'}),
@@ -2329,6 +2351,14 @@ class EvaluationTools:
                 ], className='three columns', style={'width': '100%'}),
             ], style={'width': '39%', 'float': 'right', 'display': 'inline-block'})
         ])
+
+        # @app.callback(
+        #     Output('click-data', 'children'),
+        #     Input('scatter-graph', 'clickData'))
+        # def display_click_data(clickData):
+        #     return json.dumps(clickData, indent=2)
+
+
 
         @app.callback(
             Output('textarea-click-data', 'children'),
