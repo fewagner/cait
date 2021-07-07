@@ -7,6 +7,7 @@ from ..fit._templates import baseline_template_quad, baseline_template_cubic
 from scipy.optimize import curve_fit
 from scipy.stats import norm, uniform
 from tqdm.auto import tqdm
+from scipy import signal
 
 # -----------------------------------------------------------
 # FUNCTIONS
@@ -87,7 +88,8 @@ def calculate_mean_nps(baselines,
                        down=1,
                        sample_length = 0.00004,
                        rms_baselines=None,
-                       rms_cutoff=None):
+                       rms_cutoff=None,
+                       window=False):
     """
     Calculates the mean Noise Power Spectrum (mNPS) of a set of baselines,
     after cleaning them from artifacts with a polynomial fit.
@@ -108,6 +110,8 @@ def calculate_mean_nps(baselines,
     :param rms_cutoff: Only baselines with a fit rms below this values are included in the NPS calculation. This
             will overwrite the percentile argument, if it is not set to None.
     :type rms_cutoff: float
+    :param window: If True, a window function is applied to the noise baselines before the calculation of the NPS.
+    :type window: bool
     :return: Tuple of (the mean NPS, the cleaned baselines).
     :rtype: (1D array of size (record_length/2 + 1), 2D array of size (percentile*nmbr_baselines, record_length))
     """
@@ -160,35 +164,13 @@ def calculate_mean_nps(baselines,
 
         rms_means = np.array(np.percentile(rms_baselines, percentile))
 
-        # idx_keep = []
-        # for i, rms in enumerate(rms_baselines):
-        #     if rms_cutoff is None:
-        #         if rms < rms_means:
-        #             idx_keep.append(i)
-        #     else:
-        #         if rms < rms_cutoff:
-        #             idx_keep.append(i)
-        #
-        # baselines = baselines[idx_keep]
-
         if rms_cutoff is None:
             baselines = baselines[rms_baselines < rms_means]
         else:
             baselines = baselines[rms_baselines < rms_cutoff]
 
-        print(baselines.shape)
-
-    # get mean NPS
-    # counter_baselines = 0
-    # mean_nps = np.zeros(int(record_length/2) + 1)
-    #
-    # for i, bl in enumerate(baselines):
-    #     nps = get_nps(bl)
-    #
-    #     counter_baselines += 1
-    #     mean_nps += nps
-    #
-    # mean_nps /= counter_baselines
+    if window:
+        baselines *= signal.windows.tukey(baselines.shape[0], alpha=0.25).reshape(1, -1)
 
     mean_nps = np.mean(get_nps(baselines), axis=0)
 
