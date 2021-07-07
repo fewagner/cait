@@ -89,7 +89,7 @@ def calculate_mean_nps(baselines,
                        sample_length = 0.00004,
                        rms_baselines=None,
                        rms_cutoff=None,
-                       window=False):
+                       window=True):
     """
     Calculates the mean Noise Power Spectrum (mNPS) of a set of baselines,
     after cleaning them from artifacts with a polynomial fit.

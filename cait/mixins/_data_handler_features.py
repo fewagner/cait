@@ -633,6 +633,8 @@ class FeaturesMixin(object):
         with h5py.File(path_h5, 'r+') as h5f:
             events = h5f[type]
 
+            assert 'optimumfilter' in h5f, 'You need to calculate the optimal filter first!'
+
             of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
             of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
             of = of_real + 1j * of_imag
