@@ -539,7 +539,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None):
+    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None, cut_flag=None):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3).
@@ -553,6 +553,9 @@ class FeaturesMixin(object):
         :param rms_cutoff: Only baselines with a fit rms below this values are included in the NPS calculation. This
             will overwrite the percentile argument, if it is not set to None.
         :type rms_cutoff: list of nmbr_channels floats
+        :param cut_flag: Only the noise baselines for which the value in this array is True, are used for the
+            calculation.
+        :param cut_flag: 1d bool array
         """
         print('Calculate NPS.')
 
@@ -562,16 +565,26 @@ class FeaturesMixin(object):
         # open file
         with h5py.File(self.path_h5, 'r+') as h5f:
             baselines = np.array(h5f['noise']['event'])
-            if use_labels:
-                labels = np.array(h5f['noise']['labels'])
 
             mean_nps = []
             for c in range(self.nmbr_channels):
                 bl = baselines[c]
-                if use_labels:
-                    bl = bl[labels[c] == 3]  # 3 is noise label
+                if use_labels and cut_flag is None:
+                    labels = np.array(h5f['noise']['labels'][c])
+                    bl = bl[labels[c] == 3]
+                elif use_labels and cut_flag is not None:
+                    labels = np.array(h5f['noise']['labels'][c])
+                    labels = labels[cut_flag]
+                    bl = bl[cut_flag]
+                    bl = bl[labels[c] == 3]
+                elif not use_labels and cut_flag is not None:
+                    pass
+                elif not use_labels and cut_flag is not None:
+                    bl = bl[cut_flag]
+
                 if 'fit_rms' in h5f['noise']:
                     rms_baselines = h5f['noise']['fit_rms'][c]
+
                 else:
                     rms_baselines = None
                 mean_nps.append(calculate_mean_nps(bl,

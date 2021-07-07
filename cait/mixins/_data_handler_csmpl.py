@@ -320,6 +320,9 @@ class CsmplMixin(object):
 
         std_evs = []
 
+        if t0_start is None:
+            t0_start = [-3 for i in range(self.nmbr_channels)]
+
         for c in range(self.nmbr_channels):
 
             std_evs.append([])
@@ -327,8 +330,6 @@ class CsmplMixin(object):
             std_evs[c].append(sev[c])
 
             if fitpar is None:
-                if t0_start is None:
-                    t0_start = -3
                 std_evs[c].append(
                     fit_pulse_shape(sev[c], sample_length=sample_length, t0_start=t0_start[c], opt_start=opt_start))
 

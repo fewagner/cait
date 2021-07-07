@@ -112,13 +112,16 @@ def calculate_mean_nps(baselines,
     :rtype: (1D array of size (record_length/2 + 1), 2D array of size (percentile*nmbr_baselines, record_length))
     """
 
-    # dpwnsample the baselines
+    # downsample the baselines
     if down > 1:
         baselines = np.mean(baselines.reshape(len(baselines),
                                               int(len(baselines[0])/down),
                                               down), axis=2)
 
-    record_length = len(baselines[0])
+    record_length = baselines.shape[0]
+
+    # substract offset
+    baselines -= np.mean(baselines[:, :int(record_length / 8)], axis=1, keepdims=True)
 
     # clean baselines
     if clean:
@@ -134,9 +137,6 @@ def calculate_mean_nps(baselines,
             else:
                 bl_temp = None
                 print('PLEASE USE POLYNOMIAL ORDER 2 OR 3!!')
-
-            # substract mean
-            baselines -= np.mean(baselines[:, :int(record_length/8)], axis=1, keepdims=True)
 
             # fit polynomial coefficients
             coefficients = np.zeros([len(baselines), order_polynom + 1])
