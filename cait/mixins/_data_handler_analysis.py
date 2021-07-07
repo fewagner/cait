@@ -288,7 +288,7 @@ class AnalysisMixin(object):
                          plot: bool = False,
                          only_stable: bool = False,
                          cut_flag: list = None,
-                         interpolation_method: bool = 'linear',
+                         interpolation_method: str = 'linear',
                          poly_order: int = 5,
                          only_channels: list = None,
                          method: str = 'ph',

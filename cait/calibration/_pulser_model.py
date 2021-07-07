@@ -264,6 +264,8 @@ class PulserModel:
                 linear_tpas = []
                 for i in unique_tpas:
                     cond = tpas == i
+                    cond = np.logical_and(cond, tp_hours > iv[0])
+                    cond = np.logical_and(cond, tp_hours < iv[1])
                     this_tp_hours = tp_hours[cond]
                     this_tph = tphs[cond]
 
