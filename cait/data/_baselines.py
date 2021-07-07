@@ -170,7 +170,7 @@ def calculate_mean_nps(baselines,
             baselines = baselines[rms_baselines < rms_cutoff]
 
     if window:
-        baselines *= signal.windows.tukey(baselines.shape[0], alpha=0.25).reshape(1, -1)
+        baselines *= signal.windows.tukey(baselines.shape[1], alpha=0.25).reshape(1, -1)
 
     mean_nps = np.mean(get_nps(baselines), axis=0)
 
