@@ -160,27 +160,36 @@ def calculate_mean_nps(baselines,
 
         rms_means = np.array(np.percentile(rms_baselines, percentile))
 
-        idx_keep = []
-        for i, rms in enumerate(rms_baselines):
-            if rms_cutoff is None:
-                if rms < rms_means:
-                    idx_keep.append(i)
-            else:
-                if rms < rms_cutoff:
-                    idx_keep.append(i)
+        # idx_keep = []
+        # for i, rms in enumerate(rms_baselines):
+        #     if rms_cutoff is None:
+        #         if rms < rms_means:
+        #             idx_keep.append(i)
+        #     else:
+        #         if rms < rms_cutoff:
+        #             idx_keep.append(i)
+        #
+        # baselines = baselines[idx_keep]
 
-        baselines = baselines[idx_keep]
+        if rms_cutoff is None:
+            baselines = baselines[rms_baselines < rms_means]
+        else:
+            baselines = baselines[rms_baselines < rms_cutoff]
+
+        print(baselines.shape)
 
     # get mean NPS
-    counter_baselines = 0
-    mean_nps = np.zeros(int(record_length/2) + 1)
+    # counter_baselines = 0
+    # mean_nps = np.zeros(int(record_length/2) + 1)
+    #
+    # for i, bl in enumerate(baselines):
+    #     nps = get_nps(bl)
+    #
+    #     counter_baselines += 1
+    #     mean_nps += nps
+    #
+    # mean_nps /= counter_baselines
 
-    for i, bl in enumerate(baselines):
-        nps = get_nps(bl)
-
-        counter_baselines += 1
-        mean_nps += nps
-
-    mean_nps /= counter_baselines
+    mean_nps = np.mean(get_nps(baselines), axis=0)
 
     return mean_nps, baselines
