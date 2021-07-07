@@ -992,8 +992,7 @@ class EventInterface:
                         print('Navigate through events by pressing b back or n next. All other options are also available.')
                         break
                     elif viewer_mode.lower() == 'n':
-                        AttributeError('Load or create labels file first!')
-                        exit()
+                        raise AttributeError('Load or create labels file first!')
                     else:
                         print('Please enter a valid input! Either y or n')
 

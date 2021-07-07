@@ -215,15 +215,15 @@ class AnalysisMixin(object):
                                                       significance=significance, max_gap=max_gap,
                                                       lb=lb, ub=ub)
 
-            f['events'].require_dataset(name='controlpuls_stability',
+            f['events'].require_dataset(name='controlpulse_stability',
                                         shape=(self.nmbr_channels, len(flag_ev)),
                                         dtype=bool)
-            f['events']['controlpuls_stability'][channel, ...] = flag_ev
+            f['events']['controlpulse_stability'][channel, ...] = flag_ev
 
-            f['controlpulses'].require_dataset(name='controlpuls_stability',
+            f['controlpulses'].require_dataset(name='controlpulse_stability',
                                                shape=(self.nmbr_channels, len(flag_cp)),
                                                dtype=bool)
-            f['controlpulses']['controlpuls_stability'][channel, ...] = flag_cp
+            f['controlpulses']['controlpulse_stability'][channel, ...] = flag_cp
 
     def calc_testpulse_stability(self, channel: int, significance: float = 3, noise_level: float = 0.005,
                                  max_gap: float = 0.5, ub: float = None, lb: float = None):
@@ -546,7 +546,7 @@ class AnalysisMixin(object):
             hours_tp = f['testpulses']['hours']
             hours_cp = f['controlpulses']['hours']
             rate_cp = f['controlpulses']['rate_cut']
-            stability_cp = f['controlpulses']['controlpuls_stability']
+            stability_cp = f['controlpulses']['controlpulse_stability']
 
             good_intervals = []
             dead_time = 0
