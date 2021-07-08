@@ -445,12 +445,13 @@ class PlotMixin(object):
 
         all, bins = np.histogram(vals, bins=bins)
         surviving, _ = np.histogram(vals[cut_flag], bins=bins)
-        efficiency = surviving / all
 
         if np.any(all == 0):
+            empties = bins[:-1] + (bins[1:] - bins[:-1]) / 2
             raise ValueError(
-                'Attention, one of the bins in your uncut efficiency events is zero! Reduce number of bins, '
+                f'Attention, the bins {empties[all == 0]} in your uncut efficiency events is zero! Reduce number of bins, '
                 'use log scale or hand more events.')
+        efficiency = surviving / all
 
         use_cait_style(dpi=dpi)
         plt.close()
