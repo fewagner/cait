@@ -6,6 +6,7 @@ from scipy.special import erf
 import matplotlib.pyplot as plt
 from ..styles import make_grid, use_cait_style
 
+
 # function
 
 def threshold_model(x, a0, a1, a2):
@@ -25,15 +26,16 @@ def threshold_model(x, a0, a1, a2):
     """
     return 0.5 * a0 * (1 + erf((x - a1) / (np.sqrt(2) * a2)))
 
+
 def fit_trigger_efficiency(binned_energies, survived_fraction, a1_0, a0_0=1, a2_0=0.01,
                            plot=False, title=None, xlim=None):
     """
     Fit and plot the trigger efficiency.
 
     :param binned_energies: The bin edges, in keV.
-    :type binned_energies: array of length nmbr_bins + 1
+    :type binned_energies: list of length nmbr_bins + 1
     :param survived_fraction: The number of survived events per bin, in keV.
-    :type survived_fraction: array
+    :type survived_fraction: list
     :param a0_0: Start Value for estimated constant survival probability above threshold.
     :type a0_0: float
     :param a1_0: Start Value for estimated threshold value, in keV.
@@ -43,15 +45,49 @@ def fit_trigger_efficiency(binned_energies, survived_fraction, a1_0, a0_0=1, a2_
     :param plot: Plot the fitted function.
     :type plot: bool
     :param title: The title for the plot.
-    :type title: bool
+    :type title: str
     :param xlim: The x limits for the plot.
-    :type xlim: bool
+    :type xlim: tuple
     :return: The fitted values a0, a1, a2.
     :rtype: list
-    """
-    x_grid = binned_energies[:-1] + (binned_energies[1:] - binned_energies[:-1])/2
 
-    pars, _ = curve_fit(xdata=x_grid, ydata=survived_fraction, p0=(a0_0, a1_0, a2_0))
+    >>> import cait as ai
+    >>> import numpy as np
+
+    >>> # create mock data
+
+    >>> X = np.random.uniform(low=0, high=1, size=10000)
+    >>> randoms = np.random.uniform(low=0.3, high=0.5, size=10000)
+    >>> surviving = np.empty(10000, dtype=bool)
+    >>> surviving[X < 0.3] = False
+    >>> surviving[X > 0.5] = True
+
+    >>> inbet = np.logical_and(X > 0.3, X < 0.5)
+    >>> surviving[inbet] = X[inbet] > randoms[inbet]
+
+    >>> hist, bins = np.histogram(X[surviving], bins=100, range=(0, 1))
+    >>> hist_all, _ = np.histogram(X, bins=100, range=(0, 1))
+
+    >>> # do the fit
+
+    >>> a0, a1, a2 = ai.fit.fit_trigger_efficiency(binned_energies=bins,
+    ...                                            survived_fraction=hist/hist_all,
+    ...                                            a1_0=0.4,
+    ...                                            a0_0=0.9,
+    ...                                            a2_0=0.1,
+    ...                                            plot=True,
+    ...                                            title='Trigger Efficiency',
+    ...                                            xlim=(0.2, 0.9))
+    Estimated constant survival probability:  1.0029709355728647
+    Estimated energy threshold (keV):  0.4002443060404336
+    Estimated energy resolution (keV):  0.06203246371547854
+
+    .. image:: ../efficiency.png
+
+    """
+    x_grid = binned_energies[:-1] + (binned_energies[1:] - binned_energies[:-1]) / 2
+
+    pars, _ = curve_fit(f=threshold_model, xdata=x_grid, ydata=survived_fraction, p0=(a0_0, a1_0, a2_0))
 
     a0, a1, a2 = pars
 
@@ -67,8 +103,8 @@ def fit_trigger_efficiency(binned_energies, survived_fraction, a1_0, a0_0=1, a2_
 
         plt.close()
         use_cait_style()
-        plt.hist(x=x_grid, bins=binned_energies, weights=survived_fraction)
-        plt.plot(fine_grid, threshold_model(fine_grid, *pars), color='red', linewidth=2)
+        plt.plot(x_grid, survived_fraction, zorder=30, linestyle = 'None', marker='*')
+        plt.plot(fine_grid, threshold_model(fine_grid, *pars), color='red', linewidth=2, zorder=50)
         make_grid()
         plt.ylabel('Survival Probability')
         plt.xlabel('Energy (keV)')

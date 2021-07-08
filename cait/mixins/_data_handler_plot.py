@@ -416,6 +416,9 @@ class PlotMixin(object):
         :rtype: tuple of (array of length bins, array of length bins, array of length bins+1)
         """
 
+        if type(range) == tuple:
+            range = list(range)
+
         with h5py.File(self.path_h5, 'r+') as hf5:
             if which_quantity == 'true_ph':
                 vals = hf5['events']['true_ph'][channel]
@@ -433,10 +436,13 @@ class PlotMixin(object):
                 except:
                     raise KeyError(f'A dataset with name {which_quantity} is not in the HDF5 set.')
 
+        if range is None:
+            range = [np.min(vals), np.max(vals)]
+
         if xscale == 'linear':
             bins = np.linspace(range[0], range[1], bins + 1)
         elif xscale == 'log':
-            if range[0] == 0:
+            if range is not None and range[0] == 0:
                 print('Changing lower end of range from 0 to 1e-3!')
                 range[0] = 1e-3
             bins = np.logspace(start=np.log10(range[0]), stop=np.log10(range[1]), num=bins + 1)

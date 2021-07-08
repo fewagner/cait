@@ -15,7 +15,7 @@ we experienced problems with scp command and uncompressed containers in the past
 First you need a singularity installation on your machine, you can find instructions on their
 documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
 
-Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.def´.
+Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.cfg´.
 
 .. code::
 
@@ -62,7 +62,7 @@ You can then always start the container by typing the following command in the s
 
 .. code:: console
 
-    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.sif
+    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.simg
 
 Please look into the Singularity manual for details of above command. You might have to adapt several paths, according to
 your system. E.g. with the -B flag, you can bin directories from the server within the the container, you will need this for accessing data.
