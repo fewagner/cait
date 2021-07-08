@@ -28,7 +28,6 @@
    tutorials/08ptl_classification
    tutorials/09regression
    tutorials/10limit
-   tutorials/Zbandfit
 
 .. toctree::
    :caption: Templates
