@@ -53,23 +53,17 @@ def fit_trigger_efficiency(binned_energies, survived_fraction, a1_0, a0_0=1, a2_
 
     >>> import cait as ai
     >>> import numpy as np
-
     >>> # create mock data
-
     >>> X = np.random.uniform(low=0, high=1, size=10000)
     >>> randoms = np.random.uniform(low=0.3, high=0.5, size=10000)
     >>> surviving = np.empty(10000, dtype=bool)
     >>> surviving[X < 0.3] = False
     >>> surviving[X > 0.5] = True
-
     >>> inbet = np.logical_and(X > 0.3, X < 0.5)
     >>> surviving[inbet] = X[inbet] > randoms[inbet]
-
     >>> hist, bins = np.histogram(X[surviving], bins=100, range=(0, 1))
     >>> hist_all, _ = np.histogram(X, bins=100, range=(0, 1))
-
     >>> # do the fit
-
     >>> a0, a1, a2 = ai.fit.fit_trigger_efficiency(binned_energies=bins,
     ...                                            survived_fraction=hist/hist_all,
     ...                                            a1_0=0.4,
@@ -82,7 +76,7 @@ def fit_trigger_efficiency(binned_energies, survived_fraction, a1_0, a0_0=1, a2_
     Estimated energy threshold (keV):  0.4002443060404336
     Estimated energy resolution (keV):  0.06203246371547854
 
-    .. image:: ../efficiency.png
+    .. image:: pics/efficiency.png
 
     """
     x_grid = binned_energies[:-1] + (binned_energies[1:] - binned_energies[:-1]) / 2

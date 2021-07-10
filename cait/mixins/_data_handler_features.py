@@ -36,15 +36,15 @@ class FeaturesMixin(object):
         (10.1103/PhysRevD.100.102002).
 
         :param type: The group in the HDF5 set, either events or testpulses.
-        :param type: string
+        :type type: string
         :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
-        :param path_h5: string or None
+        :type path_h5: string or None
         :param processes: The number of processes to use for the calculation.
-        :param processes: int
+        :type processes: int
         :param down: The events get downsampled by this factor for the calculation of main parameters.
-        :param down: int
-        :param: max_bounds: The interval of indices to which we restrict the maximum search for the pulse height.
-        :param: max_bounds: tuple of two ints
+        :type down: int
+        :param max_bounds: The interval of indices to which we restrict the maximum search for the pulse height.
+        :type max_bounds: tuple of two ints
         """
 
         if not path_h5:
@@ -542,7 +542,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None, cut_flag=None, window=False):
+    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None, cut_flag=None, window=True):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3).

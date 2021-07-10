@@ -102,7 +102,7 @@ class ModelHandler:
         """
         Save the model handler with pickle.
 
-        :param path: The path to the directory where we want to save the model handler.
+        :param path: The full path to save the model handler.
         :type path: string
         :param info: Additional information about this model, e.g. training set size.
         :type info: string

@@ -50,7 +50,6 @@
    documentation/dh_class
    documentation/eventinterface
    documentation/evaluationtools
-   documentation/bandfit
    documentation/calibration
    documentation/cuts
    documentation/data

@@ -180,7 +180,7 @@ class CsmplMixin(object):
             level can appear somewhere in the middle of the record window.
         :type window: bool
         :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
-            previous/next one. Standard value is 1/8 - it is recommended to use this value!
+            previous/next one. Standard value is 1/4 - it is recommended to use this value!
         :type overlap: float
         """
 

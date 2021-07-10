@@ -54,7 +54,7 @@ class PlotMixin(object):
         :param title: A title for the plot.
         :type title: string
         :param show_fit: If True then also plot the parametric fit.
-        :type show_fit:bool
+        :type show_fit: bool
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution.
         :type block: bool
@@ -146,7 +146,7 @@ class PlotMixin(object):
         :param title: A title for the plot.
         :type title: string
         :param show_fit: If True then also plot the parametric fit.
-        :type show_fit:bool
+        :type show_fit: bool
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution
         :type block: bool
@@ -529,7 +529,7 @@ class PlotMixin(object):
         :type cut_flag: list of bools
         :param idx0: The first index of the array.
         :type idx0: int
-        :param idx1:The second index of the array.
+        :param idx1: The second index of the array.
         :type idx1: int or None
         :param idx2: The third index of the array.
         :type idx2: int or None

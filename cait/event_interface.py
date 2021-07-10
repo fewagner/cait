@@ -954,6 +954,8 @@ class EventInterface:
         - of ... The filtered event is shown.
         - q ... Quit the menu and go back to the labeling interface.
 
+        There are more options, explore them in the options menu!
+
         :param start_from_idx: An event index to start labeling from.
         :type start_from_idx: int
         :param print_label_list: If set to true, the list of the labels is printed together when the user is asked for

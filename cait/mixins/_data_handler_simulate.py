@@ -54,19 +54,19 @@ class SimulateMixin(object):
         of crypgenic Dark Matter Experiments",
         available via https://doi.org/10.34726/hss.2020.77322 (accessed on the 9.7.2021).
 
-        :param path_sim: , the full path where to store the simulated data set
+        :param path_sim: The full path where to store the simulated data set.
         :type path_sim: string
-        :param size_events: , the number of events to simulate; if >0 we need a sev in the hdf5
+        :param size_events: The number of events to simulate; if >0 we need a sev in the hdf5.
         :type size_events: int
-        :param size_tp: , the number of testpulses to simulate; if >0 we need a tp-sev in the hdf5
+        :param size_tp: The number of testpulses to simulate; if >0 we need a tp-sev in the hdf5.
         :type size_tp: int
-        :param size_noise: , the number of noise baselines to simulate
+        :param size_noise: The number of noise baselines to simulate.
         :type size_noise: int
-        :param ev_ph_intervals: , the interval in which the pulse heights
-            are continuously distributed
+        :param ev_ph_intervals: The interval in which the pulse heights
+            are continuously distributed.
         :type ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
-        :param ev_discrete_phs:  - the discrete values, from which the pulse heights
-            are uniformly sampled. if the ph_intervals argument is set, this option will be ignored
+        :param ev_discrete_phs: The discrete values, from which the pulse heights
+            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored.
         :type ev_discrete_phs: list of NMBR_CHANNELS lists
         :param name_appendix: A string that is appended to the group name stdevent, which contains the standard event
             that is used for simulation. This concerns only the simulation of event pulses and has no effect on the
@@ -78,39 +78,39 @@ class SimulateMixin(object):
             the name_appendix argument instead!
         :type exceptional_sev_naming: string or None
         :param channel_exceptional_sev: The channels for that the exceptional sev is
-            used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1]
+            used, e.g. if only for phonon channel, choose [0], if for botch phonon and light, choose [0,1].
         :type channel_exceptional_sev: list of ints
-        :param tp_ph_intervals: analogous to ev_ph_intervals, but for the testpulses
+        :param tp_ph_intervals: Analogous to ev_ph_intervals, but for the testpulses.
         :type tp_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
-        :param tp_discrete_phs: analogous to ev_ph_intervals, but for the testpulses
+        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses.
         :type tp_discrete_phs: list of NMBR_CHANNELS lists
-        :param t0_interval: , the interval from which the pulse onset are continuously sampled
+        :param t0_interval: The interval from which the pulse onset are continuously sampled.
         :type t0_interval: 2-tuple or list
-        :param fake_noise: , the True the noise will be taken not from the measured baselines from the
-            hdf5 set, but simulated
+        :param fake_noise: If True the noise will be taken not from the measured baselines from the
+            hdf5 set, but simulated.
         :type fake_noise: bool
-        :param store_of: , if True the optimum filter will be saved to the simulated datasets
+        :param store_of: If True the optimum filter will be saved to the simulated datasets.
         :type store_of: bool
-        :param rms_thresholds: , above which value noise baselines are excluded for the
+        :param rms_thresholds: Above which value noise baselines are excluded for the
             distribution of polynomial coefficients (i.e. a parameter for the fake noise simulation), also a
-            cut parameter for the noise baselines from the h5 set if no fake ones are taken
+            cut parameter for the noise baselines from the h5 set if no fake ones are taken.
         :type rms_thresholds: list of two floats
-        :param lamb: , a parameter for the fake baseline simulation, decrease if calculation time is too long
+        :param lamb: A parameter for the fake baseline simulation, decrease if calculation time is too long.
         :type lamb: float
-        :param sample_length: , the length of one sample in milliseconds (if None, it is calculated from the sample
-            frequency)
+        :param sample_length: The length of one sample in milliseconds (if None, it is calculated from the sample
+            frequency).
         :type sample_length: float
-        :param assign_labels: , pre-assign a label to all the simulated events; tp and noise are
-            automatically labeled, the length of the list must match the list channels_exceptional_sev
+        :param assign_labels: Pre-assign a label to all the simulated events; tp and noise are
+            automatically labeled, the length of the list must match the list channels_exceptional_sev.
         :type assign_labels: list of ints
-        :param start_from_bl_idx: , the index of baselines that is as first taken for simulation
+        :param start_from_bl_idx: The index of baselines that is as first taken for simulation.
         :type start_from_bl_idx: int
-        :param saturation: , if true apply the logistics curve to the simulated pulses
+        :param saturation: If true apply the logistics curve to the simulated pulses.
         :type saturation: bool
-        :param reuse_bl: , if True the same baselines are used multiple times to have enough of them
-            (use this with care to not have identical copies of events)
+        :param reuse_bl: If True the same baselines are used multiple times to have enough of them
+            (use this with care to not have identical copies of events).
         :type reuse_bl: bool
-        :param pulses_per_bl: , number of pulses to simulate per one baseline --> gets multiplied to size!!
+        :param pulses_per_bl: Number of pulses to simulate per one baseline --> gets multiplied to size!!
         :type pulses_per_bl: int
         :param ps_dev: If True the pulse shape parameters are modelled with deviations. Attention! This will always
             model TUM40-like phonon pulse shapes! The light channel is not affected by this features. Generally, it is
