@@ -28,7 +28,6 @@
    tutorials/08ptl_classification
    tutorials/09regression
    tutorials/10limit
-   tutorials/Zbandfit
 
 .. toctree::
    :caption: Templates
@@ -51,7 +50,6 @@
    documentation/dh_class
    documentation/eventinterface
    documentation/evaluationtools
-   documentation/bandfit
    documentation/calibration
    documentation/cuts
    documentation/data

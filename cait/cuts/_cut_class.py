@@ -94,6 +94,15 @@ class LogicalCut:
         """
         return self.all_idx[self.cut_flag]
 
+    def get_antiidx(self):
+        """
+        Return an int array of all event indices that do not survive all cuts.
+
+        :return: The indices that do not survive all cuts.
+        :rtype: 1D int array
+        """
+        return self.all_idx[np.logical_not(self.cut_flag)]
+
     def total(self):
         """
         Return the total number of events.

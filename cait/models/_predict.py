@@ -2,6 +2,7 @@ import h5py
 from tqdm.auto import tqdm
 import pickle
 import cait as ai
+import numpy as np
 
 
 def nn_predict(h5_path: str,
@@ -41,9 +42,9 @@ def nn_predict(h5_path: str,
     :type no_channel_idx_in_pred: bool
     """
 
-    assert model is not None or (ptl_module is not None and ptl_ckp_path is not None), \
-        'You need provide either model or ptl_module path and ptl_model_path!'
-    assert model is not None and ptl_module is not None, \
+    assert np.logical_xor(model is None, ptl_module is None or ptl_ckp_path is None), \
+        'You need provide either model, or ptl_module path and ptl_model_path!'
+    assert np.logical_xor(model is None, ptl_module is None), \
         'You cannot provide both a model and a checkpoint to laod a model from!'
 
     if model is None:

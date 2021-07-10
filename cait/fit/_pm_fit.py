@@ -97,26 +97,27 @@ def ps_minimizer(par, t, event, t0_lb, t0_ub, tau_lb):
     return out
 
 
-def fit_pulse_shape(event, x0=None, sample_length=0.04, down=1, t0_start=-3, t0_bounds=(-10, 5), opt_start=False):
+def fit_pulse_shape(event, x0=None, sample_length=0.04,
+                    down=1, t0_start=-3, t0_bounds=(-10, 5), opt_start=False):
     """
     Fits the pulse shape model to a given event and returns the fit parameters.
 
     :param event: The event to fit.
-    :param event: 1D array
-    :param x0: None or 1D array (t0, An, At, tau_n, tau_in, tau_t); the start values for the fit
-
-    :param sample_length: float, the length of one sample in milliseconds
-
-    :param down: int, should be power of 2, downsample rate during the fit
-
-    :param t0_start: float, the start value for t0
-
-    :param t0_bounds: tuple, lower and upper bound for the t0 value
-
-    :param opt_start: bool, if activated the start values are searched with a differential evolution algorithm
-
-    :return: 1D array length 6, the fitted parameters
-
+    :type event: 1D array
+    :param x0: The start values for the fit: (t0, An, At, tau_n, tau_in, tau_t).
+    :type x0: None or 1D array
+    :param sample_length: The length of one sample in milliseconds.
+    :type sample_length: float
+    :param down: Should be power of 2, downsample rate during the fit.
+    :type down: int
+    :param t0_start: The start value for t0.
+    :type t0_start: float
+    :param t0_bounds: Lower and upper bound for the t0 value.
+    :type t0_bounds: tuple
+    :param opt_start: If activated the start values are searched with a differential evolution algorithm.
+    :type opt_start: bool
+    :return: The fitted parameters.
+    :rtype: 1D array length 6
     """
     record_length = event.shape[0]
     if x0 is None:

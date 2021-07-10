@@ -67,8 +67,6 @@ def scatter_img(x_data, y_data, height=2800, width=2800, alpha=0.3, xlims=None, 
     """
     Produce a scatter plot to plot as an image with pyplot.imshow.
 
-    This code is taken from TODO add stack link
-
     :param x_data: The values for the x axis.
     :type x_data: 1D array
     :param y_data: The values for the x axis.

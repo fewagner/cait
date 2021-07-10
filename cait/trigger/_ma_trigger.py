@@ -66,7 +66,7 @@ class MovingAverageTrigger():
         when m1 exceed m2 + tresh*sigma or goes below m2 - tresh*sigma, trigger.
 
         :param x: The next value of the time series.
-        :param x: float
+        :type x: float
         :return: 0 for no trigger, 1 for positive trigger, -1 for negative trigger.
         :rtype: int
         """
@@ -102,7 +102,7 @@ class MovingAverageTrigger():
         Wrapper around the get_value routine to downsample first.
 
         :param x: The new value.
-        :param x: float
+        :type x: float
         :return: 0 for trigger, -1 for neg trigger, 1 for pos trigger.
         :rtype: int
         """

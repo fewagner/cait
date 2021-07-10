@@ -61,7 +61,8 @@ def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     """
     Parametric model for the pulse shape, 6 parameters.
 
-    # TODO citation
+    This method was described in "(1995) F. Pröbst et. al., Model for cryogenic particle detectors with superconducting phase
+    transition thermometers."
 
     :param t: 1D array, the time grid; attention, this needs to be provided in compatible units with the fit parameters!
 
@@ -112,7 +113,8 @@ def sec(t, h, t0, a0, a1, a2, a3, t00, An, At, tau_n, tau_in, tau_t):
     """
     Standard Event Model with Cubic Baseline.
 
-    # TODO citation
+    This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
+    available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
     :param h: Height of pulse shape.
     :type h: float
@@ -160,7 +162,8 @@ class sev_fit_template:
     """
     Class to store pulse fit models for individual detectors.
 
-    # TODO citation
+    This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
+    available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
     :param par: 1D array with size 6, the fit parameter of the sev
         (t0, An, At, tau_n, tau_in, tau_t).
@@ -360,12 +363,14 @@ class sev_fit_template:
 
         if self.truncation_level is not None:
             truncation_flag = event < self.truncation_level
-            if np.any(truncation_flag is False):
+            truncated = np.any(truncation_flag is False)
+            if truncated:
                 last_saturated = np.where(truncation_flag is False)[-1]
                 h0 = self.truncation_level / sec(self.t, 1, t0_start, 0, 0, 0, 0, *self.pm_par)[last_saturated]
             else:
                 h0 = np.max(event)
         else:
+            truncated = False
             truncation_flag = np.ones(len(event), dtype=bool)
             h0 = np.max(event)
 
@@ -378,7 +383,7 @@ class sev_fit_template:
 
         if t0 is None:
             # fit t0
-            if self.saturation_pars is None:
+            if self.saturation_pars is None and not truncated:  # no saturation and truncation
                 res = minimize(fun=self._t0_minimizer,
                                x0=np.array([t0_start]),
                                method='nelder-mead',
@@ -386,7 +391,8 @@ class sev_fit_template:
                         self.low, self.up, self.pm_par, truncation_flag),
                                options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
                                )
-            else:
+                t0 = res.x
+            elif self.saturation_pars is not None:  # in case we have saturation curve
                 res = minimize(fun=self._t0_minimizer_sat,
                                x0=np.array([t0_start]),
                                method='nelder-mead',
@@ -396,18 +402,23 @@ class sev_fit_template:
                         self.saturation_pars[3], self.saturation_pars[4], self.saturation_pars[5]),
                                options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
                                )
-
-            t0 = res.x
+                t0 = res.x
+            elif truncated:
+                # in truncated case we fit the height first
+                res = minimize(self._par_minimizer_sat,
+                               x0=np.array([h0, a00, a10, a20, a30]),
+                               method='nelder-mead',
+                               args=(t0_start, event, self.t, self.low, self.up, self.pm_par, truncation_flag,
+                                     self.saturation_pars[0], self.saturation_pars[1], self.saturation_pars[2],
+                                     self.saturation_pars[3], self.saturation_pars[4], self.saturation_pars[5]),
+                               options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True}
+                               )
+                h, a0, a1, a2, a3 = res.x
+            else:
+                raise NotImplementedError('We should never reach this code.')
 
         # fit height, d and k with fixed t0
-        if self.saturation_pars is None:
-            res = minimize(self._par_minimizer,
-                           x0=np.array([h0, a00, a10, a20, a30]),
-                           method='nelder-mead',
-                           args=(t0, event, self.t, self.low, self.up, self.pm_par, truncation_flag),
-                           options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True}
-                           )
-        else:
+        if self.saturation_pars is not None:  # case with saturation curve
             res = minimize(self._par_minimizer_sat,
                            x0=np.array([h0, a00, a10, a20, a30]),
                            method='nelder-mead',
@@ -416,7 +427,28 @@ class sev_fit_template:
                                  self.saturation_pars[3], self.saturation_pars[4], self.saturation_pars[5]),
                            options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True}
                            )
-        h, a0, a1, a2, a3 = res.x
+            h, a0, a1, a2, a3 = res.x
+        elif not truncated:  # no saturation and no truncation
+            res = minimize(self._par_minimizer,
+                           x0=np.array([h0, a00, a10, a20, a30]),
+                           method='nelder-mead',
+                           args=(t0, event, self.t, self.low, self.up, self.pm_par, truncation_flag),
+                           options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True}
+                           )
+            h, a0, a1, a2, a3 = res.x
+        elif truncated:  # truncated fit
+            # in truncated case we fit only now the onset
+            res = minimize(fun=self._t0_minimizer,
+                           x0=np.array([t0_start]),
+                           method='nelder-mead',
+                           args=(h, a0, a1, a2, a3, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
+                                 self.low, self.up, self.pm_par, truncation_flag),
+                           options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
+                           )
+            t0 = res.x
+        else:
+            raise NotImplementedError('We should never reach this code.')
+
         a0 += offset
 
         return h, t0, a0, a1, a2, a3

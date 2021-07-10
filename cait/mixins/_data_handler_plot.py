@@ -10,6 +10,7 @@ from ..fit._saturation import logistic_curve
 from ..styles._plt_styles import use_cait_style, make_grid
 import warnings
 
+
 # functions
 
 def _str_empty(value):
@@ -20,6 +21,7 @@ def _str_empty(value):
         return ''
     else:
         return str(value)
+
 
 # -----------------------------------------------------------
 # CLASS
@@ -52,7 +54,7 @@ class PlotMixin(object):
         :param title: A title for the plot.
         :type title: string
         :param show_fit: If True then also plot the parametric fit.
-        :type show_fit:bool
+        :type show_fit: bool
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution.
         :type block: bool
@@ -70,7 +72,7 @@ class PlotMixin(object):
         """
 
         if sample_length is None:
-            sample_length = 1/self.sample_frequency * 1000
+            sample_length = 1 / self.sample_frequency * 1000
 
         with h5py.File(self.path_h5, 'r') as f:
             sev = f[type + name_appendix]['event']
@@ -144,7 +146,7 @@ class PlotMixin(object):
         :param title: A title for the plot.
         :type title: string
         :param show_fit: If True then also plot the parametric fit.
-        :type show_fit:bool
+        :type show_fit: bool
         :param block: If False the matplotlib generated figure window does not block
             the futher code execution
         :type block: bool
@@ -159,7 +161,7 @@ class PlotMixin(object):
         """
 
         if sample_length is None:
-            sample_length = 1/self.sample_frequency * 1000
+            sample_length = 1 / self.sample_frequency * 1000
 
         with h5py.File(self.path_h5, 'r') as f:
             sev = np.array(f['stdevent_{}'.format(naming)]['event'])
@@ -232,7 +234,8 @@ class PlotMixin(object):
 
                 for i, ch in enumerate(self.channel_names):
                     plt.subplot(self.nmbr_channels, 1, i + 1)
-                    plt.loglog(np.array(f['noise']['freq']), np.array(f['noise']['nps'][i]), color=self.colors[i], zorder=10, linewidth=3)
+                    plt.loglog(np.array(f['noise']['freq']), np.array(f['noise']['nps'][i]), color=self.colors[i],
+                               zorder=10, linewidth=3)
                     make_grid()
                     if title is None:
                         plt.title('Channel ' + str(ch) + ' NPS')
@@ -242,7 +245,8 @@ class PlotMixin(object):
                 plt.xlabel('Frequency (Hz)')
 
             else:
-                plt.loglog(np.array(f['noise']['freq']), np.array(f['noise']['nps'][channel]), color=self.colors[channel], zorder=10,
+                plt.loglog(np.array(f['noise']['freq']), np.array(f['noise']['nps'][channel]),
+                           color=self.colors[channel], zorder=10,
                            linewidth=3)
                 make_grid()
                 if title is None:
@@ -362,17 +366,17 @@ class PlotMixin(object):
                         xlabel=None,
                         ylabel=None,
                         show=True,
+                        plot=True,
                         xran=None,
                         yran=None,
                         block=False,
                         save_path=None,
                         dpi=150,
                         range=None,
+                        xscale='linear',
                         ):
         """
         Calculate the cut efficiency for a given cut flag and plot it.
-
-        TODO add citation
 
         :param channel: The cut efficiency is calculated and plotted for this channel.
         :type channel: int
@@ -391,6 +395,8 @@ class PlotMixin(object):
         :type ylabel: string
         :param show: If set, the plots are shown.
         :type show: bool
+        :param plot: Do a plot of the cut efficiency. Otherwise, only the values are returned.
+        :type plot: bool
         :param xran: The range of the x axis.
         :type xran: tuple of two floats
         :param yran: The range of the y axis.
@@ -405,9 +411,14 @@ class PlotMixin(object):
         :param range: The range in which the histogram is calculated. This should be maximally as large as the interval
             in which the pulses are simulated.
         :type range: tuple of two floats
+        :param xscale: Either 'linear' or 'log'. The binning of the x axis.
+        :type xscale: string
         :return: The efficiency within the bins, the number of counts within the bins, the bin edges.
         :rtype: tuple of (array of length bins, array of length bins, array of length bins+1)
         """
+
+        if type(range) == tuple:
+            range = list(range)
 
         with h5py.File(self.path_h5, 'r+') as hf5:
             if which_quantity == 'true_ph':
@@ -426,40 +437,57 @@ class PlotMixin(object):
                 except:
                     raise KeyError(f'A dataset with name {which_quantity} is not in the HDF5 set.')
 
-        all, bins = np.histogram(vals, bins=bins, range=range)
+        if range is None:
+            range = [np.min(vals), np.max(vals)]
+
+        if xscale == 'linear':
+            bins = np.linspace(range[0], range[1], bins + 1)
+        elif xscale == 'log':
+            if range is not None and range[0] == 0:
+                print('Changing lower end of range from 0 to 1e-3!')
+                range[0] = 1e-3
+            bins = np.logspace(start=np.log10(range[0]), stop=np.log10(range[1]), num=bins + 1)
+        else:
+            raise ValueError('The argument of xscale must be either linear or log!')
+
+        all, bins = np.histogram(vals, bins=bins)
         surviving, _ = np.histogram(vals[cut_flag], bins=bins)
-        efficiency = surviving/all
 
         if np.any(all == 0):
+            empties = bins[:-1] + np.diff(bins) / 2
             raise ValueError(
-                'Attention, one of the bins in your uncut efficiency events is zero! Reduce number of bins or hand more events.')
+                f'Attention, the bins {empties[all == 0]} in your uncut efficiency events is zero! Reduce number of bins, '
+                'use log scale or hand more, or binned events.')
+        efficiency = surviving / all
 
-        use_cait_style(dpi=dpi)
-        plt.close()
-        plt.hist(bins[:-1] + (bins[1] - bins[0])/2,  # this gives the mean values of all bins, which do each appear once
-                 bins=bins,
-                 weights=efficiency,  # by this we weight the bins counts (all 1) to the actual efficiency
-                 zorder=10)
-        make_grid()
-        if xlabel is None:
-            plt.xlabel('True Pulse Height')
-        else:
-            plt.xlabel(xlabel)
-        if ylabel is None:
-            plt.ylabel('Survival Probability')
-        else:
-            plt.ylabel(ylabel)
-        if title is not None:
-            plt.title(title)
-        plt.xlim(xran)
-        plt.ylim(yran)
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+        if plot:
+            use_cait_style(dpi=dpi)
+            plt.close()
+            plt.hist(bins[:-1] + np.diff(bins) / 2,
+                     # this gives the mean values of all bins, which do each appear once
+                     bins=bins,
+                     weights=efficiency,  # by this we weight the bins counts (all 1) to the actual efficiency
+                     zorder=10)
+            make_grid()
+            if xlabel is None:
+                plt.xlabel('True Pulse Height')
+            else:
+                plt.xlabel(xlabel)
+            if ylabel is None:
+                plt.ylabel('Survival Probability')
+            else:
+                plt.ylabel(ylabel)
+            if title is not None:
+                plt.title(title)
+            plt.xlim(xran)
+            plt.ylim(yran)
+            plt.xscale(xscale)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
         return efficiency, all, bins
-
 
     # plot histogram of some value
     def show_values(self,
@@ -501,7 +529,7 @@ class PlotMixin(object):
         :type cut_flag: list of bools
         :param idx0: The first index of the array.
         :type idx0: int
-        :param idx1:The second index of the array.
+        :param idx1: The second index of the array.
         :type idx1: int or None
         :param idx2: The third index of the array.
         :type idx2: int or None
@@ -790,7 +818,8 @@ class PlotMixin(object):
         """
         Make a Light Yield Plot out of specific Labels or Predictions.
 
-        TODO add citation
+        The Light Yield Parameter was described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param title: A title for the plot.
         :type title: string
@@ -951,7 +980,9 @@ class PlotMixin(object):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve.
 
-        TODO add citation
+        This method was used to describe the detector saturation in "M. Stahlberg, Probing low-mass dark matter with
+        CRESST-III : data analysis and first results",
+        available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
         :param show_fit: If true show the fitted logistics curve.
         :type show_fit: bool

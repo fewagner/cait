@@ -17,6 +17,4 @@ Contributors (alphabetical list):
 - Pascal Schanner
 - Daniel Schmiedmayer
 
-Contributors come from the following collaborations. As the contributors have acquired
-
-Contributing collaborations (alphabetical list):
+Currently all contributors are part of the CRESST and COSINUS collaborations.

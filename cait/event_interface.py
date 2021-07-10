@@ -11,6 +11,7 @@ from .features._fem import get_elements, plot_S1
 from .filter._of import filter_event
 from .fit._templates import sev_fit_template
 from .styles._plt_styles import use_cait_style, make_grid
+from .fit._saturation import scaled_logistic_curve
 
 # -----------------------------------------------------------
 # CLASS
@@ -62,6 +63,7 @@ class EventInterface:
                  dpi: int = None,
                  run: str = None,
                  module: str = None,
+                 pre_trigger_region: float = 1/8,
                  ):
         self.nmbr_channels = nmbr_channels
         self.module = module
@@ -80,6 +82,10 @@ class EventInterface:
         self.only_wrong = False
         self.show_filtered = False
         self.sev = False
+        self.saturation = False
+        self.fit_models = None
+        self.saturation_pars = None
+        self.of = None
         self.subtract_offset = False
         self.labels = {}
         self.predictions = {}
@@ -96,6 +102,9 @@ class EventInterface:
         self.dpi = dpi
         self.show_time = False
         self.window = False
+        self.threshold = None
+        self.show_threshold = False
+        self.pre_trigger_region = pre_trigger_region
 
         print('Event Interface Instance created.')
 
@@ -409,7 +418,7 @@ class EventInterface:
         >>> ei.load_of()
         Added the optimal transfer function.
         """
-        with h5py.File(self.path_h5, 'r+') as f:
+        with h5py.File(self.path_h5, 'r') as f:
             if down != 1:
                 try:
                     of_real = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real_down{}'.format(down)])
@@ -447,7 +456,7 @@ class EventInterface:
 
         # save this for loading of the parameters when viewing
         self.name_appendix = name_appendix
-        with h5py.File(self.path_h5, 'r+') as f:
+        with h5py.File(self.path_h5, 'r') as f:
             sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
             t = (np.arange(0, self.record_length, dtype=float) -
                  self.record_length / 4) * sample_length
@@ -457,6 +466,30 @@ class EventInterface:
                                                         t=t))
 
             print('Added the sev fit parameters.')
+
+    def load_saturation_par(self):
+        """
+        Add the saturation fit parameters from the HDF5 file.
+
+        This is needed to show the saturated, fitted events.
+        """
+
+        with h5py.File(self.path_h5, 'r') as f:
+            self.saturation_pars = np.array(f['saturation']['fitpar'])
+
+        print('Added the saturation fit parameters.')
+
+    def set_threshold(self, threshold: list):
+        """
+        Set a threshold to show for all channels.
+
+        :param thresholds: The thresholds for all channels.
+        :type thresholds: list of floats
+        """
+
+        assert len(threshold) == self.nmbr_channels, 'You need to define one threshold for each channel!'
+        self.threshold = threshold
+        print('Set thresholds to: ', self.threshold)
 
     # ------------------------------------------------------------
     # LABEL AND VIEWER INTERFACE
@@ -524,6 +557,8 @@ class EventInterface:
         print('triang ... show triangulation')
         print('of ... show filtered event')
         print('sev ... show fitted standardevent')
+        print('sat ... show fitted event with saturation')
+        print('threshold ... show the trigger threshold')
         print('xlim ... set the x limit')
         print('ylim ... set the y limit')
         print('sub ... subtract offset')
@@ -557,6 +592,7 @@ class EventInterface:
 
             # optimum filter
             elif user_input == 'of':
+                assert self.of is not None, 'You need to load an optimal filter first!'
                 self.show_filtered = not self.show_filtered
                 self.show_derivative = False
                 print('Show filtered set to: ', self.show_filtered)
@@ -573,8 +609,21 @@ class EventInterface:
 
             # sev fit
             elif user_input == 'sev':
+                assert self.fit_models is not None, 'You need to load standard event fit parameters first!'
                 self.sev = not self.sev
                 print('Show SEV fit set to: ', self.sev)
+
+            # saturation
+            elif user_input == 'sat':
+                assert self.saturation_pars is not None, 'You need to load saturation fit parameters first!'
+                self.saturation = not self.saturation
+                print('Show saturated fit set to: ', self.sev)
+
+            #
+            elif user_input == 'threshold':
+                assert self.threshold is not None, 'You need to define the threshold first!'
+                self.show_threshold = not self.show_threshold
+                print('Show threshold set to: ', self.show_threshold)
 
             # xlim
             elif user_input == 'xlim':
@@ -639,15 +688,20 @@ class EventInterface:
 
             # downsample first
             if not self.down == 1:
-                event = event.reshape(self.nmbr_channels, self.window_size,
-                                      self.down)
+                event = event.reshape((self.nmbr_channels, self.window_size,
+                                      self.down))
                 event = np.mean(event, axis=2)
+
+            # threshold
+            if self.show_threshold:
+                threshold = self.threshold + np.mean(event[:, :int(len(event[0]) * self.pre_trigger_region / self.down)],
+                                                  axis=1)
 
             # optimum filter
             if self.show_filtered:
                 try:
                     for c in range(self.nmbr_channels):
-                        offset = np.mean(event[c, :int(len(event[c]) / 8)])
+                        offset = np.mean(event[c, :int(len(event[c]) * self.pre_trigger_region / self.down)])
                         event[c] = filter_event(event[c] - offset,
                                                 self.of[c], window=self.window) + offset
                 except ValueError:
@@ -681,6 +735,9 @@ class EventInterface:
                         self.name_appendix)][:, idx, :]
                     for c in range(self.nmbr_channels):
                         sev_fit.append(self.fit_models[c]._wrap_sec(*fp[c]))
+                        if self.saturation:
+                            offset = fp[c][2]
+                            sev_fit[-1] = scaled_logistic_curve(sev_fit[-1] - offset, *self.saturation_pars[c]) + offset
                 except AttributeError:
                     raise AttributeError('No name_appendix attribute, did you load the SEV fit parameters?')
 
@@ -701,7 +758,7 @@ class EventInterface:
             for i in range(self.nmbr_channels):
 
                 if self.subtract_offset:
-                    offset = np.mean(event[i, :int(len(event[i]) / 8)])
+                    offset = np.mean(event[i, :int(len(event[i]) * self.pre_trigger_region / self.down)])
                 else:
                     offset = 0
 
@@ -726,6 +783,8 @@ class EventInterface:
                          label=self.channel_names[i],
                          color=colors[i],
                          zorder=10)
+                if self.show_threshold:
+                    plt.axhline(y=threshold[i], color='black', alpha=0.8, linewidth=2.5, linestyle='dotted', zorder=30)
                 plt.title('Index {}, {} {}'.format(idx,
                                                    self.channel_names[i],
                                                    appendix))
@@ -895,6 +954,8 @@ class EventInterface:
         - of ... The filtered event is shown.
         - q ... Quit the menu and go back to the labeling interface.
 
+        There are more options, explore them in the options menu!
+
         :param start_from_idx: An event index to start labeling from.
         :type start_from_idx: int
         :param print_label_list: If set to true, the list of the labels is printed together when the user is asked for
@@ -933,8 +994,7 @@ class EventInterface:
                         print('Navigate through events by pressing b back or n next. All other options are also available.')
                         break
                     elif viewer_mode.lower() == 'n':
-                        AttributeError('Load or create labels file first!')
-                        exit()
+                        raise AttributeError('Load or create labels file first!')
                     else:
                         print('Please enter a valid input! Either y or n')
 

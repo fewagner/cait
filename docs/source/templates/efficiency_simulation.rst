@@ -76,12 +76,15 @@ Efficiency Simulation
         SKIP_FILE_NMBRS = []  # in case the loop crashed at some point and you want to start from a specific file number, write here the numbers to ignore, e.g. ['001', '002']
         THRESHOLDS = []  # a list of the trigger thresholds in V
         TRUNCATION_LEVELS = []  # list of the truncation levels
-        MAXIMAL_EVENT_HEIGHTS = []  # list of the maximal event heights to be included in the energy calibration
+        MAXIMAL_EVENT_HEIGHTS = []  # list of the maximal event heights to be included in the simulation
+        MINIMAL_EVENT_HEIGHTS = []  # list of the minimal event heights to be included in the simulation
         PATH_PULSER_MODEL = ... # put an string of the path where you want to store the pulser model
-        POLY_ORDER = 3  # the order of the polynomial used for the energy calibration
+        POLY_ORDER = 5  # the order of the polynomial used for the energy calibration
         ONLY_ECAL = False  # if this is set to true, only the energy calibration is done for the file
         CPE_FACTOR = []  # list of the values source_peak_energy/source_peak_equivalent_tpa_value
-        NMBR_SIMULATED_EVENTS = 10000  # this number of events is simulated for each file in the list
+        NMBR_SIMULATED_EVENTS = 20000  # this number of events is simulated for each file in the list
+        XSCALE = 'log'
+        BINS = 2000
 
         # typically you do not need to change the values below
 
@@ -89,6 +92,17 @@ Efficiency Simulation
         H5_CHANNELS = list(range(len(RDT_CHANNELS))
         print('OF thresholds in V: ', THRESHOLDS)
         SEF_APP = '_down{}'.format(DOWN_SEF) if DOWN_SEF > 1 else ''
+        
+        if XSCALE == 'linear':
+        discrete_ph = np.array([np.linspace(mi, ma, BINS + 1) for mi,ma in zip(MINIMAL_EVENT_HEIGHTS, MAXIMAL_EVENT_HEIGHTS)])
+    elif XSCALE == 'log':
+        if any(np.array(MINIMAL_EVENT_HEIGHTS) <= 0):
+            print('Changing lower end of non-positive MINIMAL_EVENT_HEIGHTS to 1e-3!')
+            MINIMAL_EVENT_HEIGHTS[MINIMAL_EVENT_HEIGHTS <= 0] = 1e-3
+        discrete_ph = np.array([np.logspace(start=np.log10(mi), stop=np.log10(ma), num=BINS + 1) for mi,ma in zip(MINIMAL_EVENT_HEIGHTS, MAXIMAL_EVENT_HEIGHTS)])
+    else:
+        raise ValueError('The argument of XSCALE must be either linear or log!')
+    discrete_ph = discrete_ph[:, :-1] + (discrete_ph[:, 1:] - discrete_ph[:, :-1]) / 2
 
         assert len(FILE_NMBRS) > 0, "Choose some file numbers!"
         assert THIS_FILE_ONLY not in SKIP_FILE_NMBRS, "Attention, you chose a file that is in the skip list!"
@@ -127,6 +141,9 @@ Efficiency Simulation
                 if not MERGE_ONLY:
                     empty_name = 'empty_' + FNAMING + '_' + fn
                     sim_name = 'sim_' + FNAMING + '_' + fn
+                    
+                    if os.path.isfile(PATH_PROC_DATA + empty_name + '.h5'):
+                        os.remove(PATH_PROC_DATA + empty_name + '.h5')
 
                     dh_empty = ai.DataHandler(run=RUN,
                                               channels=RDT_CHANNELS,
@@ -193,8 +210,9 @@ Efficiency Simulation
                         dh_empty.simulate_pulses(path_sim=PATH_PROC_DATA + sim_name + '.h5',
                                               size_events=NMBR_SIMULATED_EVENTS,
                                               reuse_bl=True,
-                                              ev_ph_intervals=[(0, m) for m in MAXIMAL_EVENT_HEIGHTS],
-                                              t0_interval=[-20, 20],  # in ms
+                                              # ev_ph_intervals=[(0, m) for m in MAXIMAL_EVENT_HEIGHTS],
+                                              ev_discrete_phs=discrete_ph,
+                                              t0_interval=[-10, 10],  # in ms
                                               rms_thresholds=[1e5, 1e5],
                                               fake_noise=False)
 

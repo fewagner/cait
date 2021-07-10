@@ -7,7 +7,7 @@ from scipy.stats import linregress, t, norm
 from scipy import odr
 from scipy.interpolate import interp1d
 from ..styles import make_grid, use_cait_style
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
 
 
 # functions
@@ -16,7 +16,8 @@ def light_yield_correction(phonon_energy, light_energy, scintillation_efficiency
     """
     Return the recoil energy, corrected for the energy loss to scintillation light.
 
-    TODO add citation
+    This method was described in "F. Reindl (2016), Exploring Light Dark Matter With CRESST-II Low-Threshold Detectors",
+    available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
     :param phonon_energy: The recoil energies of the phonon channel, in keV.
     :type phonon_energy: 1D float array
@@ -97,7 +98,7 @@ class LinearModel:
     :type yd: 1D array
     """
 
-    def __init__(self, xd, yd):
+    def __init__(self, xd, yd, **kwargs):
         self.xd = xd
         self.yd = yd
         self.a, self.b, self.r, self.p, self.err = linregress(self.xd, self.yd)
@@ -180,11 +181,13 @@ class LinearModel:
 
 class PulserModel:
     """
-    A model to unfold the detector effects of cryogenic detectos.
+    A model to unfold the detector effects of cryogenic detectors.
 
     The model is to predict the equivalent test pulse values for particle event recoils within the detector crystal.
+    Additional kew word arguments get passed to the regressor model!
 
-    # todo add citation
+    This method was described in M. Stahlberg, Probing low-mass dark matter with CRESST-III : data analysis and first results,
+    available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
     :param start_saturation: Test pulses with average pulse heights above this value are excluded from the fit.
     :type start_saturation: float
@@ -196,9 +199,12 @@ class PulserModel:
     def __init__(self,
                  start_saturation,
                  max_dist,
+                 **kwargs
                  ):
         self.start_saturation = start_saturation
         self.max_dist = max_dist
+        self.interpolation_method = None
+        self.kwargs = kwargs
         print('PulserModel instance created.')
 
     def fit(self,
@@ -225,8 +231,8 @@ class PulserModel:
         :type tp_hours: 1D array
         :param exclude_tpas: A list of TPA values that are excluded from the fit.
         :type exclude_tpas: list
-        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
-            the interpolation of test pulse pulse height.
+        :param interpolation_method: Either 'linear' or 'forest'. Either a linear model
+            or a random forest is used for the interpolation of test pulse pulse height.
         :type interpolation_method: string
         :param LOWER_ALPHA: For the regression tree, this gives the quantile for the upper prediction band.
         :type LOWER_ALPHA: float
@@ -238,6 +244,7 @@ class PulserModel:
 
         self.tphs = tphs
         self.tp_hours = tp_hours
+        self.interpolation_method = interpolation_method
 
         unique_tpas = np.unique(tpas)
         unique_tpas = unique_tpas[np.logical_not(np.in1d(unique_tpas, exclude_tpas))]
@@ -264,6 +271,8 @@ class PulserModel:
                 linear_tpas = []
                 for i in unique_tpas:
                     cond = tpas == i
+                    cond = np.logical_and(cond, tp_hours > iv[0])
+                    cond = np.logical_and(cond, tp_hours < iv[1])
                     this_tp_hours = tp_hours[cond]
                     this_tph = tphs[cond]
 
@@ -289,11 +298,14 @@ class PulserModel:
                     self.linear_tpas.append(tpa)
 
                     self.lower_regs.append(GradientBoostingRegressor(loss="quantile",
-                                                                     alpha=LOWER_ALPHA))
+                                                                     alpha=LOWER_ALPHA,
+                                                                     **self.kwargs))
                     self.mean_regs.append(GradientBoostingRegressor(loss="quantile",
-                                                                    alpha=MIDDLE_ALPHA))
+                                                                    alpha=MIDDLE_ALPHA,
+                                                                    **self.kwargs))
                     self.upper_regs.append(GradientBoostingRegressor(loss="quantile",
-                                                                     alpha=UPPER_ALPHA))
+                                                                     alpha=UPPER_ALPHA,
+                                                                     **self.kwargs))
 
                     # Fit models
                     self.lower_regs[-1].fit(tp_hours[tpas == tpa].reshape(-1, 1), tphs[tpas == tpa])
@@ -309,8 +321,7 @@ class PulserModel:
                 evhs,
                 ev_hours,
                 poly_order,
-                cpe_factor=None,
-                interpolation_method='linear',
+                cpe_factor=None
                 ):
         """
         Predict the equivalent test pulse value for given pulse heights.
@@ -331,10 +342,12 @@ class PulserModel:
         :rtype: 4-tuple of 1D arrays
         """
 
+        assert self.interpolation_method is not None, 'You need to fit first!'
+
         # for each event in the interpolation intervals define a ph/tpa factor, for other events take closest TP time value
         # this is a polynomial fit (order 5 or so) of the the ph/tpa values for fixed tpas
 
-        if interpolation_method == 'linear':
+        if self.interpolation_method == 'linear':
 
             tpa_equivalent = np.zeros(len(evhs))
             tpa_equivalent_sigma = np.zeros(len(evhs))
@@ -356,7 +369,7 @@ class PulserModel:
                         tpa_equivalent_sigma[e] = yu - yl
                         break
 
-        elif interpolation_method == 'tree':
+        elif self.interpolation_method == 'tree':
 
             tpa_equivalent = np.zeros(len(evhs))
             tpa_equivalent_sigma = np.zeros(len(evhs))
@@ -392,10 +405,11 @@ class PulserModel:
              dpi=None,
              plot_only_first_poly=True,
              plot_poly_timestamp=None,
-             interpolation_method='linear',
              poly_order=3,
              ylim=None,
              xlim=None,
+             tpa_range=None,
+             rasterized=True,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -407,22 +421,25 @@ class PulserModel:
         :type plot_only_first_poly: bool
         :param plot_poly_timestamp: Time stamp at which the polynomial is plotted.
         :type plot_poly_timestamp: float
-        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
-            the interpolation of test pulse pulse height.
-        :type interpolation_method: string
         :param poly_order: The order of the polynomial to fit in the TPA/PH plane.
         :type poly_order: int
-        :param ylim: The limits on the y axis.
+        :param ylim: The limits on the y axis (pulse height).
         :type ylim: 2-tuple
-        :param xlim: The limits on the x axis.
+        :param xlim: The limits on the x axis (time).
         :type xlim: 2-tuple
+        :param tpa_range: The limits on the y axis (tpa).
+        :type tpa_range: tuple
+        :param rasterized: The scatter plot gets rasterized (much faster).
+        :type rasterized: tuple
         """
 
-        if interpolation_method == 'linear':
+        assert self.interpolation_method is not None, 'You need to fit first!'
+
+        if self.interpolation_method == 'linear':
             use_cait_style(dpi=dpi)
             # plot the regressions
             plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10)
+            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
             for i, iv in enumerate(self.intervals):
                 if i == 0:
                     plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
@@ -467,9 +484,13 @@ class PulserModel:
                 plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
                 make_grid()
                 if ylim is None:
-                    plt.ylim([0, y[-1]])
+                    plt.xlim([0, self.start_saturation])
                 else:
                     plt.xlim(ylim)
+                if tpa_range is None:
+                    plt.ylim(None)
+                else:
+                    plt.ylim(tpa_range)
                 plt.ylabel('Testpulse Amplitude (V)')
                 plt.xlabel('Pulse Height (V)')
                 plt.show()
@@ -477,12 +498,12 @@ class PulserModel:
                 if plot_only_first_poly or plot_poly_timestamp is not None:
                     break
 
-        elif interpolation_method == 'tree':
+        elif self.interpolation_method == 'tree':
 
             use_cait_style(dpi=dpi)
             # plot the regressions
             plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10)
+            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
             t = np.linspace(0, self.tp_hours[-1], 100)
             for m in range(len(self.linear_tpas)):
                 lower = self.lower_regs[m].predict(t.reshape(-1, 1))
@@ -493,6 +514,8 @@ class PulserModel:
             make_grid()
             if ylim is None:
                 plt.ylim([0, self.start_saturation])
+            else:
+                plt.ylim(ylim)
             plt.xlim(xlim)
             plt.ylabel('Pulse Height (V)')
             plt.xlabel('Time (h)')
@@ -526,9 +549,13 @@ class PulserModel:
             plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
             make_grid()
             if ylim is None:
-                plt.ylim([0, y[-1]])
+                plt.xlim([0, self.start_saturation])
             else:
                 plt.xlim(ylim)
+            if tpa_range is None:
+                plt.ylim(None)
+            else:
+                plt.ylim(tpa_range)
             plt.ylabel('Testpulse Amplitude (V)')
             plt.xlabel('Pulse Height (V)')
             plt.show()

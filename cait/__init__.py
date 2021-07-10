@@ -3,7 +3,6 @@ from .event_interface import EventInterface
 from .data_handler import DataHandler
 from cait.models._model_handler import ModelHandler
 from .evaluation_tools import EvaluationTools
-from .bandfit import *
 from .limit import *
 
 __all__ = ['EventInterface',
@@ -19,7 +18,6 @@ __all__ = ['EventInterface',
            'models',
            'simulate',
            'trigger',
-           'bandfit',
            'styles',
            'cuts',
            'calibration',

@@ -38,6 +38,7 @@ Interactive t-SNE Plot
     ap.add_argument("-s", "--test_size", type=float, required=False, default=0.5, help="The share of events used as test set.")
     ap.add_argument("-i", "--highest_idx", type=int, required=False, default=None, help="The highest index that is included in the plot. Use this if there are too many events to handle for the scatter plot.")
     ap.add_argument("-p", "--perplexity", type=int, required=False, default=30, help="The perplexity value, hyperparameter of the t-SNE plot. Recommended value: Between 5 and 50.")
+    ap.add_argument("-m", "--matplotlib", action='store_true', help="Start matplotlib for plotting, instead plotly.")
     args = vars(ap.parse_args())
 
     assert args['time_series'] is False or args['additional_mainpar'] is False, "You cannot activate both time_series and additional_mainpar!"
@@ -72,8 +73,15 @@ Interactive t-SNE Plot
                         )
     et.split_test_train(test_size=float(args['test_size']))
 
-    et.plt_pred_with_tsne(pred_methods=[],
-                          what='all',
-                          verb=True,
-                          perplexity=args['perplexity'],
-                         )
+    if args['matplotlib']:
+        et.plt_pred_with_tsne(pred_methods=[],
+                              what='all',
+                              verb=True,
+                              perplexity=args['perplexity'],
+                             )
+    else:
+        et.plt_pred_with_tsne_plotly(pred_methods=[],
+                      what='all',
+                      verb=True,
+                      perplexity=args['perplexity'],
+                     )

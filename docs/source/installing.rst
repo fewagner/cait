@@ -12,7 +12,13 @@ a beta version.
 Installation from PyPI (recommended)
 ====================================
 
-coming soon ...
+Cait is hosted on the Python package index.
+
+.. code:: console
+
+    $ pip install cait
+
+For older or unreleased version, use the installation from Git.
 
 Installation from Wheel File
 ====================================
@@ -54,7 +60,7 @@ As a developer of the Cait Library, you don't want to generate a new wheel file 
 
 pip editable option, that includes changes right away. It is also possible to install directly from the git repository, for this there are many tutorials available, e.g. https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/.
 
-Installation over Git
+Installation from Git
 ====================================
 
 The easiest way to install this library is to install it directly from git.

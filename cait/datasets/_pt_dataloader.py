@@ -20,8 +20,6 @@ class _RepeatSampler(object):
 class FastDataLoader(torch.utils.data.dataloader.DataLoader):
     """
     A child of the Pytorch data loader.
-
-    Developed by #TODO.
     """
 
     def __init__(self, *args, **kwargs):

@@ -15,7 +15,7 @@ we experienced problems with scp command and uncompressed containers in the past
 First you need a singularity installation on your machine, you can find instructions on their
 documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
 
-Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.def´.
+Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.cfg´.
 
 .. code::
 
@@ -32,7 +32,7 @@ Second, you need a container configuration file. One that worked for us is given
 
         apt-get install -y git git-lfs python3-pip python-pip-whl zsh screen vim finger openssh-client wget curl libxpm4 python3-tk ffmpeg imagemagick geeqie locales python3-lmdb libxext6 xterm dpkg-dev cmake g++ gcc binutils libx11-dev libxpm-dev gfortran libssl-dev libpcre3-dev xlibmesa-glu-dev libglew1.5-dev libftgl-dev  libmysqlclient-dev libfftw3-dev libcfitsio-dev graphviz-dev libavahi-compat-libdnssd-dev  libldap2-dev python2-dev libxml2-dev libkrb5-dev libgsl0-dev qt5-default libgfortran4 mmv libtinfo5 htop python3-pyx texlive-science texlive-latex-base texlive-latex-extra texlive-latex-recommended rsync sudo firefox libssl1.1 mupdf evince python3-scipy python3-numpy python3-tables python3-colorama tcl tclsh psmisc graphviz dot2tex locate openafs-client krb5-user kinit openafs-krb5 dvipng bc texlive-fonts-extra texlive-pictures iputils-ping autossh tmux tcllib nmap mtr gnuplot python3-gnuplotlib libreoffice-java-common unoconv default-jre gcc-7 gnuplot-x11 aptitude libxft-dev flex bison eog cm-super-minimal python-is-python2 fgallery g++-9 hdfview hdf5-tools
 
-        pip3 install pyyaml pyslha unum scipy numpy torch torchvision sympy matplotlib pip jupyter h5py tables plotly pandas ipython cython colorama pyexcel_ods ordered_set reportlab pypdf2 pygraphviz pympler pyfeyn pyhf typing sklearn sphinx_rtd_theme requests datetime bibtexparser gitex jaxlib jax coverage progressbar setuptools>=47.1.1 wheel twine pickle-mixin numba uproot awkward1 pytorch-lightning tqdm ipykernel jupyter_contrib_nbextensions
+        pip3 install pyyaml pyslha unum scipy numpy torch torchvision sympy matplotlib pip jupyter h5py tables plotly pandas ipython cython colorama pyexcel_ods ordered_set reportlab pypdf2 pygraphviz pympler pyfeyn pyhf typing sklearn sphinx_rtd_theme requests datetime bibtexparser gitex jaxlib jax coverage progressbar setuptools>=47.1.1 wheel twine pickle-mixin numba uproot awkward1 pytorch-lightning tqdm ipykernel jupyter_contrib_nbextensions pandas plotly dash_html_components dash_core_components dash
 
         locale-gen "en_US.UTF-8"
 
@@ -62,7 +62,7 @@ You can then always start the container by typing the following command in the s
 
 .. code:: console
 
-    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.sif
+    $ singularity shell -c -B /home/,/mnt/,/remote/ -s /bin/bash -H /home/USERNAME/ --writable ./ubuntu2010.simg
 
 Please look into the Singularity manual for details of above command. You might have to adapt several paths, according to
 your system. E.g. with the -B flag, you can bin directories from the server within the the container, you will need this for accessing data.
