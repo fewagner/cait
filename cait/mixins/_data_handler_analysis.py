@@ -170,7 +170,7 @@ class AnalysisMixin(object):
             hours_cp = np.array(h5['controlpulses']['hours'])
             hours_tp = np.array(h5['testpulses']['hours'])
 
-            flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours * 60, hours_cp, hours_tp,
+            flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours * 60, hours_cp * 60, hours_tp * 60,
                                                             interval=interval, significance=significance, min=min, max=max,
                                                             use_poisson=use_poisson, intervals=intervals, )
 

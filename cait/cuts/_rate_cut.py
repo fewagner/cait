@@ -17,7 +17,11 @@ def rate_cut(timestamps,
     """
     Return a bool array for all timestamps, with true for events that are in intervals with sigma rate.
 
-    :param timestamps: The array of the time stamps in minutes.
+    :param timestamps: The array of the event time stamps in minutes.
+    :type timestamps: 1D array
+    :param timestamps_cp: The array of the control pulse time stamps in minutes.
+    :type timestamps: 1D array
+    :param timestamps_tp: The array of the test pulse time stamps in minutes.
     :type timestamps: 1D array
     :param interval: In minutes, the interval we compare.
     :type interval: float
@@ -43,18 +47,24 @@ def rate_cut(timestamps,
 
         bins = np.arange(0, timestamps[-1], interval)
         hist, _ = np.histogram(timestamps, bins=bins)
+        hist_cp, _ = np.histogram(timestamps_cp, bins=bins)  # this is to exclude gaps in the recording
+
+        median_cp = np.median(hist_cp[hist_cp > 0])
 
         intervals = np.empty(shape=(len(bins) - 1, 2), dtype=float)
         intervals[:, 0] = bins[:-1]
         intervals[:, 1] = bins[1:]
 
         hist_cut = hist[np.logical_and(hist >= min, hist <= max)]
+        hist_cp = hist_cp[np.logical_and(hist >= min, hist <= max)]
+        hist_cut = hist_cut[hist_cp > median_cp/2]
 
         if not use_poisson:
             mean = np.mean(hist_cut)
             sigma = np.std(hist_cut)
 
-            intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
+            intervals = intervals[np.logical_and(hist > min, hist < max), :]
+            intervals = intervals[hist_cp > median_cp / 2, :]
             intervals = intervals[
                         np.logical_and(hist_cut >= mean - significance * sigma, hist_cut <= mean + significance * sigma), :]
 
@@ -70,7 +80,8 @@ def rate_cut(timestamps,
             low = sc.poisson.cdf(sc.norm.cdf(significance), mu=median)
             up = sc.poisson.cdf(sc.norm.cdf(-significance), mu=median)
 
-            intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
+            intervals = intervals[np.logical_and(hist > min, hist < max), :]
+            intervals = intervals[hist_cp > median_cp / 2, :]
             intervals = intervals[
                         np.logical_and(hist_cut >= low, hist_cut <= up), :]
 
