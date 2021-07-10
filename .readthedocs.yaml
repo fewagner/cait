@@ -1,0 +1,8 @@
+# File: .readthedocs.yaml
+
+version: 3
+
+# Explicitly set the version of Python and its requirements
+python:
+  install:
+    - requirements: docs/requirements.txt
