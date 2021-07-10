@@ -245,6 +245,9 @@ class AnalysisMixin(object):
             if 'controlpulses' in f:
                 cphs = f['controlpulses']['pulse_height'][channel]
                 hours_cp = f['controlpulses']['hours']
+            else:
+                cphs = None
+                hours_cp = None
 
             hours_ev = f['events']['hours']
 
