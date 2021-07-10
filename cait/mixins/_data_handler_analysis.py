@@ -236,9 +236,9 @@ class AnalysisMixin(object):
                                                       lb=lb, ub=ub, instable_iv=instable_iv)
 
             f.require_group('metainfo')
-            if 'controlpulse_instable' in f['metainfo']:
-                del f['metainfo']['controlpulse_instable']
-            f['metainfo'].create_dataset(name='controlpulse_instable',
+            if f'controlpulse_instable_ch{channel}' in f['metainfo']:
+                del f['metainfo'][f'controlpulse_instable_ch{channel}']
+            f['metainfo'].create_dataset(name=f'controlpulse_instable_ch{channel}',
                                           data=instable_iv)
 
             f['events'].require_dataset(name='controlpulse_stability',

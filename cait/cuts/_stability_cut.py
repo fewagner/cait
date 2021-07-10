@@ -92,6 +92,16 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
     else:
         print('Using precalculated instable intervals.')
 
+    # simplify the intervals
+    iv_simple = []
+    start = instable_iv[0][0]
+    for i, iv in enumerate(instable_iv[:-1]):
+        if not iv[1] == instable_iv[i + 1][0]:
+            iv_simple.append([start, iv[1]])
+            start = instable_iv[i + 1][0]
+    iv_simple.append([start, instable_iv[-1][1]])
+    instable_iv = iv_simple
+
     # exclude the events in instable intervals
     flag_ev = np.ones(len(hours_ev), dtype=bool)
     excluded_hours = 0

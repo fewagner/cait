@@ -77,16 +77,16 @@ def rate_cut(timestamps,
 
         else:
             median = np.median(hist_cut)
-            low = sc.poisson.cdf(sc.norm.cdf(significance), mu=median)
-            up = sc.poisson.cdf(sc.norm.cdf(-significance), mu=median)
+            low = sc.poisson.ppf(sc.norm.cdf(-significance), mu=median)
+            up = sc.poisson.ppf(sc.norm.cdf(significance), mu=median)
 
             intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
             intervals = intervals[hist_cp > median_cp / 2, :]
             intervals = intervals[
                         np.logical_and(hist_cut >= low, hist_cut <= up), :]
 
-            print('Rate Median: {:.3f}/{}m'.format(median, interval))
-            print('Good Rate per {}m ({} sigma): {:.3f} - {:.3f}'.format(interval,
+            print('Rate Median: {}/{}m'.format(median, interval))
+            print('Good Rate per {}m ({} sigma): {} - {}'.format(interval,
                                                                          significance,
                                                                          low,
                                                                          up,
@@ -94,6 +94,16 @@ def rate_cut(timestamps,
 
     else:
         print('Using precalculated intervals.')
+
+    # simplify the intervals
+    iv_simple = []
+    start = intervals[0][0]
+    for i, iv in enumerate(intervals[:-1]):
+        if not iv[1] == intervals[i+1][0]:
+            iv_simple.append([start, iv[1]])
+            start = intervals[i+1][0]
+    iv_simple.append([start, intervals[-1][1]])
+    intervals = iv_simple
 
     flag_ev = np.zeros(len(timestamps), dtype=bool)
     flag_cp = np.zeros(len(timestamps_cp), dtype=bool)
