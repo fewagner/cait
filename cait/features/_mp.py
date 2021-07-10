@@ -15,7 +15,28 @@ from ..filter._of import filter_event
 
 class MainParameters():
     """
-    Class to contain the main parameters
+    Class to contain the main parameters.
+
+    :param pulse_height: float, the height of the event
+
+    :param t_zero: int, the sample index where the rise starts
+
+    :param t_rise: int, the sample index where the rise reaches 80%
+
+    :param t_max: int, the sample index of the max event
+
+    :param t_decaystart: int, the sample index where the peak falls down to 90%
+
+    :param t_half: int, the sample index where the peak falls down to 73%
+
+    :param t_end: int, the sample index where the peak falls down to 36%
+
+    :param offset: float, the mean of the first 1/8 of the record length
+
+    :param linear_drift: float, the linear slope of the event baseline
+
+    :param quadratic_drift: float, the quadratic slope of the event baseline
+
     """
 
     def __init__(self,
@@ -29,20 +50,6 @@ class MainParameters():
                  offset=0,
                  linear_drift=0,
                  quadratic_drift=0):
-        """
-        Provide the main parameters
-
-        :param pulse_height: float, the height of the event
-        :param t_zero: int, the sample index where the rise starts
-        :param t_rise: int, the sample index where the rise reaches 80%
-        :param t_max: int, the sample index of the max event
-        :param t_decaystart: int, the sample index where the peak falls down to 90%
-        :param t_half: int, the sample index where the peak falls down to 73%
-        :param t_end: int, the sample index where the peak falls down to 36%
-        :param offset: float, the mean of the first 1/8 of the record length
-        :param linear_drift: float, the linear slope of the event baseline
-        :param quadratic_drift: float, the quadratic slope of the event baseline
-        """
         self.pulse_height = pulse_height
         self.t_zero = t_zero
         self.t_rise = t_rise
@@ -57,8 +64,6 @@ class MainParameters():
     def print_all(self):
         """
         Method to print all the stored main parameters
-
-        :return: -
         """
         print('Pulse height: ', self.pulse_height)
         print('Index of Rise Start: ', self.t_zero)
@@ -73,10 +78,12 @@ class MainParameters():
 
     def compare(self, other):
         """
-        Method to compare the main parameters with those of another instance
+        Method to compare the main parameters with those of another instance.
 
         :param other: the other instance of main parameters
+
         :return: bool, states if the main parameters are the same
+
         """
         if self.pulse_height != other.pulse_height:
             return False
@@ -121,7 +128,7 @@ class MainParameters():
     def plotParameters(self,
                        down=1,
                        offset_in_samples=0,
-                       color = 'r', zorder=10):
+                       color = 'r', zorder=10, fig=None):
         """
         Plots the main parameters on overlaid to an event
 
@@ -130,7 +137,7 @@ class MainParameters():
         :param color: string, the color of the main parameters in the scatter plot
         :param zorder: int, the plot with the highest zorder is plot on top of the others
             this should be choosen high, such that the main parameters are visible
-        :return: -
+        :param fig: object, the pyplot figure to which we want to plot the parameters
         """
 
         # t = np.linspace(0, nmbr_samples-1, nmbr_samples) - nmbr_samples/4
@@ -151,9 +158,15 @@ class MainParameters():
             self.offset + 0.368 * self.pulse_height]
 
         if zorder == 0:
-            plt.scatter(x_values, y_values, color=color)
+            if fig is None:
+                fig.scatter(x_values, y_values, color=color)
+            else:
+                plt.scatter(x_values, y_values, color=color)
         else:
-            plt.scatter(x_values, y_values, color=color, zorder=zorder)
+            if fig is None:
+                fig.scatter(x_values, y_values, color=color, zorder=zorder)
+            else:
+                plt.scatter(x_values, y_values, color=color, zorder=zorder)
 
 
     def get_differences(self):
@@ -195,35 +208,41 @@ def get_times(t_zero, t_rise, t_decaystart, t_half, t_end):
     return length_rise, length_peak, length_firsthalfdecay, length_secondhalfdecay
 
 
-def calc_main_parameters(event, down=1):
+def calc_main_parameters(event, down=1, max_bounds=None, quad_drift=False):
     """
     Calculates the Main Parameters for an Event.
     Optional, the event can be downsampled by a given factor befor the calculation
 
     :param event: 1D array, the event
     :param down: integer, power of 2, the factor for downsampling
+    :param max_bounds: tuple, the lower and upper index of the interval within which the maximum is searched
+    :param quad_drift: bool, include quadratic drift in the calculation
     :return: instance of MainParameters, see :class:`~simulate.MainParameters`
     """
 
     length_event = len(event)
+    if max_bounds is None:
+        max_bounds = [0, length_event]
 
     offset = np.mean(event[:int(length_event/8)])
 
-    # smoothing
+    # smoothing or downsampling
     if down == 1:
         event_smoothed = box_car_smoothing(event - offset)
     else:
         event_smoothed = event.reshape(int(length_event / down), down)
         event_smoothed = np.mean(event_smoothed, axis=1)
         event_smoothed = event_smoothed - offset
+        max_bounds[0] = int(max_bounds[0]/down)
+        max_bounds[1] = int(max_bounds[1] / down)
 
     length_event_smoothed = len(event_smoothed)
 
     # get the maximal pulse height and the time of the maximum
-    maximum_pulse_height = np.max(event_smoothed)  # [idx_lower_region : idx_upper_region]
+    maximum_pulse_height = np.max(event_smoothed[max_bounds[0]:max_bounds[1]])  # [idx_lower_region : idx_upper_region]
     # maximum_index = np.argmax(event_smoothed)  # [idx_lower_region : idx_upper_region]  + idx_lower_region
 
-    if maximum_pulse_height > np.std(event_smoothed):  # typically this will be the case
+    if maximum_pulse_height > np.std(event_smoothed) or not quad_drift:  # typically this will be the case
 
         # get baseline offset and linear drift
         # offset = event_smoothed[0]
@@ -239,7 +258,7 @@ def calc_main_parameters(event, down=1):
     if quadratic_drift != 0:
         event_nodrift = event_nodrift - quadratic_drift * np.linspace(0, length_event_smoothed - 1, length_event_smoothed) ** 2
 
-    maximum_index = np.argmax(event_nodrift)
+    maximum_index = int(np.argmax(event_nodrift[max_bounds[0]:max_bounds[1]]) + max_bounds[0])
     # maximum_pulse_height = event_smoothed[maximum_index]
     maximum_pulse_height_condition = event_smoothed[maximum_index]
 
@@ -254,7 +273,7 @@ def calc_main_parameters(event, down=1):
     if t_rise[0].size > 0:
         t_rise = t_rise[0][0] + t_zero
     else:
-        t_rise = 0
+        t_rise = t_zero
 
     t_end = np.where(event_smoothed[maximum_index:] < 0.368 * maximum_pulse_height_condition)
     if t_end[0].size > 0:
@@ -323,8 +342,9 @@ def calc_additional_parameters(event,
     """
     Calculate parameters additionally to the main parameters
 
-    :param optimal_transfer_function:
-    :param down:
+    :param event: array, the event of which we want to calculate the additional main parameters
+    :param optimal_transfer_function: array, the optimum filter transfer function
+    :param down: int, if we want to downsample the event by a factor, this can be done here
     :return: List of float values parameters (maximum of array,
                      minimum of array,
                      variance of first 1/8 or array,
@@ -357,7 +377,7 @@ def calc_additional_parameters(event,
 
     # Max and Min
     max = np.max(event_smoothed)
-    min = np.max(event_smoothed)
+    min = np.min(event_smoothed)
 
     # Variance and Mean of first 1 / 8 and last 1 / 8
     var_start = np.var(event_smoothed[:int(length_event_smoothed/8)])
@@ -383,19 +403,20 @@ def calc_additional_parameters(event,
     filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
     filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
 
-    return np.array([max,
-                     min,
-                     var_start,
-                     mean_start,
-                     var_end,
-                     mean_end,
-                     var,
-                     mean,
-                     skew,
-                     der_max,
-                     der_maxind,
-                     der_min,
-                     der_minind,
-                     filtered_max,
-                     filtered_maxind,
-                     filtered_skew])
+    return np.array([max,  # 0
+                     min,  # 1
+                     var_start,  # 2
+                     mean_start,  # 3
+                     var_end,  # 4
+                     mean_end,  # 5
+                     var,  # 6
+                     mean,  # 7
+                     skew,  # 8
+                     der_max,  # 9
+                     der_maxind,  # 10
+                     der_min,  # 11
+                     der_minind,  # 12
+                     filtered_max,  # 13
+                     filtered_maxind,  # 14
+                     filtered_skew], # 15
+                    )

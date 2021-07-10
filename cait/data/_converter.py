@@ -7,11 +7,14 @@ def convert_h5_to_root(path_h5,
                        path_root,
                        nmbr_channels):
     """
-    Convert a HDF5 file to a ROOT file
+    Convert a HDF5 file to a ROOT file.
 
-    :param path_h5: string, the path to the hdf5 file that is read
-    :param path_root: string, the path to the root file that is created
-    :param nmbr_channels: int, the number of channels of the module
+    :param path_h5: The path to the hdf5 file that is read.
+    :type string: string
+    :param path_root: The path to the root file that is created.
+    :type path_root: string
+    :param nmbr_channels: The number of channels of the module.
+    :type nmbr_channels: int
     """
 
     f_h5 = h5py.File(path_h5, 'r')

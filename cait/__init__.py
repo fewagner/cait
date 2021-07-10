@@ -1,15 +1,14 @@
 
 from .event_interface import EventInterface
 from .data_handler import DataHandler
-from .model_handler import ModelHandler
+from cait.models._model_handler import ModelHandler
 from .evaluation_tools import EvaluationTools
-from .stream_interface import StreamInterface
+from .limit import *
 
 __all__ = ['EventInterface',
            'DataHandler',
            'ModelHandler',
            'EvaluationTools',
-           'StreamInterface',
            'data',
            'datasets',
            'evaluation',
@@ -18,5 +17,10 @@ __all__ = ['EventInterface',
            'fit',
            'models',
            'simulate',
-           'trigger'
+           'trigger',
+           'styles',
+           'cuts',
+           'calibration',
+           'mixins',
+           'limit',
            ]

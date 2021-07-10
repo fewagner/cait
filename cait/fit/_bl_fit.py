@@ -22,10 +22,10 @@ def fit_quadratic_baseline(event):
 
 def get_rms(x, y):
     """
-    Utils function to geht the RMS between two arrays
+    Utils function to geh the average RMS between two arrays
 
     :param x: 1D array
     :param y: 1D array
     :return: float, the RMS value
     """
-    return np.sum((x - y)**2)
+    return np.mean((x - y)**2)

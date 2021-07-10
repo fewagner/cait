@@ -1,49 +1,64 @@
-.. cait documentation master file, created by
-   sphinx-quickstart on Fri Oct 30 17:50:05 2020.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-
-Getting started
-*************************************
-
-Installation
-===================
-
-Code Structure
-===================
-
-
-Documentation
-**************************
+.. include:: ../../README.rst
 
 .. toctree::
+   :caption: Home
    :maxdepth: 2
-   :caption: Contents:
 
-cait DataHandler
-===================
-.. automodule:: cait.DataHandler
-   :members:
+   starting
+   installing
+   about
+   contributing
+   ../../CONTRIBUTING.rst
+   tips
+   magic
+   changelog
 
-cait EventInterface
-=====================
-.. automodule:: cait.EventInterface
-   :members:
+.. toctree::
+   :caption: Tutorials
+   :maxdepth: 1
 
-cait ModelHandler
-=====================
-.. automodule:: cait.ModelHandler
-   :members:
+   tutorials/abouttutorials
+   tutorials/01conversion
+   tutorials/02features
+   tutorials/03simulation
+   tutorials/04trigger
+   tutorials/05calibration
+   tutorials/06labeling
+   tutorials/07classification
+   tutorials/08ptl_classification
+   tutorials/09regression
+   tutorials/10limit
 
-cait StreamInterface
-=====================
-.. automodule:: cait.StreamInterface
-   :members:
+.. toctree::
+   :caption: Templates
+   :maxdepth: 1
 
-Indices and tables
-==================
+   templates/abouttemplates
+   templates/conversion
+   templates/viewer
+   templates/tsne
+   templates/hw_analysis
+   templates/estimate_noise_trigger_rate
+   templates/trigger
+   templates/stream_analysis
+   templates/efficiency_simulation
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. toctree::
+   :caption: Documentation
+   :maxdepth: 3
+
+   documentation/dh_class
+   documentation/eventinterface
+   documentation/evaluationtools
+   documentation/calibration
+   documentation/cuts
+   documentation/data
+   documentation/datasets
+   documentation/features
+   documentation/filter
+   documentation/fit
+   documentation/limit
+   documentation/models
+   documentation/simulate
+   documentation/styles
+   documentation/trigger

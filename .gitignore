@@ -74,6 +74,9 @@ instance/
 
 # Sphinx documentation
 docs/_build/
+docs/build/
+docs/source/tutorials/.ipynb_checkpoints/
+docs/source/tutorials/test_data/
 
 # PyBuilder
 target/
@@ -107,6 +110,9 @@ venv.bak/
 .spyderproject
 .spyproject
 
+# VsCode project settings
+.vscode
+
 # Rope project settings
 .ropeproject
 
@@ -122,3 +128,5 @@ dmypy.json
 .pyre/
 
 /examples/plots/
+/docs/source/tutorials/lightning_logs/
+/docs/source/tutorials/callbacks/

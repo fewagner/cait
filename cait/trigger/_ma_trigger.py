@@ -2,28 +2,32 @@ import numpy as np
 
 def get_q(m):
     """
-    Get the q value for an m-sample moving average
+    Get the q value for an m-sample moving average.
 
-    :param m: int, the number of samples after which the weights decay to 1/e
+    :param m: The number of samples after which the weights decay to 1/e.
+    :type m: int
     """
     return np.exp(-1/m)
 
 class MovingAverageTrigger():
     """
     Class to efficiently trigger a time series with moving averages on two time scales.
-    TODO this algorithm has potentially huge numerical problems because q must be very close to 1
+    Attention! This algorithm has potentially huge numerical problems because q must be very close to 1.
+    Also, it might not be properly tested.
+
+    :param q1: The weight parameter for past samples in the long time scale.
+    :type q1: float in (0,1)
+    :param q2: The weight parameter for past samples in the short time scale.
+    :type q2: float in (0,1)
+    :param p: The weight parameter for triggered samples.
+    :type p: float in (0,1)
+    :param tres: The multiplicative factor for the sigma by which to trigger.
+    :type tres: float
+    :param down: The value how many sample we should average before handing it to the trigger.
+    :type down: int
     """
 
     def __init__(self, q1, q2, q3, tres, down=1):
-        """
-        Give parameters for the algorithm
-
-        :param q1: float in (0,1), the weight parameter for past samples in the long time scale
-        :param q2: float in (0,1), the weight parameter for past samples in the short time scale
-        :param p: float in (0,1), the weight parameter for triggered samples
-        :param tres: float, the multiplicative factor for the sigma by which to trigger
-        :param down: int, the value how many sample we should average before handing it to the trigger
-        """
 
         if ([q1, q2, p] >= 1).any() or ([q1, q2, p] <= 0).any():
             raise KeyError("Need values in (0,1) for all q!")
@@ -46,10 +50,10 @@ class MovingAverageTrigger():
 
     def set_first_value(self, x0):
         """
-        Set the first value of the moving average
+        Set the first value of the moving average.
 
-        :param x0: float, the first value
-        :return: -
+        :param x0: The first value.
+        :type: float
         """
 
         self.m1 = x0
@@ -61,8 +65,10 @@ class MovingAverageTrigger():
         Calculates moving average m1 on short time scale and moving average m2 and moving std sigma on long time scale,
         when m1 exceed m2 + tresh*sigma or goes below m2 - tresh*sigma, trigger.
 
-        :param x: the next value of the time series
-        :return: int, 0 for no trigger, 1 for positive trigger, -1 for negative trigger
+        :param x: The next value of the time series.
+        :type x: float
+        :return: 0 for no trigger, 1 for positive trigger, -1 for negative trigger.
+        :rtype: int
         """
 
         signal = 0
@@ -93,10 +99,12 @@ class MovingAverageTrigger():
 
     def get_down_value(self, x):
         """
-        Wrapper around the get_value routine to downsample first
+        Wrapper around the get_value routine to downsample first.
 
-        :param x: float, the new value
-        :return: 0 for trigger, -1 for neg trigger, 1 for pos trigger
+        :param x: The new value.
+        :type x: float
+        :return: 0 for trigger, -1 for neg trigger, 1 for pos trigger.
+        :rtype: int
         """
 
         self.x_save += x
