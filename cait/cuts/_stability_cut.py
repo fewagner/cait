@@ -114,7 +114,7 @@ def controlpulse_stability(hours_ev, cphs=None, hours_cp=None, significance=3,
         excluded_hours += ub - lb
 
     # exclude also the events before first and after last tp!
-    if instable_iv is not None:
+    if instable_iv is None:
         flag_ev[hours_ev < hours_cp[0]] = False
         flag_ev[hours_ev > hours_cp[-1]] = False
         if cond[1] == True:
