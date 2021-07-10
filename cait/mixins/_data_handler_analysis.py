@@ -133,7 +133,7 @@ class AnalysisMixin(object):
         return np.array(resolutions), np.array(mus)
 
     def calc_rate_cut(self, interval: float = 10, significance: float = 3,
-                      min: float = 0, max: float = 60, intervals: list = None):
+                      min: float = 0, max: float = 60, intervals: list = None, use_poisson=True):
         """
         Calculate a rate cut on the events.
 
@@ -157,6 +157,9 @@ class AnalysisMixin(object):
         :type min: float
         :param max: Rates that are higher than this value are excluded from the calculation of the average rate.
         :type max: float
+        :param use_poisson: If this is activated (per default) we use the median and poisson confidence intervals instead
+        of standard normal statistics.
+        :type use_poisson: bool
         :param intervals: A list of the stable intervals. If this is handed, these intervals are used instead of
         calculating them from scratch. This is useful e.g. for the cut efficiency.
         :type intervals: list of 2-tuples
@@ -168,8 +171,8 @@ class AnalysisMixin(object):
             hours_tp = np.array(h5['testpulses']['hours'])
 
             flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours * 60, hours_cp, hours_tp,
-                                                            interval, significance, min, max,
-                                                            intervals)
+                                                            interval=interval, significance=significance, min=min, max=max,
+                                                            use_poisson=use_poisson, intervals=intervals, )
 
             h5.require_group('metainfo')
             if 'rate_stable' in h5['metainfo']:
