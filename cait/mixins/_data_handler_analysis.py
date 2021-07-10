@@ -178,7 +178,7 @@ class AnalysisMixin(object):
             if 'rate_stable' in h5['metainfo']:
                 del h5['metainfo']['rate_stable']
             h5['metainfo'].create_dataset(name='rate_stable',
-                                          data=intervals)
+                                          data=np.array(intervals)/60)  # this is now in hours
 
             h5['events'].require_dataset(name='rate_cut',
                                          shape=(flag_ev.shape),

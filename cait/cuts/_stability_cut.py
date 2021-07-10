@@ -39,7 +39,7 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
         but those are used. Useful for e.g. the cut efficiency.
     :type instable_iv: list
     :return: The flag that specifies which events are stable. The flag that specifies which control pulses are stable.
-        The list of instable intervals.
+        The list of instable intervals in hours.
     :rtype: two 1D bool arrays, one list
     """
 

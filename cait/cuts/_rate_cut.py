@@ -38,7 +38,7 @@ def rate_cut(timestamps,
         calculating them from scratch. This is useful e.g. for the cut efficiency.
     :type intervals: list of 2-tuples
     :return: For events, controlpulses and testpulses arrays: True if event survives rate cut, false if not. The list of
-        the stable intervals.
+        the stable intervals in minutes.
     :rtype: 3 boolean arrays of same size as timestamps, list of tuples
     """
     print('Do Rate Cut.')
