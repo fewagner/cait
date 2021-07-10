@@ -123,9 +123,10 @@ def rate_cut(timestamps,
         if timestamps_tp is not None:
             flag_tp[np.logical_and(timestamps_tp >= iv[0], timestamps_tp <= iv[1])] = 1
 
-    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(len(intervals) * interval / 60,
-                                                        (len(bins) - 1) * interval / 60,
-                                                        100 * len(intervals) / (len(bins) - 1)))
+    if intervals is None:
+        print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(len(intervals) * interval / 60,
+                                                            (len(bins) - 1) * interval / 60,
+                                                            100 * len(intervals) / (len(bins) - 1)))
     print('Good Events: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag_ev), len(flag_ev),
                                                         100 * np.sum(flag_ev) / len(flag_ev)))
     if timestamps_cp is not None:
