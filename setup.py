@@ -45,7 +45,7 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Topic :: Scientific/Engineering :: Physics",
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: GNU GPLv3",
+        "License :: OSI Approved",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
