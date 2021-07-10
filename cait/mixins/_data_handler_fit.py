@@ -92,10 +92,11 @@ class FitMixin(object):
                       verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
                       use_saturation=False):
         """
-        Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
-        The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
+        Calculates the SEV fit for all events of type (events or tp) and stores in HDF5 file.
+        The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic).
 
-        TODO add citation
+        This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
+        available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
         :param type: Name of the group in the HDF5 set, either events or testpulses.
         :type type: string
@@ -267,7 +268,9 @@ class FitMixin(object):
         """
         Fit a logistics curve to the testpulse amplitudes vs their pulse heights.
 
-        TODO add citation
+        This method was used to describe the detector saturation in "M. Stahlberg, Probing low-mass dark matter with
+        CRESST-III : data analysis and first results",
+        available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
         :param channel: The channel for that we calculate the saturation.
         :type channel: int
@@ -333,11 +336,10 @@ class FitMixin(object):
         """
         Estimate the trigger threshold to obtain a given number of noise triggers per exposure.
 
-        The method assumes a Gaussian sample distribution of the noise, following arXiv:1711.11459. There are multiple
+        The method assumes a Gaussian sample distribution of the noise, following "A method to define the energy
+        threshold depending on noise level for rare event searches" (arXiv:1711.11459). There are multiple
         extensions implemented, that descibe additional Gaussian mixture or non-Gaussian components. A more extensive
         description can be found in the corresponding tutorial.
-
-        TODO add citation
 
         :param channel: The number of the channel for that we estimate the noise trigger threshold.
         :type channel: int

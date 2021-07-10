@@ -5,7 +5,7 @@ import numpy as np
 
 # functions
 
-def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
+def controlpulse_stability(hours_ev, cphs=None, hours_cp=None, significance=3,
                            max_gap=1, lb=0, ub=100, instable_iv=None):
     """
     Find all stable control pulses and events.
@@ -46,6 +46,9 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
     print('Do Testpulse Stability Cut')
 
     if instable_iv is None:
+
+        assert cphs is not None and hours_cp is not None, 'If you hand no instable_iv, you need to hand control pulse' \
+                                                          'heights and hours!'
 
         cphs = np.array(cphs)
         hours_cp = np.array(hours_cp)
@@ -90,7 +93,8 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
                     instable_iv.append([hours_cp[i - 1], hours_cp[i]])
             i += 1
     else:
-        print('Using precalculated instable intervals.')
+        print('Using pre-calculated instable intervals.')
+        flag_cp = None
 
     # simplify the intervals
     iv_simple = []
@@ -110,15 +114,17 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
         excluded_hours += ub - lb
 
     # exclude also the events before first and after last tp!
-    flag_ev[hours_ev < hours_cp[0]] = False
-    flag_ev[hours_ev > hours_cp[-1]] = False
-    if cond[1] == True:
-        excluded_hours += hours_cp[0]
-        excluded_hours += np.max([0, hours_ev[-1] - hours_cp[-1]])
+    if instable_iv is not None:
+        flag_ev[hours_ev < hours_cp[0]] = False
+        flag_ev[hours_ev > hours_cp[-1]] = False
+        if cond[1] == True:
+            excluded_hours += hours_cp[0]
+            excluded_hours += np.max([0, hours_ev[-1] - hours_cp[-1]])
 
     print('Good Events: {}/{} ({:.3f}%)'.format(np.sum(flag_ev), len(flag_ev), 100 * np.sum(flag_ev) / len(flag_ev)))
-    print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_cp[-1] - excluded_hours, hours_cp[-1],
-                                                        100 * (hours_cp[-1] - excluded_hours) / hours_cp[-1]))
+    if hours_cp is not None:
+        print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_cp[-1] - excluded_hours, hours_cp[-1],
+                                                            100 * (hours_cp[-1] - excluded_hours) / hours_cp[-1]))
 
     return flag_ev, flag_cp, instable_iv
 

@@ -79,6 +79,10 @@ def logistic_curve_zero(x, K, C, Q, B, nu):
     """
     The logistics curve with restriction to be zero at zero.
 
+    This curve was used to describe the detector saturation in "M. Stahlberg, Probing low-mass dark matter with
+    CRESST-III : data analysis and first results",
+    available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
+
     :param x: The x value or grid.
     :type x: scalar or 1D numpy array
     :param K: A parameter of the generalized logistics curve.

@@ -7,8 +7,8 @@ import scipy.stats as sc
 # functions
 
 def rate_cut(timestamps,
-             timestamps_cp,
-             timestamps_tp,
+             timestamps_cp=None,
+             timestamps_tp=None,
              interval=10,
              significance=3,
              min=0, max=60,
@@ -44,6 +44,8 @@ def rate_cut(timestamps,
     print('Do Rate Cut.')
 
     if intervals is None:
+
+        assert timestamps_cp is not None, 'If you hand no intervals, you need to hand timestamps of control pulses!'
 
         bins = np.arange(0, timestamps[-1], interval)
         hist, _ = np.histogram(timestamps, bins=bins)
@@ -106,20 +108,30 @@ def rate_cut(timestamps,
     intervals = iv_simple
 
     flag_ev = np.zeros(len(timestamps), dtype=bool)
-    flag_cp = np.zeros(len(timestamps_cp), dtype=bool)
-    flag_tp = np.zeros(len(timestamps_tp), dtype=bool)
+    if timestamps_cp is not None:
+        flag_cp = np.zeros(len(timestamps_cp), dtype=bool)
+    else:
+        flag_cp = None
+    if timestamps_tp is not None:
+        flag_tp = np.zeros(len(timestamps_tp), dtype=bool)
+    else:
+        flag_tp = None
     for iv in intervals:
         flag_ev[np.logical_and(timestamps >= iv[0], timestamps <= iv[1])] = 1
-        flag_cp[np.logical_and(timestamps_cp >= iv[0], timestamps_cp <= iv[1])] = 1
-        flag_tp[np.logical_and(timestamps_tp >= iv[0], timestamps_tp <= iv[1])] = 1
+        if timestamps_cp is not None:
+            flag_cp[np.logical_and(timestamps_cp >= iv[0], timestamps_cp <= iv[1])] = 1
+        if timestamps_tp is not None:
+            flag_tp[np.logical_and(timestamps_tp >= iv[0], timestamps_tp <= iv[1])] = 1
 
     print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(len(intervals) * interval / 60,
                                                         (len(bins) - 1) * interval / 60,
                                                         100 * len(intervals) / (len(bins) - 1)))
     print('Good Events: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag_ev), len(flag_ev),
                                                         100 * np.sum(flag_ev) / len(flag_ev)))
-    print('Good Controlpulses: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag_cp), len(flag_cp),
-                                                               100 * np.sum(flag_cp) / len(flag_cp)))
-    print('Good Testpulses: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag_tp), len(flag_tp),
-                                                            100 * np.sum(flag_tp) / len(flag_tp)))
+    if timestamps_cp is not None:
+        print('Good Controlpulses: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag_cp), len(flag_cp),
+                                                                   100 * np.sum(flag_cp) / len(flag_cp)))
+    if timestamps_tp is not None:
+        print('Good Testpulses: {:.3f}/{:.3f} ({:.3f}%)'.format(np.sum(flag_tp), len(flag_tp),
+                                                                100 * np.sum(flag_tp) / len(flag_tp)))
     return flag_ev, flag_cp, flag_tp, intervals

@@ -378,8 +378,6 @@ class PlotMixin(object):
         """
         Calculate the cut efficiency for a given cut flag and plot it.
 
-        TODO add citation
-
         :param channel: The cut efficiency is calculated and plotted for this channel.
         :type channel: int
         :param cut_flag: The cut values that are used for the cut efficiency calculation.
@@ -820,7 +818,8 @@ class PlotMixin(object):
         """
         Make a Light Yield Plot out of specific Labels or Predictions.
 
-        TODO add citation
+        The Light Yield Parameter was described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param title: A title for the plot.
         :type title: string
@@ -981,7 +980,9 @@ class PlotMixin(object):
         """
         Plot the testpulse amplitudes vs their pulse heights and the fitted logistic curve.
 
-        TODO add citation
+        This method was used to describe the detector saturation in "M. Stahlberg, Probing low-mass dark matter with
+        CRESST-III : data analysis and first results",
+        available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
         :param show_fit: If true show the fitted logistics curve.
         :type show_fit: bool

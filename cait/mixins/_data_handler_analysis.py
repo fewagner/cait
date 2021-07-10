@@ -166,13 +166,23 @@ class AnalysisMixin(object):
         """
 
         with h5py.File(self.path_h5, 'r+') as h5:
-            hours = np.array(h5['events']['hours'])
-            hours_cp = np.array(h5['controlpulses']['hours'])
-            hours_tp = np.array(h5['testpulses']['hours'])
+            hours = np.array(h5['events']['hours']) * 60  # in minutes now
+            if 'controlpulses' in h5:
+                hours_cp = np.array(h5['controlpulses']['hours']) * 60
+            else:
+                hours_cp = None
+            if 'testpulses' in h5:
+                hours_tp = np.array(h5['testpulses']['hours']) * 60
+            else:
+                hours_tp = None
 
-            flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours * 60, hours_cp * 60, hours_tp * 60,
-                                                            interval=interval, significance=significance, min=min, max=max,
-                                                            use_poisson=use_poisson, intervals=intervals, )
+            try:
+                flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours, hours_cp, hours_tp,
+                                                                interval=interval, significance=significance, min=min, max=max,
+                                                                use_poisson=use_poisson, intervals=intervals, )
+            except AssertionError:
+                raise AttributeError('If you do not hand intervals, you need to have controul pulses included in the'
+                                     'HDf5 file!')
 
             h5.require_group('metainfo')
             if 'rate_stable' in h5['metainfo']:
@@ -184,14 +194,16 @@ class AnalysisMixin(object):
                                          shape=(flag_ev.shape),
                                          dtype=bool)
             h5['events']['rate_cut'][...] = flag_ev
-            h5['controlpulses'].require_dataset(name='rate_cut',
-                                                shape=(flag_cp.shape),
-                                                dtype=bool)
-            h5['controlpulses']['rate_cut'][...] = flag_cp
-            h5['testpulses'].require_dataset(name='rate_cut',
-                                             shape=(flag_tp.shape),
-                                             dtype=bool)
-            h5['testpulses']['rate_cut'][...] = flag_tp
+            if flag_cp is not None:
+                h5['controlpulses'].require_dataset(name='rate_cut',
+                                                    shape=(flag_cp.shape),
+                                                    dtype=bool)
+                h5['controlpulses']['rate_cut'][...] = flag_cp
+            if flag_tp is not None:
+                h5['testpulses'].require_dataset(name='rate_cut',
+                                                 shape=(flag_tp.shape),
+                                                 dtype=bool)
+                h5['testpulses']['rate_cut'][...] = flag_tp
 
     def calc_controlpulse_stability(self, channel: int, significance: float = 3, max_gap: float = 0.5, lb: float = 0,
                                     ub: float = 100, instable_iv: list = None):
@@ -226,14 +238,20 @@ class AnalysisMixin(object):
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
-            cphs = f['controlpulses']['pulse_height'][channel]
-            hours_cp = f['controlpulses']['hours']
+
+            if 'controlpulses' in f:
+                cphs = f['controlpulses']['pulse_height'][channel]
+                hours_cp = f['controlpulses']['hours']
 
             hours_ev = f['events']['hours']
-            # cphs, hours_cp, hours_ev, significance=3, max_gap=1
-            flag_ev, flag_cp, instable_iv = controlpulse_stability(cphs, hours_cp, hours_ev,
-                                                      significance=significance, max_gap=max_gap,
-                                                      lb=lb, ub=ub, instable_iv=instable_iv)
+
+            try:
+                # cphs, hours_cp, hours_ev, significance=3, max_gap=1
+                flag_ev, flag_cp, instable_iv = controlpulse_stability(hours_ev=hours_ev, cphs=cphs, hours_cp=hours_cp,
+                                                          significance=significance, max_gap=max_gap,
+                                                          lb=lb, ub=ub, instable_iv=instable_iv)
+            except AssertionError:
+                raise AttributeError('If you do not hand instable_iv, you need to have control pulses in the file!')
 
             f.require_group('metainfo')
             if f'controlpulse_instable_ch{channel}' in f['metainfo']:
@@ -246,10 +264,11 @@ class AnalysisMixin(object):
                                         dtype=bool)
             f['events']['controlpulse_stability'][channel, ...] = flag_ev
 
-            f['controlpulses'].require_dataset(name='controlpulse_stability',
-                                               shape=(self.nmbr_channels, len(flag_cp)),
-                                               dtype=bool)
-            f['controlpulses']['controlpulse_stability'][channel, ...] = flag_cp
+            if flag_cp is not None:
+                f['controlpulses'].require_dataset(name='controlpulse_stability',
+                                                   shape=(self.nmbr_channels, len(flag_cp)),
+                                                   dtype=bool)
+                f['controlpulses']['controlpulse_stability'][channel, ...] = flag_cp
 
     def calc_testpulse_stability(self, channel: int, significance: float = 3, noise_level: float = 0.005,
                                  max_gap: float = 0.5, ub: float = None, lb: float = None):

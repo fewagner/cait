@@ -50,7 +50,9 @@ class SimulateMixin(object):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise.
 
-        TODO add citation
+        This method was used to simulate events in "F. Wagner, Machine Learning Methods for the Raw Data Analysis
+        of crypgenic Dark Matter Experiments",
+        available via https://doi.org/10.34726/hss.2020.77322 (accessed on the 9.7.2021).
 
         :param path_sim: , the full path where to store the simulated data set
         :type path_sim: string
