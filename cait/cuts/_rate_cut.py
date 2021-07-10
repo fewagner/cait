@@ -63,7 +63,7 @@ def rate_cut(timestamps,
             mean = np.mean(hist_cut)
             sigma = np.std(hist_cut)
 
-            intervals = intervals[np.logical_and(hist > min, hist < max), :]
+            intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
             intervals = intervals[hist_cp > median_cp / 2, :]
             intervals = intervals[
                         np.logical_and(hist_cut >= mean - significance * sigma, hist_cut <= mean + significance * sigma), :]
@@ -80,7 +80,7 @@ def rate_cut(timestamps,
             low = sc.poisson.cdf(sc.norm.cdf(significance), mu=median)
             up = sc.poisson.cdf(sc.norm.cdf(-significance), mu=median)
 
-            intervals = intervals[np.logical_and(hist > min, hist < max), :]
+            intervals = intervals[np.logical_and(hist >= min, hist <= max), :]
             intervals = intervals[hist_cp > median_cp / 2, :]
             intervals = intervals[
                         np.logical_and(hist_cut >= low, hist_cut <= up), :]
