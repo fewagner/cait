@@ -160,10 +160,13 @@ class AnalysisMixin(object):
         :param use_poisson: If this is activated (per default) we use the median and poisson confidence intervals instead
         of standard normal statistics.
         :type use_poisson: bool
-        :param intervals: A list of the stable intervals. If this is handed, these intervals are used instead of
+        :param intervals: A list of the stable intervals, in hours. If this is handed, these intervals are used instead of
         calculating them from scratch. This is useful e.g. for the cut efficiency.
         :type intervals: list of 2-tuples
         """
+
+        if intervals is not None:
+            intervals = np.array(intervals) * 60  # now this is in minutes
 
         with h5py.File(self.path_h5, 'r+') as h5:
             hours = np.array(h5['events']['hours']) * 60  # in minutes now

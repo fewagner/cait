@@ -34,7 +34,7 @@ def rate_cut(timestamps,
     :param use_poisson: If this is activated (per default) we use the median and poisson confidence intervals instead
         of standard normal statistics.
     :type use_poisson: bool
-    :param intervals: A list of the stable intervals. If this is handed, these intervals are used instead of
+    :param intervals: A list of the stable intervals in minutes. If this is handed, these intervals are used instead of
         calculating them from scratch. This is useful e.g. for the cut efficiency.
     :type intervals: list of 2-tuples
     :return: For events, controlpulses and testpulses arrays: True if event survives rate cut, false if not. The list of
