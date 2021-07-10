@@ -38,7 +38,8 @@ class AnalysisMixin(object):
         optimum filter and as estimation with an standard event fit. To use the raw pulse height on simulated events,
         set the bool arguments of_filter, sev_fit and use_tp all to false.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param ph_intervals: The upper and lower bounds of the peak in the pulse height spectrum to calculate
             the resolution.
@@ -131,7 +132,8 @@ class AnalysisMixin(object):
                                                                                                       mus[c], naming))
         return np.array(resolutions), np.array(mus)
 
-    def calc_rate_cut(self, interval: float = 10, significance: float = 3, min: float = 0, max: float = 60):
+    def calc_rate_cut(self, interval: float = 10, significance: float = 3,
+                      min: float = 0, max: float = 60, intervals: list = None):
         """
         Calculate a rate cut on the events.
 
@@ -143,7 +145,8 @@ class AnalysisMixin(object):
         intervals in which the TES is superconducting (no events) or triggers only in the noise, e.g. due to
         warming up of the cryostat.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param interval: The interval length in minutes that is compared.
         :type interval: float
@@ -154,6 +157,9 @@ class AnalysisMixin(object):
         :type min: float
         :param max: Rates that are higher than this value are excluded from the calculation of the average rate.
         :type max: float
+        :param intervals: A list of the stable intervals. If this is handed, these intervals are used instead of
+        calculating them from scratch. This is useful e.g. for the cut efficiency.
+        :type intervals: list of 2-tuples
         """
 
         with h5py.File(self.path_h5, 'r+') as h5:
@@ -161,8 +167,15 @@ class AnalysisMixin(object):
             hours_cp = np.array(h5['controlpulses']['hours'])
             hours_tp = np.array(h5['testpulses']['hours'])
 
-            flag_ev, flag_cp, flag_tp = rate_cut(hours * 60, hours_cp, hours_tp,
-                                                 interval, significance, min, max)
+            flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours * 60, hours_cp, hours_tp,
+                                                            interval, significance, min, max,
+                                                            intervals)
+
+            h5.require_group('metainfo')
+            if 'rate_stable' in h5['metainfo']:
+                del h5['metainfo']['rate_stable']
+            h5['metainfo'].create_dataset(name='rate_stable',
+                                          data=intervals)
 
             h5['events'].require_dataset(name='rate_cut',
                                          shape=(flag_ev.shape),
@@ -178,7 +191,7 @@ class AnalysisMixin(object):
             h5['testpulses']['rate_cut'][...] = flag_tp
 
     def calc_controlpulse_stability(self, channel: int, significance: float = 3, max_gap: float = 0.5, lb: float = 0,
-                                    ub: float = 100):
+                                    ub: float = 100, instable_iv: list = None):
         """
         Do a stability cut on the control pulses.
 
@@ -189,7 +202,8 @@ class AnalysisMixin(object):
         value are also ignored. If for a duration of more than a certain interval no control pulses appear in the data,
         the region is automatically counted as unstable.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param channel: The number of the channel on that we calculate the cut in the HDF5 file.
         :type channel: int
@@ -203,6 +217,9 @@ class AnalysisMixin(object):
         :type lb: float
         :param ub: Pulse heights higher than this value are ignored.
         :type ub: float
+        :param instable_iv: A list of the instable intervals. If this is handed, the instable intervals are not calculated
+        but those are used. Useful for e.g. the cut efficiency.
+        :type instable_iv: list
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
@@ -211,9 +228,15 @@ class AnalysisMixin(object):
 
             hours_ev = f['events']['hours']
             # cphs, hours_cp, hours_ev, significance=3, max_gap=1
-            flag_ev, flag_cp = controlpulse_stability(cphs, hours_cp, hours_ev,
+            flag_ev, flag_cp, instable_iv = controlpulse_stability(cphs, hours_cp, hours_ev,
                                                       significance=significance, max_gap=max_gap,
-                                                      lb=lb, ub=ub)
+                                                      lb=lb, ub=ub, instable_iv=instable_iv)
+
+            f.require_group('metainfo')
+            if 'controlpulse_instable' in f['metainfo']:
+                del f['metainfo']['controlpulse_instable']
+            f['metainfo'].create_dataset(name='controlpulse_instable',
+                                          data=instable_iv)
 
             f['events'].require_dataset(name='controlpulse_stability',
                                         shape=(self.nmbr_channels, len(flag_ev)),
@@ -297,6 +320,7 @@ class AnalysisMixin(object):
                          return_pulser_models: bool = False,
                          pulser_models: object = None,
                          name_appendix_energy: str = '',
+                         rasterized: bool = True,
                          **kwargs,
                          ):
         """
@@ -317,7 +341,8 @@ class AnalysisMixin(object):
 
         Additional key word arguments get passed to the regressor model.
 
-        TODO add citation
+        This method was described in M. Stahlberg, Probing low-mass dark matter with CRESST-III : data analysis and first results,
+        available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
         :param starts_saturation: The pulse heights (V) at which the saturation of the pulses starts, for each channel.
         :type starts_saturation: list of floats
@@ -360,6 +385,8 @@ class AnalysisMixin(object):
             Calibration is done on one file with test pulses, but you want to predict the TPA equivalent values of another
             data set, e.g. the resolution data set, with the same pulser models.
         :type pulser_models: list of instances of PulserModel
+        :param rasterized: The scatter plot gets rasterized (much faster).
+        :type rasterized: tuple
 
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
@@ -468,20 +495,20 @@ class AnalysisMixin(object):
                                                )
 
                 if plot:
-                    pulser_models[channel].plot(poly_order=poly_order)
+                    pulser_models[channel].plot(poly_order=poly_order, rasterized=rasterized)
 
                 f['events']['recoil_energy' + name_appendix_energy][channel, ...], \
                 f['events']['recoil_energy_sigma' + name_appendix_energy][channel, ...], \
                 f['events']['tpa_equivalent' + name_appendix_energy][channel, ...], \
-                f['events']['tpa_equivalent_sigma' + name_appendix_energy][channel, ...] = pulser_models[channel].predict(evhs=evhs[channel],
-                                                                                                   ev_hours=ev_hours,
-                                                                                                   poly_order=poly_order,
-                                                                                                   cpe_factor=cpe_factor[channel]
-                                                                                                   )
+                f['events']['tpa_equivalent_sigma' + name_appendix_energy][channel, ...] = pulser_models[
+                    channel].predict(evhs=evhs[channel],
+                                     ev_hours=ev_hours,
+                                     poly_order=poly_order,
+                                     cpe_factor=cpe_factor[channel]
+                                     )
         print('Finished.')
         if return_pulser_models:
             return pulser_models
-
 
     def calc_light_correction(self,
                               scintillation_efficiency: float,
@@ -495,7 +522,8 @@ class AnalysisMixin(object):
         on the share of energy that went into scintillation light. It is therefor necessary to correct the energy of the
         phonon channel with a light-energy-dependent factor.
 
-        TODO add citation
+        This method was described in "F. Reindl (2016), Exploring Light Dark Matter With CRESST-II Low-Threshold Detectors",
+        available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
         :param scintillation_efficiency: The share of the recoil energy that is turned into scintillation light.
         :type scintillation_efficiency: float >0, <1
@@ -523,13 +551,14 @@ class AnalysisMixin(object):
                  max_dist=0.1,  # in hours
                  tp_exclusion_interval=1,  # in seconds
                  return_values=False,
+                 exclude_instable=True,
                  ):
         """
         Calculate the exposure in the data set.
 
         This method calculated the live time of the detector by excluding all test pulses, instable intervals and
         non-measurement times. If a detector mass is handed, the exposure is calculated as well. For each event, if any
-        of the control pulses from all channels is unstable, the event is excluded.
+        of the control pulses from all channels is unstable, or if the rate cut excluded it, the event is excluded.
 
         :param detector_mass: The mass of the detector in kg.
         :type detector_mass: float
@@ -541,6 +570,9 @@ class AnalysisMixin(object):
         :type tp_exclusion_interval: float
         :param return_values: If this is set to True, a tuple of (exposure, live_time) is returned.
         :type return_values: bool
+        :param exclude_instable: If True, all intervals in between unstable control pulses or which are excluded by
+            the rate cut, are counted as dead time.
+        :type exclude_instable: bool
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
@@ -557,23 +589,30 @@ class AnalysisMixin(object):
             print('\n Calc Live Time.')
             # calc live time from stability and rate flags
             for i in tqdm(range(1, len(hours_cp))):
-                if hours_cp[i] - hours_cp[i - 1] < max_dist:  # check if gap too large
+                if hours_cp[i] - hours_cp[i - 1] < max_dist:  # check if gap too large (e.g. file break)
 
-                    cond = rate_cp[i]
-                    for c in range(self.nmbr_channels):
-                        cond = np.logical_and(cond, stability_cp[c, i])
+                    if exclude_instable:
+                        # check if this cp is ok
+                        cond = rate_cp[i]
+                        for c in range(self.nmbr_channels):
+                            cond = np.logical_and(cond, stability_cp[c, i])
 
-                    if cond:
+                        # put time to good time
+                        if cond:
+                            good_intervals.append((hours_cp[i - 1], hours_cp[i]))
+                            dead_time += tp_exclusion_interval / 3600
+                            # ignore if only single cp was not ok
+                            if buffer_cond:
+                                good_intervals.append((hours_cp[i - 2], hours_cp[i - 1]))
+                                dead_time += tp_exclusion_interval / 3600
+                                buffer_cond = False
+                        elif not buffer_cond:
+                            buffer_cond = True  # if next cp is ok, this interval is also good
+                        else:
+                            buffer_cond = False
+                    else:
                         good_intervals.append((hours_cp[i - 1], hours_cp[i]))
                         dead_time += tp_exclusion_interval / 3600
-                        if buffer_cond:
-                            good_intervals.append((hours_cp[i - 2], hours_cp[i - 1]))
-                            dead_time += tp_exclusion_interval / 3600
-                            buffer_cond = False
-                    elif not buffer_cond:
-                        buffer_cond = True
-                    else:
-                        buffer_cond = False
                 else:
                     buffer_cond = False
 

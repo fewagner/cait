@@ -366,6 +366,7 @@ class PlotMixin(object):
                         xlabel=None,
                         ylabel=None,
                         show=True,
+                        plot=True,
                         xran=None,
                         yran=None,
                         block=False,
@@ -396,6 +397,8 @@ class PlotMixin(object):
         :type ylabel: string
         :param show: If set, the plots are shown.
         :type show: bool
+        :param plot: Do a plot of the cut efficiency. Otherwise, only the values are returned.
+        :type plot: bool
         :param xran: The range of the x axis.
         :type xran: tuple of two floats
         :param yran: The range of the y axis.
@@ -453,37 +456,38 @@ class PlotMixin(object):
         surviving, _ = np.histogram(vals[cut_flag], bins=bins)
 
         if np.any(all == 0):
-            empties = bins[:-1] + (bins[1:] - bins[:-1]) / 2
+            empties = bins[:-1] + np.diff(bins) / 2
             raise ValueError(
                 f'Attention, the bins {empties[all == 0]} in your uncut efficiency events is zero! Reduce number of bins, '
-                'use log scale or hand more events.')
+                'use log scale or hand more, or binned events.')
         efficiency = surviving / all
 
-        use_cait_style(dpi=dpi)
-        plt.close()
-        plt.hist(bins[:-1] + (bins[1:] - bins[:-1]) / 2,
-                 # this gives the mean values of all bins, which do each appear once
-                 bins=bins,
-                 weights=efficiency,  # by this we weight the bins counts (all 1) to the actual efficiency
-                 zorder=10)
-        make_grid()
-        if xlabel is None:
-            plt.xlabel('True Pulse Height')
-        else:
-            plt.xlabel(xlabel)
-        if ylabel is None:
-            plt.ylabel('Survival Probability')
-        else:
-            plt.ylabel(ylabel)
-        if title is not None:
-            plt.title(title)
-        plt.xlim(xran)
-        plt.ylim(yran)
-        plt.xscale(xscale)
-        if save_path is not None:
-            plt.savefig(save_path)
-        if show:
-            plt.show(block=block)
+        if plot:
+            use_cait_style(dpi=dpi)
+            plt.close()
+            plt.hist(bins[:-1] + np.diff(bins) / 2,
+                     # this gives the mean values of all bins, which do each appear once
+                     bins=bins,
+                     weights=efficiency,  # by this we weight the bins counts (all 1) to the actual efficiency
+                     zorder=10)
+            make_grid()
+            if xlabel is None:
+                plt.xlabel('True Pulse Height')
+            else:
+                plt.xlabel(xlabel)
+            if ylabel is None:
+                plt.ylabel('Survival Probability')
+            else:
+                plt.ylabel(ylabel)
+            if title is not None:
+                plt.title(title)
+            plt.xlim(xran)
+            plt.ylim(yran)
+            plt.xscale(xscale)
+            if save_path is not None:
+                plt.savefig(save_path)
+            if show:
+                plt.show(block=block)
 
         return efficiency, all, bins
 

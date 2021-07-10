@@ -160,7 +160,8 @@ def trigger_csmpl(paths,
     """
     Trigger a number of CSMPL file of one channel and return the time stamps of all triggers.
 
-    TODO add citation of csmpl file format and trigger algorithm
+    The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
+    low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
     :param paths: The paths to all CSMPL files. It is not recommended to put more than one path, because this will set
         the time gap in between the files to zero.

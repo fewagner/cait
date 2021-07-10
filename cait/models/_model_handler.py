@@ -13,8 +13,6 @@ class ModelHandler:
     """
     Wrapper class to store ML models and scalers, as they are typically used by the Scikit-Learn Library.
 
-    # TODO add citation
-
     :param model_type: The type of the model, e.g. RF or SVM.
     :type model_type: string
     :param nmbr_channels: The number of channels of the detector module.

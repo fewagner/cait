@@ -37,9 +37,8 @@ class FitMixin(object):
         """
         Calculate the Parameteric Fit for the Events in an HDF5 File.
 
-        Attention! This method is only implemented for 2 channel detectors!
-
-        TODO add citation
+        This methods was described in "(1995) F. Pröbst et. al., Model for cryogenic particle detectors with superconducting phase
+        transition thermometers."
 
         :param path_h5: Optional, the full path to the hdf5 file, e.g. "data/bck_001.h5".
         :type path_h5: string
@@ -59,36 +58,33 @@ class FitMixin(object):
             events = h5f[type]['event']
 
             # take away offset
-            idx = [i for i in range(len(events[0]))]
             events = events - np.mean(events[:, :, :int(self.record_length / 8)], axis=2, keepdims=True)
 
             print('CALCULATE FIT.')
 
             # get start values from SEV fit if exists
-            try:
-                if type == 'events':
-                    sev_fitpar = h5f['stdevent']['fitpar']
-                    p_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[0])
-                    l_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[1])
-                else:
-                    raise NameError('This is only to break the loop, bc type is not events.')
-            except NameError:
-                p_fit_pm = fit_pulse_shape
-                l_fit_pm = fit_pulse_shape
+            if type == 'events' and 'stdevent' in h5f:
+                sev_fitpar = h5f['stdevent']['fitpar']
+
+                fit_pm = [partial(fit_pulse_shape, x0=fp) for fp in sev_fitpar]
+            else:
+                fit_pm = fit_pulse_shape
+
+            fitpar_event = np.empty((self.nmbr_channels, events.shape[1], 6))
 
             with Pool(processes) as p:
-                p_fitpar_event = np.array(
-                    p.map(p_fit_pm, events[0, idx, :]))
-                l_fitpar_event = np.array(
-                    p.map(l_fit_pm, events[1, idx, :]))
+                for c in range(self.nmbr_channels):
+                    print('Fitting Channel: ', c)
+                    # fitpar_event[c] = list(tqdm(p.map(fit_pm[c], events[c]), total=events.shape[1]))
+                    fitpar_event[c] = list(tqdm(p.imap(fit_pm[c], events[c]), total=events.shape[1]))
 
-            fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
+            fitpar_event = np.array([fitpar_event])
 
             h5f[type].require_dataset('fitpar',
-                                      shape=(self.nmbr_channels, len(events[0]), 6),
+                                      shape=(self.nmbr_channels, events.shape[1], 6),
                                       dtype='f')
 
-            h5f[type]['fitpar'][:, idx, :] = fitpar_event
+            h5f[type]['fitpar'][:, :, :] = fitpar_event
 
     # apply sev fit
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,

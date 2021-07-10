@@ -5,7 +5,8 @@ import numpy as np
 
 # functions
 
-def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, lb=0, ub=100):
+def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3,
+                           max_gap=1, lb=0, ub=100, instable_iv=None):
     """
     Find all stable control pulses and events.
 
@@ -15,7 +16,8 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, 
     are both stable. A single unstable control pulse is in this definition ignored, so only two consecutive instable
     control pulses lead to an instable time interval. All events in instable time intervals are counted as instable.
 
-    TODO add citation
+    This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+    (10.1103/PhysRevD.100.102002).
 
     :param cphs: The pulse heights of the control pulses.
     :type cphs: 1D float array
@@ -33,58 +35,67 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, 
     :type lb: float
     :param ub: All control pulse heights above this value are counted as instable.
     :type ub: float
-    :return: ( The flag that specifies which events are stable; The flag that specifies which control pulses are stable.)
-    :rtype: 2-tuple of 1D bool arrays
+    :param instable_iv: A list of the instable intervals. If this is handed, the instable intervals are not calculated
+        but those are used. Useful for e.g. the cut efficiency.
+    :type instable_iv: list
+    :return: The flag that specifies which events are stable. The flag that specifies which control pulses are stable.
+        The list of instable intervals.
+    :rtype: two 1D bool arrays, one list
     """
 
     print('Do Testpulse Stability Cut')
 
-    cphs = np.array(cphs)
-    hours_cp = np.array(hours_cp)
-    hours_ev = np.array(hours_ev)
+    if instable_iv is None:
 
-    nmbr_cps = len(cphs)
+        cphs = np.array(cphs)
+        hours_cp = np.array(hours_cp)
+        hours_ev = np.array(hours_ev)
 
-    cond = np.logical_and(cphs > lb, cphs < ub)
+        nmbr_cps = len(cphs)
 
-    # get all hours that are not within significance standard deviations
-    mu = np.mean(cphs[cond])
-    sigma = np.std(cphs[cond])
+        cond = np.logical_and(cphs > lb, cphs < ub)
 
-    cond = np.logical_and(cond, np.abs(cphs - mu) < significance * sigma)
-    print('Control Pulse PH {:.3f} +- {:.3f}, within {} sigma: {:.3f} %'.format(mu, sigma, significance,
-                                                                                100 * np.sum(
-                                                                                    cond) / len(
-                                                                                    cond)))
+        # get all hours that are not within significance standard deviations
+        mu = np.mean(cphs[cond])
+        sigma = np.std(cphs[cond])
 
-    print('Good Control Pulses: {}/{} ({:.3f}%)'.format(np.sum(cond), nmbr_cps, 100 * np.sum(cond) / nmbr_cps))
+        cond = np.logical_and(cond, np.abs(cphs - mu) < significance * sigma)
+        print('Control Pulse PH {:.3f} +- {:.3f}, within {} sigma: {:.3f} %'.format(mu, sigma, significance,
+                                                                                    100 * np.sum(
+                                                                                        cond) / len(
+                                                                                        cond)))
 
-    flag_cp = cond
+        print('Good Control Pulses: {}/{} ({:.3f}%)'.format(np.sum(cond), nmbr_cps, 100 * np.sum(cond) / nmbr_cps))
 
-    cond[0] = True  # such that we do not exceed boundaries below
-    cond[-1] = True
+        flag_cp = cond
 
-    # make the exclusion intervals
-    # both control pulses before and after must have condition true
-    # also, gap between control pulses must not exceed the max_gap duration!
-    exclusion = []
-    i = 1
-    while i < len(cond):
-        if not cond[i]:
-            lb = hours_cp[i]
-            while cond[i] == False:
-                i += 1
-            ub = hours_cp[i]
-            exclusion.append([lb, ub])
-        else:
-            if hours_cp[i] - hours_cp[i - 1] > max_gap:
-                exclusion.append([hours_cp[i - 1], hours_cp[i]])
-        i += 1
+        cond[0] = True  # such that we do not exceed boundaries below
+        cond[-1] = True
+
+        # make the exclusion intervals
+        # both control pulses before and after must have condition true
+        # also, gap between control pulses must not exceed the max_gap duration!
+
+        instable_iv = []
+        i = 1
+        while i < len(cond):
+            if not cond[i]:
+                lb = hours_cp[i]
+                while cond[i] == False:
+                    i += 1
+                ub = hours_cp[i]
+                instable_iv.append([lb, ub])
+            else:
+                if hours_cp[i] - hours_cp[i - 1] > max_gap:
+                    instable_iv.append([hours_cp[i - 1], hours_cp[i]])
+            i += 1
+    else:
+        print('Using precalculated instable intervals.')
 
     # exclude the events in instable intervals
     flag_ev = np.ones(len(hours_ev), dtype=bool)
     excluded_hours = 0
-    for lb, ub in exclusion:
+    for lb, ub in instable_iv:
         flag_ev[np.logical_and((hours_ev > lb), (hours_ev < ub))] = False
         excluded_hours += ub - lb
 
@@ -99,7 +110,7 @@ def controlpulse_stability(cphs, hours_cp, hours_ev, significance=3, max_gap=1, 
     print('Good Time: {:.3f}h/{:.3f}h ({:.3f}%)'.format(hours_cp[-1] - excluded_hours, hours_cp[-1],
                                                         100 * (hours_cp[-1] - excluded_hours) / hours_cp[-1]))
 
-    return flag_ev, flag_cp
+    return flag_ev, flag_cp, instable_iv
 
 
 def testpulse_stability(tpas, tphs, hours_tp, hours_ev,

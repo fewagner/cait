@@ -32,7 +32,8 @@ class FeaturesMixin(object):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param type: The group in the HDF5 set, either events or testpulses.
         :param type: string
@@ -101,7 +102,8 @@ class FeaturesMixin(object):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param type: The group name in the HDF5 set, either "events" or "testpulses".
         :type type: string
@@ -259,7 +261,8 @@ class FeaturesMixin(object):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
-        TODO add citation
+        The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
+        low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
         :param down: The downsample factor of the optimal filter transfer function.
         :type down: int

@@ -20,8 +20,6 @@ class RNNModule(LightningModule):
 
     For classification, the classes need to get one hot encoded, best with the corresponding transform.
 
-    TODO add citation
-
     :param input_size: The number of features that get passed to the RNN in one time step.
     :type input_size: int
     :param hidden_size: The number of nodes in the hidden layer of the RNN.

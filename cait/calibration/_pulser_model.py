@@ -16,7 +16,8 @@ def light_yield_correction(phonon_energy, light_energy, scintillation_efficiency
     """
     Return the recoil energy, corrected for the energy loss to scintillation light.
 
-    TODO add citation
+    This method was described in "F. Reindl (2016), Exploring Light Dark Matter With CRESST-II Low-Threshold Detectors",
+    available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
     :param phonon_energy: The recoil energies of the phonon channel, in keV.
     :type phonon_energy: 1D float array
@@ -180,12 +181,13 @@ class LinearModel:
 
 class PulserModel:
     """
-    A model to unfold the detector effects of cryogenic detectos.
+    A model to unfold the detector effects of cryogenic detectors.
 
     The model is to predict the equivalent test pulse values for particle event recoils within the detector crystal.
     Additional kew word arguments get passed to the regressor model!
 
-    # todo add citation
+    This method was described in M. Stahlberg, Probing low-mass dark matter with CRESST-III : data analysis and first results,
+    available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
     :param start_saturation: Test pulses with average pulse heights above this value are excluded from the fit.
     :type start_saturation: float
@@ -407,6 +409,7 @@ class PulserModel:
              ylim=None,
              xlim=None,
              tpa_range=None,
+             rasterized=True,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -426,6 +429,8 @@ class PulserModel:
         :type xlim: 2-tuple
         :param tpa_range: The limits on the y axis (tpa).
         :type tpa_range: tuple
+        :param rasterized: The scatter plot gets rasterized (much faster).
+        :type rasterized: tuple
         """
 
         assert self.interpolation_method is not None, 'You need to fit first!'
@@ -434,7 +439,7 @@ class PulserModel:
             use_cait_style(dpi=dpi)
             # plot the regressions
             plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10)
+            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
             for i, iv in enumerate(self.intervals):
                 if i == 0:
                     plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
@@ -498,7 +503,7 @@ class PulserModel:
             use_cait_style(dpi=dpi)
             # plot the regressions
             plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10)
+            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
             t = np.linspace(0, self.tp_hours[-1], 100)
             for m in range(len(self.linear_tpas)):
                 lower = self.lower_regs[m].predict(t.reshape(-1, 1))

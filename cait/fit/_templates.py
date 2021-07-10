@@ -61,7 +61,8 @@ def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     """
     Parametric model for the pulse shape, 6 parameters.
 
-    # TODO citation
+    This method was described in "(1995) F. Pröbst et. al., Model for cryogenic particle detectors with superconducting phase
+    transition thermometers."
 
     :param t: 1D array, the time grid; attention, this needs to be provided in compatible units with the fit parameters!
 
@@ -112,7 +113,8 @@ def sec(t, h, t0, a0, a1, a2, a3, t00, An, At, tau_n, tau_in, tau_t):
     """
     Standard Event Model with Cubic Baseline.
 
-    # TODO citation
+    This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
+    available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
     :param h: Height of pulse shape.
     :type h: float
@@ -160,7 +162,8 @@ class sev_fit_template:
     """
     Class to store pulse fit models for individual detectors.
 
-    # TODO citation
+    This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
+    available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
     :param par: 1D array with size 6, the fit parameter of the sev
         (t0, An, At, tau_n, tau_in, tau_t).
