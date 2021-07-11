@@ -3,4 +3,5 @@
 # Defining the exact version will make sure things don't break
 sphinx-rtd-theme
 rinohtype
+importlib-metadata==3.4.0
 myst_nb
