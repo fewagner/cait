@@ -13,6 +13,7 @@
 import os
 import sys
 import sphinx_rtd_theme
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.abspath('../..'))
 sys.setrecursionlimit(1500)
@@ -24,7 +25,7 @@ copyright = '2021, Felix Wagner'
 author = 'Felix Wagner'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 
@@ -41,26 +42,26 @@ extensions = ['rinoh.frontend.sphinx',
               "sphinx.ext.viewcode",
               ]
 
-autodoc_mock_imports = ['setuptools>=47.1.1',
-                        'h5py',
-                        'pickle-mixin',
-                        'numpy',
-                        'matplotlib',
-                        'scipy',
-                        'numba',
-                        'sklearn',
-                        'uproot',
-                        'awkward1',
-                        'torch',
-                        'torchvision',
-                        'pytorch-lightning',
-                        'ipywidgets',
-                        'tqdm',
-                        'pandas',
-                        'plotly',
-                        'dash_html_components',
-                        'dash_core_components',
-                        'dash']
+sys.modules['setuptools>=47.1.1'] = MagicMock()
+sys.modules['h5py'] = MagicMock()
+sys.modules['pickle-mixin'] = MagicMock()
+sys.modules['numpy'] = MagicMock()
+sys.modules['matplotlib'] = MagicMock()
+sys.modules['scipy'] = MagicMock()
+sys.modules['numba'] = MagicMock()
+sys.modules['sklearn'] = MagicMock()
+sys.modules['uproot'] = MagicMock()
+sys.modules['awkward1'] = MagicMock()
+sys.modules['torch'] = MagicMock()
+sys.modules['torchvision'] = MagicMock()
+sys.modules['pytorch-lightning'] = MagicMock()
+sys.modules['ipywidgets'] = MagicMock()
+sys.modules['tqdm'] = MagicMock()
+sys.modules['pandas'] = MagicMock()
+sys.modules['plotly'] = MagicMock()
+sys.modules['dash_html_components'] = MagicMock()
+sys.modules['dash_core_components'] = MagicMock()
+sys.modules['dash'] = MagicMock()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
