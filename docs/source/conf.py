@@ -13,6 +13,7 @@
 import os
 import sys
 import sphinx_rtd_theme
+from unittest.mock import MagicMock
 
 sys.path.insert(0, os.path.abspath('../..'))
 sys.setrecursionlimit(1500)
@@ -24,7 +25,7 @@ copyright = '2021, Felix Wagner'
 author = 'Felix Wagner'
 
 # The full version, including alpha/beta/rc tags
-release = '0.1.0'
+release = '1.0.0'
 
 # -- General configuration ---------------------------------------------------
 
