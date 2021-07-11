@@ -41,6 +41,27 @@ extensions = ['rinoh.frontend.sphinx',
               "sphinx.ext.viewcode",
               ]
 
+autodoc_mock_imports = ['setuptools>=47.1.1',
+                        'h5py',
+                        'pickle-mixin',
+                        'numpy',
+                        'matplotlib',
+                        'scipy',
+                        'numba',
+                        'sklearn',
+                        'uproot',
+                        'awkward1',
+                        'torch',
+                        'torchvision',
+                        'pytorch-lightning',
+                        'ipywidgets',
+                        'tqdm',
+                        'pandas',
+                        'plotly',
+                        'dash_html_components',
+                        'dash_core_components',
+                        'dash']
+
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
