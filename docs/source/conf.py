@@ -42,24 +42,6 @@ extensions = ['rinoh.frontend.sphinx',
               "sphinx.ext.viewcode",
               ]
 
-sys.modules['h5py'] = MagicMock()
-sys.modules['pickle-mixin'] = MagicMock()
-sys.modules['numpy'] = MagicMock()
-sys.modules['matplotlib'] = MagicMock()
-sys.modules['scipy'] = MagicMock()
-sys.modules['numba'] = MagicMock()
-sys.modules['sklearn'] = MagicMock()
-sys.modules['uproot'] = MagicMock()
-sys.modules['torch'] = MagicMock()
-sys.modules['torchvision'] = MagicMock()
-sys.modules['pytorch-lightning'] = MagicMock()
-sys.modules['tqdm'] = MagicMock()
-sys.modules['pandas'] = MagicMock()
-sys.modules['plotly'] = MagicMock()
-sys.modules['dash_html_components'] = MagicMock()
-sys.modules['dash_core_components'] = MagicMock()
-sys.modules['dash'] = MagicMock()
-
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
 
