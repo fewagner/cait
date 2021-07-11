@@ -42,7 +42,6 @@ extensions = ['rinoh.frontend.sphinx',
               "sphinx.ext.viewcode",
               ]
 
-sys.modules['setuptools>=47.1.1'] = MagicMock()
 sys.modules['h5py'] = MagicMock()
 sys.modules['pickle-mixin'] = MagicMock()
 sys.modules['numpy'] = MagicMock()
@@ -51,11 +50,9 @@ sys.modules['scipy'] = MagicMock()
 sys.modules['numba'] = MagicMock()
 sys.modules['sklearn'] = MagicMock()
 sys.modules['uproot'] = MagicMock()
-sys.modules['awkward1'] = MagicMock()
 sys.modules['torch'] = MagicMock()
 sys.modules['torchvision'] = MagicMock()
 sys.modules['pytorch-lightning'] = MagicMock()
-sys.modules['ipywidgets'] = MagicMock()
 sys.modules['tqdm'] = MagicMock()
 sys.modules['pandas'] = MagicMock()
 sys.modules['plotly'] = MagicMock()
