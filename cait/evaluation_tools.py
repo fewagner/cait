@@ -2212,7 +2212,7 @@ class EvaluationTools:
         to compare different labels.
 
         :param pred_methods: Required. Prediction method that should be used.
-        :type pred_methods: str
+        :type pred_methods: list
         :param what: Required. Which data is plotted, 'all', 'test' or 'train'.
         :type what: str
         :param perplexity: Optional, default 30. Perplexity parameter for TSNE.
@@ -2454,7 +2454,7 @@ class EvaluationTools:
         to compare different labels.
 
         :param pred_methods: Required. Prediction method that should be used.
-        :type pred_methods: str
+        :type pred_methods: list
         :param xy_comp: Optional, default (1,2). Select with pc's are used for x and y axis.
         :type xy_comp: tuple
         :param what: Optional, default 'all'. Which data is plotted.

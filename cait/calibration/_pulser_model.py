@@ -410,6 +410,9 @@ class PulserModel:
              xlim=None,
              tpa_range=None,
              rasterized=True,
+             show=True,
+             plot_regressions=True,
+             plot_poly=True,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -437,51 +440,123 @@ class PulserModel:
 
         if self.interpolation_method == 'linear':
             use_cait_style(dpi=dpi)
+            if plot_regressions:
+                # plot the regressions
+                plt.close()
+                plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
+                for i, iv in enumerate(self.intervals):
+                    if i == 0:
+                        plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
+                    t = np.linspace(iv[0], iv[1], 100)
+                    for m in range(len(self.all_linear_tpas[i])):
+                        lower, y, upper = self.all_regs[i][m].y_sigma(t)
+                        plt.plot(t, y, color='red', linewidth=2, zorder=15)
+                        plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
+                        plt.axvline(iv[1], color='green', linewidth=1, zorder=15)
+                make_grid()
+                if ylim is None:
+                    plt.ylim([0, self.start_saturation])
+                else:
+                    plt.ylim(ylim)
+                plt.xlim(xlim)
+                plt.xlabel('Hours (h)')
+                plt.ylabel('Pulse Height (V)')
+                if show:
+                    plt.show()
+
+            if plot_poly:
+                # plot the polynomials
+                for i, iv in enumerate(self.intervals):
+                    plt.close()
+                    x_data, x_sigma = [], []
+                    if plot_poly_timestamp is None:
+                        plot_timestamp = (iv[1] - iv[0]) / 2
+                    else:
+                        plot_timestamp = np.copy(plot_poly_timestamp)
+                    print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
+                    for s in self.all_regs[i]:
+                        xl, x, xu = s.y_sigma(plot_timestamp)
+                        x_data.append(x)
+                        x_sigma.append(xu - xl)
+                    y_data = self.all_linear_tpas[i]
+                    model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+
+                    h = np.linspace(0, self.start_saturation, 100)
+                    yl, y, yu = model.y_pred(h)
+
+                    plt.plot(h, y, color='red', linewidth=2, zorder=15)
+                    plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
+                    plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
+                    plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
+                    make_grid()
+                    if ylim is None:
+                        plt.xlim([0, self.start_saturation])
+                    else:
+                        plt.xlim(ylim)
+                    if tpa_range is None:
+                        plt.ylim(None)
+                    else:
+                        plt.ylim(tpa_range)
+                    plt.ylabel('Testpulse Amplitude (V)')
+                    plt.xlabel('Pulse Height (V)')
+                    if show:
+                        plt.show()
+
+                    if plot_only_first_poly or plot_poly_timestamp is not None:
+                        break
+
+        elif self.interpolation_method == 'tree':
+
+            use_cait_style(dpi=dpi)
             # plot the regressions
-            plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
-            for i, iv in enumerate(self.intervals):
-                if i == 0:
-                    plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
-                t = np.linspace(iv[0], iv[1], 100)
-                for m in range(len(self.all_linear_tpas[i])):
-                    lower, y, upper = self.all_regs[i][m].y_sigma(t)
+            if plot_regressions:
+                plt.close()
+                plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
+                t = np.linspace(0, self.tp_hours[-1], 100)
+                for m in range(len(self.linear_tpas)):
+                    lower = self.lower_regs[m].predict(t.reshape(-1, 1))
+                    y = self.mean_regs[m].predict(t.reshape(-1, 1))
+                    upper = self.upper_regs[m].predict(t.reshape(-1, 1))
                     plt.plot(t, y, color='red', linewidth=2, zorder=15)
                     plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
-                    plt.axvline(iv[1], color='green', linewidth=1, zorder=15)
-            make_grid()
-            if ylim is None:
-                plt.ylim([0, self.start_saturation])
-            else:
-                plt.ylim(ylim)
-            plt.xlim(xlim)
-            plt.xlabel('Hours (h)')
-            plt.ylabel('Pulse Height (V)')
-            plt.show()
+                make_grid()
+                if ylim is None:
+                    plt.ylim([0, self.start_saturation])
+                else:
+                    plt.ylim(ylim)
+                plt.xlim(xlim)
+                plt.ylabel('Pulse Height (V)')
+                plt.xlabel('Time (h)')
+                if show:
+                    plt.show()
 
-            # plot the polynomials
-            for i, iv in enumerate(self.intervals):
+            if plot_poly:
+                # plot the polynomials
                 plt.close()
                 x_data, x_sigma = [], []
                 if plot_poly_timestamp is None:
-                    plot_timestamp = (iv[1] - iv[0]) / 2
+                    plot_timestamp = self.tp_hours[-1] / 2
                 else:
                     plot_timestamp = np.copy(plot_poly_timestamp)
-                print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
-                for s in self.all_regs[i]:
-                    xl, x, xu = s.y_sigma(plot_timestamp)
+                for l, m, u in zip(self.lower_regs, self.mean_regs, self.upper_regs):
+                    xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(np.array([[plot_timestamp]])), u.predict(
+                        np.array([[plot_timestamp]]))
                     x_data.append(x)
                     x_sigma.append(xu - xl)
-                y_data = self.all_linear_tpas[i]
+                x_data = np.array(x_data).reshape(-1)
+                x_sigma = np.array(x_sigma).reshape(-1)
+                y_data = self.linear_tpas
                 model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
 
                 h = np.linspace(0, self.start_saturation, 100)
                 yl, y, yu = model.y_pred(h)
 
+                print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
+
                 plt.plot(h, y, color='red', linewidth=2, zorder=15)
                 plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
                 plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
-                plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
+                plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
                 make_grid()
                 if ylim is None:
                     plt.xlim([0, self.start_saturation])
@@ -493,72 +568,8 @@ class PulserModel:
                     plt.ylim(tpa_range)
                 plt.ylabel('Testpulse Amplitude (V)')
                 plt.xlabel('Pulse Height (V)')
-                plt.show()
-
-                if plot_only_first_poly or plot_poly_timestamp is not None:
-                    break
-
-        elif self.interpolation_method == 'tree':
-
-            use_cait_style(dpi=dpi)
-            # plot the regressions
-            plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
-            t = np.linspace(0, self.tp_hours[-1], 100)
-            for m in range(len(self.linear_tpas)):
-                lower = self.lower_regs[m].predict(t.reshape(-1, 1))
-                y = self.mean_regs[m].predict(t.reshape(-1, 1))
-                upper = self.upper_regs[m].predict(t.reshape(-1, 1))
-                plt.plot(t, y, color='red', linewidth=2, zorder=15)
-                plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
-            make_grid()
-            if ylim is None:
-                plt.ylim([0, self.start_saturation])
-            else:
-                plt.ylim(ylim)
-            plt.xlim(xlim)
-            plt.ylabel('Pulse Height (V)')
-            plt.xlabel('Time (h)')
-            plt.show()
-
-            # plot the polynomials
-            plt.close()
-            x_data, x_sigma = [], []
-            if plot_poly_timestamp is None:
-                plot_timestamp = self.tp_hours[-1] / 2
-            else:
-                plot_timestamp = np.copy(plot_poly_timestamp)
-            for l, m, u in zip(self.lower_regs, self.mean_regs, self.upper_regs):
-                xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(np.array([[plot_timestamp]])), u.predict(
-                    np.array([[plot_timestamp]]))
-                x_data.append(x)
-                x_sigma.append(xu - xl)
-            x_data = np.array(x_data).reshape(-1)
-            x_sigma = np.array(x_sigma).reshape(-1)
-            y_data = self.linear_tpas
-            model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
-
-            h = np.linspace(0, self.start_saturation, 100)
-            yl, y, yu = model.y_pred(h)
-
-            print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
-
-            plt.plot(h, y, color='red', linewidth=2, zorder=15)
-            plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
-            plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
-            plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
-            make_grid()
-            if ylim is None:
-                plt.xlim([0, self.start_saturation])
-            else:
-                plt.xlim(ylim)
-            if tpa_range is None:
-                plt.ylim(None)
-            else:
-                plt.ylim(tpa_range)
-            plt.ylabel('Testpulse Amplitude (V)')
-            plt.xlabel('Pulse Height (V)')
-            plt.show()
+                if show:
+                    plt.show()
 
         else:
             raise NotImplementedError('This method is not implemented.')

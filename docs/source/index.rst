@@ -8,10 +8,11 @@
    installing
    about
    contributing
-   ../../CONTRIBUTING.rst
+   ../../CONTRIBUTING
    tips
    magic
    changelog
+   governance
 
 .. toctree::
    :caption: Tutorials
