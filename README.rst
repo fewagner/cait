@@ -1,12 +1,16 @@
+.. -*- mode: rst -*-
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
-   :target: https://doi.org/10.5281/zenodo.5091416
+|PyPi|_ |DOI|_
 
-.. image:: https://badge.fury.io/py/cait.svg
-    :target: https://badge.fury.io/py/cait
+.. |PyPi| image:: https://badge.fury.io/py/cait.svg
+.. _PyPi: https://badge.fury.io/py/cait
 
+.. |DOI| https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
+.. _DOI: https://doi.org/10.5281/zenodo.5091416
 
-Cait (Cryogenic Artificial Intelligence Tools) is a Python 3 software package for the machine learning based analysis
+.. image:: docs/source/logo/LogosVectorFormat/Transparent.pdf
+
+**Cait** (Cryogenic Artificial Intelligence Tools) is a Python 3 software package for the machine learning based analysis
 of raw data from cryogenic dark matter experiments. It is tailored to the needs of the CRESST and COSINUS experiment,
 but applicable to other, similar data structures.
 
