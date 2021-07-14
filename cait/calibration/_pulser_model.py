@@ -47,9 +47,13 @@ class PolyModel:
     :type y_sigma: 1D array
     :param order: The order of the polynomial.
     :type order: int
+    :param force_zero: Force the polynomial to zero at zero.
+    :type force_zero: bool
     """
 
-    def __init__(self, xd, yd, x_sigma=None, y_sigma=None, order=5):
+    def __init__(self, xd: np.array, yd: np.array, x_sigma: np.array = None, y_sigma: np.array = None,
+                 order: int = 5, force_zero: bool = True):
+        assert order >= 1 and isinstance(order, int), 'The polynomial order must be integer and >= 1!'
         self.xd = xd
         self.yd = yd
         self.x_sigma = x_sigma
@@ -58,9 +62,12 @@ class PolyModel:
         self.order = order
         self.poly_model = odr.polynomial(order)
         self.fix = np.ones(order + 1)
-        self.fix[0] = 0
+        if force_zero:
+            self.fix[0] = 0
         self.data = odr.RealData(self.xd, self.yd, sx=x_sigma, sy=y_sigma)
-        self.odr = odr.ODR(data=self.data, model=self.poly_model)
+        self.beta0 = np.zeros(order + 1)
+        self.beta0[1] = np.sum(xd * yd) / np.sum(xd ** 2)
+        self.odr = odr.ODR(data=self.data, model=self.poly_model, beta0=self.beta0, ifixb=self.fix)
         self.out = self.odr.run()
         self.y = np.poly1d(self.out.beta[::-1])
         self.dydx = np.polyder(self.y, m=1)
@@ -321,7 +328,8 @@ class PulserModel:
                 evhs,
                 ev_hours,
                 poly_order,
-                cpe_factor=None
+                cpe_factor=None,
+                force_zero=True,
                 ):
         """
         Predict the equivalent test pulse value for given pulse heights.
@@ -334,9 +342,8 @@ class PulserModel:
         :type poly_order: int
         :param cpe_factor: The CPE factor, which linearly maps TPA values to recoil energies.
         :type cpe_factor: float
-        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
-            the interpolation of test pulse pulse height.
-        :type interpolation_method: string
+        :param force_zero: Force the polynomial to zero at zero.
+        :type force_zero: bool
         :return: (the recoil energies, the 1 sigma uncertainties on the recoil energies, the equivalent tpa values, the
             2 sigma uncertainties on the equivalent tpa values)
         :rtype: 4-tuple of 1D arrays
@@ -362,7 +369,7 @@ class PulserModel:
                             x_data.append(x)
                             x_sigma.append(xu - xl)
                         y_data = self.all_linear_tpas[i]
-                        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order, force_zero=force_zero)
                         yl, y, yu = model.y_pred(evhs[e])
 
                         tpa_equivalent[e] = y
@@ -383,7 +390,7 @@ class PulserModel:
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
                 y_data = self.linear_tpas
-                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order, force_zero=force_zero)
                 yl, y, yu = model.y_pred(evhs[e])
 
                 tpa_equivalent[e] = y
@@ -413,6 +420,7 @@ class PulserModel:
              show=True,
              plot_regressions=True,
              plot_poly=True,
+             force_zero=True,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -434,6 +442,12 @@ class PulserModel:
         :type tpa_range: tuple
         :param rasterized: The scatter plot gets rasterized (much faster).
         :type rasterized: tuple
+        :param plot_poly: Plot the PH/TPA polynomials.
+        :type plot_poly: bool
+        :param plot_regressions: Plot the Pulse Height regressions.
+        :type plot_regressions: bool
+        :param force_zero: Force the polynomial to zero at zero.
+        :type force_zero: bool
         """
 
         assert self.interpolation_method is not None, 'You need to fit first!'
@@ -479,7 +493,7 @@ class PulserModel:
                         x_data.append(x)
                         x_sigma.append(xu - xl)
                     y_data = self.all_linear_tpas[i]
-                    model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                    model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order, force_zero=force_zero)
 
                     h = np.linspace(0, self.start_saturation, 100)
                     yl, y, yu = model.y_pred(h)
@@ -539,7 +553,8 @@ class PulserModel:
                 else:
                     plot_timestamp = np.copy(plot_poly_timestamp)
                 for l, m, u in zip(self.lower_regs, self.mean_regs, self.upper_regs):
-                    xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(np.array([[plot_timestamp]])), u.predict(
+                    xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(
+                        np.array([[plot_timestamp]])), u.predict(
                         np.array([[plot_timestamp]]))
                     x_data.append(x)
                     x_sigma.append(xu - xl)

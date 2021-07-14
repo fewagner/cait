@@ -1,6 +1,10 @@
-****
-cait
-****
+
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
+   :target: https://doi.org/10.5281/zenodo.5091416
+
+.. image:: https://badge.fury.io/py/cait.svg
+    :target: https://badge.fury.io/py/cait
+
 
 Cait (Cryogenic Artificial Intelligence Tools) is a Python 3 software package for the machine learning based analysis
 of raw data from cryogenic dark matter experiments. It is tailored to the needs of the CRESST and COSINUS experiment,

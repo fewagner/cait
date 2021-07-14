@@ -1,6 +1,6 @@
 
 ================================================================
-  Cait project governance and decision-making
+  Governance
 ================================================================
 
 The purpose of this document is to formalize the governance process
