@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setup(
     name='cait',
-    version='1.0.0',
+    version='1.0.1dev',
     author='Daniel Bartolot, '
            'Jens Burkhart, '
            'Damir Rizvanovic, '
@@ -15,7 +15,7 @@ setup(
     description='Cryogenic Artificial Intelligence Tools - A Python Package for the Data Analysis of Rare Event Search Experiments with Machine Learning.',
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://git.cryocluster.org/fwagner/cait",
+    url="https://github.com/fewagner/cait",
     license='GPLv3',
     packages=find_packages(include=['cait', 'cait.*']),
     install_requires=['setuptools>=47.1.1',
