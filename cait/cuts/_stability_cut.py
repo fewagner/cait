@@ -43,7 +43,7 @@ def controlpulse_stability(hours_ev, cphs=None, hours_cp=None, significance=3,
     :rtype: two 1D bool arrays, one list
     """
 
-    print('Do Testpulse Stability Cut')
+    print('Do Controlpulse Stability Cut')
 
     if instable_iv is None:
 

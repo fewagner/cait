@@ -54,11 +54,11 @@ class PolyModel:
     def __init__(self, xd: np.array, yd: np.array, x_sigma: np.array = None, y_sigma: np.array = None,
                  order: int = 5, force_zero: bool = True):
         assert order >= 1 and isinstance(order, int), 'The polynomial order must be integer and >= 1!'
-        self.xd = xd
-        self.yd = yd
-        self.x_sigma = x_sigma
+        self.xd = np.array(xd)
+        self.yd = np.array(yd)
+        self.x_sigma = np.array(x_sigma)
         self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
-        self.y_sigma = y_sigma
+        self.y_sigma = np.array(y_sigma)
         self.order = order
         self.poly_model = odr.polynomial(order)
         self.fix = np.ones(order + 1)

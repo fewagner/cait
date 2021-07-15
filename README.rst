@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|PyPi|_ |DOI|_
+|PyPi| |DOI|
 
 .. |PyPi| image:: https://badge.fury.io/py/cait.svg
 .. _PyPi: https://badge.fury.io/py/cait
