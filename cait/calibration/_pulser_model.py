@@ -52,7 +52,7 @@ class PolyModel:
     """
 
     def __init__(self, xd: np.array, yd: np.array, x_sigma: np.array = None, y_sigma: np.array = None,
-                 order: int = 5, force_zero: bool = True):
+                 order: int = 5, force_zero: bool = True, **kwargs):
         assert order >= 1 and isinstance(order, int), 'The polynomial order must be integer and >= 1!'
         self.xd = np.array(xd)
         self.yd = np.array(yd)
@@ -94,6 +94,72 @@ class PolyModel:
                        y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d)
         return lower, y, upper
 
+class Interpolator:
+    """
+    Interpolate between given x and y data and uncertainties.
+
+    :param xd: The x values for the fit.
+    :type xd: 1D array
+    :param yd: The y values for the fit.
+    :type yd: 1D array
+    :param x_sigma: The uncertainties on the x values
+    :type x_sigma: 1D array
+    :param y_sigma: The uncertainties on the y values.
+    :type y_sigma: 1D array
+    :param order: The order of the polynomial.
+    :type order: int
+    :param force_zero: Force to zero at zero.
+    :type force_zero: bool
+    :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+    :type kind: str
+    """
+
+    def __init__(self, xd: np.array, yd: np.array, x_sigma: np.array = None, y_sigma: np.array = None,
+                 force_zero: bool = True, kind=None, **kwargs):
+        if kind is None:
+            self.kind = 'linear'
+        else:
+            self.kind = kind
+        self.xd = np.array(xd)
+        self.yd = np.array(yd)
+        if x_sigma is not None:
+            self.x_sigma = np.array(x_sigma)
+            self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
+        if y_sigma is not None:
+            self.y_sigma = np.array(y_sigma)
+            self.y_sigma_interp = interp1d(self.xd, self.y_sigma, fill_value="extrapolate")
+        if force_zero:
+            self.xd = np.concatenate(([0], self.xd))
+            self.yd = np.concatenate(([0], self.yd))
+            if x_sigma is not None:
+                self.x_sigma = np.concatenate(([self.x_sigma_interp(0)], self.x_sigma))
+            if y_sigma is not None:
+                self.y_sigma = np.concatenate(([self.y_sigma_interp(0)], self.y_sigma))
+
+        self.y = interp1d(self.xd, self.yd, fill_value="extrapolate")
+        if x_sigma is None and y_sigma is None:
+            self.y_lower = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
+        elif x_sigma is not None and y_sigma is None:
+            self.y_lower = interp1d(self.xd + self.x_sigma, self.yd, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd - self.x_sigma, self.yd, fill_value="extrapolate", kind=self.kind)
+        elif x_sigma is None and y_sigma is not None:
+            self.y_lower = interp1d(self.xd, self.yd - self.y_sigma, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd, self.yd + self.y_sigma, fill_value="extrapolate", kind=self.kind)
+        elif x_sigma is not None and y_sigma is not None:
+            self.y_lower = interp1d(self.xd + self.x_sigma, self.yd - self.y_sigma, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd - self.x_sigma, self.yd + self.y_sigma, fill_value="extrapolate", kind=self.kind)
+
+    def y_pred(self, x):
+        """
+        Evaluate the fitted polynomial for a given x value and return the +/- 1 sigma prediction interval.
+
+        :param x: The x values for which we evaluate the fitted polynomial.
+        :type x: 1D array
+        :return: (predicted values - 1 sigma uncertainty, predicted value, predicted values + 1 sigma uncertainty)
+        :rtype: 3-tuple of 1D arrays
+        """
+        return self.y_lower(x), self.y(x), self.y_upper(x)
 
 class LinearModel:
     """
@@ -330,6 +396,8 @@ class PulserModel:
                 poly_order,
                 cpe_factor=None,
                 force_zero=True,
+                use_interpolation=False,
+                kind=None,
                 ):
         """
         Predict the equivalent test pulse value for given pulse heights.
@@ -344,6 +412,10 @@ class PulserModel:
         :type cpe_factor: float
         :param force_zero: Force the polynomial to zero at zero.
         :type force_zero: bool
+        :param use_interpolation: Use interpolation instead of polynomial fit for PH->TPA regression.
+        :type use_interpolation: bool
+        :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+        :type kind: str
         :return: (the recoil energies, the 1 sigma uncertainties on the recoil energies, the equivalent tpa values, the
             2 sigma uncertainties on the equivalent tpa values)
         :rtype: 4-tuple of 1D arrays
@@ -369,7 +441,12 @@ class PulserModel:
                             x_data.append(x)
                             x_sigma.append(xu - xl)
                         y_data = self.all_linear_tpas[i]
-                        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order, force_zero=force_zero)
+                        kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                                  'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                        if not use_interpolation:
+                            model = PolyModel(**kwargs)
+                        else:
+                            model = Interpolator(**kwargs)
                         yl, y, yu = model.y_pred(evhs[e])
 
                         tpa_equivalent[e] = y
@@ -390,7 +467,12 @@ class PulserModel:
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
                 y_data = self.linear_tpas
-                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order, force_zero=force_zero)
+                kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                          'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                if not use_interpolation:
+                    model = PolyModel(**kwargs)
+                else:
+                    model = Interpolator(**kwargs)
                 yl, y, yu = model.y_pred(evhs[e])
 
                 tpa_equivalent[e] = y
@@ -421,6 +503,8 @@ class PulserModel:
              plot_regressions=True,
              plot_poly=True,
              force_zero=True,
+             use_interpolation=False,
+             kind=None,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -448,6 +532,10 @@ class PulserModel:
         :type plot_regressions: bool
         :param force_zero: Force the polynomial to zero at zero.
         :type force_zero: bool
+        :param use_interpolation: Use interpolation instead of polynomial fit for PH->TPA regression.
+        :type use_interpolation: bool
+        :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+        :type kind: str
         """
 
         assert self.interpolation_method is not None, 'You need to fit first!'
@@ -493,7 +581,12 @@ class PulserModel:
                         x_data.append(x)
                         x_sigma.append(xu - xl)
                     y_data = self.all_linear_tpas[i]
-                    model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order, force_zero=force_zero)
+                    kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                              'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                    if not use_interpolation:
+                        model = PolyModel(**kwargs)
+                    else:
+                        model = Interpolator(**kwargs)
 
                     h = np.linspace(0, self.start_saturation, 100)
                     yl, y, yu = model.y_pred(h)
@@ -561,7 +654,12 @@ class PulserModel:
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
                 y_data = self.linear_tpas
-                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                          'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                if not use_interpolation:
+                    model = PolyModel(**kwargs)
+                else:
+                    model = Interpolator(**kwargs)
 
                 h = np.linspace(0, self.start_saturation, 100)
                 yl, y, yu = model.y_pred(h)

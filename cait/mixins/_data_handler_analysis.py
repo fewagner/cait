@@ -349,6 +349,8 @@ class AnalysisMixin(object):
                          pulser_models: object = None,
                          name_appendix_energy: str = '',
                          rasterized: bool = True,
+                         use_interpolation: bool = False,
+                         kind:str=None,
                          **kwargs,
                          ):
         """
@@ -414,7 +416,11 @@ class AnalysisMixin(object):
             data set, e.g. the resolution data set, with the same pulser models.
         :type pulser_models: list of instances of PulserModel
         :param rasterized: The scatter plot gets rasterized (much faster).
-        :type rasterized: tuple
+        :type rasterized: bool
+        :param use_interpolation: Use interpolation instead of polynomial fit for PH->TPA regression.
+        :type use_interpolation: bool
+        :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+        :type kind: str
 
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
@@ -523,7 +529,11 @@ class AnalysisMixin(object):
                                                )
 
                 if plot:
-                    pulser_models[channel].plot(poly_order=poly_order, rasterized=rasterized)
+                    pulser_models[channel].plot(poly_order=poly_order,
+                                                rasterized=rasterized,
+                                                use_interpolation=use_interpolation,
+                                                kind=kind,
+                                                )
 
                 f['events']['recoil_energy' + name_appendix_energy][channel, ...], \
                 f['events']['recoil_energy_sigma' + name_appendix_energy][channel, ...], \
@@ -532,7 +542,9 @@ class AnalysisMixin(object):
                     channel].predict(evhs=evhs[channel],
                                      ev_hours=ev_hours,
                                      poly_order=poly_order,
-                                     cpe_factor=cpe_factor[channel]
+                                     cpe_factor=cpe_factor[channel],
+                                     use_interpolation=use_interpolation,
+                                     kind=kind,
                                      )
         print('Finished.')
         if return_pulser_models:
