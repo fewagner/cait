@@ -8,7 +8,7 @@ from scipy import odr
 from scipy.interpolate import interp1d
 from ..styles import make_grid, use_cait_style
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-
+import warnings
 
 # functions
 
@@ -66,7 +66,7 @@ class PolyModel:
             self.fix[0] = 0
         self.data = odr.RealData(self.xd, self.yd, sx=x_sigma, sy=y_sigma)
         self.beta0 = np.zeros(order + 1)
-        self.beta0[1] = np.sum(xd * yd) / np.sum(xd ** 2)
+        self.beta0[1] = np.dot(self.xd, self.yd) / np.sum(self.xd ** 2)
         self.odr = odr.ODR(data=self.data, model=self.poly_model, beta0=self.beta0, ifixb=self.fix)
         self.out = self.odr.run()
         self.y = np.poly1d(self.out.beta[::-1])
@@ -124,17 +124,27 @@ class Interpolator:
         self.yd = np.array(yd)
         if x_sigma is not None:
             self.x_sigma = np.array(x_sigma)
-            self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
         if y_sigma is not None:
             self.y_sigma = np.array(y_sigma)
-            self.y_sigma_interp = interp1d(self.xd, self.y_sigma, fill_value="extrapolate")
         if force_zero:
             self.xd = np.concatenate(([0], self.xd))
             self.yd = np.concatenate(([0], self.yd))
             if x_sigma is not None:
-                self.x_sigma = np.concatenate(([self.x_sigma_interp(0)], self.x_sigma))
+                self.x_sigma = np.concatenate(([self.x_sigma[0]], self.x_sigma))
             if y_sigma is not None:
-                self.y_sigma = np.concatenate(([self.y_sigma_interp(0)], self.y_sigma))
+                self.y_sigma = np.concatenate(([self.y_sigma[0]], self.y_sigma))
+        if x_sigma is not None:
+            self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
+        if y_sigma is not None:
+            self.y_sigma_interp = interp1d(self.xd, self.y_sigma, fill_value="extrapolate")
+
+        # avoid extrapolation problems for uncertainties of high values
+        self.xd = np.concatenate((self.xd, [self.xd[-1] + (self.xd[-1] - self.xd[-2])]))
+        self.yd = np.concatenate((self.yd, [self.yd[-1] + (self.yd[-1] - self.yd[-2])]))
+        if x_sigma is not None:
+            self.x_sigma = np.concatenate((self.x_sigma, [self.x_sigma[-1]]))
+        if y_sigma is not None:
+            self.y_sigma = np.concatenate((self.y_sigma, [self.y_sigma[-1]]))
 
         self.y = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
         if x_sigma is None and y_sigma is None:
@@ -149,6 +159,12 @@ class Interpolator:
         elif x_sigma is not None and y_sigma is not None:
             self.y_lower = interp1d(self.xd + self.x_sigma, self.yd - self.y_sigma, fill_value="extrapolate", kind=self.kind)
             self.y_upper = interp1d(self.xd - self.x_sigma, self.yd + self.y_sigma, fill_value="extrapolate", kind=self.kind)
+        else:
+            self.y_lower = self._dummy_bounds
+            self.y_upper = self._dummy_bounds
+
+    def _dummy_bounds(self, x):
+        return None
 
     def y_pred(self, x):
         """
@@ -390,6 +406,26 @@ class PulserModel:
         else:
             raise NotImplementedError('This method is not implemented.')
 
+    def _check_valid(self, x, x_sigma, name, allow_zero=False):
+        for vals, n in zip([x, x_sigma], [name, name + '_uncertainties']):
+            not_valid = np.sum(np.isnan(vals))
+            if not_valid > 0:
+                warnings.warn('Attention, {} values of {} are nan!'.format(not_valid, n))
+            not_valid = np.sum(np.isinf(vals))
+            if not_valid > 0:
+                warnings.warn('Attention, {} values of {} are inf!'.format(not_valid, n))
+            if n == name + '_uncertainties':
+                if allow_zero:
+                    errmsg = 'smaller'
+                    smaller_zero = np.sum(vals < 0)
+                else:
+                    errmsg = 'smaller or equal to'
+                    smaller_zero = np.sum(vals <= 0)
+                if smaller_zero > 0:
+                    print(x[vals < 0])
+                    print(x_sigma[vals < 0])
+                    warnings.warn('Attention, {} values of {} are {} zero!'.format(smaller_zero, n, errmsg))
+
     def predict(self,
                 evhs,
                 ev_hours,
@@ -440,6 +476,7 @@ class PulserModel:
                             xl, x, xu = s.y_sigma(ev_hours[e])
                             x_data.append(x)
                             x_sigma.append(xu - xl)
+                            self._check_valid(x_data[-1], x_sigma[-1], 'TPH_estimates', allow_zero=True)
                         y_data = self.all_linear_tpas[i]
                         kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
                                   'order': poly_order, 'force_zero': force_zero, 'kind': kind}
@@ -463,7 +500,8 @@ class PulserModel:
                     xl, x, xu = l.predict(ev_hours[e].reshape(-1, 1)), m.predict(ev_hours[e].reshape(-1, 1)), u.predict(
                         ev_hours[e].reshape(-1, 1))
                     x_data.append(x)
-                    x_sigma.append(xu - xl)
+                    x_sigma.append(np.maximum(xu - xl, 1e-4))  # to avoid negative uncertainties
+                    self._check_valid(x_data[-1], x_sigma[-1], 'TPH_estimates', allow_zero=True)
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
                 y_data = self.linear_tpas
@@ -480,6 +518,8 @@ class PulserModel:
 
         else:
             raise NotImplementedError('This method is not implemented.')
+
+        self._check_valid(tpa_equivalent, tpa_equivalent_sigma, 'tpa_equivalent', allow_zero=False)
 
         if cpe_factor is not None:
             energies = cpe_factor * tpa_equivalent
