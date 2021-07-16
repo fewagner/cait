@@ -136,7 +136,7 @@ class Interpolator:
             if y_sigma is not None:
                 self.y_sigma = np.concatenate(([self.y_sigma_interp(0)], self.y_sigma))
 
-        self.y = interp1d(self.xd, self.yd, fill_value="extrapolate")
+        self.y = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
         if x_sigma is None and y_sigma is None:
             self.y_lower = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
             self.y_upper = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
