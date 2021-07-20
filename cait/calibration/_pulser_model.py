@@ -432,7 +432,7 @@ class PulserModel:
                 poly_order,
                 cpe_factor=None,
                 force_zero=True,
-                use_interpolation=False,
+                use_interpolation=True,
                 kind=None,
                 ):
         """
@@ -543,7 +543,7 @@ class PulserModel:
              plot_regressions=True,
              plot_poly=True,
              force_zero=True,
-             use_interpolation=False,
+             use_interpolation=True,
              kind=None,
              ):
         """

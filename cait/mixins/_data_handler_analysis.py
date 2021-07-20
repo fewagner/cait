@@ -349,7 +349,7 @@ class AnalysisMixin(object):
                          pulser_models: object = None,
                          name_appendix_energy: str = '',
                          rasterized: bool = True,
-                         use_interpolation: bool = False,
+                         use_interpolation: bool = True,
                          kind:str=None,
                          **kwargs,
                          ):
