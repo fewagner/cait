@@ -49,8 +49,6 @@ def get_noise_parameters_binned(counts,
     Return the least squares fit parameters to the purely Gaussian noise model. You need to calculate a histogram of
     the maxima of the empty baselines before already, e.g. with np.hist.
 
-    TODO add citation
-
     :param counts: The counts within the bins.
     :type counts: 1D array
     :param bins: The bin edges. This array is one number longer than the counts array.
@@ -680,7 +678,8 @@ def calc_threshold(record_length, sample_length, detector_mass, interval_restric
     """
     Calculate the treshold for given noise baseline maxima, to obtain a defined number of noise triggers.
 
-    TODO add citation
+    This method was described in "M. Mancuso et. al., A method to define the energy threshold depending on
+    noise level for rare event searches" (doi 10.1016/j.nima.2019.06.030).
 
     :param record_length: The number of samples in a record window.
     :type record_length: int

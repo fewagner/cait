@@ -38,8 +38,6 @@ class TransformerModule(LightningModule):
     Lightning module for the training of an Transformer Encoder model for classification or regression.
     For classification, the classes need to get one hot encoded, best with the corresponding transform.
 
-    TODO add citation (paper and implementation)
-
     :param input_size: The number of features that get passed to the Model in one time step.
     :type input_size: int
     :param d_model: The dimensions of the model.

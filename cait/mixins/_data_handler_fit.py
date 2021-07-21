@@ -13,7 +13,7 @@ from scipy.optimize import curve_fit
 from ..fit._bl_fit import get_rms
 from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbinned, \
     plot_noise_trigger_model, calc_threshold
-from ..fit._saturation import logistic_curve
+from ..fit._saturation import logistic_curve_zero, A_zero
 from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
 import warnings
@@ -37,9 +37,8 @@ class FitMixin(object):
         """
         Calculate the Parameteric Fit for the Events in an HDF5 File.
 
-        Attention! This method is only implemented for 2 channel detectors!
-
-        TODO add citation
+        This methods was described in "(1995) F. Pröbst et. al., Model for cryogenic particle detectors with superconducting phase
+        transition thermometers."
 
         :param path_h5: Optional, the full path to the hdf5 file, e.g. "data/bck_001.h5".
         :type path_h5: string
@@ -59,36 +58,33 @@ class FitMixin(object):
             events = h5f[type]['event']
 
             # take away offset
-            idx = [i for i in range(len(events[0]))]
             events = events - np.mean(events[:, :, :int(self.record_length / 8)], axis=2, keepdims=True)
 
             print('CALCULATE FIT.')
 
             # get start values from SEV fit if exists
-            try:
-                if type == 'events':
-                    sev_fitpar = h5f['stdevent']['fitpar']
-                    p_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[0])
-                    l_fit_pm = partial(fit_pulse_shape, x0=sev_fitpar[1])
-                else:
-                    raise NameError('This is only to break the loop, bc type is not events.')
-            except NameError:
-                p_fit_pm = fit_pulse_shape
-                l_fit_pm = fit_pulse_shape
+            if type == 'events' and 'stdevent' in h5f:
+                sev_fitpar = h5f['stdevent']['fitpar']
+
+                fit_pm = [partial(fit_pulse_shape, x0=fp) for fp in sev_fitpar]
+            else:
+                fit_pm = fit_pulse_shape
+
+            fitpar_event = np.empty((self.nmbr_channels, events.shape[1], 6))
 
             with Pool(processes) as p:
-                p_fitpar_event = np.array(
-                    p.map(p_fit_pm, events[0, idx, :]))
-                l_fitpar_event = np.array(
-                    p.map(l_fit_pm, events[1, idx, :]))
+                for c in range(self.nmbr_channels):
+                    print('Fitting Channel: ', c)
+                    # fitpar_event[c] = list(tqdm(p.map(fit_pm[c], events[c]), total=events.shape[1]))
+                    fitpar_event[c] = list(tqdm(p.imap(fit_pm[c], events[c]), total=events.shape[1]))
 
-            fitpar_event = np.array([p_fitpar_event, l_fitpar_event])
+            fitpar_event = np.array([fitpar_event])
 
             h5f[type].require_dataset('fitpar',
-                                      shape=(self.nmbr_channels, len(events[0]), 6),
+                                      shape=(self.nmbr_channels, events.shape[1], 6),
                                       dtype='f')
 
-            h5f[type]['fitpar'][:, idx, :] = fitpar_event
+            h5f[type]['fitpar'][:, :, :] = fitpar_event
 
     # apply sev fit
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,
@@ -96,10 +92,11 @@ class FitMixin(object):
                       verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
                       use_saturation=False):
         """
-        Calculates the SEV fit for all events of type (events or tp) and stores in hdf5 file
-        The stored parameters are (pulse_height, onset_in_ms, bl_offset[, bl_linear_coeffiient, quadratic, cubic])
+        Calculates the SEV fit for all events of type (events or tp) and stores in HDF5 file.
+        The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic).
 
-        TODO add citation
+        This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
+        available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
         :param type: Name of the group in the HDF5 set, either events or testpulses.
         :type type: string
@@ -271,7 +268,9 @@ class FitMixin(object):
         """
         Fit a logistics curve to the testpulse amplitudes vs their pulse heights.
 
-        TODO add citation
+        This method was used to describe the detector saturation in "M. Stahlberg, Probing low-mass dark matter with
+        CRESST-III : data analysis and first results",
+        available via https://doi.org/10.34726/hss.2021.45935 (accessed on the 9.7.2021).
 
         :param channel: The channel for that we calculate the saturation.
         :type channel: int
@@ -286,20 +285,23 @@ class FitMixin(object):
             tphs = h5f['testpulses']['mainpar'][channel, only_idx, 0]
             tpas = h5f['testpulses']['testpulseamplitude'][only_idx]
 
-            par, _ = curve_fit(logistic_curve,
+            par, _ = curve_fit(logistic_curve_zero,
                                xdata=tpas,
                                ydata=tphs,
-                               # A K C Q B nu
-                               bounds=([-np.inf, 0, 0, 0, 0, 0],
-                                       [np.inf, np.inf, np.inf, np.inf, np.inf, np.inf]))
+                               # (A) K C Q B nu - A is not fitted
+                               bounds=([0, 0, 0, 0, 0],
+                                       [np.inf, np.inf, np.inf, np.inf, np.inf]))
 
-            print('Saturation calculated: A {} K {} C {} Q {} B {} nu {}'.format(*par))
+            A = A_zero(*par)
+
+            print('Saturation calculated: A {} K {} C {} Q {} B {} nu {}'.format(A, *par))
 
             sat = h5f.require_group('saturation')
             sat.require_dataset(name='fitpar',
-                                shape=(self.nmbr_channels, len(par)),
+                                shape=(self.nmbr_channels, len(par) + 1),
                                 dtype=np.float)
-            sat['fitpar'][channel, ...] = par
+            sat['fitpar'][channel, 0] = A
+            sat['fitpar'][channel, 1:] = par
 
             sat['fitpar'].attrs.create(name='A', data=0)
             sat['fitpar'].attrs.create(name='K', data=1)
@@ -334,11 +336,10 @@ class FitMixin(object):
         """
         Estimate the trigger threshold to obtain a given number of noise triggers per exposure.
 
-        The method assumes a Gaussian sample distribution of the noise, following arXiv:1711.11459. There are multiple
+        The method assumes a Gaussian sample distribution of the noise, following "A method to define the energy
+        threshold depending on noise level for rare event searches" (arXiv:1711.11459). There are multiple
         extensions implemented, that descibe additional Gaussian mixture or non-Gaussian components. A more extensive
         description can be found in the corresponding tutorial.
-
-        TODO add citation
 
         :param channel: The number of the channel for that we estimate the noise trigger threshold.
         :type channel: int

@@ -35,7 +35,8 @@ class CsmplMixin(object):
         These are included in the group stream. Choose and appropriate
         name_appendix to distinguish them from time stamps that are calculated with the Cait trigger!
 
-        TODO add citation
+        The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
+        low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
         :param paths: The paths to the *.csmpl.trig files that contain the time stamps from the CAT CTrigger.
         :type paths: tuple of strings
@@ -136,8 +137,8 @@ class CsmplMixin(object):
                                csmpl_channels: list = None,
                                sql_file_label: str = None,
                                down: int = 1,
-                               window=True,
-                               overlap=None,
+                               window:bool=True,
+                               overlap:float=None,
                                ):
         """
         Trigger *.csmpl files of a detector module and include them in the HDF5 set.
@@ -148,7 +149,8 @@ class CsmplMixin(object):
         precision in the SQL file. This is not a problem for out analysis, as all events within this files are down to
         micro seconds precisely matched to each other.
 
-        TODO add citation
+        The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
+        low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
         :param csmpl_paths: The full paths for the csmpl files of all channels. If you want to trigger only one channel,
             then only put the path of this channel here.
@@ -178,7 +180,7 @@ class CsmplMixin(object):
             level can appear somewhere in the middle of the record window.
         :type window: bool
         :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
-            previous/next one. Standard value is 1/8 - it is recommended to use this value!
+            previous/next one. Standard value is 1/4 - it is recommended to use this value!
         :type overlap: float
         """
 
@@ -320,6 +322,9 @@ class CsmplMixin(object):
 
         std_evs = []
 
+        if t0_start is None:
+            t0_start = [-3 for i in range(self.nmbr_channels)]
+
         for c in range(self.nmbr_channels):
 
             std_evs.append([])
@@ -327,8 +332,6 @@ class CsmplMixin(object):
             std_evs[c].append(sev[c])
 
             if fitpar is None:
-                if t0_start is None:
-                    t0_start = -3
                 std_evs[c].append(
                     fit_pulse_shape(sev[c], sample_length=sample_length, t0_start=t0_start[c], opt_start=opt_start))
 
@@ -747,7 +750,8 @@ class CsmplMixin(object):
         The random triggers are only choosen in intervals that are measurement time (frequently occuring test pulses)
         and that are away from test pulses. The triggers are stored in the stream group in the HDF5 file.
 
-        TODO add citation
+        The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
+        low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
         :param nmbr: The number of noise triggers we want to include.
         :type nmbr: int

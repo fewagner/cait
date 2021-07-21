@@ -32,18 +32,19 @@ class FeaturesMixin(object):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param type: The group in the HDF5 set, either events or testpulses.
-        :param type: string
+        :type type: string
         :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
-        :param path_h5: string or None
+        :type path_h5: string or None
         :param processes: The number of processes to use for the calculation.
-        :param processes: int
+        :type processes: int
         :param down: The events get downsampled by this factor for the calculation of main parameters.
-        :param down: int
-        :param: max_bounds: The interval of indices to which we restrict the maximum search for the pulse height.
-        :param: max_bounds: tuple of two ints
+        :type down: int
+        :param max_bounds: The interval of indices to which we restrict the maximum search for the pulse height.
+        :type max_bounds: tuple of two ints
         """
 
         if not path_h5:
@@ -101,7 +102,8 @@ class FeaturesMixin(object):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
 
-        TODO add citation
+        This method is described in "CRESST Collaboration, First results from the CRESST-III low-mass dark matter program"
+        (10.1103/PhysRevD.100.102002).
 
         :param type: The group name in the HDF5 set, either "events" or "testpulses".
         :type type: string
@@ -259,7 +261,8 @@ class FeaturesMixin(object):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
-        TODO add citation
+        The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
+        low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
         :param down: The downsample factor of the optimal filter transfer function.
         :type down: int
@@ -539,7 +542,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None):
+    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None, cut_flag=None, window=True):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3).
@@ -553,6 +556,11 @@ class FeaturesMixin(object):
         :param rms_cutoff: Only baselines with a fit rms below this values are included in the NPS calculation. This
             will overwrite the percentile argument, if it is not set to None.
         :type rms_cutoff: list of nmbr_channels floats
+        :param cut_flag: Only the noise baselines for which the value in this array is True, are used for the
+            calculation.
+        :type cut_flag: 1d bool array
+        :param window: If True, a window function is applied to the noise baselines before the calculation of the NPS.
+        :type window: bool
         """
         print('Calculate NPS.')
 
@@ -562,16 +570,26 @@ class FeaturesMixin(object):
         # open file
         with h5py.File(self.path_h5, 'r+') as h5f:
             baselines = np.array(h5f['noise']['event'])
-            if use_labels:
-                labels = np.array(h5f['noise']['labels'])
 
             mean_nps = []
             for c in range(self.nmbr_channels):
                 bl = baselines[c]
-                if use_labels:
-                    bl = bl[labels[c] == 3]  # 3 is noise label
+                if use_labels and cut_flag is None:
+                    labels = np.array(h5f['noise']['labels'][c])
+                    bl = bl[labels[c] == 3]
+                elif use_labels and cut_flag is not None:
+                    labels = np.array(h5f['noise']['labels'][c])
+                    labels = labels[cut_flag]
+                    bl = bl[cut_flag]
+                    bl = bl[labels[c] == 3]
+                elif not use_labels and cut_flag is not None:
+                    pass
+                elif not use_labels and cut_flag is not None:
+                    bl = bl[cut_flag]
+
                 if 'fit_rms' in h5f['noise']:
                     rms_baselines = h5f['noise']['fit_rms'][c]
+
                 else:
                     rms_baselines = None
                 mean_nps.append(calculate_mean_nps(bl,
@@ -579,7 +597,8 @@ class FeaturesMixin(object):
                                                    percentile=percentile,
                                                    rms_baselines=rms_baselines,
                                                    sample_length=1/self.sample_frequency,
-                                                   rms_cutoff=rms_cutoff[c])[0])
+                                                   rms_cutoff=rms_cutoff[c],
+                                                   window=window)[0])
 
             mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
             frequencies = np.fft.rfftfreq(self.record_length, d=1. / self.sample_frequency * down)
@@ -616,6 +635,8 @@ class FeaturesMixin(object):
 
         with h5py.File(path_h5, 'r+') as h5f:
             events = h5f[type]
+
+            assert 'optimumfilter' in h5f, 'You need to calculate the optimal filter first!'
 
             of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
             of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])

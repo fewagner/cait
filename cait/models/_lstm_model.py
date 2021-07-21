@@ -19,8 +19,6 @@ class LSTMModule(LightningModule):
     Lightning module for the training of an LSTM model for classification or regression.
     For classification, the classes need to get one hot encoded, best with the corresponding transform.
 
-    TODO add citation
-
     :param input_size: The number of features that get passed to the LSTM in one time step.
     :type input_size: int
     :param hidden_size: The number of nodes in the hidden layer of the lstm.

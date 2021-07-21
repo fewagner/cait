@@ -91,7 +91,7 @@ class DataHandler(SimulateMixin,
                  module: str = None):
 
         assert channels is not None or nmbr_channels is not None, 'You need to specify either the channels numbers or the number' \
-                                                           ' of channels!'
+                                                                  ' of channels!'
 
         self.run = run
         self.module = module
@@ -158,7 +158,7 @@ class DataHandler(SimulateMixin,
         app = ''
         if appendix:
             assert self.channels is not None, 'To generate the file appendix automatically, you need to specify the channel' \
-                                          'numbers.'
+                                              'numbers.'
             if self.nmbr_channels == 2:
                 app = '-P_Ch{}-L_Ch{}'.format(*self.channels)
             else:
@@ -540,6 +540,11 @@ class DataHandler(SimulateMixin,
         :return: The dataset from the HDF5 file
         :rtype: numpy array
         """
+        add_mainpar_names = ['array_max', 'array_min', 'var_first_eight', 'mean_first_eight', 'var_last_eight',
+                             'mean_last_eight', 'var', 'mean', 'skewness', 'max_derivative', 'ind_max_derivative',
+                             'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
+                             'skewness_filtered_peak']
+
         with h5py.File(self.path_h5, 'r') as f:
             if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][:, :, 0])
@@ -554,7 +559,12 @@ class DataHandler(SimulateMixin,
             elif dataset == 'slope':
                 data = np.array(f[group]['mainpar'][:, :, 8] * self.record_length)
             else:
-                data = np.array(f[group][dataset])
+                for i, name in enumerate(add_mainpar_names):
+                    if dataset == name and name not in f[group]:
+                        data = np.array(f[group]['add_mainpar'][:, :, i])
+                        break
+                else:
+                    data = np.array(f[group][dataset])
         return data
 
     def keys(self, group: str = None):
@@ -585,6 +595,14 @@ class DataHandler(SimulateMixin,
                     shape = f[group]['mainpar'].shape[:2]
                     for dataset in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
                         print(f'dataset: {dataset}, shape: {shape}')
+                if 'add_mainpar' in f[group].keys():
+                    shape = f[group]['add_mainpar'].shape[:2]
+                    for dataset in ['array_max', 'array_min', 'var_first_eight', 'mean_first_eight', 'var_last_eight',
+                                    'mean_last_eight', 'var', 'mean', 'skewness', 'max_derivative',
+                                    'ind_max_derivative',
+                                    'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
+                                    'skewness_filtered_peak']:
+                        print(f'dataset: {dataset}, shape: {shape}')
 
     def generate_startstop(self):
         """
@@ -605,7 +623,7 @@ class DataHandler(SimulateMixin,
                     if fname not in origin:
                         origin.append(fname)
                         first_idx.append(i)
-                        last_idx.append(i-1)
+                        last_idx.append(i - 1)
 
                 del last_idx[0]
                 last_idx.append(len(f['testpulses']['origin']) - 1)

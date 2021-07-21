@@ -46,7 +46,6 @@ from .features._mp import *
 
 
 
-
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -60,36 +59,37 @@ class EvaluationTools:
     How it is used is best seen in the tutorial 'Machine Learning-based Event Selection'.
     """
 
-    save_plot_dir = './'
-    save_as = False
+    def __init__(self):
+        self.save_plot_dir = './'
+        self.save_as = False
 
-    event_nbrs = None  # numeration of all events
+        self.event_nbrs = None  # numeration of all events
 
-    data = None  # can contain part of mainpar or events
-    features = None  # normalized 'data'
+        self.data = None  # can contain part of mainpar or events
+        self.features = None  # normalized 'data'
 
-    events = None  # 'events/event' from hdf5 file
-    mainpar = None  # 'events/mainpar' from hdf5 file
-    mainpar_labels = None  # 'events/mainpar'.attrs from hdf5 file
+        self.events = None  # 'events/event' from hdf5 file
+        self.mainpar = None  # 'events/mainpar' from hdf5 file
+        self.mainpar_labels = None  # 'events/mainpar'.attrs from hdf5 file
 
-    pl_channel = None
-    files = None
-    file_nbrs = None
-    events_per_file = None
+        self.pl_channel = None
+        self.files = None
+        self.file_nbrs = None
+        self.events_per_file = None
 
-    label_nbrs = None
-    labels = None
-    labels_color_map = None
+        self.label_nbrs = None
+        self.labels = None
+        self.labels_color_map = None
 
-    test_size = 0.50
-    is_train_valid = False
-    is_train = None
-    predictions = None
-    perdiction_true_labels = None
+        self.test_size = 0.50
+        self.is_train_valid = False
+        self.is_train = None
+        self.predictions = None
+        self.perdiction_true_labels = None
 
-    color_order = mpl_default_colors
+        self.color_order = mpl_default_colors
 
-    scaler = StandardScaler()
+        self.scaler = StandardScaler()
 
     # ################### PRIVATE ###################
 
@@ -148,7 +148,7 @@ class EvaluationTools:
                     [possible_labels, np.unique(self.get_pred(pred_method=pm, verb=verb))])
 
         for i, ln in enumerate(np.unique(possible_labels)):
-        # for i, ln in enumerate(np.unique([self.get_label_nbrs(what='all')])):
+            # for i, ln in enumerate(np.unique([self.get_label_nbrs(what='all')])):
             self.labels_color_map[ln] = self.color_order[i]
 
     def __add_labels(self, labels):
@@ -193,13 +193,20 @@ class EvaluationTools:
         Reads in a labels, data from a channel of a given hdf5 file and
         adds this data to the properties
 
-        :param file: hd5 file, file from which the data should be read
-        :param channel: int, the number of the channel (e.g. phonon channel)
-        :param which_data: string, default 'mainpar',select which data should be used as data (e.g. mainparameters, additional mainparameters, timeseries) if set to none then data is keept empty. It is also possible to set this paramater to an array of the length of the labels which are then stored in data
-        :param all_labeled: boolean, default False, flag is set, include exactly the events that are labeled
-        :param only_idx: list of int, indices only include in the dataset then only use these
-        :param force_add: boolean, default False, lets you add a file twice when set to True
-        :param verb: boolean, default False, if True additional messages are printed
+        :param file: Path to hd5 file from which the data should be read.
+        :type file: string
+        :param channel: The number of the channel.
+        :type channel: int
+        :param which_data: Default 'mainpar',select which data should be used as data (e.g. mainparameters, additional mainparameters, timeseries) if set to none then data is keept empty. It is also possible to set this paramater to an array of the length of the labels which are then stored in data.
+        :type which_data: string or 2D array
+        :param all_labeled: Default False, flag is set, include exactly the events that are labeled.
+        :type all_labeled: boolean
+        :param only_idx: Indices only include in the dataset then only use these.
+        :type only_idx: list of int
+        :param force_add: Default False, lets you add a file twice when set to True.
+        :type force_add: boolean
+        :param verb: Default False, if True additional messages are printed.
+        :type verb: boolean
         """
 
         # --------------------------------------------
@@ -346,7 +353,8 @@ class EvaluationTools:
         """
         Replaces mainparameters or timeseries with a chosen data set of data.
 
-        :param data: dataset which is analysed
+        :param data: Dataset which is analysed.
+        :type data: array
         """
 
         if data.shape[0] != self.events.shape[0]:
@@ -362,7 +370,8 @@ class EvaluationTools:
         Sets the scaler for generating the features from the data set.
         Per default the sklearn.preprocessing.StandardScaler() is used.
 
-        :param scaler: scaler for normalizing the data
+        :param scaler: Scaler for normalizing the data.
+        :type scaler: object
         """
         if scaler is None:
             self.scaler = StandardScaler()
@@ -386,7 +395,8 @@ class EvaluationTools:
         If the StandardScaler is not used features have to be set manually,
         e.g. by using this function.
 
-        :param features: manual generated features
+        :param features: Manual generated features.
+        :type features: array
         """
         features = np.array(features)
         if self.data.shape != features.shape:
@@ -401,10 +411,14 @@ class EvaluationTools:
         """
         Adds a new prediction method with labels to the predictions property.
 
-        :param pred_method: string, the name of the model that made the predictions
-        :param pred: list of int, contains the predicted labels for the events
-        :param true_labels: boolean, default False, set to True when predicted labels correspond to actual label numbers (as in superviced learning methods)
-        :param verb: boolean, default False, if True addtional output is printed to the console
+        :param pred_method: The name of the model that made the predictions.
+        :type pred_method: string
+        :param pred: Contains the predicted labels for the events.
+        :type pred: list of int
+        :param true_labels: Default False, set to True when predicted labels correspond to actual label numbers (as in superviced learning methods).
+        :type true_labels: boolean
+        :param verb: Default False, if True addtional output is printed to the console.
+        :type verb: boolean
         """
         if len(pred) != len(self.label_nbrs):
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
@@ -428,11 +442,16 @@ class EvaluationTools:
         """
         Saves the predictions as a CSV file
 
-        :param pred_method: string, the name of the model that made the predictions
-        :param path: string, path to the folder that should contain the predictions, e.g. 'predictions/' leads to correct directory
-        :param fname: string, the name of the file, e.g. "bck_001"
-        :param channel: int, the number of the channel in the module, e.g. Phonon 0, Light 1
-        :param verb: boolean, default False, if True  additional ouput is printed
+        :param pred_method: The name of the model that made the predictions.
+        :type pred_method: string
+        :param path: Path to the folder that should contain the predictions, e.g. 'predictions/' leads to correct directory.
+        :type path: string
+        :param fname: The name of the file, e.g. "bck_001".
+        :type fname: string
+        :param channel: The number of the channel in the module, e.g. Phonon 0, Light 1.
+        :type channel: int
+        :param verb: Default False, if True  additional ouput is printed.
+        :type verb: boolean
         """
         if self.predictions is None:
             raise AttributeError('Add predictions first!')
@@ -452,8 +471,10 @@ class EvaluationTools:
         Seperates the dataset into a training set and a test set with the
         size determined by the input test_size in percent.
 
-        :param test_size: float in (0,1), size of the test set
-        :param verb: boolean, default False, if True additional output is printed
+        :param test_size: Size of the test set.
+        :type test_size: float in (0,1)
+        :param verb: Default False, if True additional output is printed.
+        :type verb: boolean
         """
         if test_size <= 0 or test_size >= 1:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
@@ -476,9 +497,12 @@ class EvaluationTools:
         """
         Converts given label numbers to the corresponding label.
 
-        :param label_nbrs: list of int, contain the label numbers
-        :param verb: boolean, default False, if True addtional output is printed to the console
-        :return: list of labels which correspond to the label numbers
+        :param label_nbrs: Contains the label numbers.
+        :type label_nbrs: list of int
+        :param verb: Default False, if True addtional output is printed to the console.
+        :type verb: boolean
+        :return: Labels which correspond to the label numbers.
+        :rtype: list
         """
         unique_label_nbrs = np.unique(label_nbrs)
         if not np.isin(unique_label_nbrs, list(self.labels.keys())).all():
@@ -492,9 +516,12 @@ class EvaluationTools:
         """
         Converts given label numbers into colors for matplotlib.
 
-        :param label_nbrs: list of int, contain the label numbers
-        :param verb: boolean, default False, if True addtional output is printed to the console
-        :return: list of colors (same color for the same labels)
+        :param label_nbrs: Contains the label numbers.
+        :type label_nbrs: list of int
+        :param verb: Default False, if True addtional output is printed to the console.
+        :type verb: boolean
+        :return: Same color for the same labels.
+        :rtype: list of colors
         """
         # unique_label_dict = dict(
         #     [(l, i) for i, l in enumerate(np.unique(label_nbrs))])
@@ -510,10 +537,14 @@ class EvaluationTools:
         """
         Converts given label numbers into colors for matplotlib.
 
-        :param label_nbrs: list of int, contain the label numbers
-        :param return_legend: boolean, default False, if True a legend in format for matplotlib is returned additionally
-        :param verb: boolean, default False, if True addtional output is printed to the console
-        :return: list of labels, list of colors, optional legend for matplotlib
+        :param label_nbrs: Contain the label numbers.
+        :type label_nbrs: list of int
+        :param return_legend: Default False, if True a legend in format for matplotlib is returned additionally.
+        :type return_legend: boolean
+        :param verb: Default False, if True addtional output is printed to the console.
+        :type verb: boolean
+        :return: List of colors, optional legend for matplotlib.
+        :rtype: list of labels
         """
         labels = self.convert_to_labels(label_nbrs, verb=verb)
         colors = self.convert_to_colors(label_nbrs, verb=verb)
@@ -990,19 +1021,18 @@ class EvaluationTools:
                   "index='{}'.".format(index))
 
         if what not in ['all', 'test', 'train']:
-            what='all'
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
 
-
         use_cait_style()
 
-        event=self.get_events(what)[index]
+        event = self.get_events(what)[index]
         if plot_mainpar:
-            event_mainpar=calc_main_parameters(event)
+            event_mainpar = calc_main_parameters(event)
 
-        fig= plt.figure()
+        fig = plt.figure()
         ax = fig.add_subplot(111)
         # import ipdb; ipdb.set_trace()
         ax.plot(event, linewidth=1, zorder=-1)
@@ -1013,9 +1043,9 @@ class EvaluationTools:
 
         if plot_mainpar:
             ax.hlines(y=event_mainpar.offset, xmin=ax.get_xlim()[
-                       0], xmax=ax.get_xlim()[1], linestyles='--', alpha=0.2)
+                0], xmax=ax.get_xlim()[1], linestyles='--', alpha=0.2)
         ax.vlines(x=int(event.shape[0] / 4), ymin=ax.get_ylim()
-                   [0], ymax=ax.get_ylim()[1], linestyles='--', alpha=0.2)
+        [0], ymax=ax.get_ylim()[1], linestyles='--', alpha=0.2)
 
         if text is not None:
             ax.set_title(text)
@@ -1024,7 +1054,6 @@ class EvaluationTools:
 
         fig.show()
 
-
     def plt_pred_with_tsne(self, pred_methods, what='all', plt_labels=True,
                            figsize=None, perplexity=30, as_cols=False, rdseed=None,
                            dot_size=5, verb=False):
@@ -1032,25 +1061,33 @@ class EvaluationTools:
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    - Required                  : prediction method should be used
-        :param what:        - Required                  : which data is plotted
-        :param plt_labels:      - Optional, default True    : adds subplot with labels.
-        :param figsize:         - Optional, default None    : sets figure size of plot.
-        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
-        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
-        :param verb:            - Optional, default False   : additional output is printed
+        :param pred_methods: The prediction method that should be used.
+        :type pred_methods: list of str
+        :param what: Required, which data is plotted. Options are 'all', 'test', 'train'.
+        :type what: str
+        :param plt_labels: Adds subplot with labels.
+        :type plt_labels: bool
+        :param figsize: Sets figure size of plot.
+        :type figsize: tuple
+        :param perplexity: Optional, default 30. The perplexity parameter for TSNE.
+        :type perplexity: int
+        :param as_cols: Optional, default False. If True subplots are arranged in columns.
+        :type as_cols: bool
+        :param rdseed: Optional, default None. Random seed for numpy random.
+        :type rdseed: int
+        :param dot_size: Optional, default 5. Size of the point in the scatter plot.
+        :type dot_size: int
+        :param verb: Optional, default False Additional output is printed.
+        :type verb: bool
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                 "Seed has to be of type int.")
-
+                             "Seed has to be of type int.")
 
         if type(dot_size) != int:
-            dot_size=5
+            dot_size = 5
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Value of 'dot_size' has to be of type int. It is set to 5.")
 
@@ -1060,7 +1097,7 @@ class EvaluationTools:
                       "'pred_methods' has to of type list or string.")
 
         if type(pred_methods) is str:
-            pred_methods=[pred_methods]
+            pred_methods = [pred_methods]
 
         for m in pred_methods:
             if m not in self.predictions.keys():
@@ -1068,22 +1105,22 @@ class EvaluationTools:
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
 
-        nrows=len(pred_methods)
-        ncols=1
-        subtitles=[''] * nrows
+        nrows = len(pred_methods)
+        ncols = 1
+        subtitles = [''] * nrows
 
         if plt_labels:
-            subtitles=['Labels'] + pred_methods
-            nrows=nrows + 1  # take the true labels into account
+            subtitles = ['Labels'] + pred_methods
+            nrows = nrows + 1  # take the true labels into account
 
         # switch rows and cols
         if as_cols:
-            temp=nrows
-            nrows=ncols
-            ncols=temp
+            temp = nrows
+            nrows = ncols
+            ncols = temp
 
         if what not in ['all', 'test', 'train']:
-            what='all'
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
@@ -1092,29 +1129,29 @@ class EvaluationTools:
 
         def update_annot(ind):
             for i in range(nrows * ncols):
-                pos=sc[i].get_offsets()[ind['ind'][0]]
-                annot[i].xy=pos
+                pos = sc[i].get_offsets()[ind['ind'][0]]
+                annot[i].xy = pos
                 if ind['ind'].size == 1:
-                    id=ind['ind'][0]
+                    id = ind['ind'][0]
 
-                    text="{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
+                    text = "{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
                                            self.get_event_nbrs(what)[id])
                     if plt_labels:
-                        text=text + \
+                        text = text + \
                                ", {}".format(
                                    self.labels[self.get_label_nbrs(what, verb=verb)[id]])
                 else:
-                    text="{}".format(
+                    text = "{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
         def hover(event):
             for i in range(nrows * ncols):
-                vis=annot[i].get_visible()
+                vis = annot[i].get_visible()
                 if event.inaxes == ax[i]:
                     # cont: bool, whether it contains something or not
-                    cont, ind=sc[i].contains(event)
+                    cont, ind = sc[i].contains(event)
                     # print(ind)
                     if cont:
                         update_annot(ind)
@@ -1128,18 +1165,18 @@ class EvaluationTools:
         def onclick(event):
             for i in range(nrows * ncols):
                 if event.inaxes == ax[i]:
-                    _, ind=sc[i].contains(event)
+                    _, ind = sc[i].contains(event)
                     if ind['ind'].size > 1:
                         print('Select a single event.')
                     elif ind['ind'].size == 1:
-                        id=ind['ind'][0]
+                        id = ind['ind'][0]
 
-                        text="{}, {}".format(
+                        text = "{}, {}".format(
                             self.files[self.get_file_nbrs(what, verb=verb)[
                                 id]].split('/')[-1].split('-')[0],
                             self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
-                            text=text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
+                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
                                                              self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
@@ -1148,23 +1185,22 @@ class EvaluationTools:
 
                         self.plot_event(id, what, False, text, verb)
 
-
         def on_key(event):
             if event.key == 'm':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind=sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id=ind['ind'][0]
+                            id = ind['ind'][0]
 
-                            text="{}, {}".format(
+                            text = "{}, {}".format(
                                 self.files[self.get_file_nbrs(what, verb=verb)[
                                     id]].split('/')[-1].split('-')[0],
                                 self.get_event_nbrs(what, verb=verb)[id])
                             if plt_labels:
-                                text=text + ", {} = {}".format(
+                                text = text + ", {} = {}".format(
                                     self.labels[self.get_label_nbrs(
                                         what, verb=verb)[id]],
                                     self.get_label_nbrs(what, verb=verb)[id])
@@ -1178,11 +1214,11 @@ class EvaluationTools:
             elif event.key == 'p':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind=sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id=ind['ind'][0]
+                            id = ind['ind'][0]
 
         if self.save_as == False:
             print("-------------------------------------------------------------------------")
@@ -1194,7 +1230,7 @@ class EvaluationTools:
 
         # -------- PLOT --------
         # TSNE
-        princcomp=TSNE(n_components=2, perplexity=perplexity).fit_transform(
+        princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
             self.get_features(what, verb=verb))
 
         plt.close()
@@ -1208,36 +1244,36 @@ class EvaluationTools:
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
-            fig, ax=plt.subplots(
+            fig, ax = plt.subplots(
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
         else:
-            fig, ax=plt.subplots(
+            fig, ax = plt.subplots(
                 # nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
 
-        annot=[None] * nrows * ncols
-        sc=[None] * nrows * ncols
+        annot = [None] * nrows * ncols
+        sc = [None] * nrows * ncols
 
         if nrows * ncols == 1:
-            ax=[ax]
+            ax = [ax]
 
-        start_i=0
+        start_i = 0
         if plt_labels:
-            start_i=1
+            start_i = 1
             ax[0].set_title(subtitles[0])
-            _, _, leg=self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
+            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
             if self.save_as != False:
-                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
-                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
-            pop=[None] * leg.shape[1]
+            pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
-                pop[i]=mpl.patches.Patch(
+                pop[i] = mpl.patches.Patch(
                     color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
@@ -1245,14 +1281,14 @@ class EvaluationTools:
             ax[i].set_title(subtitles[i])
 
             if self.save_as != False:
-                sc[i]=ax[i].scatter(princcomp[:, 0],
+                sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
             else:
-                sc[i]=ax[i].scatter(princcomp[:, 0],
+                sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
@@ -1260,15 +1296,14 @@ class EvaluationTools:
                                       alpha=0.7)
 
         for i in range(nrows * ncols):
-            annot[i]=ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+            annot[i] = ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
                                       bbox=dict(boxstyle="round", fc="w"),
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
             ax[i].tick_params(left=False,
-                            bottom=False,
-                            labelleft=False,
-                            labelbottom=False)
-
+                              bottom=False,
+                              labelleft=False,
+                              labelbottom=False)
 
         fig.tight_layout()
         plt.tight_layout()
@@ -1303,21 +1338,30 @@ class EvaluationTools:
         Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    - Required                  : prediction method should be used
-        :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
-        :param what:            - Optional, default 'all'   : which data is plotted
-        :param plt_labels:      - Optional, default True    : adds subplot with labels.
-        :param figsize:         - Optional, default None    : sets figure size of plot.
-        :param as_cols:         - Optional, default False   : if True subplots are arranged in columns.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param dot_size:        - Optional, default 5       : Size of the point in the scatter plot.
-        :param verb:            - Optional, default False   : additional output is printed
+        :param pred_methods: The prediction method that should be used.
+        :type pred_methods: list of str
+        :param xy_comp: Optional, default (1,2) Select with pc's are used for x and y axis.
+        :type xy_comp: tuple
+        :param what: Required, which data is plotted. Options are 'all', 'test', 'train'.
+        :type what: str
+        :param plt_labels: Adds subplot with labels.
+        :type plt_labels: bool
+        :param figsize: Sets figure size of plot.
+        :type figsize: tuple
+        :param as_cols: Optional, default False. If True subplots are arranged in columns.
+        :type as_cols: bool
+        :param rdseed: Optional, default None. Random seed for numpy random.
+        :type rdseed: int
+        :param dot_size: Optional, default 5. Size of the point in the scatter plot.
+        :type dot_size: int
+        :param verb: Optional, default False Additional output is printed.
+        :type verb: bool
         """
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                           "Seed has to be of type int.")
+                             "Seed has to be of type int.")
 
         if type(xy_comp) != tuple and \
                 len(xy_comp) != 2 and \
@@ -1330,7 +1374,7 @@ class EvaluationTools:
                              "with the integer being > 0.")
 
         if type(dot_size) != int:
-            dot_size=5
+            dot_size = 5
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Value of 'dot_size' has to be of type int. It is set to 5.")
 
@@ -1340,7 +1384,7 @@ class EvaluationTools:
                       "'pred_methods' has to of type list or string.")
 
         if type(pred_methods) is str:
-            pred_methods=[pred_methods]
+            pred_methods = [pred_methods]
 
         for m in pred_methods:
             if m not in self.predictions.keys():
@@ -1348,22 +1392,22 @@ class EvaluationTools:
                                  "Prediction method {} is not in the predictions dictionary.\n".format(m) +
                                  "Valid options are: {}".format(self.predictions.keys()))
 
-        nrows=len(pred_methods)
-        ncols=1
-        subtitles=[''] * nrows
+        nrows = len(pred_methods)
+        ncols = 1
+        subtitles = [''] * nrows
 
         if plt_labels:
-            subtitles=['Labels'] + pred_methods
-            nrows=nrows + 1  # take the true labels into account
+            subtitles = ['Labels'] + pred_methods
+            nrows = nrows + 1  # take the true labels into account
 
         # switch rows and cols
         if as_cols:
-            temp=nrows
-            nrows=ncols
-            ncols=temp
+            temp = nrows
+            nrows = ncols
+            ncols = temp
 
         if what not in ['all', 'test', 'train']:
-            what='all'
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
@@ -1372,29 +1416,29 @@ class EvaluationTools:
 
         def update_annot(ind):
             for i in range(nrows * ncols):
-                pos=sc[i].get_offsets()[ind['ind'][0]]
-                annot[i].xy=pos
+                pos = sc[i].get_offsets()[ind['ind'][0]]
+                annot[i].xy = pos
                 if ind['ind'].size == 1:
-                    id=ind['ind'][0]
+                    id = ind['ind'][0]
 
-                    text="{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
+                    text = "{}, {}".format(self.files[self.get_file_nbrs(what)[id]].split('/')[-1].split('-')[0],
                                            self.get_event_nbrs(what)[id])
                     if plt_labels:
-                        text=text + \
+                        text = text + \
                                ", {}".format(
                                    self.labels[self.get_label_nbrs(what, verb=verb)[id]])
                 else:
-                    text="{}".format(
+                    text = "{}".format(
                         " ".join(list(map(str, [self.get_event_nbrs(what)[id] for id in ind['ind']]))))
                 annot[i].set_text(text)
                 annot[i].get_bbox_patch().set_alpha(0.7)
 
         def hover(event):
             for i in range(nrows * ncols):
-                vis=annot[i].get_visible()
+                vis = annot[i].get_visible()
                 if event.inaxes == ax[i]:
                     # cont: bool, whether it contains something or not
-                    cont, ind=sc[i].contains(event)
+                    cont, ind = sc[i].contains(event)
                     # print(ind)
                     if cont:
                         update_annot(ind)
@@ -1408,19 +1452,19 @@ class EvaluationTools:
         def onclick(event):
             for i in range(nrows * ncols):
                 if event.inaxes == ax[i]:
-                    _, ind=sc[i].contains(event)
+                    _, ind = sc[i].contains(event)
                     if ind['ind'].size > 1:
                         print('Select a single event.')
                     elif ind['ind'].size == 1:
-                        id=ind['ind'][0]
+                        id = ind['ind'][0]
 
-                        text="{}, {}".format(
+                        text = "{}, {}".format(
                             self.files[self.get_file_nbrs(what, verb=verb)[
                                 id]].split('/')[-1].split('-')[0],
                             self.get_event_nbrs(what, verb=verb)[id])
                         if plt_labels:
-                            text=text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
-                                                           self.get_label_nbrs(what, verb=verb)[id])
+                            text = text + ", {} = {}".format(self.labels[self.get_label_nbrs(what, verb=verb)[id]],
+                                                             self.get_label_nbrs(what, verb=verb)[id])
 
                         print("Plotting Event nbr. '{}' from file '{}'.".format(
                             self.get_event_nbrs(what, verb=verb)[id],
@@ -1428,40 +1472,39 @@ class EvaluationTools:
 
                         self.plot_event(id, what, False, text, verb)
 
-
         def on_key(event):
             if event.key == 'm':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind=sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id=ind['ind'][0]
+                            id = ind['ind'][0]
 
-                            text="{}, {}".format(
+                            text = "{}, {}".format(
                                 self.files[self.get_file_nbrs(what, verb=verb)[
                                     id]].split('/')[-1].split('-')[0],
                                 self.get_event_nbrs(what, verb=verb)[id])
                             if plt_labels:
-                                text=text + ", {} = {}".format(
+                                text = text + ", {} = {}".format(
                                     self.labels[self.get_label_nbrs(
                                         what, verb=verb)[id]],
                                     self.get_label_nbrs(what, verb=verb)[id])
                             print("Plotting Event nbr. '{}' from file '{}'.".format(
-                                  self.get_event_nbrs(what, verb=verb)[id],
-                                  self.files[self.get_file_nbrs(what, verb=verb)[id]]))
+                                self.get_event_nbrs(what, verb=verb)[id],
+                                self.files[self.get_file_nbrs(what, verb=verb)[id]]))
 
                             self.plot_event(id, what, True, text, verb)
 
             elif event.key == 'p':
                 for i in range(nrows * ncols):
                     if event.inaxes == ax[i]:
-                        _, ind=sc[i].contains(event)
+                        _, ind = sc[i].contains(event)
                         if ind['ind'].size > 1:
                             print('Select a single event.')
                         elif ind['ind'].size == 1:
-                            id=ind['ind'][0]
+                            id = ind['ind'][0]
 
         if self.save_as == False:
             print("-------------------------------------------------------------------------")
@@ -1473,9 +1516,9 @@ class EvaluationTools:
 
         # -------- PLOT --------
         # PCA
-        pca=PCA(n_components=np.max(xy_comp)+1)
-        princcomp=pca.fit_transform(self.get_features(what, verb=verb))
-        princcomp=princcomp[:, (xy_comp[0], xy_comp[1])]
+        pca = PCA(n_components=np.max(xy_comp) + 1)
+        princcomp = pca.fit_transform(self.get_features(what, verb=verb))
+        princcomp = princcomp[:, (xy_comp[0], xy_comp[1])]
         print('Explained Variance: ', pca.explained_variance_ratio_)
         print('Singular Values: ', pca.singular_values_)
 
@@ -1490,35 +1533,35 @@ class EvaluationTools:
             set_mpl_backend_pgf()
 
         if type(figsize) is not tuple:
-            fig, ax=plt.subplots(
+            fig, ax = plt.subplots(
                 nrows=nrows, ncols=ncols, sharex=True, sharey=True)
         else:
-            fig, ax=plt.subplots(
+            fig, ax = plt.subplots(
                 nrows=nrows, ncols=ncols, figsize=figsize, sharex=True, sharey=True)
 
-        annot=[None] * nrows * ncols
-        sc=[None] * nrows * ncols
+        annot = [None] * nrows * ncols
+        sc = [None] * nrows * ncols
 
         if nrows * ncols == 1:
-            ax=[ax]
+            ax = [ax]
 
-        start_i=0
+        start_i = 0
         if plt_labels:
-            start_i=1
+            start_i = 1
             ax[0].set_title(subtitles[0])
-            _, _, leg=self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
+            _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
             if self.save_as != False:
-                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
-                sc[0]=ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
+                sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
-            pop=[None] * leg.shape[1]
+            pop = [None] * leg.shape[1]
             for i in range(leg.shape[1]):
                 # pop[i] = mpl.patches.Patch(color=leg[2,i], label="{} ({})".format(leg[1,i], leg[0,i]))
-                pop[i]=mpl.patches.Patch(
+                pop[i] = mpl.patches.Patch(
                     color=leg[2, i], label="{} ({})".format(leg[0, i], leg[1, i]))
             ax[0].legend(handles=pop, framealpha=0.3)
 
@@ -1526,14 +1569,14 @@ class EvaluationTools:
             ax[i].set_title(subtitles[i])
 
             if self.save_as != False:
-                sc[i]=ax[i].scatter(princcomp[:, 0],
+                sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
                                       s=dot_size,
                                       alpha=0.7)
             else:
-                sc[i]=ax[i].scatter(princcomp[:, 0],
+                sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
                                                                what=what, verb=verb),
@@ -1541,11 +1584,10 @@ class EvaluationTools:
                                       alpha=0.7)
 
         for i in range(nrows * ncols):
-            annot[i]=ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
+            annot[i] = ax[i].annotate("", xy=(0, 0), xytext=(20, 20), textcoords="offset points",
                                       bbox=dict(boxstyle="round", fc="w"),
                                       arrowprops=dict(arrowstyle="->"))
             annot[i].set_visible(False)
-
 
         fig.tight_layout()
         plt.tight_layout()
@@ -1584,23 +1626,28 @@ class EvaluationTools:
         Plots a histogram for all labels of the pulse hights in different
         subplots.
 
-        :param ncols:       - optional, default 2 : number of plots side by side.
-        :param extend_plot: - optional, default False : sets the x axis of all histograms to the same limits.
-        :param figsize:     - optional, default None : changes the overall figure size.
-        :param bins:        - optional, default auto : bins for the histograms.
-        :param verb:        - optional, default False : ouputs additional information.
+        :param ncols: Optional, default 2. Number of plots side by side.
+        :type ncols: int
+        :param extend_plot: Optional, default False. Sets the x axis of all histograms to the same limits.
+        :type extend_plot: bool
+        :param figsize: Optional, default None. Changes the overall figure size.
+        :type figsize: tuple
+        :param bins: Optional, default auto. Bins for the histograms.
+        :type bins: int
+        :param verb: Optional, default False. Ouputs additional information.
+        :type verb: bool
         """
-        max_height=self.get_mainpar(
+        max_height = self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
 
-        max_max_height=np.max(max_height)
-        min_max_height=np.min(max_height)
+        max_max_height = np.max(max_height)
+        min_max_height = np.min(max_height)
 
-        unique_label_nbrs=np.unique(self.get_label_nbrs(verb=verb))
-        max_height_per_label=dict(
+        unique_label_nbrs = np.unique(self.get_label_nbrs(verb=verb))
+        max_height_per_label = dict(
             [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
-        nrows=math.ceil(len(unique_label_nbrs) / ncols)
+        nrows = math.ceil(len(unique_label_nbrs) / ncols)
 
         plt.close()
         if figsize is None:
@@ -1609,11 +1656,11 @@ class EvaluationTools:
             use_cait_style(x_size=figsize[0], y_size=figsize[1], fontsize=14,
                            autolayout=False, dpi=None)
 
-        fig, ax=plt.subplots(nrows=nrows, ncols=ncols)
+        fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
 
         for i, l in enumerate(unique_label_nbrs):
-            j=i % ncols
-            k=int(i / ncols)
+            j = i % ncols
+            k = int(i / ncols)
             # print("i ({}); j ({}); k ({})".format(i,j,k))
             if k * ncols + j > i:
                 break
@@ -1624,8 +1671,8 @@ class EvaluationTools:
         plt.tight_layout()
         if extend_plot:
             for i, l in enumerate(unique_label_nbrs):
-                j=i % ncols
-                k=int(i / ncols)
+                j = i % ncols
+                k = int(i / ncols)
                 # print("i ({}); j ({}); k ({})".format(i,j,k))
                 if k * ncols + j > i:
                     break
@@ -1644,9 +1691,12 @@ class EvaluationTools:
         Plots a histogram for all event pulses and strongly saturated event pulses
         in a single plot.
 
-        :param figsize:         - optional, default None : changes the overall figure size.
-        :param bins:            - optional, default auto : bins for the histograms.
-        :param ylog:            - optional, default False : if True the y axis is in log scale.
+        :param figsize: Optional, default None. Changes the overall figure size.
+        :type figsize: tuple
+        :param bins: Optional, default auto. Bins for the histograms.
+        :type bins: int
+        :param ylog: Optional, default False. If True the y axis is in log scale.
+        :type ylog: bool
         """
 
         plt.close()
@@ -1660,20 +1710,20 @@ class EvaluationTools:
             set_mpl_backend_pgf()
             mpl.use('pdf')
 
-        max_height=self.get_mainpar(
+        max_height = self.get_mainpar(
             verb=verb)[:, self.mainpar_labels['pulse_height']]
 
-        unique_label_nbrs=np.unique(self.get_label_nbrs(verb=verb))
-        max_height_per_label=dict(
+        unique_label_nbrs = np.unique(self.get_label_nbrs(verb=verb))
+        max_height_per_label = dict(
             [(l, max_height[self.get_label_nbrs(verb=verb) == l]) for l in unique_label_nbrs])
 
-        events_nbr=list(self.labels.keys())[list(
+        events_nbr = list(self.labels.keys())[list(
             self.labels.values()).index('Event_Pulse')]
-        saturated_nbr=list(self.labels.keys())[list(
+        saturated_nbr = list(self.labels.keys())[list(
             self.labels.values()).index('Strongly_Saturated_Event_Pulse')]
 
         if events_nbr and saturated_nbr in max_height_per_label:
-            fig, ax=plt.subplots(figsize=figsize, tight_layout=True)
+            fig, ax = plt.subplots(figsize=figsize, tight_layout=True)
 
             ax.hist([max_height_per_label[events_nbr], max_height_per_label[saturated_nbr]],
                     label=['{}'.format(self.labels[events_nbr]), '{}'.format(
@@ -1709,13 +1759,20 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for every label.
 
-        :param pred_method:     - Required : Name of the predictions method.
-        :param what:            - Optional, default all : test or train data or all.
-        :param bin_size:        - Optional, default 4 : bin size for calculating the average.
-        :param ncols:           - Optional, default 2 : number of plots side by side.
-        :param figsize:         - Optional, default None : Size of the figure for matplotlib.
-        :param extend_plot:     - Optional, default False : if True x limits is set to the same for all subplots.
-        :param verb:            - Optional, default False : if True additional information is printed on the console.
+        :param pred_method: Required. Name of the predictions method.
+        :type pred_method: str
+        :param what: Optional, default all. Test or train data or all.
+        :type what: str
+        :param bin_size: Optional, default 4. Bin size for calculating the average.
+        :type bin_size: int
+        :param ncols: Optional, default 2. Number of plots side by side.
+        :type ncols: int
+        :param figsize: Optional, default None. Size of the figure for matplotlib.
+        :type figsize: tuple
+        :param extend_plot: Optional, default False. If True x limits is set to the same for all subplots.
+        :type extend_plot: bool
+        :param verb: Optional, default False. If True additional information is printed on the console.
+        :type verb: bool
         """
 
         plt.close()
@@ -1746,52 +1803,52 @@ class EvaluationTools:
                       "correct labels are supported by this function.")
             return
 
-        max_height=self.get_mainpar(what, verb=verb)[
+        max_height = self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-        max_max_height=np.max(max_height)
-        min_max_height=np.min(max_height)
+        max_max_height = np.max(max_height)
+        min_max_height = np.min(max_height)
 
-        unique_label_nbrs, unique_label_counts=np.unique(
+        unique_label_nbrs, unique_label_counts = np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
-        data_dict_sorted=dict(
+        data_dict_sorted = dict(
             [(l, ([None] * c, [None] * c, [None] * c)) for l, c in zip(unique_label_nbrs, unique_label_counts)])
 
-        pos_counter=dict([(l, 0) for l in unique_label_nbrs])
+        pos_counter = dict([(l, 0) for l in unique_label_nbrs])
 
         for h, tl, pl in sorted(
                 zip(max_height, self.get_label_nbrs(what, verb=verb), self.get_pred(pred_method, what, verb=verb))):
-            data_dict_sorted[tl][0][pos_counter[tl]]=h
-            data_dict_sorted[tl][1][pos_counter[tl]]=pl
+            data_dict_sorted[tl][0][pos_counter[tl]] = h
+            data_dict_sorted[tl][1][pos_counter[tl]] = pl
             pos_counter[tl] += 1
 
         for l in unique_label_nbrs:
-            pl=np.array(data_dict_sorted[l][1])
-            pl[pl != l]=0
-            pl[pl == l]=1
+            pl = np.array(data_dict_sorted[l][1])
+            pl[pl != l] = 0
+            pl[pl == l] = 1
             # pl = pl/pl.shape[0]
             # pl = np.cumsum(pl).tolist()
             for i, c in enumerate(pl):
-                data_dict_sorted[l][2][i]=c
+                data_dict_sorted[l][2][i] = c
 
-        bin_boundries={}
+        bin_boundries = {}
         for l in unique_label_nbrs:
-            bins=math.ceil(len(data_dict_sorted[l][2]) / bin_size)
-            bin_boundries[l]=([None] * bins, [None] * bins)
+            bins = math.ceil(len(data_dict_sorted[l][2]) / bin_size)
+            bin_boundries[l] = ([None] * bins, [None] * bins)
             for i in range(bins):
-                upper=(i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
+                upper = (i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
                     data_dict_sorted[l][2])
-                lower=i * bin_size
-                bin_boundries[l][0][i]=np.mean(
+                lower = i * bin_size
+                bin_boundries[l][0][i] = np.mean(
                     data_dict_sorted[l][0][lower:upper])
-                bin_boundries[l][1][i]=np.mean(
+                bin_boundries[l][1][i] = np.mean(
                     data_dict_sorted[l][2][lower:upper])
 
-        nrows=math.ceil(len(unique_label_nbrs) / ncols)
-        fig, ax=plt.subplots(nrows=nrows, ncols=ncols)
+        nrows = math.ceil(len(unique_label_nbrs) / ncols)
+        fig, ax = plt.subplots(nrows=nrows, ncols=ncols)
         for i, l in enumerate(unique_label_nbrs):
-            j=i % ncols
-            k=int(i / ncols)
+            j = i % ncols
+            k = int(i / ncols)
             if k * ncols + j > i:
                 break
             ax[k][j].set_title(self.labels[l])
@@ -1825,13 +1882,20 @@ class EvaluationTools:
         Plots the number of correctly predicted labels over volts (pulse height)
         for events.
 
-        :param pred_method: - Required : Name of the predictions method.
-        :param what:        - Optional, default all : test or train data or all.
-        :param bin_size:    - Optional, default 4 : bin size for calculating the average.
-        :param ncols:       - Optional, default 2 : number of plots side by side.
-        :param extend_plot: - Optional, default False : if True x limits is set to the same for all subplots.
-        :param figsize:     - optional, default None : changes the overall figure size.
-        :param verb:        - Optional, default False : if True additional information is printed on the console.
+        :param pred_method: Required. Name of the predictions method.
+        :type pred_method: str
+        :param what: Optional, default all. Test or train data or all.
+        :type what: str
+        :param bin_size: Optional, default 4. Bin size for calculating the average.
+        :type bin_size: int
+        :param ncols: Optional, default 2. Number of plots side by side.
+        :type ncols:  int
+        :param extend_plot: Optional, default False. If True x limits is set to the same for all subplots.
+        :type extend_plot: bool
+        :param figsize: Optional, default None. Changes the overall figure size.
+        :type figsize: tuple
+        :param verb: Optional, default False. If True additional information is printed on the console.
+        :type verb: bool
         """
 
         plt.close()
@@ -1862,50 +1926,50 @@ class EvaluationTools:
                       "correct labels are supported by this function.")
             return
 
-        max_height=self.get_mainpar(what, verb=verb)[
+        max_height = self.get_mainpar(what, verb=verb)[
                      :, self.mainpar_labels['pulse_height']]
 
-        unique_label_nbrs, unique_label_counts=np.unique(
+        unique_label_nbrs, unique_label_counts = np.unique(
             self.get_label_nbrs(what, verb=verb), return_counts=True)
-        data_dict_sorted=dict(
+        data_dict_sorted = dict(
             [(l, ([None] * c, [None] * c, [None] * c)) for l, c in zip(unique_label_nbrs, unique_label_counts)])
 
-        pos_counter=dict([(l, 0) for l in unique_label_nbrs])
+        pos_counter = dict([(l, 0) for l in unique_label_nbrs])
 
         for h, tl, pl in sorted(
                 zip(max_height, self.get_label_nbrs(what, verb=verb), self.get_pred(pred_method, what, verb=verb))):
-            data_dict_sorted[tl][0][pos_counter[tl]]=h
-            data_dict_sorted[tl][1][pos_counter[tl]]=pl
+            data_dict_sorted[tl][0][pos_counter[tl]] = h
+            data_dict_sorted[tl][1][pos_counter[tl]] = pl
             pos_counter[tl] += 1
 
         for l in unique_label_nbrs:
-            pl=np.array(data_dict_sorted[l][1])
-            pl[pl != l]=0
-            pl[pl == l]=1
+            pl = np.array(data_dict_sorted[l][1])
+            pl[pl != l] = 0
+            pl[pl == l] = 1
             # pl = pl/pl.shape[0]
             # pl = np.cumsum(pl).tolist()
             for i, c in enumerate(pl):
-                data_dict_sorted[l][2][i]=c
+                data_dict_sorted[l][2][i] = c
 
-        bin_boundries={}
+        bin_boundries = {}
         for l in unique_label_nbrs:
-            bins=math.ceil(len(data_dict_sorted[l][2]) / bin_size)
-            bin_boundries[l]=([None] * bins, [None] * bins)
+            bins = math.ceil(len(data_dict_sorted[l][2]) / bin_size)
+            bin_boundries[l] = ([None] * bins, [None] * bins)
             for i in range(bins):
-                upper=(i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
+                upper = (i + 1) * bin_size if (i + 1) * bin_size < len(data_dict_sorted[l][2]) else len(
                     data_dict_sorted[l][2])
-                lower=i * bin_size
-                bin_boundries[l][0][i]=np.mean(
+                lower = i * bin_size
+                bin_boundries[l][0][i] = np.mean(
                     data_dict_sorted[l][0][lower:upper])
-                bin_boundries[l][1][i]=np.mean(
+                bin_boundries[l][1][i] = np.mean(
                     data_dict_sorted[l][2][lower:upper])
 
-        l=1  # events
+        l = 1  # events
         # nrows = math.ceil(len(unique_label_nbrs)/ncols)
         if figsize is None:
-            fig, ax=plt.subplots(nrows=1, ncols=1)
+            fig, ax = plt.subplots(nrows=1, ncols=1)
         else:
-            fig, ax=plt.subplots(nrows=1, ncols=1, figsize=figsize)
+            fig, ax = plt.subplots(nrows=1, ncols=1, figsize=figsize)
         ax.set_title(self.labels[l])
         # ax[k][j].hist(data_dict_sorted[l][0],
         #               bins=bin_boundries[l][0])
@@ -1937,12 +2001,18 @@ class EvaluationTools:
         When clicking on a matrix element the event number and from which file
         is printed out in the console
 
-        :param pred_method:          - Required : Name of the predictions method.
-        :param what:                 - Optional, default all : test or train data or all.
-        :param rotation_xticklabels: - Optional, default 0 : lets you rotate the x tick labels.
-        :param force_xlabelnbr:      - Optional, default False : uses the number instead of the labels for better readability.
-        :param figsize:              - optional, default None : changes the overall figure size.
-        :param verb:                 - Optional, default False : if True additional information is printed on the console.
+        :param pred_method: Required. Name of the predictions method.
+        :type pred_method:  str
+        :param what: Optional, default all. Test or train data or all.
+        :type what: str
+        :param rotation_xticklabels: Optional, default 0. Lets you rotate the x tick labels.
+        :type rotation_xticklabels: int
+        :param force_xlabelnbr: Optional, default False. Uses the number instead of the labels for better readability.
+        :type force_xlabelnbr: bool
+        :param figsize: Optional, default None. Changes the overall figure size.
+        :type figsize: tuple
+        :param verb: Optional, default False. If True additional information is printed on the console.
+        :type verb: bool
         """
 
         plt.close()
@@ -1970,53 +2040,52 @@ class EvaluationTools:
                              "Prediction method {} is not in the predictions dictionary.\n".format(pred_method) +
                              "Valid options are: {}".format(self.predictions.keys()))
 
+        if self.get_pred_true_labels(pred_method):
+            ylabels_order = [self.labels[l] + " ({})".format(int(l))
+                             for l in np.unique(np.hstack(
+                    [np.unique(self.get_pred(pred_method, what, verb=verb)),
+                     np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
+        else:
+            ylabels_order = [self.labels[l] + " ({})".format(int(l))
+                             for l in np.unique(self.get_label_nbrs(what, verb=verb))]
 
         if self.get_pred_true_labels(pred_method):
-            ylabels_order=[self.labels[l] + " ({})".format(int(l))
-                for l in np.unique(np.hstack(
-                            [np.unique(self.get_pred(pred_method, what, verb=verb)),
-                             np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
+            xlabels_order = ylabels_order
         else:
-            ylabels_order=[self.labels[l] + " ({})".format(int(l))
-                for l in np.unique(self.get_label_nbrs(what, verb=verb))]
-
-        if self.get_pred_true_labels(pred_method):
-            xlabels_order=ylabels_order
-        else:
-            xlabels_order=np.unique(self.get_pred(
+            xlabels_order = np.unique(self.get_pred(
                 pred_method, what, verb=verb)).tolist()
 
-        diff=len(ylabels_order) - len(xlabels_order)
+        diff = len(ylabels_order) - len(xlabels_order)
         for i in range(abs(diff)):
             if diff > 0:  # len(ylabels_order)>len(xlabels_order)
                 xlabels_order.append(chr(ord('a') + i))
             elif diff < 0:  # len(ylabels_order)<len(xlabels_order)
                 ylabels_order.append(chr(ord('a') + i))
 
-        pred_labels=self.get_pred(pred_method, what, verb=verb)
+        pred_labels = self.get_pred(pred_method, what, verb=verb)
         if not self.get_pred_true_labels(pred_method):
-            pred_labels_dict=dict(
+            pred_labels_dict = dict(
                 [(pl, tl) for tl, pl in zip(np.unique(self.get_label_nbrs(what, verb=verb)), xlabels_order)])
-            pred_labels=[pred_labels_dict[l] for l in pred_labels]
+            pred_labels = [pred_labels_dict[l] for l in pred_labels]
 
         if self.get_pred_true_labels(pred_method) and force_xlabelnbr:
-            xlabels_order=[l.split(')')[0] for l in [l.split(
+            xlabels_order = [l.split(')')[0] for l in [l.split(
                 '(')[-1] for l in xlabels_order]]
 
         if type(xlabels_order) is np.ndarray:
-            xlabels_order=xlabels_order.tolist()
+            xlabels_order = xlabels_order.tolist()
         if type(ylabels_order) is np.ndarray:
-            ylabels_order=ylabels_order.tolist()
+            ylabels_order = ylabels_order.tolist()
 
         if self.get_pred_true_labels(pred_method):
-            true_label_nbrs=self.get_label_nbrs(what, verb=verb)
+            true_label_nbrs = self.get_label_nbrs(what, verb=verb)
         else:
-            cm_conv_labels=dict([(n, i) for i, n in enumerate(
+            cm_conv_labels = dict([(n, i) for i, n in enumerate(
                 np.unique(self.get_label_nbrs(what, verb=verb)))])
-            true_label_nbrs=[cm_conv_labels[l]
-                for l in self.get_label_nbrs(what, verb=verb)]
+            true_label_nbrs = [cm_conv_labels[l]
+                               for l in self.get_label_nbrs(what, verb=verb)]
 
-        cm=confusion_matrix(true_label_nbrs,
+        cm = confusion_matrix(true_label_nbrs,
                               self.get_pred(pred_method, what, verb=verb))
         if verb:
             print(cm)
@@ -2025,24 +2094,24 @@ class EvaluationTools:
             if event.inaxes == ax:
                 # cont, ind = cax.contains(event)
 
-                x=event.xdata
-                y=event.ydata
-                i=int(y + 0.5)
-                j=int(x + 0.5)
+                x = event.xdata
+                y = event.ydata
+                i = int(y + 0.5)
+                j = int(x + 0.5)
 
-                selected_label_nbr=np.unique(
+                selected_label_nbr = np.unique(
                     self.get_label_nbrs(verb=verb))[i]
                 if self.get_pred_true_labels(pred_method):
-                    selected_pred_nbr=np.unique(
+                    selected_pred_nbr = np.unique(
                         self.get_label_nbrs(verb=verb))[j]
                 else:
-                    selected_pred_nbr=np.unique(
+                    selected_pred_nbr = np.unique(
                         self.get_pred(pred_method, verb=verb))[j]
 
-                selection=np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
+                selection = np.logical_and(self.get_label_nbrs(what, verb) == selected_label_nbr,
                                            self.get_pred(pred_method, what, verb) == selected_pred_nbr)
 
-                results=[
+                results = [
                     self.get_file_nbrs(what, verb)[selection],
                     self.get_event_nbrs(what, verb)[selection],
                     self.get_label_nbrs(what, verb)[selection],
@@ -2058,13 +2127,13 @@ class EvaluationTools:
                 print()
 
         if type(figsize) is not tuple:
-            fig=plt.figure()
+            fig = plt.figure()
         else:
-            fig=plt.figure(figsize=figsize)
+            fig = plt.figure(figsize=figsize)
 
-        ax=fig.add_subplot(111)
+        ax = fig.add_subplot(111)
 
-        cax=ax.matshow(cm, cmap='plasma', alpha=0.7)
+        cax = ax.matshow(cm, cmap='plasma', alpha=0.7)
         fig.colorbar(cax)
 
         if ylabels_order != []:
@@ -2099,14 +2168,13 @@ class EvaluationTools:
 
         plt.close()
 
-
-
     def plot_labels_distribution(self, figsize=None):
         """
         Uses a bar graph to visualize how often a label occures in the
         dataset
 
-        :param figsize: - optional, default None : changes the overall figure size.
+        :param figsize: Optional, default None. Changes the overall figure size.
+        :type figsize: tuple
         """
 
         plt.close()
@@ -2119,33 +2187,33 @@ class EvaluationTools:
         if self.save_as == 'pgf':
             set_mpl_backend_pgf()
 
-        lnbr, lcnt=np.unique(self.label_nbrs, return_counts=True)
-        lenum=np.arange(lnbr.shape[0])
+        lnbr, lcnt = np.unique(self.label_nbrs, return_counts=True)
+        lenum = np.arange(lnbr.shape[0])
 
         if type(figsize) is not tuple:
-            _, ax=plt.subplots()
+            _, ax = plt.subplots()
         else:
-            _, ax=plt.subplots(figsize=figsize)
+            _, ax = plt.subplots(figsize=figsize)
 
-        bars=plt.bar(lenum, lcnt)
+        bars = plt.bar(lenum, lcnt)
         for i, b in enumerate(bars):
             b.set_color(self.color_order[i])
         plt.xticks(lenum, lnbr)
 
-        rects=ax.patches
+        rects = ax.patches
         for rect, i in zip(rects, lcnt):
-            height=rect.get_height()
+            height = rect.get_height()
             ax.text(rect.get_x() + rect.get_width() / 2, height + 15, i,
                     ha='center', va='bottom')
-        _, top=plt.ylim()
+        _, top = plt.ylim()
         plt.ylim(0, 1.1 * top)
 
         ax.set_ylabel("number of events")
         ax.set_xlabel("labels")
 
-        pop=[None] * len(lnbr)
+        pop = [None] * len(lnbr)
         for i, j in enumerate(lnbr):
-            pop[i]=mpl.patches.Patch(color=self.color_order[i],
+            pop[i] = mpl.patches.Patch(color=self.color_order[i],
                                        label="{} ({})".format(self.labels[j], j))
         ax.legend(handles=pop, framealpha=0.3,
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
@@ -2158,25 +2226,29 @@ class EvaluationTools:
             plt.show()
         plt.close()
 
-
     def plt_pred_with_tsne_plotly(self, pred_methods, what='all',
-                           perplexity=30, rdseed=None, verb=False):
+                                  perplexity=30, rdseed=None, verb=False):
         """
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    - Required                  : prediction method should be used
-        :param what:            - Required                  : which data is plotted
-        :param perplexity:      - Optional, default 30      : perplexity parameter for TSNE.
-        :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param verb:            - Optional, default False   : additional output is printed
+        :param pred_methods: Required. Prediction method that should be used.
+        :type pred_methods: str
+        :param what: Required. Which data is plotted, 'all', 'test' or 'train'.
+        :type what: str
+        :param perplexity: Optional, default 30. Perplexity parameter for TSNE.
+        :type perplexity: int
+        :param rdseed: Optional, default None. Random seed for numpy random.
+        :type rdseed: int
+        :param verb: Optional, default False. Additional output is printed.
+        :type verb: bool
         """
 
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                 "Seed has to be of type int.")
+                             "Seed has to be of type int.")
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -2184,7 +2256,7 @@ class EvaluationTools:
                       "'pred_methods' has to of type list or string.")
 
         if type(pred_methods) is str:
-            pred_methods=[pred_methods]
+            pred_methods = [pred_methods]
 
         for m in pred_methods:
             if m not in self.predictions.keys():
@@ -2193,17 +2265,15 @@ class EvaluationTools:
                                  "Valid options are: {}".format(self.predictions.keys()))
 
         if what not in ['all', 'test', 'train']:
-            what='all'
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
 
-
         # -------- PLOT --------
         # TSNE
-        princcomp=TSNE(n_components=2, perplexity=perplexity).fit_transform(
+        princcomp = TSNE(n_components=2, perplexity=perplexity).fit_transform(
             self.get_features(what, verb=verb))
-
 
         external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
         app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -2220,15 +2290,15 @@ class EvaluationTools:
             labels = [self.labels[i] for i in label_nbrs]
             # import ipdb; ipdb.set_trace()
             df = pd.DataFrame({
-                "id": np.arange(self.get_events(what,verb).shape[0]),
-                "file": [self.files[i] for i in self.get_file_nbrs(what,verb)],
+                "id": np.arange(self.get_events(what, verb).shape[0]),
+                "file": [self.files[i] for i in self.get_file_nbrs(what, verb)],
                 "x": princcomp[:, 0],
                 "y": princcomp[:, 1],
                 "label_nbrs": label_nbrs,
                 "labels": labels,
                 "color": label_nbrs.astype(str)
             })
-            fig=None
+            fig = None
             if pred_meth is None:
                 fig = px.scatter(df,
                                  x="x",
@@ -2236,100 +2306,100 @@ class EvaluationTools:
                                  color="labels",
                                  hover_name="labels",
                                  hover_data=["id", "file"],
-                                )
+                                 )
                 fig.update_yaxes(visible=False)
                 fig.update_layout(height=600)
             else:
                 fig = make_subplots(rows=2, cols=1,
-                    shared_xaxes=True,
-                    shared_yaxes=True,
-                    vertical_spacing=0.02)
+                                    shared_xaxes=True,
+                                    shared_yaxes=True,
+                                    vertical_spacing=0.02)
 
-                unique_label_nbrs = np.unique([label_nbrs,self.get_pred(pred_meth, what=what, verb=verb)])
+                unique_label_nbrs = np.unique([label_nbrs, self.get_pred(pred_meth, what=what, verb=verb)])
                 # import ipdb; ipdb.set_trace()
-                dict_colors = dict([[j, self.color_order[i]] for i,j in enumerate(unique_label_nbrs)])
+                dict_colors = dict([[j, self.color_order[i]] for i, j in enumerate(unique_label_nbrs)])
 
                 group = "1"
                 group_title = "Labels"
 
-
-                for i in np.unique(self.get_label_nbrs(what,verb)):
-                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                for i in np.unique(self.get_label_nbrs(what, verb)):
+                    sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     fig.add_trace(go.Scatter(
-                                     x=princcomp[sep, 0],
-                                     y=princcomp[sep, 1],
-                                     name=self.labels[i],
-                                     # color=label_nbrs,
-                                     mode='markers',
-                                     # marker=dict(color=label_nbrs, coloraxis="coloraxis")
-                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=group,
-                                     legendgrouptitle_text=group_title,
-                                     # hover_name="labels",
-                                     # hover_data=["id", "file"],
-                                     # hovertemplate=
-                                     #    '<b>%{labels}</b><br><br>' +
-                                     #    'index: %{text}<br>' +
-                                     #    'file: %{file}<br>' +
-                                     #    'x: %{x}<br>' +
-                                     #    'y: %{y}',
-                                     customdata=np.array([df['id'][sep]]).T,
-                                    ),
-                                  row=1,
-                                  col=1,
-                                 )
+                        x=princcomp[sep, 0],
+                        y=princcomp[sep, 1],
+                        name=self.labels[i],
+                        # color=label_nbrs,
+                        mode='markers',
+                        # marker=dict(color=label_nbrs, coloraxis="coloraxis")
+                        marker=dict(color=dict_colors[i]),  # coloraxis="coloraxis")
+                        legendgroup=group,
+                        legendgrouptitle_text=group_title,
+                        # hover_name="labels",
+                        # hover_data=["id", "file"],
+                        # hovertemplate=
+                        #    '<b>%{labels}</b><br><br>' +
+                        #    'index: %{text}<br>' +
+                        #    'file: %{file}<br>' +
+                        #    'x: %{x}<br>' +
+                        #    'y: %{y}',
+                        customdata=np.array([df['id'][sep]]).T,
+                    ),
+                        row=1,
+                        col=1,
+                    )
 
                 # if not self.get_pred_true_labels(pred_meth):
                 group = "2"
                 group_title = "Prediction"
 
                 for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
-                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                    sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
 
                     fig.add_trace(go.Scatter(
-                                     x=princcomp[sep, 0],
-                                     y=princcomp[sep, 1],
-                                     name=name,
-                                     # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
-                                     mode='markers',
-                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=group,
-                                     legendgrouptitle_text=group_title,
-                                     # hover_name="labels",
-                                     # hover_data=["id", "file"],
-                                     # hovertemplate=
-                                     #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
-                                     customdata=np.array([df['id'][sep]]).T,
-                                    ),
-                                  row=2,
-                                  col=1,
-                                 )
-                fig.update_layout(showlegend=True,height=800,hovermode='closest')# coloraxis=dict(colorscale=dict_colors))
+                        x=princcomp[sep, 0],
+                        y=princcomp[sep, 1],
+                        name=name,
+                        # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
+                        mode='markers',
+                        marker=dict(color=dict_colors[i]),  # coloraxis="coloraxis")
+                        legendgroup=group,
+                        legendgrouptitle_text=group_title,
+                        # hover_name="labels",
+                        # hover_data=["id", "file"],
+                        # hovertemplate=
+                        #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
+                        customdata=np.array([df['id'][sep]]).T,
+                    ),
+                        row=2,
+                        col=1,
+                    )
+                fig.update_layout(showlegend=True, height=800,
+                                  hovermode='closest')  # coloraxis=dict(colorscale=dict_colors))
             return fig
 
         def click_event(clickData=None):
             if clickData is None:
                 # clickData = {"points":[{"pointIndex":0}]}
-                clickData = {"points":[{"customdata":[0]}]}
+                clickData = {"points": [{"customdata": [0]}]}
             # index = clickData['points'][0]['pointIndex']
             index = clickData['points'][0]['customdata'][0]
-            event_nbr = self.get_event_nbrs(what,verb)[index]
-            event=self.get_events(what)[index]
+            event_nbr = self.get_event_nbrs(what, verb)[index]
+            event = self.get_events(what)[index]
             fig_event = px.line(x=np.arange(event.shape[0]), y=event)
-            fig_event.update_xaxes(title={'text':''})
-            fig_event.update_yaxes(title={'text':''})
+            fig_event.update_xaxes(title={'text': ''})
+            fig_event.update_yaxes(title={'text': ''})
             return fig_event
 
         def click_data(clickData=None):
             if clickData is None:
                 # clickData = {"points":[{"pointIndex":0}]}
-                clickData = {"points":[{"customdata":[0]}]}
+                clickData = {"points": [{"customdata": [0]}]}
             # index = clickData['points'][0]['pointIndex']
             index = clickData['points'][0]['customdata'][0]
-            event_nbr = self.get_event_nbrs(what,verb)[index]
+            event_nbr = self.get_event_nbrs(what, verb)[index]
             file = self.files[self.get_file_nbrs(what, verb)[index]]
-            label_nbr = self.get_label_nbrs(what,verb)[index]
+            label_nbr = self.get_label_nbrs(what, verb)[index]
             label = self.labels[label_nbr]
             return """Index: {}
                       Event number: {}
@@ -2378,8 +2448,6 @@ class EvaluationTools:
         # def display_click_data(clickData):
         #     return json.dumps(clickData, indent=2)
 
-
-
         @app.callback(
             Output('textarea-click-data', 'children'),
             Input('scatter-graph', 'clickData'))
@@ -2400,34 +2468,29 @@ class EvaluationTools:
 
         app.run_server()
 
-
-
-
-
-
-
-
-
-
     def plt_pred_with_pca_plotly(self, pred_methods, xy_comp=(1, 2), what='all',
                                  rdseed=None, verb=False):
         """
         Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
 
-        :param pred_methods:    - Required                  : prediction method should be used
-        :param xy_comp:         - Optional, default (1,2)   : select with pc's are used for x and y axis
-        :param what:            - Optional, default 'all'   : which data is plotted
-        :param rdseed:          - Optional, default None    : Random seed for numpy random.
-        :param verb:            - Optional, default False   : additional output is printed
+        :param pred_methods: Required. Prediction method that should be used.
+        :type pred_methods: str
+        :param xy_comp: Optional, default (1,2). Select with pc's are used for x and y axis.
+        :type xy_comp: tuple
+        :param what: Optional, default 'all'. Which data is plotted.
+        :type what: str
+        :param rdseed: Optional, default None. Random seed for numpy random.
+        :type rdseed: int
+        :param verb: Optional, default False. Additional output is printed.
+        :type verb: bool
         """
-
 
         if type(rdseed) == int:
             np.random.seed(seed=rdseed)  # fixing random seed
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                 "Seed has to be of type int.")
+                             "Seed has to be of type int.")
 
         if type(pred_methods) is not list and type(pred_methods) is not str:
             if verb:
@@ -2435,7 +2498,7 @@ class EvaluationTools:
                       "'pred_methods' has to of type list or string.")
 
         if type(pred_methods) is str:
-            pred_methods=[pred_methods]
+            pred_methods = [pred_methods]
 
         for m in pred_methods:
             if m not in self.predictions.keys():
@@ -2444,17 +2507,16 @@ class EvaluationTools:
                                  "Valid options are: {}".format(self.predictions.keys()))
 
         if what not in ['all', 'test', 'train']:
-            what='all'
+            what = 'all'
             if verb:
                 print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                       "If the value of 'what' is not 'train' or 'test' then all are shown.")
 
-
         # -------- PLOT --------
         # PCA
-        pca=PCA(n_components=np.max(xy_comp)+1)
-        princcomp=pca.fit_transform(self.get_features(what, verb=verb))
-        princcomp=princcomp[:, (xy_comp[0], xy_comp[1])]
+        pca = PCA(n_components=np.max(xy_comp) + 1)
+        princcomp = pca.fit_transform(self.get_features(what, verb=verb))
+        princcomp = princcomp[:, (xy_comp[0], xy_comp[1])]
 
         external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
         app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -2471,15 +2533,15 @@ class EvaluationTools:
             labels = [self.labels[i] for i in label_nbrs]
             # import ipdb; ipdb.set_trace()
             df = pd.DataFrame({
-                "id": np.arange(self.get_events(what,verb).shape[0]),
-                "file": [self.files[i] for i in self.get_file_nbrs(what,verb)],
+                "id": np.arange(self.get_events(what, verb).shape[0]),
+                "file": [self.files[i] for i in self.get_file_nbrs(what, verb)],
                 "x": princcomp[:, 0],
                 "y": princcomp[:, 1],
                 "label_nbrs": label_nbrs,
                 "labels": labels,
                 "color": label_nbrs.astype(str)
             })
-            fig=None
+            fig = None
             if pred_meth is None:
                 fig = px.scatter(df,
                                  x="x",
@@ -2503,95 +2565,95 @@ class EvaluationTools:
                 fig.update_layout(height=600)
             else:
                 fig = make_subplots(rows=2, cols=1,
-                    shared_xaxes=True,
-                    shared_yaxes=True,
-                    vertical_spacing=0.02)
+                                    shared_xaxes=True,
+                                    shared_yaxes=True,
+                                    vertical_spacing=0.02)
 
-                unique_label_nbrs = np.unique([label_nbrs,self.get_pred(pred_meth, what=what, verb=verb)])
+                unique_label_nbrs = np.unique([label_nbrs, self.get_pred(pred_meth, what=what, verb=verb)])
                 # import ipdb; ipdb.set_trace()
-                dict_colors = dict([[j, self.color_order[i]] for i,j in enumerate(unique_label_nbrs)])
+                dict_colors = dict([[j, self.color_order[i]] for i, j in enumerate(unique_label_nbrs)])
 
                 group = "1"
                 group_title = "Labels"
 
-
-                for i in np.unique(self.get_label_nbrs(what,verb)):
-                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                for i in np.unique(self.get_label_nbrs(what, verb)):
+                    sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     fig.add_trace(go.Scatter(
-                                     x=princcomp[sep, 0],
-                                     y=princcomp[sep, 1],
-                                     name=self.labels[i],
-                                     # color=label_nbrs,
-                                     mode='markers',
-                                     # marker=dict(color=label_nbrs, coloraxis="coloraxis")
-                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=group,
-                                     legendgrouptitle_text=group_title,
-                                     # hover_name="labels",
-                                     # hover_data=["id", "file"],
-                                     # hovertemplate=
-                                     #    '<b>%{labels}</b><br><br>' +
-                                     #    'index: %{text}<br>' +
-                                     #    'file: %{file}<br>' +
-                                     #    'x: %{x}<br>' +
-                                     #    'y: %{y}',
-                                     customdata=np.array([df['id'][sep]]).T,
-                                    ),
-                                  row=1,
-                                  col=1,
-                                 )
+                        x=princcomp[sep, 0],
+                        y=princcomp[sep, 1],
+                        name=self.labels[i],
+                        # color=label_nbrs,
+                        mode='markers',
+                        # marker=dict(color=label_nbrs, coloraxis="coloraxis")
+                        marker=dict(color=dict_colors[i]),  # coloraxis="coloraxis")
+                        legendgroup=group,
+                        legendgrouptitle_text=group_title,
+                        # hover_name="labels",
+                        # hover_data=["id", "file"],
+                        # hovertemplate=
+                        #    '<b>%{labels}</b><br><br>' +
+                        #    'index: %{text}<br>' +
+                        #    'file: %{file}<br>' +
+                        #    'x: %{x}<br>' +
+                        #    'y: %{y}',
+                        customdata=np.array([df['id'][sep]]).T,
+                    ),
+                        row=1,
+                        col=1,
+                    )
 
                 # if not self.get_pred_true_labels(pred_meth):
                 group = "2"
                 group_title = "Prediction"
                 import ipdb; ipdb.set_trace()
                 for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
-                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                    sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
 
                     fig.add_trace(go.Scatter(
-                                     x=princcomp[sep, 0],
-                                     y=princcomp[sep, 1],
-                                     name=name,
-                                     # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
-                                     mode='markers',
-                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=group,
-                                     legendgrouptitle_text=group_title,
-                                     # hover_name="labels",
-                                     # hover_data=["id", "file"],
-                                     # hovertemplate=
-                                     #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
-                                     customdata=np.array([df['id'][sep]]).T,
-                                    ),
-                                  row=2,
-                                  col=1,
-                                 )
-                fig.update_layout(showlegend=True,height=800,hovermode='closest')# coloraxis=dict(colorscale=dict_colors))
+                        x=princcomp[sep, 0],
+                        y=princcomp[sep, 1],
+                        name=name,
+                        # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
+                        mode='markers',
+                        marker=dict(color=dict_colors[i]),  # coloraxis="coloraxis")
+                        legendgroup=group,
+                        legendgrouptitle_text=group_title,
+                        # hover_name="labels",
+                        # hover_data=["id", "file"],
+                        # hovertemplate=
+                        #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
+                        customdata=np.array([df['id'][sep]]).T,
+                    ),
+                        row=2,
+                        col=1,
+                    )
+                fig.update_layout(showlegend=True, height=800,
+                                  hovermode='closest')  # coloraxis=dict(colorscale=dict_colors))
             return fig
 
         def click_event(clickData=None):
             if clickData is None:
                 # clickData = {"points":[{"pointIndex":0}]}
-                clickData = {"points":[{"customdata":[0]}]}
+                clickData = {"points": [{"customdata": [0]}]}
             # index = clickData['points'][0]['pointIndex']
             index = clickData['points'][0]['customdata'][0]
-            event_nbr = self.get_event_nbrs(what,verb)[index]
-            event=self.get_events(what)[index]
+            event_nbr = self.get_event_nbrs(what, verb)[index]
+            event = self.get_events(what)[index]
             fig_event = px.line(x=np.arange(event.shape[0]), y=event)
-            fig_event.update_xaxes(title={'text':''})
-            fig_event.update_yaxes(title={'text':''})
+            fig_event.update_xaxes(title={'text': ''})
+            fig_event.update_yaxes(title={'text': ''})
             return fig_event
 
         def click_data(clickData=None):
             if clickData is None:
                 # clickData = {"points":[{"pointIndex":0}]}
-                clickData = {"points":[{"customdata":[0]}]}
+                clickData = {"points": [{"customdata": [0]}]}
             # index = clickData['points'][0]['pointIndex']
             index = clickData['points'][0]['customdata'][0]
-            event_nbr = self.get_event_nbrs(what,verb)[index]
+            event_nbr = self.get_event_nbrs(what, verb)[index]
             file = self.files[self.get_file_nbrs(what, verb)[index]]
-            label_nbr = self.get_label_nbrs(what,verb)[index]
+            label_nbr = self.get_label_nbrs(what, verb)[index]
             label = self.labels[label_nbr]
             return """Index: {}
                       Event number: {}
@@ -2639,8 +2701,6 @@ class EvaluationTools:
         #     Input('scatter-graph', 'clickData'))
         # def display_click_data(clickData):
         #     return json.dumps(clickData, indent=2)
-
-
 
         @app.callback(
             Output('textarea-click-data', 'children'),

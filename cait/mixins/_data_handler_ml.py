@@ -23,7 +23,9 @@ class MachineLearningMixin(object):
         Apply a principal component analysis to the data matrix and store projections, reconstruction error and
         components.
 
-        TODO add citation
+        This method was used in "Pulse Shape Discrimination in CUPID-Mo using Principal Component Analysis
+        (doi: 10.1088/1748-0221/16/03/P03032)"
+        for the dicrimination of similar signal types.
 
         :param nmbr_components: The number of components we want to store and project to.
         :type nmbr_components: int
