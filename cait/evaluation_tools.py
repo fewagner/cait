@@ -1,7 +1,6 @@
-    # -----------------------------------------------------------
-    # IMPORTS
-    # -----------------------------------------------------------
-
+# -----------------------------------------------------------
+# IMPORTS
+# -----------------------------------------------------------
 
 
 # importing anything from dash opens a matplotlib window
@@ -28,10 +27,6 @@ from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import pandas as pd
 
-
-
-
-
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
@@ -43,7 +38,6 @@ from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsiz
 from .styles._plt_styles import use_cait_style, make_grid
 
 from .features._mp import *
-
 
 
 # -----------------------------------------------------------
@@ -197,7 +191,10 @@ class EvaluationTools:
         :type file: string
         :param channel: The number of the channel.
         :type channel: int
-        :param which_data: Default 'mainpar',select which data should be used as data (e.g. mainparameters, additional mainparameters, timeseries) if set to none then data is keept empty. It is also possible to set this paramater to an array of the length of the labels which are then stored in data.
+        :param which_data: Default 'mainpar',select which data should be used as data (e.g. mainparameters,
+                           additional mainparameters, timeseries) if set to none then data is keept empty.
+                           It is also possible to set this paramater to an array of the length of the labels
+                           which are then stored in data.
         :type which_data: string or 2D array
         :param all_labeled: Default False, flag is set, include exactly the events that are labeled.
         :type all_labeled: boolean
@@ -226,9 +223,10 @@ class EvaluationTools:
         # check if the data key is correct
         if not (type(which_data) == list or type(which_data) == np.ndarray or
                 which_data == 'mainpar' or which_data == 'add_mainpar' or which_data == 'timeseries' or
-                which_data == None):
+                which_data is None):
             raise ValueError(console_colors.FAIL + "WARNING: " + console_colors.ENDC +
-                             "Only 'mainpar', 'add_mainpar', 'timeseries', list of data or None are valid options to read from file.")
+                             "Only 'mainpar', 'add_mainpar', 'timeseries', list of data or " +
+                             "None are valid options to read from file.")
 
         # check if we look at a correct channel
         if type(channel) is int:
@@ -244,7 +242,7 @@ class EvaluationTools:
                              "Parameter 'pl_channel' has to be of type int.")
 
         # if file already exists ask again
-        if force_add == True and self.files != None and file in self.files:
+        if force_add and self.files is not None and file in self.files:
             print(console_colors.OKBLUE + "NOTE: " + console_colors.ENDC +
                   "Data from this file already exists. Continue? [y/N]")
             cont = input()
@@ -415,7 +413,8 @@ class EvaluationTools:
         :type pred_method: string
         :param pred: Contains the predicted labels for the events.
         :type pred: list of int
-        :param true_labels: Default False, set to True when predicted labels correspond to actual label numbers (as in superviced learning methods).
+        :param true_labels: Default False, set to True when predicted labels correspond to actual label numbers
+                            (as in superviced learning methods).
         :type true_labels: boolean
         :param verb: Default False, if True addtional output is printed to the console.
         :type verb: boolean
@@ -444,7 +443,8 @@ class EvaluationTools:
 
         :param pred_method: The name of the model that made the predictions.
         :type pred_method: string
-        :param path: Path to the folder that should contain the predictions, e.g. 'predictions/' leads to correct directory.
+        :param path: Path to the folder that should contain the predictions, e.g. 'predictions/' leads to
+                     correct directory.
         :type path: string
         :param fname: The name of the file, e.g. "bck_001".
         :type fname: string
@@ -615,7 +615,8 @@ class EvaluationTools:
         """
         Getter-function which returns the event_nbrs
 
-        :param what: Defines what should be returned, which is either 'all' for all event_nbrs, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all event_nbrs,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -645,7 +646,8 @@ class EvaluationTools:
         """
         Getter-function which returns the data
 
-        :param what: Defines what should be returned, which is either 'all' for all data, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all data,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -675,7 +677,8 @@ class EvaluationTools:
         """
         Getter-function which returns the mainpar
 
-        :param what: Defines what should be returned, which is either 'all' for all mainpar, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all mainpar,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -705,7 +708,8 @@ class EvaluationTools:
         """
         Getter-function which returns the events
 
-        :param what: Defines what should be returned, which is either 'all' for all events, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all events, 'test' for the test set
+                     and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -735,7 +739,8 @@ class EvaluationTools:
         """
         Getter-function which returns the features
 
-        :param what: Defines what should be returned, which is either 'all' for all features, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all features,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -765,7 +770,8 @@ class EvaluationTools:
         """
         Getter-function which returns the file_nbrs
 
-        :param what: Defines what should be returned, which is either 'all' for all file_nbrs, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all file_nbrs,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -795,7 +801,8 @@ class EvaluationTools:
         """
         Getter-function which returns the label_nbrs
 
-        :param what: Defines what should be returned, which is either 'all' for all label_nbrs, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all label_nbrs,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -822,7 +829,8 @@ class EvaluationTools:
         """
         Getter-function which returns the labels_in_color, which can be usefull for plotting.
 
-        :param what: Defines what should be returned, which is either 'all' for all labels_in_color, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all labels_in_color, 'test' for the
+                     test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -868,20 +876,22 @@ class EvaluationTools:
 
         return list(self.predictions.keys())
 
-
     def get_pred(self, pred_method, what='all', verb=False):
         """
         Getter-function which returns the prediction of a method.
         The prediction has to be added at first and can be selected by providing the same abbreviation while adding it.
         The selection is done via the pred_method parameter.
 
-        :param pred_method: Parameter to select the prediction from a certain prediction method, which must be the same string as when added.
+        :param pred_method: Parameter to select the prediction from a certain prediction method,
+                            which must be the same string as when added.
         :type pred_method: str
-        :param what: Defines what should be returned, which is either 'all' for all prediction, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all prediction,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
-        :return: Returns the part of prediction depending on the chosen prediction methode (pred_meth) and on the parameter what
+        :return: Returns the part of prediction depending on the chosen prediction methode (pred_meth) and
+                 on the parameter what
         :rtype: array
         """
         if what == 'train':
@@ -929,13 +939,16 @@ class EvaluationTools:
         The prediction has to be added at first and can be selected by providing the same abbreviation while adding it.
         The selection is done via the pred_method parameter.
 
-        :param pred_method: Parameter to select the prediction from a certain prediction method get color coded, which must be the same string as when added.
+        :param pred_method: Parameter to select the prediction from a certain prediction method get color coded,
+                            which must be the same string as when added.
         :type pred_method: str
-        :param what: Defines what should be returned, which is either 'all' for all color coded predicitons, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all color coded predicitons,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
-        :return: Returns the part of the color coded predictions depending on the chosen prediction methode (pred_meth) and on the parameter what
+        :return: Returns the part of the color coded predictions depending on the chosen prediction methode
+                 (pred_meth) and on the parameter what
         :rtype: array
         """
         if what == 'train':
@@ -982,7 +995,8 @@ class EvaluationTools:
         """
         Getter-function which returns the filepaths for every event.
 
-        :param what: Defines what should be returned, which is either 'all' for all filepaths, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all filepaths,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param verb: Enables addiational output which can be usefull for debugging, defaults to False
         :type verb: bool, optional
@@ -1007,7 +1021,8 @@ class EvaluationTools:
 
         :param index: The event index which should be plotted in respect to the what parameter
         :type index: int
-        :param what: Defines what should be returned, which is either 'all' for all filepaths, 'test' for the test set and 'train' for the trainings set , defaults to 'all'
+        :param what: Defines what should be returned, which is either 'all' for all filepaths,
+                     'test' for the test set and 'train' for the trainings set , defaults to 'all'
         :type what: str, optional
         :param plot_mainpar: If True, it adds main parameters to the plot, default False
         :type plot_mainpar: str, optional
@@ -1042,10 +1057,8 @@ class EvaluationTools:
         ax.set_ylim(ax.get_ylim())
 
         if plot_mainpar:
-            ax.hlines(y=event_mainpar.offset, xmin=ax.get_xlim()[
-                0], xmax=ax.get_xlim()[1], linestyles='--', alpha=0.2)
-        ax.vlines(x=int(event.shape[0] / 4), ymin=ax.get_ylim()
-        [0], ymax=ax.get_ylim()[1], linestyles='--', alpha=0.2)
+            ax.hlines(y=event_mainpar.offset, xmin=ax.get_xlim()[0], xmax=ax.get_xlim()[1], linestyles='--', alpha=0.2)
+        ax.vlines(x=int(event.shape[0] / 4), ymin=ax.get_ylim()[0], ymax=ax.get_ylim()[1], linestyles='--', alpha=0.2)
 
         if text is not None:
             ax.set_title(text)
@@ -1220,7 +1233,7 @@ class EvaluationTools:
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
 
-        if self.save_as == False:
+        if not self.save_as:
             print("-------------------------------------------------------------------------")
             print("Hovering over an event shows you the event number.")
             print("When clicking on a single event a window with its timeseries is opened.")
@@ -1264,7 +1277,7 @@ class EvaluationTools:
             _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
-            if self.save_as != False:
+            if not self.save_as:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
@@ -1280,7 +1293,7 @@ class EvaluationTools:
         for i in range(start_i, nrows * ncols):
             ax[i].set_title(subtitles[i])
 
-            if self.save_as != False:
+            if not self.save_as:
                 sc[i] = ax[i].scatter(princcomp[:, 0],
                                       princcomp[:, 1],
                                       c=self.get_pred_in_color(pred_methods[i - start_i],
@@ -1307,7 +1320,7 @@ class EvaluationTools:
 
         fig.tight_layout()
         plt.tight_layout()
-        if self.save_as != False:
+        if not self.save_as:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
                 ax[0].legend(handles=pop, framealpha=0.3,
@@ -1506,7 +1519,7 @@ class EvaluationTools:
                         elif ind['ind'].size == 1:
                             id = ind['ind'][0]
 
-        if self.save_as == False:
+        if not self.save_as:
             print("-------------------------------------------------------------------------")
             print('Hovering over an event shows you the event number.')
             print('When clicking on a single event a window with its timeseries is opened.')
@@ -1552,7 +1565,7 @@ class EvaluationTools:
             _, _, leg = self.convert_to_labels_colors(self.get_label_nbrs(what, verb=verb), return_legend=True,
                                                       verb=verb)
 
-            if self.save_as != False:
+            if not self.save_as:
                 sc[0] = ax[0].scatter(princcomp[:, 0], princcomp[:, 1],
                                       c=self.get_labels_in_color(what=what, verb=verb), s=dot_size, alpha=0.7)
             else:
@@ -1591,7 +1604,7 @@ class EvaluationTools:
 
         fig.tight_layout()
         plt.tight_layout()
-        if self.save_as != False:
+        if not self.save_as:
             if plt_labels:
                 plt.gcf().subplots_adjust(top=0.95, right=0.5)
                 ax[0].legend(handles=pop, framealpha=0.3,
@@ -1678,7 +1691,7 @@ class EvaluationTools:
                     break
                 ax[k][j].set_xlim(min_max_height, max_max_height)
 
-        if self.save_as != False:
+        if not self.save_as:
             # plt.savefig('{}labels_dist.pgf'.format(self.save_plot_dir))
             plt.savefig('{}labels_dist.{}'.format(
                 self.save_plot_dir, self.save_as))
@@ -1739,7 +1752,7 @@ class EvaluationTools:
             plt.tight_layout()
             if ylog:
                 ax.set_yscale('log')
-            if self.save_as != False:
+            if not self.save_as:
                 if ylog:
                     plt.savefig(
                         '{}evt_sat_hist-ylog.{}'.format(self.save_plot_dir, self.save_as))
@@ -1868,7 +1881,7 @@ class EvaluationTools:
         # plt.ylable('accuray')
         # plt.show()
         plt.tight_layout()
-        if self.save_as != False:
+        if not self.save_as:
             plt.savefig('{}correctly_labeled_per_v.{}'.format(
                 self.save_plot_dir, self.save_as))
         else:
@@ -1982,7 +1995,7 @@ class EvaluationTools:
         fig.tight_layout()
         plt.tight_layout()
         # plt.gcf().subplots_adjust(bottom=-0.1)
-        if self.save_as != False:
+        if not self.save_as:
             # plt.savefig(
             #     '{}correctly_labeled_events-{}.pgf'.format(self.save_plot_dir, pred_method))
             plt.savefig(
@@ -2042,9 +2055,8 @@ class EvaluationTools:
 
         if self.get_pred_true_labels(pred_method):
             ylabels_order = [self.labels[l] + " ({})".format(int(l))
-                             for l in np.unique(np.hstack(
-                    [np.unique(self.get_pred(pred_method, what, verb=verb)),
-                     np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
+                             for l in np.unique(np.hstack([np.unique(self.get_pred(pred_method, what, verb=verb)),
+                             np.unique(self.get_label_nbrs(what, verb=verb))])).tolist()]
         else:
             ylabels_order = [self.labels[l] + " ({})".format(int(l))
                              for l in np.unique(self.get_label_nbrs(what, verb=verb))]
@@ -2219,7 +2231,7 @@ class EvaluationTools:
                   loc='center left', bbox_to_anchor=(1.0, 0.5))
 
         plt.gcf().subplots_adjust(right=0.5)
-        if self.save_as != False:
+        if not self.save_as:
             plt.savefig('{}labels_dist.{}'.format(
                 self.save_plot_dir, self.save_as))
         else:
@@ -2553,7 +2565,7 @@ class EvaluationTools:
                                      "x": "",
                                      "y": "",
                                  },
-                                )
+                                 )
                 # fig.update_xaxes(autorange=True,
                 #                  showgrid=False,
                 #                  ticks='',
@@ -2605,7 +2617,8 @@ class EvaluationTools:
                 # if not self.get_pred_true_labels(pred_meth):
                 group = "2"
                 group_title = "Prediction"
-                import ipdb; ipdb.set_trace()
+                import ipdb;
+                ipdb.set_trace()
                 for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
                     sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
@@ -2722,17 +2735,6 @@ class EvaluationTools:
 
         app.run_server()
 
-
-
-
-
-
-
-
-
-
-
-
     def plt_pred_plotly(self, rdseed=None, verb=False):
         """
         Plots data with PCE when given a one or a list of predictions method
@@ -2746,15 +2748,11 @@ class EvaluationTools:
             np.random.seed(seed=rdseed)  # fixing random seed
         elif rdseed is not None:
             raise ValueError(console_colors.FAIL + "ERROR: " + console_colors.ENDC +
-                 "Seed has to be of type int.")
+                             "Seed has to be of type int.")
 
         pred_methods = self.get_pred_methods()
         what = 'all'
-        xy_comp = (1,2)
-
-
-
-
+        xy_comp = (1, 2)
 
         external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
         app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
@@ -2770,12 +2768,12 @@ class EvaluationTools:
 
             # -------- PLOT --------
             # PCA
-            pca=PCA(n_components=np.max(xy_comp)+1)
-            pc_pca=pca.fit_transform(self.get_features(what, verb=verb))
+            pca = PCA(n_components=np.max(xy_comp) + 1)
+            pc_pca = pca.fit_transform(self.get_features(what, verb=verb))
 
             # TSNE
-            perplexity=30
-            pc_tsne=TSNE(n_components=2, perplexity=perplexity).fit_transform(
+            perplexity = 30
+            pc_tsne = TSNE(n_components=2, perplexity=perplexity).fit_transform(
                 self.get_features(what, verb=verb))
 
             princcomp = pc_pca[:, (xy_comp[0], xy_comp[1])]
@@ -2785,15 +2783,15 @@ class EvaluationTools:
             labels = [self.labels[i] for i in label_nbrs]
             # import ipdb; ipdb.set_trace()
             df = pd.DataFrame({
-                "id": np.arange(self.get_events(what,verb).shape[0]),
-                "file": [self.files[i] for i in self.get_file_nbrs(what,verb)],
+                "id": np.arange(self.get_events(what, verb).shape[0]),
+                "file": [self.files[i] for i in self.get_file_nbrs(what, verb)],
                 "x": princcomp[:, 0],
                 "y": princcomp[:, 1],
                 "label_nbrs": label_nbrs,
                 "labels": labels,
                 "color": label_nbrs.astype(str)
             })
-            fig=None
+            fig = None
             if pred_meth is None:
                 fig = px.scatter(df,
                                  x="x",
@@ -2805,7 +2803,7 @@ class EvaluationTools:
                                      "x": "",
                                      "y": "",
                                  },
-                                )
+                                 )
                 # fig.update_xaxes(autorange=True,
                 #                  showgrid=False,
                 #                  ticks='',
@@ -2817,95 +2815,95 @@ class EvaluationTools:
                 fig.update_layout(height=600)
             else:
                 fig = make_subplots(rows=2, cols=1,
-                    shared_xaxes=True,
-                    shared_yaxes=True,
-                    vertical_spacing=0.02)
+                                    shared_xaxes=True,
+                                    shared_yaxes=True,
+                                    vertical_spacing=0.02)
 
-                unique_label_nbrs = np.unique([label_nbrs,self.get_pred(pred_meth, what=what, verb=verb)])
+                unique_label_nbrs = np.unique([label_nbrs, self.get_pred(pred_meth, what=what, verb=verb)])
                 # import ipdb; ipdb.set_trace()
-                dict_colors = dict([[j, self.color_order[i]] for i,j in enumerate(unique_label_nbrs)])
+                dict_colors = dict([[j, self.color_order[i]] for i, j in enumerate(unique_label_nbrs)])
 
                 group = "1"
                 group_title = "Labels"
 
-
-                for i in np.unique(self.get_label_nbrs(what,verb)):
-                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                for i in np.unique(self.get_label_nbrs(what, verb)):
+                    sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     fig.add_trace(go.Scatter(
-                                     x=princcomp[sep, 0],
-                                     y=princcomp[sep, 1],
-                                     name=self.labels[i],
-                                     # color=label_nbrs,
-                                     mode='markers',
-                                     # marker=dict(color=label_nbrs, coloraxis="coloraxis")
-                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=group,
-                                     legendgrouptitle_text=group_title,
-                                     # hover_name="labels",
-                                     # hover_data=["id", "file"],
-                                     # hovertemplate=
-                                     #    '<b>%{labels}</b><br><br>' +
-                                     #    'index: %{text}<br>' +
-                                     #    'file: %{file}<br>' +
-                                     #    'x: %{x}<br>' +
-                                     #    'y: %{y}',
-                                     customdata=np.array([df['id'][sep]]).T,
-                                    ),
-                                  row=1,
-                                  col=1,
-                                 )
+                        x=princcomp[sep, 0],
+                        y=princcomp[sep, 1],
+                        name=self.labels[i],
+                        # color=label_nbrs,
+                        mode='markers',
+                        # marker=dict(color=label_nbrs, coloraxis="coloraxis")
+                        marker=dict(color=dict_colors[i]),  # coloraxis="coloraxis")
+                        legendgroup=group,
+                        legendgrouptitle_text=group_title,
+                        # hover_name="labels",
+                        # hover_data=["id", "file"],
+                        # hovertemplate=
+                        #    '<b>%{labels}</b><br><br>' +
+                        #    'index: %{text}<br>' +
+                        #    'file: %{file}<br>' +
+                        #    'x: %{x}<br>' +
+                        #    'y: %{y}',
+                        customdata=np.array([df['id'][sep]]).T,
+                    ),
+                        row=1,
+                        col=1,
+                    )
 
                 # if not self.get_pred_true_labels(pred_meth):
                 group = "2"
                 group_title = "Prediction"
                 # import ipdb; ipdb.set_trace()
                 for i in np.unique(self.get_pred(pred_meth, what=what, verb=verb)):
-                    sep = self.get_label_nbrs(what,verb)==i # seperating label numbers
+                    sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
 
                     fig.add_trace(go.Scatter(
-                                     x=princcomp[sep, 0],
-                                     y=princcomp[sep, 1],
-                                     name=name,
-                                     # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
-                                     mode='markers',
-                                     marker=dict(color=dict_colors[i]),# coloraxis="coloraxis")
-                                     legendgroup=group,
-                                     legendgrouptitle_text=group_title,
-                                     # hover_name="labels",
-                                     # hover_data=["id", "file"],
-                                     # hovertemplate=
-                                     #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
-                                     customdata=np.array([df['id'][sep]]).T,
-                                    ),
-                                  row=2,
-                                  col=1,
-                                 )
-                fig.update_layout(showlegend=True,height=800,hovermode='closest')# coloraxis=dict(colorscale=dict_colors))
+                        x=princcomp[sep, 0],
+                        y=princcomp[sep, 1],
+                        name=name,
+                        # color=self.get_pred(pred_meth, what=what, verb=verb).astype(str),
+                        mode='markers',
+                        marker=dict(color=dict_colors[i]),  # coloraxis="coloraxis")
+                        legendgroup=group,
+                        legendgrouptitle_text=group_title,
+                        # hover_name="labels",
+                        # hover_data=["id", "file"],
+                        # hovertemplate=
+                        #    ["<b>{}</b><br>index: {}<br>file: %{file}<br>x: %{x}<br>y: %{y}".format(name, id) for id in df['id'][sep]],
+                        customdata=np.array([df['id'][sep]]).T,
+                    ),
+                        row=2,
+                        col=1,
+                    )
+                fig.update_layout(showlegend=True, height=800,
+                                  hovermode='closest')  # coloraxis=dict(colorscale=dict_colors))
             return fig
 
         def click_event(clickData=None):
             if clickData is None:
                 # clickData = {"points":[{"pointIndex":0}]}
-                clickData = {"points":[{"customdata":[0]}]}
+                clickData = {"points": [{"customdata": [0]}]}
             # index = clickData['points'][0]['pointIndex']
             index = clickData['points'][0]['customdata'][0]
-            event_nbr = self.get_event_nbrs(what,verb)[index]
-            event=self.get_events(what)[index]
+            event_nbr = self.get_event_nbrs(what, verb)[index]
+            event = self.get_events(what)[index]
             fig_event = px.line(x=np.arange(event.shape[0]), y=event)
-            fig_event.update_xaxes(title={'text':''})
-            fig_event.update_yaxes(title={'text':''})
+            fig_event.update_xaxes(title={'text': ''})
+            fig_event.update_yaxes(title={'text': ''})
             return fig_event
 
         def click_data(clickData=None):
             if clickData is None:
                 # clickData = {"points":[{"pointIndex":0}]}
-                clickData = {"points":[{"customdata":[0]}]}
+                clickData = {"points": [{"customdata": [0]}]}
             # index = clickData['points'][0]['pointIndex']
             index = clickData['points'][0]['customdata'][0]
-            event_nbr = self.get_event_nbrs(what,verb)[index]
+            event_nbr = self.get_event_nbrs(what, verb)[index]
             file = self.files[self.get_file_nbrs(what, verb)[index]]
-            label_nbr = self.get_label_nbrs(what,verb)[index]
+            label_nbr = self.get_label_nbrs(what, verb)[index]
             label = self.labels[label_nbr]
             return """Index: {}
                       Event number: {}
@@ -2964,8 +2962,6 @@ class EvaluationTools:
         #     Input('scatter-graph', 'clickData'))
         # def display_click_data(clickData):
         #     return json.dumps(clickData, indent=2)
-
-
 
         @app.callback(
             Output('textarea-click-data', 'children'),
