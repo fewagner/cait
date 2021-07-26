@@ -51,7 +51,8 @@ def noise_function(nps):
 
 def get_cc_noise(nmbr_noise,
                  nps,
-                 lamb=0.01):
+                 lamb=0.01,
+                 verb=True):
     """
     Simulation of a noise baseline, according to Carretoni Cremonesi: arXiv:1006.3289
 
@@ -61,7 +62,7 @@ def get_cc_noise(nmbr_noise,
         e.g. generated with scipy.fft.rfft().
     :type nps: 1D array of odd size
     :param lamb: Parameter of the method (overlap between ).
-    :type lamb: integer > 0
+    :type lamb: float > 0
     :return: The simulated baselines.
     :rtype: 2D array of size (nmbr_noise, 2*(len(nps)-1))
     """
@@ -73,7 +74,12 @@ def get_cc_noise(nmbr_noise,
 
     noise = np.zeros((nmbr_noise, T))
 
-    for i in tqdm(range(nmbr_noise)):
+    if verb:
+        iterator = tqdm(range(nmbr_noise))
+    else:
+        iterator = range(nmbr_noise)
+
+    for i in iterator:
         t = 0
         while t < T:
             noise[i] += norm.rvs(scale=a) * np.roll(noise_function(nps), t)
