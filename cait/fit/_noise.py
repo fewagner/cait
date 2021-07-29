@@ -459,7 +459,7 @@ def nll_fraction_gauss(pars, x):
 
 def get_noise_parameters_unbinned(events,
                                   model='gauss',
-                                  sigma_x0 = 2,
+                                  sigma_x0=2,
                                   ):
     """
     Find the maximum likelihood estimators of all noise trigger model parameters in an unbinned maximum likelihood fit.

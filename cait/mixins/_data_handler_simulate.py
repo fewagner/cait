@@ -288,11 +288,13 @@ class SimulateMixin(object):
                 # store sev
 
                 sev = f_read['stdevent_tp']['event']
-                mp = np.array([calc_main_parameters(x).getArray() for x in sev])
+                mp = f_read['stdevent_tp']['mainpar']
+                fitpar = f_read['stdevent_tp']['fitpar']
 
                 data = f.create_group('stdevent_tp')
-                data.create_dataset(name='event', data=sev, dtype=dtype)
+                data.create_dataset(name='event', data=sev)
                 data.create_dataset(name='mainpar', data=mp)
+                data.create_dataset(name='fitpar', data=fitpar)
 
             data = f.create_group('noise')
             # store nps new and old

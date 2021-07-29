@@ -28,7 +28,8 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
-    def calc_mp(self, type='events', path_h5=None, processes=4, down=1, max_bounds=None):
+    def calc_mp(self, type='events', path_h5=None, processes=4, down=1,
+                max_bounds=None):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
@@ -52,7 +53,7 @@ class FeaturesMixin(object):
 
         with h5py.File(path_h5, 'r+') as h5f:
             events = h5f[type]
-            nmbr_ev = len(events['event'][0])
+            nmbr_ev = events['event'].shape[1]
 
             print('CALCULATE MAIN PARAMETERS.')
 
