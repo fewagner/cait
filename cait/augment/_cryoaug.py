@@ -859,8 +859,9 @@ class ParameterSampler:
             arr_max = np.max(pulse_template(t=self.t,
                                             **unfold(pars, i)))
 
-            pars['An'][i] *= (pulse_height[i] / arr_max)
-            pars['At'][i] *= (pulse_height[i] / arr_max)
+            if not arr_max < 1e-6:
+                pars['An'][i] *= (pulse_height[i] / arr_max)
+                pars['At'][i] *= (pulse_height[i] / arr_max)
 
         info = {'pulse_height': pulse_height}
         return pars, info
