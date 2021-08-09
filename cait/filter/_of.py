@@ -44,13 +44,14 @@ def normalization_constant(stdevent, nps):
     return h
 
 
-def optimal_transfer_function(stdevent, nps, window=True):
+def optimal_transfer_function(stdevent, nps, window=True, force_zero=True):
     """
     This function calculates the transition function for an optimal filter.
 
     :param stdevent: 1D array, pulse shape standard event with length N
     :param nps: 1D array, the NPS of a baseline, with length N/2 + 1
     :param window: bool, include a window function to the standard event
+    :param force_zero: TODO
     :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
     """
 
@@ -62,7 +63,12 @@ def optimal_transfer_function(stdevent, nps, window=True):
     stdevent_fft = rfft(stdevent)  # do fft of stdevent
     H = np.zeros([len(stdevent_fft)], dtype=complex)  # init transfer func
 
-    for w in range(0, len(stdevent_fft)):
+    if force_zero:
+        H[0] = stdevent_fft[0].conjugate()
+    else:
+        H[0] = (stdevent_fft[0].conjugate()) * np.exp(-1j * 0 * tau_m) / nps[0]
+
+    for w in range(1, len(stdevent_fft)):
         # this is the actual calculation:
         H[w] = (stdevent_fft[w].conjugate()) * np.exp(-1j * w * tau_m) / nps[w]
         # H[w] = H[w] / normalization_constant(stdevent, nps)  # divide by constant to keep size!

@@ -543,7 +543,8 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_nps(self, use_labels=False, down=1, percentile=50, rms_cutoff=None, cut_flag=None, window=True):
+    def calc_nps(self, use_labels=False, down=1, percentile=50,
+                 rms_cutoff=None, cut_flag=None, window=True, force_zero=True):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
         that are labeled as noise (label == 3).
@@ -562,6 +563,8 @@ class FeaturesMixin(object):
         :type cut_flag: 1d bool array
         :param window: If True, a window function is applied to the noise baselines before the calculation of the NPS.
         :type window: bool
+        :param force_zero: Force the zero coefficient (constant offset) of the NPS to zero.
+        :type force_zero: bool
         """
         print('Calculate NPS.')
 
@@ -603,6 +606,9 @@ class FeaturesMixin(object):
 
             mean_nps = np.array([mean_nps[i] for i in range(self.nmbr_channels)])
             frequencies = np.fft.rfftfreq(self.record_length, d=1. / self.sample_frequency * down)
+
+            if force_zero:
+                mean_nps[:, 0] = 0
 
             naming = 'nps'
             naming_fq = 'freq'

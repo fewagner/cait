@@ -23,4 +23,5 @@ __all__ = ['EventInterface',
            'calibration',
            'mixins',
            'limit',
+           'augment',
            ]

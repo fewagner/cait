@@ -20,6 +20,7 @@ def simulate_events(path_h5,
                     t0_interval=(-20, 20),  # in ms
                     fake_noise=True,
                     use_bl_from_idx=0,
+                    take_idx = None,
                     rms_thresholds=[1, 1],
                     lamb=0.01,
                     sample_length=0.04,
@@ -64,6 +65,8 @@ def simulate_events(path_h5,
     :type fake_noise: bool
     :param use_bl_from_idx: The start index of the baselines that are used.
     :type use_bl_from_idx: int
+    :param take_idx: TODO
+    :type take_idx: 1D numpy array
     :param rms_threshold: Above which value noise baselines are excluded for the
         distribution of polynomial coefficients; also, a cut value for the baselines if not the
         fake ones but the ones from the h5 set are taken.
@@ -100,12 +103,41 @@ def simulate_events(path_h5,
             hours, time_s, time_mus = None, None, None
 
         else:
-            take_idx = []
-            if not reuse_bl:
-                if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
-                    bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
+            if take_idx is None:
+                take_idx = []
+                if not reuse_bl:
+                    if use_bl_from_idx + size <= len(h5f['noise']['event'][0]):
+                        bl_rms = np.array(h5f['noise']['fit_rms'][:, use_bl_from_idx:])
+                        counter = 0
+                        while len(take_idx) < size:  # clean the baselines
+                            take_it = True
+                            for c in range(nmbr_channels):
+                                if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
+                                    take_it = False
+
+                            if take_it:
+                                take_idx.append(counter)
+                            else:
+                                nmbr_thrown += 1
+
+                            counter += 1
+
+                        take_idx = np.array(take_idx) + use_bl_from_idx
+                        sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
+                        hours = np.array(h5f['noise']['hours'][take_idx])
+                        time_s = np.array(h5f['noise']['time_s'][take_idx])
+                        time_mus = np.array(h5f['noise']['time_mus'][take_idx])
+
+                    else:
+                        raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
+                else:  # do reuse baselines
+                    reuse_counter = 0
+                    bl_rms = np.array(h5f['noise']['fit_rms'])
+                    nmbr_bl_total = len(bl_rms[0])
                     counter = 0
-                    while len(take_idx) < size:  # clean the baselines
+                    stop_condition = 0
+                    idx_lists = []
+                    while stop_condition < size:
                         take_it = True
                         for c in range(nmbr_channels):
                             if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
@@ -113,49 +145,33 @@ def simulate_events(path_h5,
 
                         if take_it:
                             take_idx.append(counter)
-                        else:
-                            nmbr_thrown += 1
+                            stop_condition += 1
 
                         counter += 1
+                        if counter >= nmbr_bl_total:
+                            print('Nmbr resets to start of Baseline dataset: {}'.format(reuse_counter))
+                            reuse_counter += 1
+                            counter = 0
+                            idx_lists.append(np.array(take_idx))
+                            take_idx = []
+                    idx_lists.append(take_idx)
 
-                    take_idx = np.array(take_idx) + use_bl_from_idx
-                    sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
-                    hours = np.array(h5f['noise']['hours'][take_idx])
-                    time_s = np.array(h5f['noise']['time_s'][take_idx])
-                    time_mus = np.array(h5f['noise']['time_mus'][take_idx])
-
-                else:
-                    raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
-            else:  # do reuse baselines
-                reuse_counter = 0
-                bl_rms = np.array(h5f['noise']['fit_rms'])
-                nmbr_bl_total = len(bl_rms[0])
-                counter = 0
-                stop_condition = 0
-                idx_lists = []
-                while stop_condition < size:
-                    take_it = True
-                    for c in range(nmbr_channels):
-                        if (bl_rms[c, counter] > rms_thresholds[c]):  # check rms threshold
-                            take_it = False
-
-                    if take_it:
-                        take_idx.append(counter)
-                        stop_condition += 1
-
-                    counter += 1
-                    if counter >= nmbr_bl_total:
-                        print('Nmbr resets to start of Baseline dataset: {}'.format(reuse_counter))
-                        reuse_counter += 1
-                        counter = 0
-                        idx_lists.append(np.array(take_idx))
-                        take_idx = []
-                idx_lists.append(take_idx)
-
-                sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
-                hours = np.concatenate([np.array(h5f['noise']['hours'][il]) for il in idx_lists], axis=0)
-                time_s = np.concatenate([np.array(h5f['noise']['time_s'][il]) for il in idx_lists], axis=0)
-                time_mus = np.concatenate([np.array(h5f['noise']['time_mus'][il]) for il in idx_lists], axis=0)
+                    sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
+                    hours = np.concatenate([np.array(h5f['noise']['hours'][il]) for il in idx_lists], axis=0)
+                    time_s = np.concatenate([np.array(h5f['noise']['time_s'][il]) for il in idx_lists], axis=0)
+                    time_mus = np.concatenate([np.array(h5f['noise']['time_mus'][il]) for il in idx_lists], axis=0)
+            else:
+                if size > len(take_idx):
+                    if reuse_bl:
+                        take_idx = np.tile(take_idx, int(size/len(take_idx) + 1))
+                    else:
+                        raise KeyError('The size is larger than the number of cleaned baselines. Reduce size, '
+                                       'provide more baselines or activate reuse_baselines!')
+                take_idx = take_idx[:size]
+                sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
+                hours = np.array(h5f['noise']['hours'][take_idx])
+                time_s = np.array(h5f['noise']['time_s'][take_idx])
+                time_mus = np.array(h5f['noise']['time_mus'][take_idx])
 
         # get pulse heights
         print('Get Pulse Heights.')

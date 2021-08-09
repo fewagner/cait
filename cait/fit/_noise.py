@@ -21,7 +21,7 @@ def noise_trigger_template(x_max, d, sigma):
     :type x_max: 1D array
     :param d: The number of independent samples.
     :type d: float
-    :param sigma: The baseline resolution
+    :param sigma: The baseline resolution.
     :type sigma: float
     :return: The template.
     :rtype: 1D array
