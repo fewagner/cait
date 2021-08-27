@@ -96,8 +96,8 @@ class DataHandler(SimulateMixin,
         self.run = run
         self.module = module
         self.record_length = record_length
+        self.channels = channels
         if channels is not None:
-            self.channels = channels
             self.nmbr_channels = len(channels)
             if nmbr_channels is not None:
                 warnings.warn("If channels are specified, the number of channels is taken from the length of this list,"
