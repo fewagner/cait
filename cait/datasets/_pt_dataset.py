@@ -31,6 +31,7 @@ class H5CryoData(Dataset):
     :type nmbr_events: int or None
     :param double: If true all events are cast to double before calculations.
     :type double: bool
+    :param feature_dims: TODO
     """
 
     def __init__(self, type, keys, channel_indices, feature_indices=None,

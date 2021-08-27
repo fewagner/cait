@@ -50,7 +50,7 @@ class CryoDataModule(pl.LightningDataModule):
     def prepare_data(self, val_size, test_size, batch_size, nmbr_workers, load_to_memory=False,
                      dataset_size=None, only_idx=None,
                      shuffle_dataset=True, random_seed=None,
-                     feature_keys=[], label_keys=[], keys_one_hot=[]):
+                     feature_keys=[], label_keys=[], keys_one_hot=[], feature_dims=1):
         """
         Called once to hand additional info about the data setup.
 
@@ -79,6 +79,7 @@ class CryoDataModule(pl.LightningDataModule):
         :type label_keys: list of strings
         :param keys_one_hot: This data gets one-hot encoded.
         :type keys_one_hot: list of strings
+        :param feature_dims: TODO
         """
         # called only on 1 worker
         self.test_size = test_size
@@ -93,6 +94,7 @@ class CryoDataModule(pl.LightningDataModule):
         self.label_keys = label_keys
         self.keys_one_hot = keys_one_hot
         self.load_to_memory = load_to_memory
+        self.feature_dims = feature_dims
 
         if load_to_memory:
             warnings.warn('Attention: The feature load_to_memory is depricated and not recommended!')
@@ -108,7 +110,9 @@ class CryoDataModule(pl.LightningDataModule):
                                        keys_one_hot=self.keys_one_hot,
                                        transform=self.transform,
                                        nmbr_events=self.nmbr_events,
-                                       double=self.double)
+                                       double=self.double,
+                                       feature_dims=self.feature_dims,
+                                       )
 
     def setup(self):
         """
