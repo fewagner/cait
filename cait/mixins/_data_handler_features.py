@@ -645,7 +645,7 @@ class FeaturesMixin(object):
         with h5py.File(path_h5, 'r+') as h5f:
             events = h5f[type]
 
-            assert 'optimumfilter' in h5f, 'You need to calculate the optimal filter first!'
+            assert 'optimumfilter' in h5f or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
 
             if not no_of:
                 of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
