@@ -36,7 +36,9 @@ class H5CryoData(Dataset):
 
     def __init__(self, type, keys, channel_indices, feature_indices=None,
                  keys_one_hot=[], hdf5_path=None,
-                 transform=None, nmbr_events=None, double=False, feature_dims=1):
+                 transform=None, nmbr_events=None, double=False,
+                 # feature_dims=1,
+                 ):
         self.hdf5_path = hdf5_path
         self.transform = transform
         self.type = type
@@ -58,7 +60,7 @@ class H5CryoData(Dataset):
             self.nmbr_events = nmbr_events
         self.double = double
         self.h5_set = None
-        self.feature_dims = feature_dims
+        # self.feature_dims = feature_dims
 
     def __len__(self):
         """
@@ -83,11 +85,11 @@ class H5CryoData(Dataset):
 
         # final check if dimensions are alright
         for k in sample.keys():
-            if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
-                raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k,
-                                                                                                                      len(
-                                                                                                                          sample[
-                                                                                                                              k].shape)))
+            # if len(sample[k].shape) != self.feature_dims and k not in self.keys_one_hot:
+            #     raise KeyError('The {} must have dim={} but has dim={}. If it is a label, put in keys_one_hot.'.format(k,
+            #                                                                                                           len(
+            #                                                                                                               sample[
+            #                                                                                                                   k].shape)))
             if self.double:
                 sample[k] = sample[k].double()
 
@@ -157,12 +159,12 @@ class H5CryoData(Dataset):
 
         # final check if dimensions are alright
         for k in sample.keys():
-            if len(sample[k].shape) != self.feature_dims and k not in self.keys_one_hot:
-                raise KeyError(
-                    'The {} must have dim={} but has dim={}. If it is a label, put in keys_one_hot.'.format(k,
-                                                                                                            self.feature_dims,
-                                                                                                            len(sample[
-                                                                                                                    k].shape)))
+            # if len(sample[k].shape) != self.feature_dims[] and k not in self.keys_one_hot:
+            #     raise KeyError(
+            #         'The {} must have dim={} but has dim={}. If it is a label, put in keys_one_hot.'.format(k,
+            #                                                                                                 self.feature_dims,
+            #                                                                                                 len(sample[
+            #                                                                                                         k].shape)))
             if self.double:
                 sample[k] = sample[k].double()
 
