@@ -334,7 +334,7 @@ class DefaultDrifts(Distribution):
         """
         if 'resolution' in kwargs:
             resolution = kwargs['resolution']
-        elif self.resolution is None:
+        elif self.args['resolution'] is None:
             resolution = np.random.uniform(low=self.res_min, high=self.res_max, size=size)
         else:
             resolution = self.resolution
@@ -651,8 +651,13 @@ class ParameterSampler:
         if verb:
             print('Sample Noise...')
 
+        if self.args['resolution'] is None:
+            kwargs = {'resolution': np.random.uniform(0.0005, 0.01, size=size)}
+        else:
+            kwargs = {}
+
         # sample baseline
-        noise_par, noise_info = self.sample_noise(size=size)
+        noise_par, noise_info = self.sample_noise(size=size, **kwargs)
         info['nps'] = noise_par['nps']
         info['resolution'] = noise_info['resolution']
 
@@ -669,7 +674,7 @@ class ParameterSampler:
         if poly:
             if verb:
                 print('Sample Polynomials...')
-            drift_par = self.sample_drift_par(size=size)
+            drift_par = self.sample_drift_par(size=size, **kwargs)
             for i in iterator(size):
                 event[i] += baseline_template_cubic(self.t, **unfold(drift_par, i))
 
@@ -890,25 +895,35 @@ class ParameterSampler:
             b, a = signal.butter(N=1, Wn=1e4, btype='lowpass', analog=True)
             _, h = signal.freqs(b, a, worN=info['fq'])
 
-            randval = np.random.uniform(0, 0.3)
-            alphas = [randval, 2 - 2 * randval]
-            coefficients = [1 / 100 ** al for al in reversed(alphas)]
-            pars['nps'] = np.sum([c / (info['fq'] + 1) ** a for a, c in zip(alphas, coefficients)], axis=0) * np.abs(h)
+            randval = np.random.uniform(0, 0.3, size=size)
+            alphas = np.array([randval, 2 - 2 * randval])
+            coefficients = np.array([1 / 100 ** al for al in reversed(alphas)])
+
+            pars['nps'] = np.zeros((size, len(fq)), dtype=float)
+
+            for i in range(size):
+                pars['nps'][i, :] = np.sum([c / (info['fq'] + 1) ** a for a, c in zip(alphas[:, i], coefficients[:, i])], axis=0)
+                pars['nps'][i, :] *= np.abs(h)
 
             ac_fqs = np.array([50, 150, 250])
             ac_amps = 0.00002 * np.array([1, 0.333, 0.2]) * np.random.uniform(0.2, 1, size=(size, 3))
             ac_offset = np.random.uniform(0, 1, size=size)
             ac_noise = np.zeros((size, self.record_length))
             for i in range(3):
-                ac_noise += ac_amps[:, i].reshape((size, 1)) * np.cos(ac_fqs[i].reshape((size, 1)) * 2 * np.pi * (
-                        np.tile(self.t, (size, 1)) - ac_offset.reshape((size, 1))))
-            pars['nps'] = np.repeat(pars['nps'], size).reshape((size, pars['nps'].shape[0]))
+                wave = (np.tile(self.t, (size, 1)) - ac_offset.reshape((size, 1)))
+                wave *= np.tile(ac_fqs[i], (size, 1)) * 2 * np.pi
+                wave = np.cos(wave)
+                wave *= ac_amps[:, i].reshape((size, 1))
+                ac_noise += wave
+            #pars['nps'] = np.repeat(pars['nps'], size).reshape((size, pars['nps'].shape[0]))
             pars['nps'] += np.abs(np.fft.rfft(ac_noise, axis=1)) ** 2
 
             pars['nps'][:, 0] = 0
 
         if self.args['resolution'] is not None:
             resolution = np.copy(self.args['resolution'])
+        elif 'resolution' in kwargs:
+            resolution = kwargs['resolution']
         else:
             resolution = np.random.uniform(0.0005, 0.01, size=size)
         pars['nps'] *= resolution.reshape(-1, 1) ** 2 / np.std(np.sqrt(pars['nps'] / self.record_length), axis=1,
@@ -932,9 +947,15 @@ class ParameterSampler:
         """
         pars = {}
 
+        if self.args['resolution'] is not None:
+            resolution = self.args['resolution']
+        elif 'resolution' in kwargs:
+            resolution = kwargs['resolution']
+        else:
+            resolution = np.random.uniform(0.0005, 0.01, size=size)
+
         pars['c0'], pars['c1'], pars['c2'], pars['c3'] = \
-            self.args['drift_pars'].sample(size,
-                                           resolution=self.args['resolution'])
+            self.args['drift_pars'].sample(size, resolution=resolution)
         return pars
 
     def sample_saturation(self, size=1, **kwargs):
