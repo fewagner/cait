@@ -113,12 +113,11 @@ class DataHandler(SimulateMixin,
             self.channel_names = ['Phonon', 'Light']
             self.colors = ['red', 'blue']
         else:
-            # TODO fix later
             self.channel_names = []
             self.colors = []
-            for c in range(len(channels)):
+            for c in range(self.nmbr_channels):
                 self.channel_names.append('Channel ' + str(c))
-                if c == len(channels) - 1 and c > 0:
+                if c == self.nmbr_channels - 1 and c > 0:
                     self.colors.append('blue')
                 else:
                     self.colors.append('red')
