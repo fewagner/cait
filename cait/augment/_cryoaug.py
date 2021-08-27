@@ -537,7 +537,7 @@ class DefaultEventDefinition(EventDefinition):
             jump = False
             pulse_reset = False
             tail = False
-            if np.random.uniform(0,1) < 0.5:
+            if np.random.uniform(0, 1) < 0.5:
                 onset_iv = np.array([-160, -40]) * 0.001
             else:
                 onset_iv = np.array([40, 400]) * 0.001
@@ -902,7 +902,8 @@ class ParameterSampler:
             pars['nps'] = np.zeros((size, len(fq)), dtype=float)
 
             for i in range(size):
-                pars['nps'][i, :] = np.sum([c / (info['fq'] + 1) ** a for a, c in zip(alphas[:, i], coefficients[:, i])], axis=0)
+                pars['nps'][i, :] = np.sum(
+                    [c / (info['fq'] + 1) ** a for a, c in zip(alphas[:, i], coefficients[:, i])], axis=0)
                 pars['nps'][i, :] *= np.abs(h)
 
             ac_fqs = np.array([50, 150, 250])
@@ -915,7 +916,7 @@ class ParameterSampler:
                 wave = np.cos(wave)
                 wave *= ac_amps[:, i].reshape((size, 1))
                 ac_noise += wave
-            #pars['nps'] = np.repeat(pars['nps'], size).reshape((size, pars['nps'].shape[0]))
+            # pars['nps'] = np.repeat(pars['nps'], size).reshape((size, pars['nps'].shape[0]))
             pars['nps'] += np.abs(np.fft.rfft(ac_noise, axis=1)) ** 2
 
             pars['nps'][:, 0] = 0

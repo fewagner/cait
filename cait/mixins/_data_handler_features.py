@@ -625,7 +625,7 @@ class FeaturesMixin(object):
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
 
-    def calc_additional_mp(self, type='events', path_h5=None, down=1):
+    def calc_additional_mp(self, type='events', path_h5=None, down=1, no_of=False):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 
@@ -635,6 +635,8 @@ class FeaturesMixin(object):
         :type path_h5: string
         :param down: The downsample rate before calculating the parameters.
         :type down: int
+        :param no_of: Do not use the optimum filter, fill the quantities with zeros instead.
+        :type no_of: bool
         """
 
         if not path_h5:
@@ -645,9 +647,12 @@ class FeaturesMixin(object):
 
             assert 'optimumfilter' in h5f, 'You need to calculate the optimal filter first!'
 
-            of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
-            of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
-            of = of_real + 1j * of_imag
+            if not no_of:
+                of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
+                of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
+                of = of_real + 1j * of_imag
+            else:
+                of = [None for i in range(self.nmbr_channels)]
 
             print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
 

@@ -343,7 +343,8 @@ def calc_additional_parameters(event,
     Calculate parameters additionally to the main parameters
 
     :param event: array, the event of which we want to calculate the additional main parameters
-    :param optimal_transfer_function: array, the optimum filter transfer function
+    :param optimal_transfer_function: array, the optimum filter transfer function; if None, the of values are filled
+        with zeros instead
     :param down: int, if we want to downsample the event by a factor, this can be done here
     :return: List of float values parameters (maximum of array,
                      minimum of array,
@@ -398,10 +399,15 @@ def calc_additional_parameters(event,
     der_minind = np.argmin(der)
 
     # Min Value OF: Position maximum and skewness of samples around
-    filtered = filter_event(event, transfer_function=optimal_transfer_function)
-    filtered_max = np.max(filtered[int(length_event/8):-int(length_event/8)])
-    filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
-    filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
+    if optimal_transfer_function is not None:
+        filtered = filter_event(event, transfer_function=optimal_transfer_function)
+        filtered_max = np.max(filtered[int(length_event/8):-int(length_event/8)])
+        filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
+        filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
+    else:
+        filtered_max = 0
+        filtered_maxind = 0
+        filtered_skew = 0
 
     return np.array([max,  # 0
                      min,  # 1
