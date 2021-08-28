@@ -543,7 +543,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_nps(self, use_labels=False, down=1, percentile=50,
+    def calc_nps(self, use_labels=False, down=1, percentile=None,
                  rms_cutoff=None, cut_flag=None, window=True, force_zero=True):
         """
         Calculates the mean Noise Power Spectrum with option to use only the baselines
@@ -586,7 +586,7 @@ class FeaturesMixin(object):
                     labels = labels[cut_flag]
                     bl = bl[cut_flag]
                     bl = bl[labels[c] == 3]
-                elif not use_labels and cut_flag is not None:
+                elif not use_labels and cut_flag is None:
                     pass
                 elif not use_labels and cut_flag is not None:
                     bl = bl[cut_flag]

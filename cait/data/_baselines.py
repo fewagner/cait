@@ -127,7 +127,7 @@ def get_cc_noise(nmbr_noise,
 def calculate_mean_nps(baselines,
                        order_polynom=3,
                        clean=True,
-                       percentile=50,
+                       percentile=None,
                        down=1,
                        sample_length=0.00004,
                        rms_baselines=None,
@@ -205,10 +205,12 @@ def calculate_mean_nps(baselines,
         else:
             print('Using fitted baselines.')
 
-        rms_means = np.array(np.percentile(rms_baselines, percentile))
-
         if rms_cutoff is None:
-            baselines = baselines[rms_baselines < rms_means]
+            if percentile is not None:
+                rms_means = np.array(np.percentile(rms_baselines, percentile))
+                baselines = baselines[rms_baselines < rms_means]
+            else:
+                pass
         else:
             baselines = baselines[rms_baselines < rms_cutoff]
 
