@@ -593,6 +593,8 @@ class FeaturesMixin(object):
 
                 if 'fit_rms' in h5f['noise']:
                     rms_baselines = h5f['noise']['fit_rms'][c]
+                    if cut_flag is not None:
+                        rms_baselines = rms_baselines[cut_flag]
 
                 else:
                     rms_baselines = None
