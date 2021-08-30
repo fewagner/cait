@@ -258,7 +258,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_of(self, down: int = 1, name_appendix: str = '', window=True):
+    def calc_of(self, down: int = 1, name_appendix: str = '', window=True, force_zero=False):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
@@ -271,6 +271,7 @@ class FeaturesMixin(object):
         :type name_appendix: string
         :param window: Include a window function to the standard event before building the filter.
         :type window: bool
+        :param force_zero: TODO
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -288,7 +289,7 @@ class FeaturesMixin(object):
             print('CREATE OPTIMUM FILTER.')
 
             of = np.array([optimal_transfer_function(
-                stdevent_pulse[i], mean_nps[i], window) for i in range(self.nmbr_channels)])
+                stdevent_pulse[i], mean_nps[i], window, force_zero) for i in range(self.nmbr_channels)])
 
             optimumfilter = h5f.require_group('optimumfilter' + name_appendix)
             if down > 1:
@@ -316,7 +317,8 @@ class FeaturesMixin(object):
 
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False):
+                 chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
+                 force_zero=False):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -338,6 +340,7 @@ class FeaturesMixin(object):
         :param first_channel_dominant: Take the maximum position from the first channel and evaluate the others at the
             same position.
         :type first_channel_dominant: bool
+        :param force_zero: TODO
         """
 
         print('Calculating OF Heights.')
@@ -360,14 +363,14 @@ class FeaturesMixin(object):
                     if first_channel_dominant and c == 0:
                         of_ph, peakpos = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                         hard_restrict=hard_restrict, down=down, window=window,
-                                                        return_peakpos=True)
+                                                        return_peakpos=True, force_zero=force_zero)
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
-                                               peakpos=peakpos)
+                                               peakpos=peakpos, force_zero=force_zero)
                     else:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window)
+                                               hard_restrict=hard_restrict, down=down, window=window, force_zero=force_zero)
 
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size

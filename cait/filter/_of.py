@@ -44,7 +44,7 @@ def normalization_constant(stdevent, nps):
     return h
 
 
-def optimal_transfer_function(stdevent, nps, window=True, force_zero=True):
+def optimal_transfer_function(stdevent, nps, window=True, force_zero=False):
     """
     This function calculates the transition function for an optimal filter.
 
@@ -63,7 +63,7 @@ def optimal_transfer_function(stdevent, nps, window=True, force_zero=True):
     stdevent_fft = rfft(stdevent)  # do fft of stdevent
     H = np.zeros([len(stdevent_fft)], dtype=complex)  # init transfer func
 
-    if force_zero:
+    if force_zero or nps[0] == 0:
         H[0] = stdevent_fft[0].conjugate()
     else:
         H[0] = (stdevent_fft[0].conjugate()) * np.exp(-1j * 0 * tau_m) / nps[0]
@@ -99,7 +99,7 @@ def filter_event(event, transfer_function, window=False):
 
 
 def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False,
-                   peakpos=None, return_peakpos=False, flexibility=20):
+                   peakpos=None, return_peakpos=False, flexibility=20, force_zero=False):
     """
     This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
@@ -129,7 +129,7 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
         nps = np.concatenate(([nps_offset], nps))
 
     # calc transition function
-    transition_function = optimal_transfer_function(stdevent, nps, window=window)
+    transition_function = optimal_transfer_function(stdevent, nps, window=window, force_zero=force_zero)
     # filter events
     events_filtered = np.array([filter_event(event, transition_function, window=window) for event in events_array])
     # get maximal heights of filtered events
