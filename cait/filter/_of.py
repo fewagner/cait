@@ -63,11 +63,6 @@ def optimal_transfer_function(stdevent, nps, window=True, force_zero=False):
     stdevent_fft = rfft(stdevent)  # do fft of stdevent
     H = np.zeros([len(stdevent_fft)], dtype=complex)  # init transfer func
 
-    if force_zero or nps[0] == 0:
-        H[0] = stdevent_fft[0].conjugate()
-    else:
-        H[0] = (stdevent_fft[0].conjugate()) * np.exp(-1j * 0 * tau_m) / nps[0]
-
     for w in range(1, len(stdevent_fft)):
         # this is the actual calculation:
         H[w] = (stdevent_fft[w].conjugate()) * np.exp(-1j * w * tau_m) / nps[w]
