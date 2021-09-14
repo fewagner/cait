@@ -134,6 +134,10 @@ class H5CryoData(Dataset):
                                 1)  # e.g. single mp, ...
                         else:
                             sample[new_key] = np.array(f[self.type + '/' + key][c, idx, fe])
+            elif ls == 4 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
+                for c in self.channel_indices[i]:
+                    new_key = key + '_ch' + str(c)
+                    sample[new_key] = np.array(f[self.type + '/' + key][c, idx])  # e.g. pulse_traces, ...
             else:
                 raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
         return sample
