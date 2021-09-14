@@ -722,27 +722,32 @@ class ParameterSampler:
                 event[i] += temp_jump(self.t, **unfold(jump_par, i))
 
         # sample pulses
+        # here only create the array to where we want to write the infos
         highest_pileup = np.max(pileups)
         pulse_model_parameters = ['t0', 'An', 'At', 'tau_n', 'tau_in', 'tau_t']
-        if highest_pileup > 0:
+        if highest_pileup > 0:  # the case that we have pulses
             info['pulse_height'] = np.empty(size, dtype=float)
             for key in pulse_model_parameters:
                 info[key] = np.empty(size, dtype=float)
             if highest_pileup > 1:
+                info['pulse_traces'] = np.zeros((size, highest_pileup, self.record_length), dtype=float)
                 for i in range(highest_pileup):
                     info['pulse_height_pileup_{}'.format(i)] = np.zeros(size, dtype=float)
                     info['t0_pileup_{}'.format(i)] = np.zeros(size, dtype=float)
-        else:
+        else:  # we dont have any pulse on the record window
             info['pulse_height'] = np.zeros(size)
             info['t0'] = np.zeros(size)
 
+        # here we actually simulate the pulses
         for j in range(int(highest_pileup)):
             if verb:
                 print('Sample Pulse Nmbr ', j)
+            # these are the onsets of  the pileing up pulses
             this_onset = np.random.uniform(onset_iv[1],
                                            self.record_length / self.sample_frequency / 4 * 3,
                                            size=size)
 
+            # the last pile up pulse is the prober, triggered pulse
             this_onset[j == pileups - 1] = np.random.uniform(onset_iv[0], onset_iv[1],
                                                              size=np.sum(j == pileups - 1))
 
@@ -751,7 +756,9 @@ class ParameterSampler:
                                                           ps_nmbr=ps_nmbr)
             for i in range(size):
                 if j < pileups[i]:
-                    event[i] += pulse_template(self.t, **unfold(pulse_par, i))
+                    pulse = pulse_template(self.t, **unfold(pulse_par, i))
+                    event[i] += pulse
+                    info['pulse_traces'][i, j] = pulse
                     info['pulse_height_pileup_{}'.format(j)] = pulse_info['pulse_height'][i]
                     info['t0_pileup_{}'.format(j)] = pulse_par['t0'][i]
 

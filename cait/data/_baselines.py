@@ -6,7 +6,7 @@ import numpy as np
 from ..fit._templates import baseline_template_quad, baseline_template_cubic
 from scipy.optimize import curve_fit
 from scipy.stats import norm, uniform
-from tqdm.auto import tqdm
+from tqdm.auto import trange, tqdm
 from scipy import signal
 
 
@@ -71,7 +71,6 @@ def noise_function(nps,
 def get_cc_noise(nmbr_noise,
                  nps,
                  lamb=0.01,
-                 verb=True,
                  force_zero=True,
                  ):
     """
@@ -97,11 +96,6 @@ def get_cc_noise(nmbr_noise,
 
     noise = np.empty((nmbr_noise, T), dtype=float)
 
-    if verb:
-        iterator = tqdm(range(nmbr_noise))
-    else:
-        iterator = range(nmbr_noise)
-
     repeats = np.random.poisson(lam=1 / lamb, size=nmbr_noise)
     repeats[repeats == 0] = 1
     roll_values = np.random.randint(0, T, size=np.sum(repeats))
@@ -110,7 +104,7 @@ def get_cc_noise(nmbr_noise,
     noise_temps[:] *= np.random.normal(scale=a, size=(np.sum(repeats), 1))
 
     counter = 0
-    for i in iterator:
+    for i in range(nmbr_noise):
         noise[i] = np.sum(
             [noise_temps[c] for c in range(counter, counter + repeats[i])], axis=0)
         counter += repeats[i]

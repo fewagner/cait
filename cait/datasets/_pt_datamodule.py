@@ -101,8 +101,8 @@ class CryoDataModule(pl.LightningDataModule):
         if load_to_memory:
             warnings.warn('Attention: The feature load_to_memory is depricated and not recommended!')
 
-        if not load_to_memory and nmbr_workers > 0:
-            warnings.warn('Attention: nmbr_workers > 0 and not load to memory might cause issues with the h5 file read!')
+        # if not load_to_memory and nmbr_workers > 0:
+        #     warnings.warn('Attention: nmbr_workers > 0 and not load to memory might cause issues with the h5 file read!')
 
         self.dataset_full = H5CryoData(hdf5_path=self.hdf5_path,
                                        type=self.type,

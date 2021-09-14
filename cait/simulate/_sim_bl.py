@@ -4,6 +4,7 @@ import numpy as np
 from scipy.stats import gaussian_kde
 from ..fit._templates import baseline_template_cubic
 from ..data._baselines import get_nps, get_cc_noise
+from tqdm.auto import trange
 
 
 # Simulate Baselines
@@ -84,10 +85,22 @@ def simulate_baselines(path_h5,
     if verb:
         print('Simulating Noise with difference NPS.')
     baselines = np.zeros((nmbr_channels, size, record_length))
+
+    batchsize = 50
+    nmbr_batches = int(size / batchsize)
+    rest = int(size - nmbr_batches * batchsize)
+
     for c in range(nmbr_channels):
-        baselines[c] = polynomials[c] + get_cc_noise(nmbr_noise=size,
-                                                     nps=nps[c],
-                                                     lamb=lamb)
+
+        for i in trange(nmbr_batches):
+            baselines[c, i * batchsize:(i + 1) * batchsize] = polynomials[c, i * batchsize:(i + 1) * batchsize] + get_cc_noise(nmbr_noise=batchsize,
+                                                                                            nps=nps[c],
+                                                                                            lamb=lamb)
+        if rest > 0:
+            baselines[c, -rest:] = polynomials[c, -rest:] + get_cc_noise(nmbr_noise=rest,
+                                                                 nps=nps[c],
+                                                                 lamb=lamb)
+
     h5f.close()
     if verb:
         print('Baseline Simulation done.')
