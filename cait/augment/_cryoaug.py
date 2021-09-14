@@ -758,7 +758,8 @@ class ParameterSampler:
                 if j < pileups[i]:
                     pulse = pulse_template(self.t, **unfold(pulse_par, i))
                     event[i] += pulse
-                    info['pulse_traces'][i, j] = pulse
+                    if highest_pileup > 1:
+                        info['pulse_traces'][i, j] = pulse
                     info['pulse_height_pileup_{}'.format(j)] = pulse_info['pulse_height'][i]
                     info['t0_pileup_{}'.format(j)] = pulse_par['t0'][i]
 
