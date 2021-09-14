@@ -72,6 +72,7 @@ def get_cc_noise(nmbr_noise,
                  nps,
                  lamb=0.01,
                  force_zero=True,
+                 **kwargs
                  ):
     """
     Simulation of a noise baseline, according to Carretoni Cremonesi: arXiv:1006.3289
