@@ -437,9 +437,9 @@ class RdtMixin(object):
 
                 if origin is not None:
                     try:
-                        idx = np.array([st == origin for st in events['origin'][:]]).nonzero()[0]
-                    except:
                         idx = np.array([st.decode() == origin for st in events['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st == origin for st in events['origin'][:]]).nonzero()[0]
                     events.require_dataset('event',
                                            shape=(self.nmbr_channels, len(events['hours']), self.record_length),
                                            dtype=event_dtype)
@@ -468,9 +468,9 @@ class RdtMixin(object):
 
                 if origin is not None:
                     try:
-                        idx = np.array([st == origin for st in noise['origin'][:]]).nonzero()[0]
-                    except:
                         idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st == origin for st in noise['origin'][:]]).nonzero()[0]
                     noise.require_dataset('event',
                                           shape=(self.nmbr_channels, len(noise['hours']), self.record_length),
                                           dtype=event_dtype)
@@ -504,9 +504,9 @@ class RdtMixin(object):
 
                 if origin is not None:
                     try:
-                        idx = np.array([st == origin for st in testpulses['origin'][:]]).nonzero()[0]
-                    except:
                         idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st == origin for st in testpulses['origin'][:]]).nonzero()[0]
                     testpulses.require_dataset('event',
                                                shape=(self.nmbr_channels, len(testpulses['hours']), self.record_length),
                                                dtype=event_dtype)
