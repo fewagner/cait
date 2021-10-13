@@ -6,7 +6,7 @@ import numpy as np
 import h5py
 from ..features._mp import calc_main_parameters
 from ..trigger._csmpl import trigger_csmpl, get_record_window, align_triggers, sample_to_time, \
-    exclude_testpulses, get_starttime, get_test_stamps
+    exclude_testpulses, get_starttime, get_test_stamps, get_offset
 from tqdm.auto import tqdm
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
@@ -133,6 +133,8 @@ class CsmplMixin(object):
                                trigger_block: int = None,
                                take_samples: int = None,
                                of: list = None,
+                               path_dig: list = None,
+                               clock: int = 10000000,
                                path_sql: str = None,
                                csmpl_channels: list = None,
                                sql_file_label: str = None,
@@ -145,8 +147,8 @@ class CsmplMixin(object):
 
         The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
         same module. For determining the absolute time stamp of the triggers, we also need the SQL file that belongs to
-        the measurement. The absolute time stamp will be precise only to seconds, as it is only stored with this
-        precision in the SQL file. This is not a problem for out analysis, as all events within this files are down to
+        the measurement. TODO The absolute time stamp will be precise only to seconds, as it is only stored with this
+        precision in the SQL file. This is not a problem for our analysis, as all events within this files are down to
         micro seconds precisely matched to each other.
 
         The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
@@ -167,6 +169,10 @@ class CsmplMixin(object):
         :type of: list of arrays
         :param path_sql: The path to the SQL database that contains the start of file timestamp.
         :type path_sql: string
+        :param path_dig: TODO For this you need to include the metadata first!
+        :type path_dig: TODO
+        :param clock: TODO
+        :type clock: TODO
         :param csmpl_channels: The CDAQ channels that we are triggering. The channels numbers are usually appended to
             the file name of the CSMPL files and written in the SQL database.
         :type csmpl_channels: list of ints
@@ -183,6 +189,8 @@ class CsmplMixin(object):
             previous/next one. Standard value is 1/4 - it is recommended to use this value!
         :type overlap: float
         """
+
+        assert path_dig is not None and path_sql is not None, 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:
             take_samples = -1
@@ -241,7 +249,7 @@ class CsmplMixin(object):
             stream.create_dataset(name='trigger_hours',
                                   data=aligned_triggers / 3600)
 
-            if path_sql is not None:
+            if path_sql is not None or path_dig is not None:
                 # get file handle
                 if "trigger_time_s" in stream:
                     print('overwrite old trigger_time_s')
@@ -256,14 +264,26 @@ class CsmplMixin(object):
                                       shape=(aligned_triggers.shape),
                                       dtype=int)
 
-                # get start second from sql
-                file_start = get_starttime(path_sql=path_sql,
-                                           csmpl_channel=csmpl_channels[0],
-                                           sql_file_label=sql_file_label)
+                if path_sql is not None:
+                    # get start second from sql
+                    file_start = get_starttime(path_sql=path_sql,
+                                               csmpl_channel=csmpl_channels[0],
+                                               sql_file_label=sql_file_label)
 
-                stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start, dtype='int32')
-                stream['trigger_time_mus'][...] = np.array(1e6 * (
-                        aligned_triggers + file_start - np.floor(aligned_triggers + file_start)), dtype='int32')
+                    stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start, dtype='int32')
+                    stream['trigger_time_mus'][...] = np.array(1e6 * (
+                            aligned_triggers + file_start - np.floor(aligned_triggers + file_start)),
+                                                               dtype='int32')
+
+                elif path_dig is not None:
+
+                    file_start_s = h5f['metainfo']['start_s'][0]  # TODO does this work or do we need no index?
+                    file_start_mus = h5f['metainfo']['start_mus'][0]  # TODO does this work or do we need no index?
+                    offset = get_offset(path_dig)/clock  # in seconds
+
+                    stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start_s + offset, dtype='int32')
+                    stream['trigger_time_mus'][...] = np.array(1e6 * (
+                            aligned_triggers + offset - np.floor(aligned_triggers + offset)) + file_start_mus, dtype='int32')
 
             print('DONE')
 
@@ -650,12 +670,14 @@ class CsmplMixin(object):
 
             print('DONE')
 
-    def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql, csmpl_channels, sql_file_label,
+    def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql=None, csmpl_channels=None, sql_file_label=None,
                             clock=10000000,
                             fix_offset=True,
                             ):
         """
         Include the test pulse time stamps in the HDF5 data set.
+
+        If the SQL path is not provided, then the filestart is read from the metainfo (recommended)!
 
         :param path_teststamps: The path to the TEST_STAMPS file.
         :type path_teststamps: string
@@ -680,10 +702,16 @@ class CsmplMixin(object):
         with h5py.File(self.path_h5, 'a') as h5f:
             h5f.require_group('stream')
 
-            # get start second from sql
-            file_start = get_starttime(path_sql=path_sql,
-                                       csmpl_channel=csmpl_channels[0],
-                                       sql_file_label=sql_file_label)
+            if path_sql is not None:
+                # get start second from sql
+                file_start = get_starttime(path_sql=path_sql,
+                                           csmpl_channel=csmpl_channels[0],
+                                           sql_file_label=sql_file_label)
+
+            else:
+
+                file_start = h5f['metainfo']['start_s'][0]  # TODO does this work or do we need no index?
+                file_start += 1e-6*h5f['metainfo']['start_mus'][0]  # TODO does this work or do we need no index?
 
             # read the test pulse time stamps from the test_stamps file
 
@@ -692,16 +720,7 @@ class CsmplMixin(object):
             if fix_offset:
                 # determine the offset of the trigger time stamps from the digitizer stamps
 
-                dig = np.dtype([
-                    ('stamp', np.uint64),
-                    ('bank', np.uint32),
-                    ('bank2', np.uint32),
-                ])
-
-                diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
-                dig_samples = diq_stamps['stamp']
-                offset_hours = (dig_samples[1] - 2 * dig_samples[
-                    0]) / clock / 3600  # the dig stamp is delayed by offset_hours
+                offset_hours = get_offset(path_dig_stamps) / clock / 3600  # the dig stamp is delayed by offset_hours
 
                 # remove the offset and throw all below zero away
 
@@ -712,7 +731,7 @@ class CsmplMixin(object):
             # calc the time stamp seconds and mus
 
             time_s = np.array(file_start + hours * 3600, dtype='int32')
-            time_mus = np.array(1e6 * (hours * 3600 - np.floor(hours * 3600)), dtype='int32')
+            time_mus = np.array(1e6 * (file_start + hours * 3600 - np.floor(file_start + hours * 3600)), dtype='int32')
 
             # write to file
 

@@ -637,3 +637,18 @@ def get_starttime(path_sql, csmpl_channel, sql_file_label):
     time_created = strptime(query_results[0], '%Y-%m-%d %H:%M:%S')
 
     return mktime(time_created)
+
+def get_offset(path_dig_stamps):
+    # TODO
+
+    dig = np.dtype([
+        ('stamp', np.uint64),
+        ('bank', np.uint32),
+        ('bank2', np.uint32),
+    ])
+
+    diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+    dig_samples = diq_stamps['stamp']
+    offset_clock = (dig_samples[1] - 2 * dig_samples[0])
+
+    return offset_clock

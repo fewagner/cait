@@ -17,4 +17,5 @@ __all__ = ['get_nps',
            'merge_h5_sets',
            'read_xy_file',
            'write_xy_file',
-           'TestData']
+           'TestData',
+           'get_metadata']

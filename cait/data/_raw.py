@@ -147,7 +147,7 @@ def read_rdt_file(fname, path, channels,
 
     if nmbr_channels > 1:
         for i in range(length_recs):
-            if i >= length_recs - nmbr_channels:
+            if i > length_recs - nmbr_channels:
                 break
             cond = recs[i]['detector_nmbr'] == channels[0]
             for j, c in enumerate(channels[1:]):
@@ -189,3 +189,53 @@ def read_rdt_file(fname, path, channels,
         pulse = np.subtract(pulse.T, np.mean(pulse[:, :, :int(record_length / 8)], axis=2).T).T
 
     return metainfo, pulse
+
+
+def get_metainfo(path_par):
+    """
+    Read the metainfo from the PAR file.
+
+    :param path_sql: The path of the PAR file.
+    :type path_sql: string
+    :return: The metadata.
+    :rtype: dict
+    """
+
+    metainfo = {}
+
+    with open(path_par, 'r') as f:
+        for i in range(22):
+            line = f.readline()
+            if 'Timeofday at start' in line and '[s]' in line:
+                metainfo['start_s'] = int(line.split(' ')[-1])
+            elif 'Timeofday at start' in line and '[us]' in line:
+                metainfo['start_mus'] = int(line.split(' ')[-1])
+            elif 'Timeofday at stop' in line and '[s]' in line:
+                metainfo['stop_s'] = int(line.split(' ')[-1])
+            elif 'Timeofday at stop' in line and '[us]' in line:
+                metainfo['stop_mus'] = int(line.split(' ')[-1])
+            elif 'Measuring time' in line and '[h]' in line:
+                metainfo['runtime'] = float(line.split(' ')[-1])
+            elif 'Integers in header' in line:
+                metainfo['ints_in_header'] = int(line.split(' ')[-1])
+            elif 'Unsigned longs in header' in line:
+                metainfo['unsgn_longs_in_header'] = int(line.split(' ')[-1])
+            elif 'Reals in header' in line:
+                metainfo['reals_in_header'] = int(line.split(' ')[-1])
+            elif 'DVM channels' in line:
+                metainfo['dvm_channels'] = int(line.split(' ')[-1])
+            elif 'Record length' in line:
+                metainfo['record_length'] = int(line.split(' ')[-1])
+            elif 'Records written' in line:
+                metainfo['records_written'] = int(line.split(' ')[-1])
+            elif 'First DVM channel' in line:
+                metainfo['first_dvm_channel'] = int(line.split(' ')[-1])
+            elif 'Pre trigger' in line:
+                metainfo['pre_trigger'] = int(line.split(' ')[-1])
+            elif 'Time base' in line and '[us]' in line:
+                metainfo['time_base_mus'] = int(line.split(' ')[-1])
+                metainfo['sample_frequency'] = int(1/metainfo['time_base_mus']*1e6)
+            elif 'Trigger mode' in line:
+                metainfo['trigger_mode'] = int(line.split(' ')[-1])
+
+    return metainfo

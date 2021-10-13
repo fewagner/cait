@@ -7,7 +7,7 @@ import struct
 from ..data._gen_h5 import gen_dataset_from_rdt
 from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
 import h5py
-from ..data._raw import read_rdt_file
+from ..data._raw import read_rdt_file, get_metainfo
 import warnings
 import time
 import tracemalloc
@@ -298,7 +298,7 @@ class RdtMixin(object):
         :type dvm_channels: int
         :param batch_size: The batch size for loading the samples from disk.
         :type batch_size: int
-        :param memsafe: Recommended! This activates
+        :param memsafe: Recommended! This activates  TODO
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
@@ -425,7 +425,7 @@ class RdtMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             # events
-            if 0.0 in tpa_list and not "event" in h5f["events"]:
+            if 0.0 in tpa_list:
 
                 metainfo_event = metainfo[:, metainfo[0, :, 12] == 0, :]
                 pulse_event = pulse[:, metainfo[0, :, 12] == 0, :]
@@ -456,7 +456,7 @@ class RdtMixin(object):
                     events['time_mus'][...] = np.array(metainfo_event[0, :, 5], dtype='int32')
 
             # noise
-            if -1.0 in tpa_list and not "event" in h5f["noise"]:
+            if -1.0 in tpa_list:
 
                 metainfo_noise = metainfo[:, metainfo[0, :, 12] == -1.0, :]
                 pulse_noise = pulse[:, metainfo[0, :, 12] == -1.0, :]
@@ -467,7 +467,10 @@ class RdtMixin(object):
                 noise = h5f.require_group('noise')
 
                 if origin is not None:
-                    idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
+                    try:
+                        idx = np.array([st == origin for st in noise['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
                     noise.require_dataset('event',
                                           shape=(self.nmbr_channels, len(noise['hours']), self.record_length),
                                           dtype=event_dtype)
@@ -484,9 +487,10 @@ class RdtMixin(object):
                     noise['time_mus'][...] = np.array(metainfo_noise[0, :, 5], dtype='int32')
 
             # testpulses
-            if any(el > 0 for el in tpa_list) and not "event" in h5f["testpulses"]:
+            if any(el > 0 for el in tpa_list):
 
                 tp_list = metainfo[0, :, 12] > 0.0
+
                 # np.logical_and(
                 #     metainfo[0, :, 12] != -1.0, metainfo[0, :, 12] != 0.0)
 
@@ -499,7 +503,10 @@ class RdtMixin(object):
                 testpulses = h5f.require_group('testpulses')
 
                 if origin is not None:
-                    idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
+                    try:
+                        idx = np.array([st == origin for st in testpulses['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
                     testpulses.require_dataset('event',
                                                shape=(self.nmbr_channels, len(testpulses['hours']), self.record_length),
                                                dtype=event_dtype)
@@ -657,3 +664,16 @@ class RdtMixin(object):
                                    data=mon_pars[name])
 
         print('MON File Included.')
+
+    def include_metainfo(self, path_par):
+        # TODO
+
+        metainfo = get_metadata(path_par)
+
+        with h5py.File(self.path_h5, 'r+') as f:
+            met = f.require_group('metainfo')
+            for name in metainfo.keys():
+                met.create_dataset(name=name,
+                                   data=metainfo[name])
+
+        print('Metainfo included.')

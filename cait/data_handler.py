@@ -407,6 +407,14 @@ class DataHandler(SimulateMixin,
         For this scenario, the raw data events can be deleted after the calculation of all useful features. At a later
         point, the events can be included again if needed.
 
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+
         :param type: The group in the HDF5 set from which the events are deleted,
             typically 'events', 'testpulses' or noise.
         :type type: string
@@ -424,6 +432,14 @@ class DataHandler(SimulateMixin,
     def drop(self, group: str, dataset: str = None):
         """
         Delete a dataset from a specified group in the HDF5 file.
+
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
 
         :param group: The name of the group in the HDF5 file.
         :type group: string
@@ -446,6 +462,14 @@ class DataHandler(SimulateMixin,
         For large scale analysis and limited server space, the covnerted HDF5 datasets exceed storage space capacities.
         For this scenario, the raw data events can be downsampled of a given factor. Downsampling to sample frequencies
         below 1kHz is in many situations sufficient for viewing events and most features calculations.
+
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
 
         :param type: The group in the HDF5 set from which the events are downsampled,
             typically 'events', 'testpulses' or noise.
@@ -492,6 +516,14 @@ class DataHandler(SimulateMixin,
         For measurements with high event rate (above ground, ...) a long record window might be counter productive,
         due to more pile uped events in the window. For this reason, you can truncate the length of the record window
         with this function.
+
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
 
         :param type: The group in the HDF5 set from which the events are downsampled,
             typically 'events', 'testpulses' or noise.

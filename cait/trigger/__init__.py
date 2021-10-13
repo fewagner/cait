@@ -11,4 +11,5 @@ __all__=['MovingAverageTrigger',
          'get_starttime',
          'find_nearest',
          'exclude_testpulses',
+         'get_trigger_offset'
          ]

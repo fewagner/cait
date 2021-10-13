@@ -5,7 +5,7 @@
 .. |PyPi| image:: https://badge.fury.io/py/cait.svg
 .. _PyPi: https://badge.fury.io/py/cait
 
-.. |DOI| https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
+.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
 .. _DOI: https://doi.org/10.5281/zenodo.5091416
 
 .. image:: docs/source/logo/LogosVectorFormat/Transparent.pdf
