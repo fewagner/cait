@@ -668,7 +668,7 @@ class RdtMixin(object):
     def include_metainfo(self, path_par):
         # TODO
 
-        metainfo = get_metadata(path_par)
+        metainfo = get_metainfo(path_par)
 
         with h5py.File(self.path_h5, 'r+') as f:
             met = f.require_group('metainfo')

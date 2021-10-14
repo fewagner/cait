@@ -696,3 +696,8 @@ class DataHandler(SimulateMixin,
                 if name in metainfo:
                     del metainfo[name]
                 metainfo.create_dataset(name, data=eval(name))
+
+    def init_empty(self):
+        # TODO
+        with h5py.File(self.path_h5, 'a') as h5f:
+            pass
