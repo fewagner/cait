@@ -660,7 +660,7 @@ class DataHandler(SimulateMixin,
                 del last_idx[0]
                 last_idx.append(len(f['testpulses']['origin']) - 1)
 
-                origin = [name.decode('UTF-8') for name in origin]
+                origin = [name.decode('UTF-8') for name in origin]  # name.encode().decode('UTF-8')
 
                 print('Unique Files: ', origin)
 
@@ -689,7 +689,7 @@ class DataHandler(SimulateMixin,
             metainfo = f.require_group('metainfo')
 
             datasets = ["startstop_hours", "startstop_s", "startstop_mus"]
-            if 'origin' in f['testpulses']:
+            if 'origin' in f['testpulses']:  # comment, error!
                 datasets.append("origin")
 
             for name in datasets:

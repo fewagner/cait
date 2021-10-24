@@ -48,7 +48,7 @@ class RdtMixin(object):
         event = np.zeros(self.record_length, dtype=np.short)
 
         with open(path_rdt, "rb") as f:
-            for nmbr_event in range(read_events):
+            for nmbr_event in range(read_events):  # TODO -1 flag is not implemented
 
                 dummies = []
 
