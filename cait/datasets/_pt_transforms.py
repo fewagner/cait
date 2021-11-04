@@ -141,3 +141,16 @@ class OneHotEncode(object):
         for key in self.keys:
             sample[key] = F.one_hot(sample[key].long(), num_classes=self.nmbr_classes)
         return sample
+
+class SingleMinMaxNorm(object):
+    """TODO"""
+
+    def __init__(self, keys):
+        self.keys = keys
+
+    def __call__(self, sample):
+        """TODO"""
+
+        for key in self.keys:
+            sample[key] = (sample[key] - np.min(sample[key]))/(np.max(sample[key]) - np.min(sample[key]))
+        return sample

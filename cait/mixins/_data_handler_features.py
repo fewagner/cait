@@ -10,6 +10,9 @@ from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
 from ..filter._of import get_amplitudes
 from warnings import warn
+from ..fit._pm_fit import fit_pulse_shape
+from ..fit._templates import pulse_template
+from ..filter._ma import rem_off
 
 from ..data._baselines import calculate_mean_nps
 
@@ -94,12 +97,19 @@ class FeaturesMixin(object):
                  decay_time_interval=None,
                  onset_interval=None,
                  remove_offset=True,
+                 baseline_model='constant',
                  verb=True,
                  scale_fit_height=True,
                  scale_to_unit=None,
                  sample_length=None,
                  t0_start=None,
-                 opt_start=False):
+                 opt_start=False,
+                 memsafe=True,
+                 batch_size=1000,
+                 lower_bound_tau=None,
+                 upper_bound_tau=None,
+                 pretrigger_samples=500,
+                 ):
         """
         Calculate the Standard Event for the Events in the HDF5 File.
 
@@ -135,6 +145,7 @@ class FeaturesMixin(object):
         :param remove_offset: Tf True the offset is removed before the events are superposed for the
             sev calculation. Highly recommended!
         :type remove_offset: bool
+        :param baseline_model: TODO
         :param verb: If True some verbal feedback is output about the progress of the method.
         :type verb: bool
         :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
@@ -149,7 +160,24 @@ class FeaturesMixin(object):
         :type t0_start: 2-tupel of floats
         :param opt_start: If true, a pre-fit is applied to find optimal start values.
         :type opt_start: bool
+        :param memsafe: TODO
+        :param batch_size: TODO
+        :param lower_bound_tau: TODO ms
+        :param upper_bound_tau: TODO ms
+        :param pretrigger_samples: TODO
         """
+
+        assert not memsafe or (use_labels == False and correct_label is None and pulse_height_interval is None and
+                               left_right_cutoff is None and rise_time_interval is None and decay_time_interval is None
+                               and onset_interval is None), \
+            'The memsafe option does not allow for correct_label, ' \
+            'pulse_height_interval, left_right_cutoff, rise_time_interval,' \
+            'decay_time_interval, onset_interval argument. It is ' \
+            'recommended to hand a use_labels flag instead!'
+
+        assert memsafe or (lower_bound_tau is None and upper_bound_tau is None and
+                           baseline_model == 'constant'), 'For using arguments lower_bound_tau, ' \
+                                                          'upper_bound_tau and baseline_model activate memsafe option!'
 
         if scale_to_unit is None:
             scale_to_unit = [True for i in range(self.nmbr_channels)]
@@ -157,15 +185,21 @@ class FeaturesMixin(object):
         if sample_length is None:
             sample_length = 1 / self.sample_frequency * 1000
 
+        if lower_bound_tau is None:
+            lower_bound_tau = [1e-2 for i in range(self.nmbr_channels)]
+
+        if upper_bound_tau is None:
+            upper_bound_tau = [3e3 for i in range(self.nmbr_channels)]
+
+        # set the start values for t0
+        if t0_start is None:
+            t0_start = [-3 for i in range(self.nmbr_channels)]
+
         with h5py.File(self.path_h5, 'r+') as h5f:
             events = h5f[type]['event']
             mainpar = h5f[type]['mainpar']
 
             std_evs = []
-
-            # set the start values for t0
-            if t0_start is None:
-                t0_start = [None for i in range(self.nmbr_channels)]
 
             # if no pulse_height_interval is specified set it to average values for all channels
             if pulse_height_interval == None:
@@ -196,28 +230,67 @@ class FeaturesMixin(object):
                 sev = h5f.require_group('stdevent' + name_appendix)
 
             if use_idx is None:
-                use_idx = list(range(len(events[0])))
+                use_idx = list(range(events.shape[0]))
 
             for c in range(self.nmbr_channels):
-                print('')
-                print('Calculating SEV for Channel {}'.format(c))
-                std_evs.append(generate_standard_event(events=events[c, use_idx, :],
-                                                       main_parameters=mainpar[c, use_idx, :],
-                                                       labels=labels[c],
-                                                       correct_label=correct_label,
-                                                       pulse_height_interval=pulse_height_interval[c],
-                                                       left_right_cutoff=inp[0][c],
-                                                       rise_time_interval=inp[1][c],
-                                                       decay_time_interval=inp[2][c],
-                                                       onset_interval=inp[3][c],
-                                                       remove_offset=remove_offset,
-                                                       verb=verb,
-                                                       scale_fit_height=scale_fit_height,
-                                                       scale_to_unit=scale_to_unit[c],
-                                                       sample_length=sample_length,
-                                                       t0_start=t0_start[c],
-                                                       opt_start=opt_start,
-                                                       ))
+                print('\nCalculating SEV for Channel {}'.format(c))
+                if not memsafe:
+                    std_evs.append(generate_standard_event(events=events[c, use_idx, :],
+                                                           main_parameters=mainpar[c, use_idx, :],
+                                                           labels=labels[c],
+                                                           correct_label=correct_label,
+                                                           pulse_height_interval=pulse_height_interval[c],
+                                                           left_right_cutoff=inp[0][c],
+                                                           rise_time_interval=inp[1][c],
+                                                           decay_time_interval=inp[2][c],
+                                                           onset_interval=inp[3][c],
+                                                           remove_offset=remove_offset,
+                                                           verb=verb,
+                                                           scale_fit_height=scale_fit_height,
+                                                           scale_to_unit=scale_to_unit[c],
+                                                           sample_length=sample_length,
+                                                           t0_start=t0_start[c],
+                                                           opt_start=opt_start,
+                                                           ))
+                else:
+                    print('{} Events used to generate Standardevent.'.format(len(use_idx)))
+                    nmbr_batches = int(len(use_idx) / batch_size)
+                    std_evs.append([np.zeros(events.shape[2]), ])
+
+                    for b in range(nmbr_batches):
+                        start = int(b * batch_size)
+                        stop = int((b + 1) * batch_size)
+                        ev = np.array(events[c, use_idx[start:stop]])
+                        if remove_offset:
+                            rem_off(ev, baseline_model, pretrigger_samples)
+                        std_evs[c][0] += np.sum(ev, axis=0)
+
+                    # last batch
+                    start = int(nmbr_batches * batch_size)
+                    ev = np.array(events[c, use_idx[start:]])
+                    if remove_offset:
+                        rem_off(ev, baseline_model, pretrigger_samples)
+                    std_evs[c][0] += np.sum(ev, axis=0)
+                    std_evs[c][0] /= len(use_idx)
+
+                    if scale_to_unit:
+                        std_evs[c][0] /= np.max(std_evs[c][0])
+
+                    par = fit_pulse_shape(std_evs[c][0], sample_length=sample_length,
+                                          t0_start=t0_start[c],
+                                          opt_start=opt_start,
+                                          lower_bound_tau=lower_bound_tau[c],
+                                          upper_bound_tau=upper_bound_tau[c], )
+
+                    if scale_fit_height:
+                        t = (np.arange(0, len(std_evs[c][0]), dtype=float) - len(std_evs[c][0]) / 4) * sample_length
+                        fit_max = np.max(pulse_template(t, *par))
+                        print('Parameters [t0, An, At, tau_n, tau_in, tau_t]:\n', par)
+                        if not np.isclose(fit_max, 0, rtol=3e-3):
+                            par[1] /= fit_max
+                            par[2] /= fit_max
+
+                    std_evs[c].append(par)
 
             sev.require_dataset('event',
                                 shape=(self.nmbr_channels, len(std_evs[0][0])),  # this is then length of sev
@@ -258,7 +331,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_of(self, down: int = 1, name_appendix: str = '', window=True, force_zero=False):
+    def calc_of(self, down: int = 1, name_appendix: str = '', window=True):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
@@ -271,7 +344,6 @@ class FeaturesMixin(object):
         :type name_appendix: string
         :param window: Include a window function to the standard event before building the filter.
         :type window: bool
-        :param force_zero: TODO
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -289,7 +361,7 @@ class FeaturesMixin(object):
             print('CREATE OPTIMUM FILTER.')
 
             of = np.array([optimal_transfer_function(
-                stdevent_pulse[i], mean_nps[i], window, force_zero) for i in range(self.nmbr_channels)])
+                stdevent_pulse[i], mean_nps[i], window) for i in range(self.nmbr_channels)])
 
             optimumfilter = h5f.require_group('optimumfilter' + name_appendix)
             if down > 1:
@@ -318,7 +390,7 @@ class FeaturesMixin(object):
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
                  chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 force_zero=False):
+                 baseline_model='constant', pretrigger_samples=500):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -340,7 +412,8 @@ class FeaturesMixin(object):
         :param first_channel_dominant: Take the maximum position from the first channel and evaluate the others at the
             same position.
         :type first_channel_dominant: bool
-        :param force_zero: TODO
+        :param baseline_model: TODO
+        :param pretrigger_samples: TODO
         """
 
         print('Calculating OF Heights.')
@@ -349,6 +422,9 @@ class FeaturesMixin(object):
             events = f[type]['event']
             sev = np.array(f['stdevent' + name_appendix_group]['event'])
             nps = np.array(f['noise']['nps'])
+
+            if 'of_ph' in f[type]:
+                del f[type]['of_ph']
 
             f[type].require_dataset(name='of_ph' + name_appendix_set,
                                     shape=(self.nmbr_channels, len(events[0])),
@@ -363,14 +439,20 @@ class FeaturesMixin(object):
                     if first_channel_dominant and c == 0:
                         of_ph, peakpos = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                         hard_restrict=hard_restrict, down=down, window=window,
-                                                        return_peakpos=True, force_zero=force_zero)
+                                                        return_peakpos=True,
+                                                        baseline_model=baseline_model,
+                                                        pretrigger_samples=pretrigger_samples)
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
-                                               peakpos=peakpos, force_zero=force_zero)
+                                               peakpos=peakpos,
+                                               return_peakpos=False,
+                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
                     else:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window, force_zero=force_zero)
+                                               hard_restrict=hard_restrict, down=down, window=window,
+                                               return_peakpos=False,
+                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
 
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
@@ -380,15 +462,19 @@ class FeaturesMixin(object):
                 if first_channel_dominant and c == 0:
                     of_ph, peakpos = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                                     hard_restrict=hard_restrict, down=down, window=window,
-                                                    return_peakpos=True)
+                                                    return_peakpos=True,
+                                                    baseline_model=baseline_model,
+                                                    pretrigger_samples=pretrigger_samples)
                 elif first_channel_dominant:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
-                                           peakpos=peakpos, return_peakpos=False)
+                                           peakpos=peakpos, return_peakpos=False,
+                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
                 else:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
-                                           return_peakpos=False)
+                                           return_peakpos=False,
+                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
                 f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
 
     # calc stdevent carrier
@@ -605,7 +691,7 @@ class FeaturesMixin(object):
                                                    down=down,
                                                    percentile=percentile,
                                                    rms_baselines=rms_baselines,
-                                                   sample_length=1/self.sample_frequency,
+                                                   sample_length=1 / self.sample_frequency,
                                                    rms_cutoff=rms_cutoff[c],
                                                    window=window)[0])
 

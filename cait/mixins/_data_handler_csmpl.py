@@ -10,6 +10,7 @@ from ..trigger._csmpl import trigger_csmpl, get_record_window, align_triggers, s
 from tqdm.auto import tqdm
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
+import os
 
 
 # -----------------------------------------------------------
@@ -133,14 +134,15 @@ class CsmplMixin(object):
                                trigger_block: int = None,
                                take_samples: int = None,
                                of: list = None,
-                               path_dig: list = None,
+                               path_dig: str = None,
                                clock: int = 10000000,
                                path_sql: str = None,
                                csmpl_channels: list = None,
                                sql_file_label: str = None,
                                down: int = 1,
-                               window:bool=True,
-                               overlap:float=None,
+                               window: bool = True,
+                               overlap: float = None,
+                               read_triggerstamps: bool = False,
                                ):
         """
         Trigger *.csmpl files of a detector module and include them in the HDF5 set.
@@ -188,9 +190,16 @@ class CsmplMixin(object):
         :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
             previous/next one. Standard value is 1/4 - it is recommended to use this value!
         :type overlap: float
+        :param read_triggerstamps: TODO
+        :type read_triggerstamps:
         """
 
-        assert path_dig is not None and path_sql is not None, 'Read the start time either from PAR or SQL file!'
+        assert all([os.path.isfile(p) for p in csmpl_paths]), 'One of the csmpl files does not exists!'
+        if path_dig is not None:
+            assert os.path.isfile(path_dig), 'Dig file does not exists!'
+        if path_sql is not None:
+            assert os.path.isfile(path_sql), 'Sql file does not exists!'
+        assert np.logical_xor(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:
             take_samples = -1
@@ -204,50 +213,58 @@ class CsmplMixin(object):
 
         # open write file
         with h5py.File(self.path_h5, 'a') as h5f:
-            if of is None:
-                print("Read OF Transfer Function from h5 file. Alternatively provide one through the of argument.")
-                of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=np.complex)
-                of.real = h5f['optimumfilter']['optimumfilter_real']
-                of.imag = h5f['optimumfilter']['optimumfilter_imag']
+
             stream = h5f.require_group(name='stream')
 
-            # do the triggering
-            time = []
-            for c in range(len(csmpl_paths)):
-                print('TRIGGER CHANNEL ', c)
-                # get triggers
-                trig = trigger_csmpl(paths=[csmpl_paths[c]],
-                                     trigger_tres=thresholds[c],
-                                     transfer_function=of[c],
-                                     take_samples=take_samples,
-                                     record_length=self.record_length,
-                                     sample_length=1 / self.sample_frequency,
-                                     start_hours=0,
-                                     trigger_block=trigger_block,
-                                     down=down,
-                                     window=window,
-                                     overlap=overlap,
-                                     )
+            if not read_triggerstamps:
 
-                time.append(trig)
+                if of is None:
+                    print("Read OF Transfer Function from h5 file. Alternatively provide one through the of argument.")
+                    of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=np.complex)
+                    of.real = h5f['optimumfilter']['optimumfilter_real']
+                    of.imag = h5f['optimumfilter']['optimumfilter_imag']
 
-            # fix the number of triggers
-            if len(csmpl_paths) > 1:
-                print('ALIGN TRIGGERS')
-                aligned_triggers = align_triggers(triggers=time,  # in seconds
-                                                  trigger_block=trigger_block,
-                                                  sample_duration=1 / self.sample_frequency,
-                                                  )
+                # do the triggering
+                time = []
+                for c in range(len(csmpl_paths)):
+                    print('TRIGGER CHANNEL ', c)
+                    # get triggers
+                    trig = trigger_csmpl(paths=[csmpl_paths[c]],
+                                         trigger_tres=thresholds[c],
+                                         transfer_function=of[c],
+                                         take_samples=take_samples,
+                                         record_length=self.record_length,
+                                         sample_length=1 / self.sample_frequency,
+                                         start_hours=0,
+                                         trigger_block=trigger_block,
+                                         down=down,
+                                         window=window,
+                                         overlap=overlap,
+                                         )
+
+                    time.append(trig)
+
+                # fix the number of triggers
+                if len(csmpl_paths) > 1:
+                    print('ALIGN TRIGGERS')
+                    aligned_triggers = align_triggers(triggers=time,  # in seconds
+                                                      trigger_block=trigger_block,
+                                                      sample_duration=1 / self.sample_frequency,
+                                                      )
+                else:
+                    aligned_triggers = time[0]
+
+                # write them to file
+                print('ADD DATASETS TO HDF5')
+                if "trigger_hours" in stream:
+                    print('overwrite old trigger_hours')
+                    del stream['trigger_hours']
+                stream.create_dataset(name='trigger_hours',
+                                      data=aligned_triggers / 3600)
+
             else:
-                aligned_triggers = time[0]
 
-            # write them to file
-            print('ADD DATASETS TO HDF5')
-            if "trigger_hours" in stream:
-                print('overwrite old trigger_hours')
-                del stream['trigger_hours']
-            stream.create_dataset(name='trigger_hours',
-                                  data=aligned_triggers / 3600)
+                aligned_triggers = stream['trigger_hours'][:] * 3600
 
             if path_sql is not None or path_dig is not None:
                 # get file handle
@@ -255,35 +272,35 @@ class CsmplMixin(object):
                     print('overwrite old trigger_time_s')
                     del stream['trigger_time_s']
                 stream.create_dataset(name='trigger_time_s',
-                                      shape=(aligned_triggers.shape),
-                                      dtype=int)
+                                      shape=aligned_triggers.shape,
+                                      dtype=np.int64)
                 if "trigger_time_mus" in stream:
                     print('overwrite old trigger_time_mus')
                     del stream['trigger_time_mus']
                 stream.create_dataset(name='trigger_time_mus',
-                                      shape=(aligned_triggers.shape),
-                                      dtype=int)
+                                      shape=aligned_triggers.shape,
+                                      dtype=np.int64)
 
                 if path_sql is not None:
                     # get start second from sql
                     file_start = get_starttime(path_sql=path_sql,
                                                csmpl_channel=csmpl_channels[0],
-                                               sql_file_label=sql_file_label)
+                                               sql_file_label=sql_file_label)  # in seconds
 
                     stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start, dtype='int32')
                     stream['trigger_time_mus'][...] = np.array(1e6 * (
-                            aligned_triggers + file_start - np.floor(aligned_triggers + file_start)),
-                                                               dtype='int32')
+                            aligned_triggers + file_start - np.floor(aligned_triggers + file_start)), dtype='int32')
 
                 elif path_dig is not None:
 
-                    file_start_s = h5f['metainfo']['start_s'][0]  # TODO does this work or do we need no index?
-                    file_start_mus = h5f['metainfo']['start_mus'][0]  # TODO does this work or do we need no index?
-                    offset = get_offset(path_dig)/clock  # in seconds
+                        file_start_s = h5f['metainfo']['start_s'][()]
+                        file_start_mus = h5f['metainfo']['start_mus'][()]
+                        offset = get_offset(path_dig) / clock  # in seconds
 
-                    stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start_s + offset, dtype='int32')
-                    stream['trigger_time_mus'][...] = np.array(1e6 * (
-                            aligned_triggers + offset - np.floor(aligned_triggers + offset)) + file_start_mus, dtype='int32')
+                        stream['trigger_time_s'][...] = np.array(aligned_triggers + file_start_s + file_start_mus/1e6 - offset, dtype='int32')
+                        stream['trigger_time_mus'][...] = np.array(1e6 * (
+                                aligned_triggers + file_start_s + file_start_mus/1e6 - offset -
+                                np.floor(aligned_triggers + file_start_s + file_start_mus/1e6 - offset)), dtype='int32')
 
             print('DONE')
 
@@ -338,7 +355,7 @@ class CsmplMixin(object):
         """
 
         if sample_length is None:
-            sample_length = 1/self.sample_frequency * 1000
+            sample_length = 1 / self.sample_frequency * 1000
 
         std_evs = []
 
@@ -487,7 +504,7 @@ class CsmplMixin(object):
         """
 
         if sample_duration is None:
-            sample_duration = 1/self.sample_frequency
+            sample_duration = 1 / self.sample_frequency
 
         # open read file
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -670,7 +687,8 @@ class CsmplMixin(object):
 
             print('DONE')
 
-    def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql=None, csmpl_channels=None, sql_file_label=None,
+    def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql=None, csmpl_channels=None,
+                            sql_file_label=None,
                             clock=10000000,
                             fix_offset=True,
                             ):
@@ -710,8 +728,8 @@ class CsmplMixin(object):
 
             else:
 
-                file_start = h5f['metainfo']['start_s'][0]  # TODO does this work or do we need no index?
-                file_start += 1e-6*h5f['metainfo']['start_mus'][0]  # TODO does this work or do we need no index?
+                file_start = h5f['metainfo']['start_s'][()]  # TODO does this work or do we need no index?
+                file_start += 1e-6 * h5f['metainfo']['start_mus'][()]  # TODO does this work or do we need no index?
 
             # read the test pulse time stamps from the test_stamps file
 
@@ -918,21 +936,21 @@ class CsmplMixin(object):
             # make data sets
             noise = h5f.require_group('noise')
             noise.require_dataset(name='event',
-                                         shape=(
-                                             self.nmbr_channels, nmbr_all_events,
-                                             int(self.record_length / down)),
-                                         dtype=datatype)
+                                  shape=(
+                                      self.nmbr_channels, nmbr_all_events,
+                                      int(self.record_length / down)),
+                                  dtype=datatype)
 
             if origin is None:
                 hours_h5 = noise.require_dataset(name='hours',
-                                               shape=(nmbr_all_events),
-                                               dtype=float)
+                                                 shape=(nmbr_all_events),
+                                                 dtype=float)
                 time_s_h5 = noise.require_dataset(name='time_s',
-                                               shape=(nmbr_all_events),
-                                               dtype=int)
+                                                  shape=(nmbr_all_events),
+                                                  dtype=int)
                 time_mus_h5 = noise.require_dataset(name='time_mus',
-                                               shape=(nmbr_all_events),
-                                               dtype=int)
+                                                    shape=(nmbr_all_events),
+                                                    dtype=int)
                 hours_h5[...] = noise_hours
                 time_s_h5[...] = noise_time_s
                 time_mus_h5[...] = noise_time_mus
@@ -947,13 +965,12 @@ class CsmplMixin(object):
                     iterable = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
                 for i in tqdm(iterable):
                     noise['event'][c, i, :], _ = get_record_window(path=csmpl_paths[c],
-                                                                          start_time=noise_hours[
-                                                                                         i] * 3600 - sample_to_time(
-                                                                              self.record_length / 4,
-                                                                              sample_duration=1/self.sample_frequency),
-                                                                          record_length=self.record_length,
-                                                                          sample_duration=1/self.sample_frequency,
-                                                                          down=down)
-
+                                                                   start_time=noise_hours[
+                                                                                  i] * 3600 - sample_to_time(
+                                                                       self.record_length / 4,
+                                                                       sample_duration=1 / self.sample_frequency),
+                                                                   record_length=self.record_length,
+                                                                   sample_duration=1 / self.sample_frequency,
+                                                                   down=down)
 
             print('Done.')

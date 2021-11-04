@@ -6,6 +6,7 @@ import numpy as np
 from numpy.fft import rfft, irfft
 from scipy import signal
 import numba as nb
+from ..filter import rem_off
 
 """
 >>>Remarks on the Standardevent and the Noise Power Spectrum:
@@ -33,6 +34,7 @@ def normalization_constant(stdevent, nps):
     Remark: We do not use this function, as we want to preserve the height of a peak and not the RMS.
 
     :param stdevent:  1D array of the standardevent with length N
+    TODO
     :param nps: 1D array of the noise power spectrum with length N/2 + 1
     :return: integer, the normalization constant
     """
@@ -44,14 +46,14 @@ def normalization_constant(stdevent, nps):
     return h
 
 
-def optimal_transfer_function(stdevent, nps, window=True, force_zero=False):
+def optimal_transfer_function(stdevent, nps, window=True):
     """
     This function calculates the transition function for an optimal filter.
 
     :param stdevent: 1D array, pulse shape standard event with length N
+    TODO
     :param nps: 1D array, the NPS of a baseline, with length N/2 + 1
     :param window: bool, include a window function to the standard event
-    :param force_zero: TODO
     :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
     """
 
@@ -78,6 +80,7 @@ def filter_event(event, transfer_function, window=False):
     this function filters a single event
 
     :param event: 1D array of the one event that should be filtered, size N
+    TODO
     :param transfer_function: the filter in fourier space, size N/2 +1 complex numpy array
     :param window: bool, if activated the array is multiplied with a window function befor filtering
     :return: 1D array length N, the filtered event
@@ -94,11 +97,13 @@ def filter_event(event, transfer_function, window=False):
 
 
 def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False,
-                   peakpos=None, return_peakpos=False, flexibility=20, force_zero=False):
+                   peakpos=None, return_peakpos=False, flexibility=20,
+                   baseline_model='constant', pretrigger_samples=500):
     """
     This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
     :param events_array: 2D array (nmbr_events, rec_length), the events to determine ph
+    TODO
     :param stdevent: 1D array, the standardevent
     :param nps: 1D array, length N/2 + 1, the noise power spectrum
     :param hard_restrict: bool, The maximum search is restricted to 20-30% of the record window.
@@ -108,40 +113,45 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     :param return_peakpos: bool, if true a second array is returned, namely the peak positions within the arrays
     :param flexibility: int, in case a peak position is provided, the maximum search can still deviate by this
         amount of samples
+    :param baseline_model: TODO
+    :param pretrigger_samples: TODO
     :return: 1D array size (nmbr_events), the phs after of filtering; if return_peakpos is true, this is instead
         a 2-tuple of the of_ph and the maximum positions
     """
 
     length = events_array.shape[1]
-    events_array = events_array - np.mean(events_array[:, :int(length / 8), np.newaxis], axis=1)
+    rem_off(events_array, baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
 
     if down > 1:
-        length = int(length/down)
+        length = int(length / down)
         events_array = np.mean(events_array.reshape(events_array.shape[0], length, down), axis=2)
         stdevent = np.mean(stdevent.reshape(length, down), axis=1)
         nps_offset = nps[0]
-        nps = np.mean(nps[1:].reshape(int(length/2), down), axis=1)
+        nps = np.mean(nps[1:].reshape(int(length / 2), down), axis=1)
         nps = np.concatenate(([nps_offset], nps))
 
     # calc transition function
-    transition_function = optimal_transfer_function(stdevent, nps, window=window, force_zero=force_zero)
+    transfer_function = optimal_transfer_function(stdevent, nps, window=window)
     # filter events
-    events_filtered = np.array([filter_event(event, transition_function, window=window) for event in events_array])
+    events_filtered = np.array([filter_event(event, transfer_function, window=window) for event in events_array])
     # get maximal heights of filtered events
     if peakpos is not None:
-        amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
+        amplitudes = np.array(
+            [np.max(events_filtered[i, int(p - flexibility):int(p + flexibility)]) for i, p in enumerate(peakpos)])
     elif not hard_restrict:
         if return_peakpos:
             peakpos = np.argmax(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
             peakpos += int(length / 8)
-            amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
+            amplitudes = np.array(
+                [np.max(events_filtered[i, int(p - flexibility):int(p + flexibility)]) for i, p in enumerate(peakpos)])
         else:
             amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
     else:
         if return_peakpos:
             peakpos = np.argmax(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
             peakpos += int(length * 20 / 100)
-            amplitudes = np.array([np.max(events_filtered[i, int(p-flexibility):int(p+flexibility)]) for i, p in enumerate(peakpos)])
+            amplitudes = np.array(
+                [np.max(events_filtered[i, int(p - flexibility):int(p + flexibility)]) for i, p in enumerate(peakpos)])
         else:
             amplitudes = np.max(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
 

@@ -219,6 +219,79 @@ class FitMixin(object):
 
             print('Done.')
 
+    # apply sev fit
+    def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
+                      t0_bounds=(-20, 20), truncation_level=None,
+                      processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
+                      use_saturation=False):
+        """
+        TODO
+        """
+
+        if sample_length is None:
+            sample_length = 1000 / self.sample_frequency
+
+        print('Calculating Array Fit.')
+
+        if truncation_level is None:
+            truncation_level = [None for i in range(self.nmbr_channels)]
+
+        # open the dataset
+        with h5py.File(self.path_h5, 'r+') as f:
+            assert not use_saturation or 'saturation' in f, 'For using the saturation you need to calculate ' \
+                                                            'the saturation curve first!'
+
+            events = f[type]['event']
+            sev_par = np.array(f['stdevent' + group_name_appendix]['fitpar'])
+            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+
+            # get start values for t0
+            if 'mainpar' in f[type]:
+                t0_start = (np.array(f[type]['mainpar'][:, :, 1]) - self.record_length / 4) / self.sample_frequency
+            else:
+                t0_start = [-3 for i in range(events.shape[1])]
+                warnings.warn('No main parameters calculated. With main parameters, the fit will work much better!')
+
+            # apply fit for all channels, save parameters
+            par = np.zeros([self.nmbr_channels, events.shape[1], 6])
+            for c in range(self.nmbr_channels):
+                if only_channels is None or c in only_channels:
+
+                    if use_saturation:
+                        saturation_pars = f['saturation']['fitpar'][c]
+                    else:
+                        saturation_pars = None
+
+                    # todo start fit
+                    pass
+
+                    # todo end fit
+
+
+            # write sev fit results to file
+            set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),
+                                                 shape=par.shape,
+                                                 dtype='float')
+            set_fitpar.attrs.create(name='pulse_height', data=0)
+            set_fitpar.attrs.create(name='onset', data=1)
+            set_fitpar.attrs.create(name='constant_coefficient', data=2)
+            set_fitpar.attrs.create(name='linear_coefficient', data=3)
+            set_fitpar.attrs.create(name='quadratic_coefficient', data=4)
+            set_fitpar.attrs.create(name='cubic_coefficient', data=5)
+            set_fitrms = f[type].require_dataset(name='arr_fit_rms{}'.format(name_appendix),
+                                                 shape=(self.nmbr_channels, len(events[0])),
+                                                 dtype='float')
+            for c in range(self.nmbr_channels):
+                if only_channels is None or c in only_channels:
+                    set_fitpar[c, ...] = par[c]
+            for c in range(self.nmbr_channels):
+                if only_channels is None or c in only_channels:
+                    fit_model = ...  # todo
+                    for i in range(len(events[0])):
+                        set_fitrms[c, i] = np.mean((...) ** 2)  # todo
+
+            print('Done.')
+
     def calc_bl_coefficients(self, type='noise', down=1):
         """
         Calcualted the fit coefficients with a cubic polynomial on the noise baselines.

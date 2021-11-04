@@ -8,4 +8,5 @@ __all__ = ['get_elements',
            'calc_main_parameters',
            'expectation',
            'distribution_skewness',
-           'calc_additional_parameters']
+           'calc_additional_parameters',
+           ]

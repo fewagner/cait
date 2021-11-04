@@ -64,7 +64,7 @@ class RdtMixin(object):
                         delay_ch_tp = struct.unpack('i', f.read(4))[0]
                     time_low = struct.unpack('I', f.read(4))[0]  # 'L'
                     time_high = struct.unpack('I', f.read(4))[0]  # 'L'
-                    qcd_events = struct.unpack('I', f.read(4))[0]  # 'L'
+                    qdc_events = struct.unpack('I', f.read(4))[0]  # 'L'
                     hours = struct.unpack('f', f.read(4))[0]  # 'f'
                     dead_time = struct.unpack('f', f.read(4))[0]  # 'f'
                     test_pulse_amplitude = struct.unpack('f', f.read(4))[0]  # 'f'
@@ -102,7 +102,7 @@ class RdtMixin(object):
                             print('Delay of channel trigger to testpulse [us]: ', delay_ch_tp)
                         print('time stamp of module trigger low word (10 MHz clock, 0 @ START WRITE ): ', time_low)
                         print('time stamp of module trigger high word (10 MHz clock, 0 @ START WRITE ): ', time_high)
-                        print('number of qdc events accumulated until digitizer trigger: ', qcd_events)
+                        print('number of qdc events accumulated until digitizer trigger: ', qdc_events)
                     print('measuring hours (0 @ START WRITE): ', hours)
                     if verb:
                         print('accumulated dead time of channel [s] (0 @ START WRITE): ', dead_time)
@@ -305,7 +305,7 @@ class RdtMixin(object):
         """
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
-                                      'instanciation or when setting the file path for this instance!'
+                                          'instanciation or when setting the file path for this instance!'
 
         print('Start converting.')
 
@@ -409,7 +409,7 @@ class RdtMixin(object):
         print('Accessing RDT File ...')
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
-                                      'instanciation or when setting the file path for this instance!'
+                                          'instanciation or when setting the file path for this instance!'
 
         if channels is None:
             channels = self.channels
@@ -547,7 +547,7 @@ class RdtMixin(object):
                            ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
                            ('time_low', 'i4'),
                            ('time_high', 'i4'),
-                           ('qcd_events', 'i4'),
+                           ('qdc_events', 'i4'),
                            ('hours', 'f4'),
                            ('dead_time', 'f4'),
                            ('test_pulse_amplitude', 'f4'),
@@ -582,7 +582,7 @@ class RdtMixin(object):
         print('Accessing CON File...')
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
-                                      'instanciation or when setting the file path for this instance!'
+                                          'instanciation or when setting the file path for this instance!'
 
         if clock_frequency is None:
             if ints_in_header == 7:
@@ -677,3 +677,57 @@ class RdtMixin(object):
                                    data=metainfo[name])
 
         print('Metainfo included.')
+
+    def include_qdc(self, path_qdc, clock=1e7):
+        """
+        Read the content of an QDC file an add to HDF5.
+
+        These files contain the hits of the muon veto.
+
+        :param path_qdc: Path to the mon file e.g. "data/bcks/*.qdc".
+        :type path_qdc: string
+        TODO
+        """
+
+        panels = ['cl', 'ltn', 'cr', 'ltf', 'fl', 'lbn', 'fr', 'lbf', 'ftr', 'sum', 'ftl', 'fbr', 'fbl', 'rtf', 'rtn',
+                  'rbf', 'rbn', 'btl', 'btr', 'bbl', 'bbr']
+
+        dtype = np.dtype([('time_low', 'uint32'), ('time_high', 'uint32'), ('number_channels', 'int16')] +
+                         [(p, 'int16') for p in panels] +
+                         [('id{}'.format(i), 'int16') for i, p in enumerate(panels)])
+
+        data = np.fromfile(path_qdc, dtype)
+
+        # create file handles
+        with h5py.File(self.path_h5, 'r+') as f:
+            qdc = f.require_group('qdc')
+            for name in dtype.names:
+                if name in qdc:
+                    del qdc[name]
+                qdc.create_dataset(name=name,
+                                   data=data[name])
+            if 'hours' in qdc:
+                del qdc['hours']
+            hours = (data['time_high'] * 2 ** 32 + data['time_low']) / clock / 3600
+            qdc.create_dataset(name='hours',
+                               data=hours)
+            if 'metainfo' in f:
+                if 'time_s' in qdc:
+                    del qdc['time_s']
+                    del qdc['time_mus']
+
+                start_s = f['metainfo']['start_s'][()]
+                start_mus = f['metainfo']['start_mus'][()]
+
+                stamp_s = (data['time_high'] * 2 ** 32 + data['time_low']) / clock
+                time_s = np.array(stamp_s + start_s + start_mus, dtype=int)
+                time_mus = np.array((stamp_s + start_s + start_mus) * 1e6 % 1e6, dtype=int)
+
+                qdc.create_dataset(name='time_s',
+                                   data=time_s)
+                qdc.create_dataset(name='time_mus',
+                                   data=time_mus)
+            else:
+                print('To include absolute time information, include metainfo first!')
+
+        print('QDC File Included.')

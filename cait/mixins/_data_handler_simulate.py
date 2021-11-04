@@ -68,7 +68,7 @@ class SimulateMixin(object):
             are continuously distributed.
         :type ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
         :param ev_discrete_phs: The discrete values, from which the pulse heights
-            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored.
+            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored. TODO
         :type ev_discrete_phs: list of NMBR_CHANNELS lists
         :param name_appendix: A string that is appended to the group name stdevent, which contains the standard event
             that is used for simulation. This concerns only the simulation of event pulses and has no effect on the
@@ -84,7 +84,7 @@ class SimulateMixin(object):
         :type channel_exceptional_sev: list of ints
         :param tp_ph_intervals: Analogous to ev_ph_intervals, but for the testpulses.
         :type tp_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
-        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses.
+        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses. TODO
         :type tp_discrete_phs: list of NMBR_CHANNELS lists
         :param t0_interval: The interval from which the pulse onset are continuously sampled.
         :type t0_interval: 2-tuple or list

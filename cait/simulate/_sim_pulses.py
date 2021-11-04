@@ -176,11 +176,26 @@ def simulate_events(path_h5,
         # get pulse heights
         print('Get Pulse Heights.')
         phs = np.zeros((nmbr_channels, size))
-        for c in range(nmbr_channels):
-            if discrete_ph is None:
-                phs[c] = uniform.rvs(size=size, loc=ph_intervals[c][0], scale=ph_intervals[c][1] - ph_intervals[c][0])
+
+        if discrete_ph is None:
+            randvars = uniform.rvs(size=size)
+            for c in range(nmbr_channels):
+                phs[c] = (ph_intervals[c][1] - ph_intervals[c][0])*randvars + ph_intervals[c][0]
+        else:
+            nmbr_phs = len(discrete_ph[0])
+            if all(len(discrete_ph[c]) == nmbr_phs for c in range(1, nmbr_channels)):
+                randvals = np.random.randint(0, nmbr_phs-1, size=size)
+                for c in range(nmbr_channels):
+                    phs[c] = np.array(discrete_ph[c])[randvals]
             else:
-                phs[c] = np.random.choice(discrete_ph[0], size)
+                for c in range(nmbr_channels):
+                    phs[c] = np.random.choice(discrete_ph[c], size)
+
+        # for c in range(nmbr_channels):
+        #     if discrete_ph is None:
+        #         phs[c] = uniform.rvs(size=size, loc=ph_intervals[c][0], scale=ph_intervals[c][1] - ph_intervals[c][0])
+        #     else:
+        #         phs[c] = np.random.choice(discrete_ph[c], size)
 
         # get t0's
         t0s = uniform.rvs(loc=t0_interval[0], scale=t0_interval[1] - t0_interval[0], size=size)

@@ -18,7 +18,7 @@ class MainParameters():
     Class to contain the main parameters.
 
     :param pulse_height: float, the height of the event
-
+    TODO
     :param t_zero: int, the sample index where the rise starts
 
     :param t_rise: int, the sample index where the rise reaches 80%
@@ -81,7 +81,7 @@ class MainParameters():
         Method to compare the main parameters with those of another instance.
 
         :param other: the other instance of main parameters
-
+        TODO
         :return: bool, states if the main parameters are the same
 
         """
@@ -113,6 +113,7 @@ class MainParameters():
         Returns an array with the main parameters that are stored
 
         :return: 1D array length 10, the main parameters
+        TODO
         """
         return np.array([self.pulse_height,
                          self.t_zero,
@@ -133,6 +134,7 @@ class MainParameters():
         Plots the main parameters on overlaid to an event
 
         :param down: int, the downsample rate of the event that should be overlaid
+        TODO
         :param offset_in_samples: int, set if the x axis does not start at zero
         :param color: string, the color of the main parameters in the scatter plot
         :param zorder: int, the plot with the highest zorder is plot on top of the others
@@ -174,6 +176,7 @@ class MainParameters():
         Return the differences in the samples times
 
         :return: 1D array with length 2: (length_rise, length_peak, length_decay)
+        TODO
         """
         length_rise = self.t_rise - self.t_zero
         length_peak = self.t_decaystart - self.t_rise
@@ -191,6 +194,7 @@ def get_times(t_zero, t_rise, t_decaystart, t_half, t_end):
     Calculate the Rise Length, Peak Length, Length of First and Seconf Half of Decay
 
     :param t_zero: integer, time of the pulse onset
+    TODO
     :param t_rise: integer, time when rise is finished
     :param t_decaystart: integer, end of peak
     :param t_half: integer, half of decay
@@ -214,6 +218,7 @@ def calc_main_parameters(event, down=1, max_bounds=None, quad_drift=False):
     Optional, the event can be downsampled by a given factor befor the calculation
 
     :param event: 1D array, the event
+    TODO
     :param down: integer, power of 2, the factor for downsampling
     :param max_bounds: tuple, the lower and upper index of the interval within which the maximum is searched
     :param quad_drift: bool, include quadratic drift in the calculation
@@ -312,15 +317,17 @@ def expectation(x, dist):
     Calculate the expectation value of a random value function
 
     :param x: 1D array, the function of the random vaiable, applied to the x value array
+    TODO
     :param dist: 1D array of same length as the other array, the values of the distribution
     """
-    return (1/len(dist))*np.dot(x,dist)
+    return (1/len(dist))*np.dot(x, dist)
 
 def distribution_skewness(density):
     """
     Calculate the skewness of a distribution, given the density as array
 
     :param density: 1D array, the density of the distribution we want the skewness from
+    TODO
     :return: float, the skewness of the given distribution
     """
 
@@ -343,6 +350,7 @@ def calc_additional_parameters(event,
     Calculate parameters additionally to the main parameters
 
     :param event: array, the event of which we want to calculate the additional main parameters
+    TODO
     :param optimal_transfer_function: array, the optimum filter transfer function; if None, the of values are filled
         with zeros instead
     :param down: int, if we want to downsample the event by a factor, this can be done here
