@@ -728,8 +728,8 @@ class CsmplMixin(object):
 
             else:
 
-                file_start = h5f['metainfo']['start_s'][()]  # TODO does this work or do we need no index?
-                file_start += 1e-6 * h5f['metainfo']['start_mus'][()]  # TODO does this work or do we need no index?
+                file_start = h5f['metainfo']['start_s'][()]
+                file_start += 1e-6 * h5f['metainfo']['start_mus'][()]
 
             # read the test pulse time stamps from the test_stamps file
 

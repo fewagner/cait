@@ -5,6 +5,7 @@ from .models._model_handler import ModelHandler
 from .evaluation_tools import EvaluationTools
 from .viztool import VizTool
 from .limit import *
+from .resources import *
 
 __all__ = ['EventInterface',
            'DataHandler',
@@ -26,4 +27,5 @@ __all__ = ['EventInterface',
            'mixins',
            'limit',
            'augment',
+           'resources',
            ]

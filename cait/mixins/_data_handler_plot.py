@@ -620,7 +620,9 @@ class PlotMixin(object):
                      yran=None,
                      show=True,
                      save_path=None,
-                     dpi=150):
+                     dpi=150,
+                     rasterized=False,
+                     ):
         """
         Shows a scatter plot of some values from the HDF5 file
 
@@ -662,6 +664,7 @@ class PlotMixin(object):
         :type save_path: string
         :param dpi: The dots per inch of the plot.
         :type dpi: int
+        todo rasterized
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
@@ -692,7 +695,7 @@ class PlotMixin(object):
             plt.close()
             plt.scatter(vals[0],
                         vals[1],
-                        marker=marker, zorder=10)
+                        marker=marker, zorder=10, rasterized=rasterized)
             make_grid()
             if xlabel is None:
                 plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]),

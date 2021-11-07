@@ -9,6 +9,7 @@ import time
 
 
 # function
+import h5py
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses', 'stream'],
@@ -115,7 +116,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                         shape_a = a[group][set].shape
                         shape_b = b[group][set].shape
                         shape_m = np.copy(shape_a)
-                        if concatenate_axis == -1:
+                        if concatenate_axis[i] == -1:
                             if len(shape_a) == 0:
                                 shape_m = [2, ]
                             else:
@@ -142,7 +143,7 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                             for c in range(shape_a[0]):
                                 g[set][c, :shape_a[1]] = a[group][set][c, :]
                                 g[set][c, shape_a[1]:] = b[group][set][c, :]
-                        elif concatenate_axis == -1:
+                        elif concatenate_axis[i] == -1:
                             if len(shape_a) == 0:
                                 g[set][0] = a[group][set][()]
                             else:

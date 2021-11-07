@@ -3,7 +3,8 @@ from tqdm.auto import tqdm
 import pickle
 import cait as ai
 import numpy as np
-
+import os
+from ..resources import change_channel
 
 def nn_predict(h5_path: str,
                feature_channel: int,
@@ -50,10 +51,12 @@ def nn_predict(h5_path: str,
     if model is None:
         model = ptl_module.load_from_checkpoint(ptl_ckp_path)
 
+    model = change_channel(model, feature_channel)
+
     with h5py.File(h5_path, 'r+') as f_handle:
 
-        nmbr_channels = len(f_handle[group_name][keys[0]])
-        nmbr_events = len(f_handle[group_name][keys[0]][0])
+        nmbr_channels = f_handle[group_name][keys[0]].shape[0]
+        nmbr_events = f_handle[group_name][keys[0]].shape[1]
 
         # add predictions to the h5 file
         data = f_handle.require_group(group_name)

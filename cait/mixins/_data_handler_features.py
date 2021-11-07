@@ -151,7 +151,9 @@ class FeaturesMixin(object):
         :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
             the fit is done.
         :type scale_fit_height: bool
-        :param scale_to_unit: If True corresponding to a channel, the standard event is scaled to 1. Default True.
+        :param scale_to_unit: If True corresponding to a channel, the standard event is scaled to 1. Default True. If
+            False for a channel, the parametric fit is not applied but automatically set to values that produce an empty array.
+            In this case, also the scale_fit_height is not done for this channel.
         :type scale_to_unit: bool list of length nmbr_channels or None
         :param sample_length: The length of one sample in milliseconds. If None, this is calculated from the sample
             frequency.
@@ -273,22 +275,24 @@ class FeaturesMixin(object):
                     std_evs[c][0] += np.sum(ev, axis=0)
                     std_evs[c][0] /= len(use_idx)
 
-                    if scale_to_unit:
+                    if scale_to_unit[c]:
                         std_evs[c][0] /= np.max(std_evs[c][0])
 
-                    par = fit_pulse_shape(std_evs[c][0], sample_length=sample_length,
-                                          t0_start=t0_start[c],
-                                          opt_start=opt_start,
-                                          lower_bound_tau=lower_bound_tau[c],
-                                          upper_bound_tau=upper_bound_tau[c], )
+                        par = fit_pulse_shape(std_evs[c][0], sample_length=sample_length,
+                                              t0_start=t0_start[c],
+                                              opt_start=opt_start,
+                                              lower_bound_tau=lower_bound_tau[c],
+                                              upper_bound_tau=upper_bound_tau[c], )
 
-                    if scale_fit_height:
-                        t = (np.arange(0, len(std_evs[c][0]), dtype=float) - len(std_evs[c][0]) / 4) * sample_length
-                        fit_max = np.max(pulse_template(t, *par))
-                        print('Parameters [t0, An, At, tau_n, tau_in, tau_t]:\n', par)
-                        if not np.isclose(fit_max, 0, rtol=3e-3):
-                            par[1] /= fit_max
-                            par[2] /= fit_max
+                        if scale_fit_height:
+                            t = (np.arange(0, len(std_evs[c][0]), dtype=float) - len(std_evs[c][0]) / 4) * sample_length
+                            fit_max = np.max(pulse_template(t, *par))
+                            print('Parameters [t0, An, At, tau_n, tau_in, tau_t]:\n', par)
+                            if not np.isclose(fit_max, 0, rtol=3e-3):
+                                par[1] /= fit_max
+                                par[2] /= fit_max
+                    else:
+                        par = [0, 0, 0, 1, 1, 1]
 
                     std_evs[c].append(par)
 

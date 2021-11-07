@@ -227,6 +227,8 @@ class FitMixin(object):
                         truncation_level=None,
                         processes=4, name_appendix='', group_name_appendix='',
                         first_channel_dominant=False,
+                        use_this_array=None,
+                        use_saturation=False
                         ):
         """
         TODO
@@ -244,38 +246,43 @@ class FitMixin(object):
         with h5py.File(self.path_h5, 'r+') as f:
 
             events = f[type]['event']
-            sev = np.array(f['stdevent' + group_name_appendix]['event'])
+            if use_this_array is None:
+                sev = np.array(f['stdevent' + group_name_appendix]['event'])
+            else:
+                use_this_array = np.array(use_this_array, dtype=np.float32)
+                assert use_this_array.shape == (self.nmbr_channels, self.record_length), \
+                    'Array has to have shape (nmbr_channels, record_length)!'
+                sev = use_this_array
             t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
 
             t0_start = np.array([0 for i in range(events.shape[1])])
 
+            assert not use_saturation or 'saturation' in f, 'For using the saturation you need to calculate ' \
+                                                            'the saturation curve first!'
+
             # apply fit for all channels, save parameters
             par = np.zeros([self.nmbr_channels, events.shape[1], 6])
             for c in range(self.nmbr_channels):
+                if use_saturation:
+                    saturation_pars = np.array(f['saturation']['fitpar'][c], dtype=np.float32)
+                else:
+                    saturation_pars = None
                 if only_channels is None or c in only_channels:
                     if first_channel_dominant and c != 0:
-                        with Pool(processes) as p:
-                            par[c, ...] = list(
-                                tqdm(p.imap(partial(array_fitter,
-                                                    t=t, sev=sev[c],
-                                                    record_length=self.record_length,
-                                                    timebase_ms=1000 / self.sample_frequency, max_shift=max_shift,
-                                                    truncation_level=truncation_level[c]),
-                                            zip(events[c], np.max(events[c], axis=1),
-                                                par[0, :, 1], t0_start)),
-                                     total=events.shape[1]))
-                        par[c, :, 1] = par[0, :, 1]
+                        t0 = par[0, :, 1]
                     else:
-                        with Pool(processes) as p:
-                            par[c, ...] = list(
-                                tqdm(p.imap(partial(array_fitter,
-                                                    t=t, sev=sev[c],
-                                                    record_length=self.record_length,
-                                                    timebase_ms=1000 / self.sample_frequency, max_shift=max_shift,
-                                                    truncation_level=truncation_level[c]),
-                                            zip(events[c], np.max(events[c], axis=1),
-                                                [None for i in range(events.shape[1])], t0_start)),
-                                     total=events.shape[1]))
+                        t0 = [None for i in range(events.shape[1])]
+                    with Pool(processes) as p:
+                        par[c, ...] = list(
+                            tqdm(p.imap(partial(array_fitter,
+                                                t=t, sev=sev[c],
+                                                record_length=self.record_length,
+                                                timebase_ms=1000 / self.sample_frequency, max_shift=max_shift,
+                                                truncation_level=truncation_level[c],
+                                                saturation_pars=saturation_pars),
+                                        zip(events[c], np.max(events[c], axis=1) - np.mean(events[c, :, :500], axis=1),
+                                            t0, t0_start)),
+                                 total=events.shape[1]))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),

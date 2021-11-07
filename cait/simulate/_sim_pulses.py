@@ -184,7 +184,7 @@ def simulate_events(path_h5,
         else:
             nmbr_phs = len(discrete_ph[0])
             if all(len(discrete_ph[c]) == nmbr_phs for c in range(1, nmbr_channels)):
-                randvals = np.random.randint(0, nmbr_phs-1, size=size)
+                randvals = np.random.randint(0, nmbr_phs, size=size)
                 for c in range(nmbr_channels):
                     phs[c] = np.array(discrete_ph[c])[randvals]
             else:
