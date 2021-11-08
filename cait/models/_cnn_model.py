@@ -128,12 +128,6 @@ class CNNModule(LightningModule):
             if len(sample[k].shape) < 2:
                 sample[k] = sample[k].reshape(1, -1)
 
-        # remove offset
-        # if self.offset_keys is not None:
-        #     for key in self.offset_keys:
-        #         sample[key] = (sample[key].transpose() - np.mean(sample[key][:, :int(len(sample[key]) / 8)],
-        #                                                        axis=1)).transpose()
-
         # normalize
         if self.norm_vals is not None:
             if self.norm_type == 'z':

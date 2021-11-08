@@ -289,7 +289,7 @@ class DefaultPulseHeights(Distribution):
         self.lamb = lamb
         self.mini = mini
         self.maxi = maxi
-        self.p = 0.5
+        self.p = p
 
     def sample(self, size, **kwargs):
         """

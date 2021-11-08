@@ -1,5 +1,13 @@
 import os
 
+def list_resources():
+    """TODO"""
+    res = os.listdir(os.path.dirname(__file__))
+    print('Resources stored in {}:'.format(os.path.dirname(__file__)))
+    for r in res:
+        if r[0] != '_' and r[0] != '.':
+            print(r)
+
 def get_resource_path(name: str):
     """
     Get the path of a resource stored in the library.
