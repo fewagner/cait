@@ -302,7 +302,7 @@ class FeaturesMixin(object):
             sev['event'][...] = np.array([x[0] for x in std_evs])
             sev.require_dataset('fitpar',
                                 shape=(self.nmbr_channels, len(std_evs[0][1])),
-                                dtype='f')
+                                dtype='float')
             sev['fitpar'][...] = np.array([x[1] for x in std_evs])
 
             # description of the fitparameters (data=column_in_fitpar)
@@ -317,7 +317,7 @@ class FeaturesMixin(object):
 
             sev.require_dataset('mainpar',
                                 shape=mp.shape,
-                                dtype='f')
+                                dtype='float')
 
             sev['mainpar'][...] = mp
 
@@ -370,20 +370,20 @@ class FeaturesMixin(object):
             optimumfilter = h5f.require_group('optimumfilter' + name_appendix)
             if down > 1:
                 optimumfilter.require_dataset('optimumfilter_real_down{}'.format(down),
-                                              dtype='f',
+                                              dtype='float',
                                               shape=of.real.shape)
                 optimumfilter.require_dataset('optimumfilter_imag_down{}'.format(down),
-                                              dtype='f',
+                                              dtype='float',
                                               shape=of.real.shape)
 
                 optimumfilter['optimumfilter_real_down{}'.format(down)][...] = of.real
                 optimumfilter['optimumfilter_imag_down{}'.format(down)][...] = of.imag
             else:
                 optimumfilter.require_dataset('optimumfilter_real',
-                                              dtype='f',
+                                              dtype='float',
                                               shape=of.real.shape)
                 optimumfilter.require_dataset('optimumfilter_imag',
-                                              dtype='f',
+                                              dtype='float',
                                               shape=of.real.shape)
 
                 optimumfilter['optimumfilter_real'][...] = of.real
@@ -603,7 +603,7 @@ class FeaturesMixin(object):
             sev['event'][...] = sev_event
             sev.require_dataset('fitpar',
                                 shape=(len(par),),
-                                dtype='f')
+                                dtype='float')
             sev['fitpar'][...] = par
 
             # description of the fitparameters (data=column_in_fitpar)

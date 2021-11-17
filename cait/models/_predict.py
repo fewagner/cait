@@ -16,6 +16,7 @@ def nn_predict(h5_path: str,
                keys: list = ['event'],
                chunk_size: int = 50,
                no_channel_idx_in_pred: bool = False,
+               use_prob=False,
                ):
     """
     Add predictions from a PyTorch model to the HDF5 set.
@@ -41,6 +42,7 @@ def nn_predict(h5_path: str,
     :param no_channel_idx_in_pred: If True, then we assume that there is no channel index in the data set from the HDF5
         file.
     :type no_channel_idx_in_pred: bool
+    :param use_prob: TODO
     """
 
     assert np.logical_xor(model is None, ptl_module is None or ptl_ckp_path is None), \
@@ -61,13 +63,23 @@ def nn_predict(h5_path: str,
         # add predictions to the h5 file
         data = f_handle.require_group(group_name)
         if no_channel_idx_in_pred:
-            data.require_dataset(name=prediction_name,
-                                 shape=(nmbr_events),
-                                 dtype=float)
+            if use_prob:
+                data.require_dataset(name=prediction_name,
+                                     shape=(nmbr_events, model.nmbr_out),
+                                     dtype=float)
+            else:
+                data.require_dataset(name=prediction_name,
+                                     shape=(nmbr_events),
+                                     dtype=float)
         else:
-            data.require_dataset(name=prediction_name,
-                                 shape=(nmbr_channels, nmbr_events),
-                                 dtype=float)
+            if use_prob:
+                data.require_dataset(name=prediction_name,
+                                     shape=(nmbr_channels, nmbr_events, model.nmbr_out),
+                                     dtype=float)
+            else:
+                data.require_dataset(name=prediction_name,
+                                     shape=(nmbr_channels, nmbr_events),
+                                     dtype=float)
 
         count = 0
         with tqdm(total=nmbr_events) as pbar:
@@ -80,11 +92,15 @@ def nn_predict(h5_path: str,
                                                           count:count + chunk_size]  # array of shape: (nmbr_events, nmbr_features)
 
                 # make predictions
-                prediction = model.predict(x).numpy()
-                if no_channel_idx_in_pred:
-                    data[prediction_name][count:count + chunk_size] = prediction.reshape(-1)
+                if use_prob:
+                    prediction = model.get_prob(x).numpy().reshape(-1, model.nmbr_out)
                 else:
-                    data[prediction_name][feature_channel, count:count + chunk_size] = prediction.reshape(-1)
+                    prediction = model.predict(x).numpy().reshape(-1)
+
+                if no_channel_idx_in_pred:
+                    data[prediction_name][count:count + chunk_size] = prediction
+                else:
+                    data[prediction_name][feature_channel, count:count + chunk_size] = prediction
 
                 count += chunk_size
                 pbar.update(chunk_size)
@@ -95,12 +111,15 @@ def nn_predict(h5_path: str,
                                                       count:count + chunk_size]  # array of shape: (nmbr_events, nmbr_features)
 
             # make predictions
-            prediction = model.predict(x).numpy()
+            if use_prob:
+                prediction = model.get_prob(x).numpy().reshape(-1, model.nmbr_out)
+            else:
+                prediction = model.predict(x).numpy().reshape(-1)
 
             if no_channel_idx_in_pred:
-                data[prediction_name][count:] = prediction.reshape(-1)
+                data[prediction_name][count:] = prediction
             else:
-                data[prediction_name][feature_channel, count:] = prediction.reshape(-1)
+                data[prediction_name][feature_channel, count:] = prediction
             pbar.update(chunk_size)
 
         data[prediction_name].attrs.create(name='unlabeled', data=0)

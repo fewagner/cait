@@ -17,7 +17,7 @@ from ..fit._saturation import logistic_curve_zero, A_zero
 from ..styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
 import warnings
-from ..fit._numerical_fit import array_fitter, fitfunc, template, shift
+from ..fit._numerical_fit import array_fit, fitfunc, arr_fit_rms
 import numba as nb
 
 
@@ -84,7 +84,7 @@ class FitMixin(object):
 
             h5f[type].require_dataset('fitpar',
                                       shape=(self.nmbr_channels, events.shape[1], 6),
-                                      dtype='f')
+                                      dtype='float')
 
             h5f[type]['fitpar'][:, :, :] = fitpar_event
 
@@ -114,7 +114,8 @@ class FitMixin(object):
         :type t0_bounds: 2-tuple of ints
         :param truncation_level: The pulse height Volt value at that the detector saturation starts.
         :type truncation_level: list of nmbr_channel floats
-        :param interval_restriction_factor: Indices not inside this interval are ignored from the fit.
+        :param interval_restriction_factor: Value between 0 and 1, the inverval of the event is restricted
+            around 1/4 by this factor.
         :type interval_restriction_factor: 2-tuple of ints
         :param verb: Verbal feedback about the progress.
         :type verb: bool
@@ -221,14 +222,105 @@ class FitMixin(object):
 
             print('Done.')
 
+    # # apply sev fit
+    # def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
+    #                     max_shift=20,
+    #                     truncation_level=None,
+    #                     processes=4, name_appendix='', group_name_appendix='',
+    #                     first_channel_dominant=False,
+    #                     use_this_array=None,
+    #                     use_saturation=False
+    #                     ):
+    #     """
+    #     TODO
+    #     """
+    #
+    #     if sample_length is None:
+    #         sample_length = 1000 / self.sample_frequency
+    #
+    #     print('Calculating Array Fit.')
+    #
+    #     if truncation_level is None:
+    #         truncation_level = [None for i in range(self.nmbr_channels)]
+    #
+    #     # open the dataset
+    #     with h5py.File(self.path_h5, 'r+') as f:
+    #
+    #         events = f[type]['event']
+    #         if use_this_array is None:
+    #             sev = np.array(f['stdevent' + group_name_appendix]['event'])
+    #         else:
+    #             use_this_array = np.array(use_this_array, dtype=np.float32)
+    #             assert use_this_array.shape == (self.nmbr_channels, self.record_length), \
+    #                 'Array has to have shape (nmbr_channels, record_length)!'
+    #             sev = use_this_array
+    #         t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
+    #
+    #         t0_start = np.array([0 for i in range(events.shape[1])])
+    #
+    #         assert not use_saturation or 'saturation' in f, 'For using the saturation you need to calculate ' \
+    #                                                         'the saturation curve first!'
+    #
+    #         # apply fit for all channels, save parameters
+    #         par = np.zeros([self.nmbr_channels, events.shape[1], 6])
+    #         for c in range(self.nmbr_channels):
+    #             if use_saturation:
+    #                 saturation_pars = np.array(f['saturation']['fitpar'][c], dtype=np.float32)
+    #             else:
+    #                 saturation_pars = None
+    #             if only_channels is None or c in only_channels:
+    #                 if first_channel_dominant and c != 0:
+    #                     t0 = par[0, :, 1]
+    #                 else:
+    #                     t0 = [None for i in range(events.shape[1])]
+    #                 with Pool(processes) as p:
+    #                     par[c, ...] = list(
+    #                         tqdm(p.imap(partial(array_fitter,
+    #                                             t=t, sev=sev[c],
+    #                                             record_length=self.record_length,
+    #                                             timebase_ms=1000 / self.sample_frequency, max_shift=max_shift,
+    #                                             truncation_level=truncation_level[c],
+    #                                             saturation_pars=saturation_pars),
+    #                                     zip(events[c], np.max(events[c], axis=1) - np.mean(events[c, :, :500], axis=1),
+    #                                         t0, t0_start)),
+    #                              total=events.shape[1]))
+    #
+    #         # write sev fit results to file
+    #         set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),
+    #                                              shape=par.shape,
+    #                                              dtype='float')
+    #         set_fitpar.attrs.create(name='pulse_height', data=0)
+    #         set_fitpar.attrs.create(name='onset', data=1)
+    #         set_fitpar.attrs.create(name='constant_coefficient', data=2)
+    #         set_fitpar.attrs.create(name='linear_coefficient', data=3)
+    #         set_fitpar.attrs.create(name='quadratic_coefficient', data=4)
+    #         set_fitpar.attrs.create(name='cubic_coefficient', data=5)
+    #
+    #         set_fitrms = f[type].require_dataset(name='arr_fit_rms{}'.format(name_appendix),
+    #                                              shape=(self.nmbr_channels, events.shape[1]),
+    #                                              dtype=float)
+    #
+    #         bound_samples = int(max_shift / 1000 * self.sample_frequency)
+    #
+    #         for c in range(self.nmbr_channels):
+    #             if only_channels is None or c in only_channels:
+    #                 set_fitpar[c, ...] = par[c]
+    #                 for i in range(len(events[0])):
+    #                     set_fitrms[c, i] = fitfunc(par[c, i], event=events[c, i],
+    #                                                t=t[bound_samples:-bound_samples], sev=sev[c],
+    #                                                timebase_ms=1000 / self.sample_frequency,
+    #                                                max_shift=max_shift,
+    #                                                truncation_flag=np.ones(events.shape[2], dtype=bool))
+    #
+    #         print('Done.')
+
     # apply sev fit
     def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
                         max_shift=20,
                         truncation_level=None,
                         processes=4, name_appendix='', group_name_appendix='',
                         first_channel_dominant=False,
-                        use_this_array=None,
-                        use_saturation=False
+                        use_this_array=None, blcomp=4, no_bl_when_sat=True,
                         ):
         """
         TODO
@@ -245,44 +337,28 @@ class FitMixin(object):
         # open the dataset
         with h5py.File(self.path_h5, 'r+') as f:
 
-            events = f[type]['event']
             if use_this_array is None:
-                sev = np.array(f['stdevent' + group_name_appendix]['event'])
+                sevs = f['stdevent{}'.format(group_name_appendix)]['event']
             else:
-                use_this_array = np.array(use_this_array, dtype=np.float32)
-                assert use_this_array.shape == (self.nmbr_channels, self.record_length), \
-                    'Array has to have shape (nmbr_channels, record_length)!'
-                sev = use_this_array
-            t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
-
-            t0_start = np.array([0 for i in range(events.shape[1])])
-
-            assert not use_saturation or 'saturation' in f, 'For using the saturation you need to calculate ' \
-                                                            'the saturation curve first!'
-
-            # apply fit for all channels, save parameters
-            par = np.zeros([self.nmbr_channels, events.shape[1], 6])
-            for c in range(self.nmbr_channels):
-                if use_saturation:
-                    saturation_pars = np.array(f['saturation']['fitpar'][c], dtype=np.float32)
-                else:
-                    saturation_pars = None
-                if only_channels is None or c in only_channels:
-                    if first_channel_dominant and c != 0:
-                        t0 = par[0, :, 1]
+                sevs = use_this_array
+            events = f[type]['event'][:, :, :]
+            record_length = events.shape[2]
+            t = (np.arange(0, record_length, dtype='f') - record_length / 4) * sample_length
+            bs = int(max_shift / sample_length)
+            par = np.zeros((events.shape[0], events.shape[1], 6))
+            with Pool(processes) as p:
+                for c in range(events.shape[0]):
+                    print('Fitting Channel: ', c)
+                    if c == 0 or not first_channel_dominant:
+                        fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
+                                     bs=bs, no_bl_when_sat=no_bl_when_sat)
+                        par[c] = list(tqdm(p.imap(fh, zip(events[c], [None for i in range(events.shape[1])])),
+                                           total=events.shape[1]))
                     else:
-                        t0 = [None for i in range(events.shape[1])]
-                    with Pool(processes) as p:
-                        par[c, ...] = list(
-                            tqdm(p.imap(partial(array_fitter,
-                                                t=t, sev=sev[c],
-                                                record_length=self.record_length,
-                                                timebase_ms=1000 / self.sample_frequency, max_shift=max_shift,
-                                                truncation_level=truncation_level[c],
-                                                saturation_pars=saturation_pars),
-                                        zip(events[c], np.max(events[c], axis=1) - np.mean(events[c, :, :500], axis=1),
-                                            t0, t0_start)),
-                                 total=events.shape[1]))
+                        fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
+                                     bs=bs, no_bl_when_sat=no_bl_when_sat)
+                        par[c] = list(tqdm(p.imap(fh, zip(events[c], par[0, :, 1])),
+                                           total=events.shape[1]))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),
@@ -297,19 +373,19 @@ class FitMixin(object):
 
             set_fitrms = f[type].require_dataset(name='arr_fit_rms{}'.format(name_appendix),
                                                  shape=(self.nmbr_channels, events.shape[1]),
-                                                 dtype='float')
+                                                 dtype=float)
 
-            bound_samples = int(max_shift / 1000 * self.sample_frequency)
+            bound_samples = int(max_shift / sample_length)
+            A = np.empty((record_length - 2*bound_samples, 1 + blcomp), dtype='f')
+            for i in range(blcomp):
+                A[:, i + 1] = t[bound_samples:-bound_samples] ** i
 
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
                     set_fitpar[c, ...] = par[c]
-                    for i in range(len(events[0])):
-                        set_fitrms[c, i] = fitfunc(par[c, i], event=events[c, i],
-                                                   t=t[bound_samples:-bound_samples], sev=sev[c],
-                                                   timebase_ms=1000 / self.sample_frequency,
-                                                   max_shift=max_shift,
-                                                   truncation_flag=np.ones(events.shape[2], dtype=bool))
+                    for i in range(events.shape[0]):
+                        set_fitrms[c, i] = arr_fit_rms(par[c, i, :2 + blcomp], A, events[c, i, bound_samples:-bound_samples],
+                                                       sevs[c], bound_samples)
 
             print('Done.')
 
@@ -331,10 +407,10 @@ class FitMixin(object):
             nmbr_bl = len(events['event'][0])
             events.require_dataset('fit_coefficients',
                                    shape=(self.nmbr_channels, nmbr_bl, 4),
-                                   dtype='f')
+                                   dtype=float)
             events.require_dataset('fit_rms',
                                    shape=(self.nmbr_channels, nmbr_bl),
-                                   dtype='f')
+                                   dtype=float)
             bl_temp = baseline_template_cubic
 
             t = np.linspace(0, self.record_length - 1, self.record_length)
@@ -347,7 +423,12 @@ class FitMixin(object):
                     ev = events['event'][c, i]
                     if down > 1:
                         ev = np.mean(ev.reshape(int(len(ev) / down), down), axis=1)
-                    coeff, _ = curve_fit(bl_temp, t, ev)
+
+                    coeff = np.polyfit(x=t, y=ev, deg=3)
+                    coeff = np.flip(coeff)
+
+                    # coeff, _ = curve_fit(bl_temp, t, ev)
+
                     rms = get_rms(bl_temp(t, *coeff), ev)
 
                     # save fit coefficients in hdf5

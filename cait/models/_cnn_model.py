@@ -1,14 +1,4 @@
 import numpy as np
-import cait as ai
-import os
-from pytorch_lightning import Trainer
-from torchvision import transforms
-import h5py
-from cait.datasets import RemoveOffset, Normalize, DownSample, ToTensor, CryoDataModule
-from cait.models import LSTMModule, nn_predict
-from pytorch_lightning.callbacks import ModelCheckpoint
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import torch.nn.functional as F
 import torch
 from pytorch_lightning.core.lightning import LightningModule
@@ -118,10 +108,14 @@ class CNNModule(LightningModule):
         else:
             return optimizer
 
-    def predict(self, sample):
-        """
-        TODO
-        """
+    def get_prob(self, sample):
+
+        # to tensor
+        for key in sample.keys():
+            try:
+                sample[key] = torch.from_numpy(sample[key]).float()
+            except:
+                pass
 
         # if no batch make batch size 1
         for k in sample.keys():
@@ -140,28 +134,32 @@ class CNNModule(LightningModule):
                     sample[key] = (sample[key] - min) / (max - min)
             elif self.norm_type == 'indiv_minmax':
                 for key in self.norm_vals.keys():
-                    min, max = np.min(sample[key], axis=1, keepdims=True), np.max(sample[key], axis=1, keepdims=True)
-                    sample[key] = (sample[key] - min) / (max - min)
+                    min, max = torch.min(sample[key], dim=1, keepdim=True), torch.max(sample[key], dim=1, keepdim=True)
+                    sample[key] = (sample[key] - min.values) / (max.values - min.values)
             else:
                 raise NotImplementedError('This normalization type is not implemented.')
 
         # downsample
         if self.down_keys is not None:
             for key in self.down_keys:
-                sample[key] = np.mean(sample[key].
+                sample[key] = torch.mean(sample[key].
                                       reshape(len(sample[key]), int(len(sample[key][1]) / self.down), self.down),
-                                      axis=2)
-
-        # to tensor
-        for key in sample.keys():
-            sample[key] = torch.from_numpy(sample[key]).float()
+                                      dim=2)
 
         # put features together
         x = torch.cat(tuple([sample[k] for k in self.feature_keys]), dim=1)
         x = x.to(self.device_name)
         out = self(x).detach()
 
-        # put the decision rule
+        return out
+
+
+    def predict(self, sample):
+        """
+        TODO
+        """
+
+        out = self.get_prob(sample)
         out = torch.argmax(out, dim=1)  # give back the label with highest value
 
         return out

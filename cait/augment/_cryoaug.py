@@ -13,27 +13,27 @@ from ..data import get_cc_noise
 
 def L2(x):
     """
-    TODO
+    Calculate the L2 norm of a vector, or set of vectors.
 
-    :param x:
-    :type x:
-    :return:
-    :rtype:
+    :param x: The vector or set of vectors.
+    :type x: d-dim array
+    :return: The L2 norm(s).
+    :rtype: (d-1)-dim array
     """
     retval = np.mean(np.abs(x) ** 2, axis=-1)
     return retval
 
 
-def unfold(dict, idx):
+def unfold(dict: dict, idx: int):
     """
-    TODO
+    Pick from a dictionary that has arrays as values the i'th index for each key, and put it together to a new dict.
 
-    :param dict:
-    :type dict:
-    :param idx:
-    :type idx:
-    :return:
-    :rtype:
+    :param dict: The dictionary with array as values.
+    :type dict: dict
+    :param idx: The index which we want to take from the value-arrays.
+    :type idx: int
+    :return: The new, unfold dictionary
+    :rtype: dict
     """
     new_dict = {}
     for k, v in zip(dict.keys(), dict.values()):
@@ -50,12 +50,10 @@ def unfold(dict, idx):
 
 def plot_ev(event):
     """
-    TODO
+    Plot an event as an icon (small picture matrix) and with a recursion plot.
 
-    :param event:
-    :type event:
-    :return:
-    :rtype:
+    :param event: The event that we want to plot.
+    :type event: 1d array
     """
     plt.close()
     plt.subplot(1, 2, 1)
@@ -69,17 +67,20 @@ def plot_ev(event):
 
 def plot_events(event_array, t=None, t_unit='s', savepath=None, show=True, text=None):
     """
-    TODO
+    Plot multiple events together in a subplot.
 
-    :param event_array:
-    :type event_array:
-    :param t:
-    :type t:
-    :param t_unit:
-    :type t_unit:
-    TODO
-    :return:
-    :rtype:
+    :param event_array: The events to plot. First axis is the event index, second the sample index.
+    :type event_array: 2d array
+    :param t: The time axis. Has to have same length as the events.
+    :type t: 1d array
+    :param t_unit: The units of the time array, for the axis label, e.g. s or ms.
+    :type t_unit: str
+    :param savepath: If given, the plot is saved at this path.
+    :type savepath: str
+    :param show: Show the plot.
+    :type show: bool
+    :param text: Optional, these texts will be shown next to the events.
+    :type text: list of str
     """
     nmbr_events = event_array.shape[0]
     assert text is None or len(text) == nmbr_events, 'The list of text labels must be as long as the number of events!'
@@ -127,16 +128,16 @@ def plot_events(event_array, t=None, t_unit='s', savepath=None, show=True, text=
 
 def icon(event, size=64, alpha=1):
     """
-    TODO
+    Get a matrix with a small, quadratic plot of the event.
 
-    :param event:
-    :type event:
-    :param size:
-    :type size:
-    :param alpha:
-    :type alpha:
-    :return:
-    :rtype:
+    :param event: The event to plot.
+    :type event: 1d array
+    :param size: The size of the returned matrix in pixel.
+    :type size: int
+    :param alpha: Should be between 0 and 1, the transparency of single sample points from the event.
+    :type alpha: float
+    :return: The icon plot.
+    :rtype: 2d array
     """
     img = np.zeros(shape=(size, size), dtype=float)
     xd = np.arange(0, event.shape[0], 1) / event.shape[0] * (size - 1)
@@ -153,14 +154,14 @@ def icon(event, size=64, alpha=1):
 
 def recursion(event, size=64):
     """
-    TODO
+    Get a matrix with a recursion plot.
 
-    :param event:
-    :type event:
-    :param size:
-    :type size:
-    :return:
-    :rtype:
+    :param event: The event to plot.
+    :type event: 1d array
+    :param size: The size of the returned matrix in pixel.
+    :type size: int
+    :return: The recursion plot.
+    :rtype: 2d array
     """
     img = np.zeros(shape=(size, size))
     event = np.mean(event.reshape((size, int(event.shape[0] / size))), axis=1)
@@ -176,16 +177,16 @@ def recursion(event, size=64):
 
 def temp_rise(t, t0, k):
     """
-    TODO
+    Template of a temperature rise event. This is a linear rise, starting at a point t0.
 
-    :param t:
-    :type t:
-    :param t0:
-    :type t0:
-    :param k:
-    :type k:
-    :return:
-    :rtype:
+    :param t: The time grid, in
+    :type t: 1d array
+    :param t0: The position on the time grid, in the same units as the time grid.
+    :type t0: float
+    :param k: The rise parameter, linear factor to the time grid.
+    :type k: float
+    :return: The template, evaluated on the time grid.
+    :rtype: 1d array
     """
     ev = np.zeros(t.shape[0])
     ev[t > t0] = k * (t[t > t0] - t0)
@@ -194,18 +195,18 @@ def temp_rise(t, t0, k):
 
 def temp_spike(t, t0, h, w):
     """
-    TODO
+    A temperature spike template.
 
-    :param t:
-    :type t:
-    :param t0:
-    :type t0:
-    :param h:
-    :type h:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param t: The time grid, in
+    :type t: 1d array
+    :param t0: The position on the time grid, in the same units as the time grid.
+    :type t0: float
+    :param h: The height of the spike.
+    :type h: float
+    :param w: The width of the spike, same units as time grid.
+    :type w: float
+    :return: The template, evaluated on the time grid.
+    :rtype: 1d array
     """
     ev = np.zeros(t.shape[0])
     ev[np.logical_and(t >= t0, t <= t0 + w)] += h
@@ -214,16 +215,16 @@ def temp_spike(t, t0, h, w):
 
 def temp_square(t, h, ivs):
     """
-    TODO
+    The template of a square wave.
 
-    :param t:
-    :type t:
-    :param h:
-    :type h:
-    :param ivs:
-    :type ivs:
-    :return:
-    :rtype:
+    :param t: The time grid, in
+    :type t: 1d array
+    :param h: The height of the square wave.
+    :type h: float
+    :param ivs: The intervals that are elevated from the baseline level, by height.
+    :type ivs: list of 2-tuples
+    :return: The template, evaluated on the time grid.
+    :rtype: 1d array
     """
     ev = np.zeros(t.shape[0])
     for iv in ivs:
@@ -233,18 +234,18 @@ def temp_square(t, h, ivs):
 
 def temp_jump(t, t0, h, w):
     """
-    TODO
+    The template of a squid jump.
 
-    :param t:
-    :type t:
-    :param t0:
-    :type t0:
-    :param h:
-    :type h:
-    :param w:
-    :type w:
-    :return:
-    :rtype:
+    :param t: The time grid, in
+    :type t: 1d array
+    :param t0: The position on the time grid, in the same units as the time grid.
+    :type t0: float
+    :param h: The height of the squid jump.
+    :type h: float
+    :param w: The width of the jump rise/fall transition.
+    :type w: float
+    :return: The template, evaluated on the time grid.
+    :rtype: 1d array
     """
     ev = np.zeros(t.shape[0])
     if h > 0:
@@ -262,27 +263,31 @@ def temp_jump(t, t0, h, w):
 
 class Distribution:
     """
-    TODO
+    A base class to sample from distributions.
     """
 
     def sample(self, size, **kwargs):
         """
-        TODO
+        Draw a sample from the distribution.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The sample size.
+        :type size: int
         """
         raise NotImplemented
 
 
 class DefaultPulseHeights(Distribution):
     """
-    TODO
+    A default distribution for pulse heights. This is an overlap of a uniform and an exponential distribution.
 
+    :param lamb: The scale parameter of the exponential distribution.
+    :type lamb: float
+    :param mini: The minimal height of the pulses from the uniform distribution.
+    :type mini: float
+    :param maxi: The maximal height of the pulses from the uniform distribution.
+    :type maxi: float
+    :param p: Value between 0 and 1, percent of samples that are drawn from the exponential distribution.
+    :type p: float
     """
 
     def __init__(self, lamb=0.2, mini=0, maxi=10, p=0.5):
@@ -293,14 +298,12 @@ class DefaultPulseHeights(Distribution):
 
     def sample(self, size, **kwargs):
         """
-        TODO
+        Draw a sample from the distribution.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The sample size.
+        :type size: int
+        :return: The sampled pulse heights.
+        :rtype: 1d float array
         """
         pulse_height = np.empty(size, dtype=float)
         rvals = np.random.uniform(size=size)
@@ -312,8 +315,14 @@ class DefaultPulseHeights(Distribution):
 
 class DefaultDrifts(Distribution):
     """
-    TODO
+    A default distribution for drifts. These are uniform drifts in all coefficients of the cubic polynomial.
 
+    :param resolution: The scale parameter of all normal distributions.
+    :type resolution: float
+    :param res_min: In case no resolution was handed, the resolution is uniformly sampled between res_min and res_max.
+    :type res_min: float
+    :param res_max: In case no resolution was handed, the resolution is uniformly sampled between res_min and res_max.
+    :type res_max: float
     """
 
     def __init__(self, resolution=None, res_min=0.0005, res_max=0.001):
@@ -323,14 +332,14 @@ class DefaultDrifts(Distribution):
 
     def sample(self, size, **kwargs):
         """
-        TODO
+        Draw a sample from the distribution.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The sample size.
+        :type size: int
+        :keyword resolution: If handed, this is used instead of the resolution that was handed at initialization.
+        :type resolution: float
+        :return: The drift parameters: offsets, linear_drifts, quadratic_drifts, cubic_drifts.
+        :rtype: list of 4 1d arrays
         """
         if 'resolution' in kwargs:
             resolution = kwargs['resolution']
@@ -353,21 +362,31 @@ class DefaultDrifts(Distribution):
 
 class EventDefinition:
     """
-    TODO
+    A base class for defining events.
+
+    Create your own event definitions by interiting from this base class.
     """
 
     def get_class_pars(self, label, size, **kwargs):
         """
-        TODO
+        Get the parameters of an event class, suitable to use with the ParameterSampler.
 
-        :param label:
-        :type label:
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param label: The name of the label for which we want to get the parameters.
+        :type label: str
+        :param size: The number of events we simulate.
+        :type size: int
+        :return: List of the following values:
+            - Pileups (int): The number of pile up events on the trace.
+            - Pulse shape number (int): The index on the pulse shape that is used for simulating the event. None, if
+            there is no event.
+            - Decay (bool): Add a decaying baseline.
+            - Rise (bool): Adds a temperature rise.
+            - Spike (bool): Adds an electric spike.
+            - Jump (bool): Adds a squid jump.
+            - Pulse reset (bool): Adds a squid reset to the pulse shape.
+            - Tail (bool): Adds a tail to the pulse shape.
+            - Onset interval (1d array, shape 2): The interval with which the onset is sampled.
+        :rtype: list
         """
         raise NotImplemented
 
@@ -390,22 +409,44 @@ class EventDefinition:
 
 class DefaultEventDefinition(EventDefinition):
     """
-    TODO
+    The default definitions for event classes.
 
+    Implemented classes:
+        - Event Pulse
+        - Noise
+        - Decaying Baseline
+        - Temperature Rise
+        - Spike
+        - Squid Jump
+        - Reset
+        - Cosinus Tail
+        - Decaying Baseline with Event Pulse
+        - Decaying Baseline with Tail Event
+        - Pile Up
+        - Early or late Trigger
+        - Carrier Event
     """
 
     def get_class_pars(self, label, size, **kwargs):
         """
-        TODO
+        Get the parameters of an event class, suitable to use with the ParameterSampler.
 
-        :param label:
-        :type label:
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param label: The name of the label for which we want to get the parameters.
+        :type label: str
+        :param size: The number of events we simulate.
+        :type size: int
+        :return: List of the following values:
+            - Pileups (int): The number of pile up events on the trace.
+            - Pulse shape number (int): The index on the pulse shape that is used for simulating the event. None, if
+            there is no event.
+            - Decay (bool): Add a decaying baseline.
+            - Rise (bool): Adds a temperature rise.
+            - Spike (bool): Adds an electric spike.
+            - Jump (bool): Adds a squid jump.
+            - Pulse reset (bool): Adds a squid reset to the pulse shape.
+            - Tail (bool): Adds a tail to the pulse shape.
+            - Onset interval (1d array, shape 2): The interval with which the onset is sampled.
+        :rtype: list
         """
         if label == 'Event Pulse':
             pileups = np.ones(size)
@@ -565,8 +606,12 @@ class DefaultEventDefinition(EventDefinition):
 
 class ParameterSampler:
     """
-    TODO
+    A class to sample parameters of different event types and evaluate them as numerical arrays.
 
+    :param record_length: The record length of sample events.
+    :type record_length: int
+    :param sample_frequency: The sample frequency, used for evaluating time grids.
+    :type sample_frequency: int
     """
 
     def __init__(self, record_length, sample_frequency):
@@ -583,7 +628,7 @@ class ParameterSampler:
             'decay_shapes': None,
             'decay_shapes_probs': None,
             'saturation_pars': None,
-            'onset_iv': None,
+            # 'onset_iv': None,
             'drift_pars': DefaultDrifts(),
             'nps': None,
             'event_definition': DefaultEventDefinition(),
@@ -595,12 +640,32 @@ class ParameterSampler:
 
     def set_args(self, **kwargs):
         """
-        TODO
+        Set any of the arguments stored in the class.
 
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :keyword ph_dist: The distribution from which the pulse heights are sampled.
+        :type ph_dist: Distribution
+        :keyword resolution: The baseline resolution.
+        :type resolution: float
+        :keyword pulse_shapes: List of the pulse shape parameters of multiple pulse shapes.
+        :type pulse_shapes: list
+        :keyword pulse_shapes_probs: The probabilities to pick individual pulse shaped.
+            Must have same length as the pulse shaepes list and sum to one.
+        :type pulse_shapes_probs: list
+        :keyword decay_shapes: List of the decay shape parameters of multiple decay shapes. A decay shape is a pulse shape,
+            but shifted to the far left, such that  only its decay is visible in the record window.
+        :type decay_shapes: list
+        :keyword decay_shapes_probs: The probabilities to pick individual decay shapes.
+            Must have same length as the pulse shapes list and sum to one.
+        :type decay_shapes_probs: list
+        :keyword saturation_pars: The parameters of a generalized logistics curve, which serves as an approximation of
+            the saturation.
+        :type saturation_pars: list
+        :keyword drift_pars: The distribution from which the drifts are sampled.
+        :type drift_pars: Distribution
+        :keyword nps: The noise power spectrum that is used for the baseline simulation.
+        :type nps: 1d array
+        :keyword event_definition: The definitions of the event classes.
+        :type event_definition: EventDefinition
         """
         for arg, key in zip(kwargs.values(), kwargs.keys()):
             self.args[key] = arg
@@ -614,24 +679,26 @@ class ParameterSampler:
                   saturation=True,
                   verb=True):
         """
-        TODO
+        Get simulated events of a specified label.
 
-        :param label:
-        :type label:
-        :param size:
-        :type size:
-        :param rasterize:
-        :type rasterize:
-        :param poly:
-        :type poly:
-        :param square:
-        :type square:
-        :param saturation:
-        :type saturation:
-        :param verb:
-        :type verb:
-        :return:
-        :rtype:
+        :param label: The label of which we want to create an event.
+        :type label: str
+        :param size: The number of events we want to create.
+        :type size: int
+        :param rasterize: Discretize the y axis in the 16 bit precision sampling of the digitizer.
+        :type rasterize: bool
+        :param poly: Include polynomial drifts in the noise baselines, as we observe it in real measured events.
+        :type poly: bool
+        :param square: Include square waves in the noise baselines, this originates from jumps between operation points.
+        :type square: bool
+        :param saturation: Include saturation in the simulation.
+        :type saturation: bool
+        :param verb: Print progess bars of the simulation.
+        :type verb: bool
+        :return: List of the following properties:
+            - List of the simulated events, evaluated on a time grid.
+            - An info dictionary. Contains parameters that were used in the simulation.
+        :rtype: list
         """
 
         info = {}
@@ -822,14 +889,23 @@ class ParameterSampler:
 
     def sample_pulse_par(self, size=1, **kwargs):
         """
-        TODO
+        Sample a parameters for the pulse shape model.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :keyword t0: The onset values of the sampled events, optional. If not given, this value is sampled from the
+            args.
+        :type t0: list
+        :keyword pulse_height: The pulse height values of the sampled events, optional. If not given, this value is sampled from the
+            args.
+        :type pulse_height: list
+        :keyword ps_nmbr: The number of the pulse shape in the args that is used for these events, optional. If not given,
+            this value is sampled from the pulse_shapes_probs in args.
+        :type ps_nmbr: int
+        :return: List of the following two dictionaries:
+            - Parameters. The list of parameters (6) for the pulse shape model.
+            - Info. The parameter that were used in the simulation. In this case, the true pulse heights.
+        :rtype: list
         """
 
         pars = {}
@@ -881,14 +957,23 @@ class ParameterSampler:
 
     def sample_noise(self, size=1, **kwargs):
         """
-        TODO
+        Sample a parameters for an artificial noise power spectrum.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :keyword t0: The onset values of the sampled events, optional. If not given, this value is sampled from the
+            args.
+        :type t0: list
+        :keyword pulse_height: The pulse height values of the sampled events, optional. If not given, this value is sampled from the
+            args.
+        :type pulse_height: list
+        :keyword ps_nmbr: The number of the pulse shape in the args that is used for these events, optional. If not given,
+            this value is sampled from the pulse_shapes_probs in args.
+        :type ps_nmbr: int
+        :return: List of the following two dictionaries:
+            - Parameters. The list of parameters (6) for the pulse shape model.
+            - Info. The parameter that were used in the simulation. In this case, the true pulse heights.
+        :rtype: list
         """
 
         pars = {}

@@ -473,15 +473,18 @@ class EventInterface:
 
             print('Added the sev fit parameters.')
 
-    def load_arr_par(self, name_appendix='', sample_length=0.04, group_name_appendix: str = ''):
+    def load_arr_par(self, name_appendix='', group_name_appendix: str = '', use_this_array=None):
         # todo
 
         # save this for loading of the parameters when viewing
         self.arr_name_appendix = name_appendix
-        with h5py.File(self.path_h5, 'r') as f:
-            self.stdevents = np.array(f['stdevent' + group_name_appendix]['event'])
+        if use_this_array is not None:
+            self.stdevents = np.array(use_this_array)
+        else:
+            with h5py.File(self.path_h5, 'r') as f:
+                self.stdevents = np.array(f['stdevent' + group_name_appendix]['event'])
 
-            print('Added the sev fit parameters.')
+        print('Added the array.')
 
     def load_saturation_par(self):
         """
