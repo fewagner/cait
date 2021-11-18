@@ -2,7 +2,6 @@
 
 import numpy as np
 
-
 # functions
 
 def controlpulse_stability(hours_ev, cphs=None, hours_cp=None, significance=3,
