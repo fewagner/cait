@@ -9,4 +9,6 @@ __all__ = ['H5CryoData',
            'RemoveOffset',
            'Normalize',
            'DownSample',
-           'ToTensor']
+           'ToTensor',
+           'SingleMinMaxNorm',
+           ]
