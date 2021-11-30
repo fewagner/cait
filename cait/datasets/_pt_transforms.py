@@ -154,3 +154,26 @@ class SingleMinMaxNorm(object):
         for key in self.keys:
             sample[key] = (sample[key] - np.min(sample[key]))/(np.max(sample[key]) - np.min(sample[key]))
         return sample
+
+class PileUpDownSample(object):
+    """TODO"""
+
+    def __init__(self, keys, down):
+        self.keys = keys
+        self.down = down
+
+    def __call__(self, sample):
+        for key in self.keys:
+            s = sample[key].shape
+            l = len(s)
+            if l == 1:
+                sample[key] = np.mean(sample[key].
+                                      reshape(-1, self.down),
+                                      axis=-1)
+            elif l == 2:
+                sample[key] = np.mean(sample[key].
+                                      reshape(s[0], -1, self.down),
+                                      axis=-1)
+            else:
+                raise NotImplemented
+        return sample

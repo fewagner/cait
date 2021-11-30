@@ -11,4 +11,5 @@ __all__ = ['H5CryoData',
            'DownSample',
            'ToTensor',
            'SingleMinMaxNorm',
+           'PileUpDownSample',
            ]

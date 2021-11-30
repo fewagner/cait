@@ -4,6 +4,7 @@ from ._transformer_model import *
 from ._predict import *
 from ._model_handler import *
 from ._cnn_model import *
+from ._separation_lstm import *
 
 __all__ = ['LSTMModule',
            'RNNModule',
@@ -11,4 +12,5 @@ __all__ = ['LSTMModule',
            'TransformerModule',
            'nn_predict',
            'mh_predict',
+           'SeparationLSTM',
            ]

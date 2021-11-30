@@ -889,7 +889,7 @@ class ParameterSampler:
 
     def sample_pulse_par(self, size=1, **kwargs):
         """
-        Sample a parameters for the pulse shape model.
+        Sample the parameters for the pulse shape model.
 
         :param size: The number of events we simulate.
         :type size: int
@@ -903,7 +903,7 @@ class ParameterSampler:
             this value is sampled from the pulse_shapes_probs in args.
         :type ps_nmbr: int
         :return: List of the following two dictionaries:
-            - Parameters. The list of parameters (6) for the pulse shape model.
+            - Parameters. The parameters (6) for the pulse shape model.
             - Info. The parameter that were used in the simulation. In this case, the true pulse heights.
         :rtype: list
         """
@@ -957,22 +957,15 @@ class ParameterSampler:
 
     def sample_noise(self, size=1, **kwargs):
         """
-        Sample a parameters for an artificial noise power spectrum.
+        Sample the parameters for an artificial noise power spectrum.
 
         :param size: The number of events we simulate.
         :type size: int
-        :keyword t0: The onset values of the sampled events, optional. If not given, this value is sampled from the
-            args.
-        :type t0: list
-        :keyword pulse_height: The pulse height values of the sampled events, optional. If not given, this value is sampled from the
-            args.
-        :type pulse_height: list
-        :keyword ps_nmbr: The number of the pulse shape in the args that is used for these events, optional. If not given,
-            this value is sampled from the pulse_shapes_probs in args.
-        :type ps_nmbr: int
+        :keyword resolution: The detector resolution. If handed, the attribute resolution will be ignored.
+        :type resolution: float
         :return: List of the following two dictionaries:
-            - Parameters. The list of parameters (6) for the pulse shape model.
-            - Info. The parameter that were used in the simulation. In this case, the true pulse heights.
+            - Parameters. The parameters for the noise power spectrum.
+            - Info. The parameter that were used in the simulation.
         :rtype: list
         """
 
@@ -1030,14 +1023,14 @@ class ParameterSampler:
 
     def sample_drift_par(self, size=1, **kwargs):
         """
-        TODO
+        Sample the parameters for baseline drift parameters.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :keyword resolution: The detector resolution. If handed, the attribute resolution will be ignored.
+        :type resolution: float
+        :return: The generated parameters.
+        :rtype: dict
         """
         pars = {}
 
@@ -1054,14 +1047,12 @@ class ParameterSampler:
 
     def sample_saturation(self, size=1, **kwargs):
         """
-        TODO
+        Sample the parameters for a saturation curve.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :return: The generated parameters.
+        :rtype: dict
         """
         pars = {}
 
@@ -1100,20 +1091,20 @@ class ParameterSampler:
 
     def sample_decay(self, min=5, max=30, size=1, t0=None, **kwargs):
         """
-        TODO
+        Sample the parameters for a decaying baseline event.
 
-        :param min:
-        :type min:
-        :param max:
-        :type max:
-        :param size:
-        :type size:
-        :param t0:
-        :type t0:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param min: The minimal pulse height of the pulse that creates the decaying baseline.
+        :type min: float
+        :param max:  The maximal pulse height of the pulse that creates the decaying baseline.
+        :type max: float
+        :param size: The number of events we simulate.
+        :type size: int
+        :param t0: The onset times of all simulated events - these should be outside (before) the record window!
+        :type t0: list
+        :keyword minheight: The minimal height of the decay at left window border.
+        :type minheight: flaot
+        :return: The generated parameters.
+        :rtype: dict
         """
 
         pars = {}
@@ -1179,15 +1170,15 @@ class ParameterSampler:
 
     def sample_rise(self, size=1, t0=None):
         """
-        TODO
+        Sample the parameters for a temperature rise event.
 
-        :param size:
-        :type size:
-        :param t0:
-        :type t0:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :return: The generated parameters.
+        :rtype: dict
         """
+
+
         pars = {}
 
         if t0 is None:
@@ -1200,14 +1191,12 @@ class ParameterSampler:
 
     def sample_spike(self, size=1, t0=None):
         """
-        TODO
+        Sample the parameters for a electrical spike event.
 
-        :param size:
-        :type size:
-        :param t0:
-        :type t0:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :return: The generated parameters.
+        :rtype: dict
         """
         pars = {}
 
@@ -1223,15 +1212,16 @@ class ParameterSampler:
 
     def sample_square(self, size=1, **kwargs):
         """
-        TODO
+        Sample the parameters for a rectangular noise event.
 
-        :param size:
-        :type size:
-        :param kwargs:
-        :type kwargs:
-        :return:
-        :rtype:
+        :param size: The number of events we simulate.
+        :type size: int
+        :keyword resolution: The detector resolution.
+        :type resolution: list
+        :return: The generated parameters.
+        :rtype: dict
         """
+
         pars = {}
 
         if 'resolution' in kwargs:
@@ -1257,18 +1247,18 @@ class ParameterSampler:
 
     def sample_jump(self, t0=None, w=None, h=None, size=1):
         """
-        TODO
+        Sample the parameters for a squid jump event.
 
-        :param t0:
-        :type t0:
-        :param w:
-        :type w:
-        :param h:
-        :type h:
-        :param size:
-        :type size:
-        :return:
-        :rtype:
+        :param t0: The onset time of the squid jump.
+        :type t0: list
+        :param w: The width of the rise/fall of the jump.
+        :type w: list
+        :param h: The height of the squid jump
+        :type h: list
+        :param size: The number of events we simulate.
+        :type size: int
+        :return: The generated parameters.
+        :rtype: dict
         """
         pars = {}
 
