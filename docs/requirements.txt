@@ -32,6 +32,6 @@ ipywidgets
 tqdm
 pandas
 plotly
-dash_html_components
-dash_core_components
 dash
+jupyter_dash
+ipywidgets

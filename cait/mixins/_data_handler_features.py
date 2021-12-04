@@ -335,7 +335,7 @@ class FeaturesMixin(object):
 
             print('{} SEV calculated.'.format(type))
 
-    def calc_of(self, down: int = 1, name_appendix: str = '', window=True):
+    def calc_of(self, down: int = 1, name_appendix: str = '', window: bool = True, use_this_sev: list = None):
         """
         Calculate the Optimum Filer from the NPS and the SEV.
 
@@ -348,11 +348,16 @@ class FeaturesMixin(object):
         :type name_appendix: string
         :param window: Include a window function to the standard event before building the filter.
         :type window: bool
+        TODO
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
-            stdevent_pulse = np.array([h5f['stdevent' + name_appendix]['event'][i]
-                                       for i in range(self.nmbr_channels)])
+            if use_this_sev is None:
+                stdevent_pulse = np.array([h5f['stdevent' + name_appendix]['event'][i]
+                                           for i in range(self.nmbr_channels)])
+            else:
+                stdevent_pulse = use_this_sev
+
             mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
 
             if down > 1:

@@ -701,3 +701,10 @@ class DataHandler(SimulateMixin,
         # TODO
         with h5py.File(self.path_h5, 'a') as h5f:
             pass
+
+    def record_window(self, ms=True):
+        # TODO
+        t = (np.arange(self.record_length) - self.record_length/4)/self.sample_frequency
+        if ms:
+            t *= 1000
+        return t
