@@ -256,17 +256,18 @@ class FitMixin(object):
             par = np.zeros((events.shape[0], events.shape[1], 6))
             with Pool(processes) as p:
                 for c in range(events.shape[0]):
-                    print('Fitting Channel: ', c)
-                    if c == 0 or not first_channel_dominant:
-                        fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
-                                     bs=bs, no_bl_when_sat=no_bl_when_sat)
-                        par[c] = list(tqdm(p.imap(fh, zip(events[c], [None for i in range(events.shape[1])])),
-                                           total=events.shape[1]))
-                    else:
-                        fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
-                                     bs=bs, no_bl_when_sat=no_bl_when_sat)
-                        par[c] = list(tqdm(p.imap(fh, zip(events[c], par[0, :, 1])),
-                                           total=events.shape[1]))
+                    if only_channels is None or c in only_channels:
+                        print('Fitting Channel: ', c)
+                        if c == 0 or not first_channel_dominant:
+                            fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
+                                         bs=bs, no_bl_when_sat=no_bl_when_sat)
+                            par[c] = list(tqdm(p.imap(fh, zip(events[c], [None for i in range(events.shape[1])])),
+                                               total=events.shape[1]))
+                        else:
+                            fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
+                                         bs=bs, no_bl_when_sat=no_bl_when_sat)
+                            par[c] = list(tqdm(p.imap(fh, zip(events[c], par[0, :, 1])),
+                                               total=events.shape[1]))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),
