@@ -431,9 +431,14 @@ class FeaturesMixin(object):
             events = f[type]['event']
             sev = np.array(f['stdevent' + name_appendix_group]['event'])
             nps = np.array(f['noise']['nps'])
+            if 'optimumfilter' + name_appendix_group in f:
+                transfer_function = np.array(f['optimumfilter' + name_appendix_group]['optimumfilter_real']) + \
+                                    1j * np.array(f['optimumfilter' + name_appendix_group]['optimumfilter_imag'])
+            else:
+                transfer_function = None
 
-            if 'of_ph' in f[type]:
-                del f[type]['of_ph']
+            if 'of_ph' + name_appendix_set in f[type]:
+                del f[type]['of_ph' + name_appendix_set]
 
             f[type].require_dataset(name='of_ph' + name_appendix_set,
                                     shape=(self.nmbr_channels, len(events[0])),
@@ -450,18 +455,21 @@ class FeaturesMixin(object):
                                                         hard_restrict=hard_restrict, down=down, window=window,
                                                         return_peakpos=True,
                                                         baseline_model=baseline_model,
-                                                        pretrigger_samples=pretrigger_samples)
+                                                        pretrigger_samples=pretrigger_samples,
+                                                        transfer_function=transfer_function[c])
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
                                                peakpos=peakpos,
                                                return_peakpos=False,
-                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
+                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
+                                               transfer_function=transfer_function[c])
                     else:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
                                                return_peakpos=False,
-                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
+                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
+                                               transfer_function=transfer_function[c])
 
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
@@ -473,17 +481,20 @@ class FeaturesMixin(object):
                                                     hard_restrict=hard_restrict, down=down, window=window,
                                                     return_peakpos=True,
                                                     baseline_model=baseline_model,
-                                                    pretrigger_samples=pretrigger_samples)
+                                                    pretrigger_samples=pretrigger_samples,
+                                                    transfer_function=transfer_function[c])
                 elif first_channel_dominant:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
                                            peakpos=peakpos, return_peakpos=False,
-                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
+                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
+                                           transfer_function=transfer_function[c])
                 else:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
                                            return_peakpos=False,
-                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples)
+                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
+                                           transfer_function=transfer_function[c])
                 f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
 
     # calc stdevent carrier

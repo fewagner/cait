@@ -673,6 +673,8 @@ class RdtMixin(object):
         with h5py.File(self.path_h5, 'r+') as f:
             met = f.require_group('metainfo')
             for name in metainfo.keys():
+                if name in met:
+                    del met[name]
                 met.create_dataset(name=name,
                                    data=metainfo[name])
 

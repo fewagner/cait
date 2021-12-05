@@ -291,7 +291,7 @@ class FitMixin(object):
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
                     set_fitpar[c, ...] = par[c]
-                    for i in range(events.shape[0]):
+                    for i in range(events.shape[1]):
                         set_fitrms[c, i] = arr_fit_rms(par[c, i, :2 + blcomp], A, events[c, i, bound_samples:-bound_samples],
                                                        sevs[c], bound_samples)
 
