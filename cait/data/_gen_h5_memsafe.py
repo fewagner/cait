@@ -129,27 +129,14 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     good_idx = []
 
+    detnmbrs = []
+
+    for r in tqdm(recs):
+        detnmbrs.append(r['detector_nmbr'])
+
+    # detnmbrs = np.array(detnmbrs)
+
     detnmbrs = np.array(recs['detector_nmbr'])
-
-    # detnmbrs = np.empty(nmbr_all_events)
-
-    # for idx in trange(0, nmbr_all_events, batch_size):
-    #     end = min(batch_size, nmbr_all_events - idx)
-    #     recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record, offset=idx*record.itemsize, count=end)
-    #     detnmbrs[idx:idx + end] = recs['detector_nmbr']
-    #     del recs
-
-    # for idx in trange(0, nmbr_all_events, 1):
-    #     recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=header, offset=idx*record.itemsize, count=1)
-    #     # print(recs['detector_nmbr'].shape)
-    #     detnmbrs[idx] = recs['detector_nmbr'][0]
-    #     # del recs
-
-    # for idx in trange(0, nmbr_all_events, batch_size):
-    #     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='c')
-    #     end = min(batch_size, nmbr_all_events - idx)
-    #     detnmbrs[idx:idx + end] = recs['detector_nmbr'][idx:idx + end]
-    #     del recs
 
     for c in channels:
         print(f'Event Counts Channel {c}: {np.sum(detnmbrs == c)}')
