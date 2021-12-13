@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 from multiprocessing import Pool
 from ..features._mp import calc_main_parameters, calc_additional_parameters
+from ..features._ph_corr import calc_correlated_ph
 from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
 from ..filter._of import get_amplitudes
@@ -866,3 +867,23 @@ class FeaturesMixin(object):
             cut_dataset[channel, ...] = values
 
         print('Included values.')
+
+    def calc_ph_correlated(self, type='events', dominant_channel=0):
+        # TODO
+
+        with h5py.File(self.path_h5, 'r+') as f:
+
+            print('CALCULATE CORRELATED PULSE HEIGHTS.')
+
+            nmbr_events = f[type]['event'].shape[1]
+
+            ph_corr = np.empty((self.nmbr_channels, nmbr_events), dtype=float)
+
+            for ev in range(nmbr_events):
+                ph_corr[:, ev] = calc_correlated_ph(f[type]['event'][:, ev])
+
+            set_ph_corr = f[type].require_dataset(name='ph_corr',
+                                                  shape=ph_corr.shape,
+                                                  dtype=float)
+
+            set_ph_corr[...] = ph_corr
