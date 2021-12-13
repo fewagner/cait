@@ -108,47 +108,46 @@ class CNNModule(LightningModule):
         else:
             return optimizer
 
-    def get_prob(self, sample, apply_trans=True):
+    def get_prob(self, sample):
 
-        if apply_trans:
-            # to tensor
-            for key in sample.keys():
-                try:
-                    sample[key] = torch.from_numpy(sample[key]).float()
-                except:
-                    pass
+        # to tensor
+        for key in sample.keys():
+            try:
+                sample[key] = torch.from_numpy(sample[key]).float()
+            except:
+                pass
 
-            # if no batch make batch size 1
-            for k in sample.keys():
-                if len(sample[k].shape) < 2:
-                    sample[k] = sample[k].reshape(1, -1)
+        # if no batch make batch size 1
+        for k in sample.keys():
+            if len(sample[k].shape) < 2:
+                sample[k] = sample[k].reshape(1, -1)
 
-            # normalize
-            if self.norm_vals is not None:
-                if self.norm_type == 'z':
-                    for key in self.norm_vals.keys():
-                        mean, std = self.norm_vals[key]
-                        sample[key] = (sample[key] - mean) / std
-                elif self.norm_type == 'minmax':
-                    for key in self.norm_vals.keys():
-                        min, max = self.norm_vals[key]
-                        sample[key] = (sample[key] - min) / (max - min)
-                elif self.norm_type == 'indiv_minmax':
-                    for key in self.norm_vals.keys():
-                        min, max = torch.min(sample[key], dim=1, keepdim=True), torch.max(sample[key], dim=1, keepdim=True)
-                        sample[key] = (sample[key] - min.values) / (max.values - min.values)
-                else:
-                    raise NotImplementedError('This normalization type is not implemented.')
+        # normalize
+        if self.norm_vals is not None:
+            if self.norm_type == 'z':
+                for key in self.norm_vals.keys():
+                    mean, std = self.norm_vals[key]
+                    sample[key] = (sample[key] - mean) / std
+            elif self.norm_type == 'minmax':
+                for key in self.norm_vals.keys():
+                    min, max = self.norm_vals[key]
+                    sample[key] = (sample[key] - min) / (max - min)
+            elif self.norm_type == 'indiv_minmax':
+                for key in self.norm_vals.keys():
+                    min, max = torch.min(sample[key], dim=1, keepdim=True), torch.max(sample[key], dim=1, keepdim=True)
+                    sample[key] = (sample[key] - min.values) / (max.values - min.values)
+            else:
+                raise NotImplementedError('This normalization type is not implemented.')
 
-            # downsample
-            if self.down_keys is not None:
-                for key in self.down_keys:
-                    sample[key] = torch.mean(sample[key].
-                                          reshape(len(sample[key]), int(len(sample[key][1]) / self.down), self.down),
-                                          dim=2)
+        # downsample
+        if self.down_keys is not None:
+            for key in self.down_keys:
+                sample[key] = torch.mean(sample[key].
+                                      reshape(len(sample[key]), int(len(sample[key][1]) / self.down), self.down),
+                                      dim=2)
 
-            # put features together
-            x = torch.cat(tuple([sample[k] for k in self.feature_keys]), dim=1)
+        # put features together
+        x = torch.cat(tuple([sample[k] for k in self.feature_keys]), dim=1)
         x = x.to(self.device_name)
         out = self(x).detach()
 
