@@ -18,4 +18,4 @@ __all__ = ['get_nps',
            'read_xy_file',
            'write_xy_file',
            'TestData',
-           'get_metadata']
+           'get_metainfo']
