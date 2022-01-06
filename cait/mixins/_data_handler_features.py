@@ -400,7 +400,7 @@ class FeaturesMixin(object):
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
                  chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 baseline_model='constant', pretrigger_samples=500):
+                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -424,9 +424,15 @@ class FeaturesMixin(object):
         :type first_channel_dominant: bool
         :param baseline_model: TODO
         :param pretrigger_samples: TODO
+        :param onset_to_dominant_channel: TODO, in samples
         """
 
         print('Calculating OF Heights.')
+
+        if onset_to_dominant_channel is None:
+            onset_to_dominant_channel = np.zeros(self.nmbr_channels)
+        assert len(onset_to_dominant_channel) == self.nmbr_channels, \
+            'onset_to_dominant_channel must have length nmbr_channels!'
 
         with h5py.File(self.path_h5, 'r+') as f:
             events = f[type]['event']
@@ -461,7 +467,7 @@ class FeaturesMixin(object):
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
-                                               peakpos=peakpos,
+                                               peakpos=peakpos + onset_to_dominant_channel[c],
                                                return_peakpos=False,
                                                baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                                transfer_function=transfer_function[c])

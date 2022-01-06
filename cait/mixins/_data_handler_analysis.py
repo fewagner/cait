@@ -401,7 +401,8 @@ class AnalysisMixin(object):
         :type poly_order: int
         :param only_channels: If set, the calibration is done only on the channels that are handed here.
         :type only_channels: list of ints or None
-        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter), 'sef' (standard event fit)
+        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter), 'sef' (standard event fit),
+            'arrf' (array fit)
             or 'true_ph' (in case of simulated events - here you probably want to hand pulser models as well).
             Test pulse heights and event heights are then estimated with this method for the calibration.
         :type method: string
@@ -472,6 +473,10 @@ class AnalysisMixin(object):
                 evhs = np.array(f['events']['sev_fit_par' + name_appendix_ev][:, :, 0])
                 if pulser_models is None:
                     tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
+            elif method == 'arrf':
+                evhs = np.array(f['events']['arr_fit_par' + name_appendix_ev][:, :, 0])
+                if pulser_models is None:
+                    tphs = np.array(f['testpulses']['arr_fit_par' + name_appendix_tp][:, :, 0])
             elif method == 'true_ph':
                 evhs = np.array(f['events']['true_ph'])
                 if pulser_models is None:

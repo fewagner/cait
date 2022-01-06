@@ -92,7 +92,7 @@ def array_fit(args, sev, t, blcomp, trunclv, bs, no_bl_when_sat):
                            args=(A, event_, sev, bs),
                            method="Powell").x[0]
         else:
-            res = t0
+            res = t0/(t[1] - t[0])
         A[:, 0] = doshift(sev, res)[bs:-bs]
         try:
             x = lstsqsol(A, event_)
@@ -111,7 +111,7 @@ def array_fit(args, sev, t, blcomp, trunclv, bs, no_bl_when_sat):
                            args=(A_, event_[truncflag_], sev[truncflag], bs),
                            method="Powell").x[0]
         else:
-            res = t0
+            res = t0/(t[1] - t[0])
         A_[:, 0] = doshift(sev, res)[bs:-bs][truncflag_]
         try:
             x = lstsqsol(A_, event_[truncflag_])

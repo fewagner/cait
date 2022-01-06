@@ -109,7 +109,7 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     :param hard_restrict: bool, The maximum search is restricted to 20-30% of the record window.
     :param down: int, a factor by which the events and filter is downsampled before application
     :param window: bool, if activated the array is multiplied with a window function befor filtering
-    :param peakpos: array of length nmbr_events,
+    :param peakpos: array of length nmbr_events, TODO
     :param return_peakpos: bool, if true a second array is returned, namely the peak positions within the arrays
     :param flexibility: int, in case a peak position is provided, the maximum search can still deviate by this
         amount of samples
