@@ -15,6 +15,8 @@ def get_record_window_vdaq(path,
                       header_size,
                       sample_duration=0.00004,
                       down=1,
+                      bits=16,
+                      vswing=39.3216,
                       ):
     """
     Get a record window from a stream *.bin file.
@@ -30,7 +32,7 @@ def get_record_window_vdaq(path,
                         count=record_length,
                         dtype=dtype)
 
-    event = convert_to_V(event[key])
+    event = convert_to_V(event[key], bits=bits, max=vswing/2, min=-vswing/2)
 
     # handling end of file and fill up with small random values to avoid division by zero
     if len(event) < record_length:

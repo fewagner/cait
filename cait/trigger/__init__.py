@@ -1,5 +1,6 @@
 from ._ma_trigger import *
 from ._csmpl import *
+from ._bin import *
 
 __all__=['MovingAverageTrigger',
          'trigger_csmpl',
@@ -11,4 +12,5 @@ __all__=['MovingAverageTrigger',
          'get_starttime',
          'find_nearest',
          'exclude_testpulses',
+         'get_record_window_vdaq',
          ]

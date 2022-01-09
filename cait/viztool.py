@@ -97,7 +97,7 @@ class VizTool():
                 self.sel = list(range(len(self.data)))
                 self._update_axes(self.xaxis, self.yaxis)
         except:
-            raise NotImplemented('You cannot use the set_idx function anymore once you applied cuts in this method!')
+            raise NotImplementedError('You cannot use the set_idx function anymore once you applied cuts in this method!')
 
     def set_colors(self, color_flag: list):
         """ TODO """
@@ -212,7 +212,7 @@ class VizTool():
                           HBox([linear_button, log_button]),
                           self.f1, self.f2, self.t)))
         else:
-            raise NotImplemented('Mode {} is not implemented!'.format(self.mode))
+            raise NotImplementedError('Mode {} is not implemented!'.format(self.mode))
 
     # private
 

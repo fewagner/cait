@@ -6,6 +6,7 @@ from ._converter import *
 from ._merge_h5 import *
 from ._xy_file import *
 from ._test_data import *
+from ._shrink_h5 import *
 
 __all__ = ['get_nps',
            'gen_dataset_from_rdt',

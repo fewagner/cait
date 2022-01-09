@@ -13,6 +13,7 @@ from .mixins._data_handler_analysis import AnalysisMixin
 from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
+from .mixins._data_handler_bin import BinMixin
 import warnings
 
 
@@ -28,6 +29,7 @@ class DataHandler(SimulateMixin,
                   FitMixin,
                   CsmplMixin,
                   MachineLearningMixin,
+                  BinMixin,
                   ):
     """
     A class for the processing of raw data events.

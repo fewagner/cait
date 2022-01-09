@@ -410,6 +410,7 @@ class AnalysisMixin(object):
         :type name_appendix_ev: string
         :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
         :type name_appendix_tp: string
+        TODO name_appendix_energy
         :param return_pulser_models: If set to true, a list of the used PulserModels is returned.
         :type return_pulser_models: bool
         :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful in case the
