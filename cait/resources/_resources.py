@@ -1,7 +1,9 @@
 import os
 
 def list_resources():
-    """TODO"""
+    """
+    Print a list of all resources, that are stored in the installation of the library.
+    """
     res = os.listdir(os.path.dirname(__file__))
     print('Resources stored in {}:'.format(os.path.dirname(__file__)))
     for r in res:
@@ -12,12 +14,22 @@ def get_resource_path(name: str):
     """
     Get the path of a resource stored in the library.
 
-    TODO
+    :param name: The name of the resource. All names can be listed with list_resources.
+    :type name: str
     """
     return os.path.dirname(__file__) + '/' + name
 
 def change_channel(model, new_channel: int=1):
-    """TODO"""
+    """
+    For a saved Lightning Module neural network, change the channel on which it acts.
+
+    :param model: The module in which we want to change the channel.
+    :type model: Lightning module
+    :param new_channel: The channel to which we want to change
+    :type new_channel: int
+    :return: The module with changed channel.
+    :rtype: Lightning module
+    """
 
     # feature_keys
     for i, key in enumerate(model.feature_keys):

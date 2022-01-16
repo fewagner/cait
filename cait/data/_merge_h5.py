@@ -42,7 +42,8 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :param sets_to_merge: The sets that hold the arrays we want to concatenate, same sets for all groups.
     :type sets_to_merge: list of strings
     :param concatenate_axis: The axis along which the arrays are concatenated. Each n'th index in this list corresponds
-        to the n'th string in the sets_to_merge list. todo -1
+        to the n'th string in the sets_to_merge list. If -1, the set is originally a scalar and gets reshaped to a 1D
+        array after merge.
     :type concatenate_axis: list of ints
     :param groups_from_a: Which groups are copied from the first HDF5 set.
     :type groups_from_a: list of strings

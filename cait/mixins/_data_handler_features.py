@@ -14,6 +14,8 @@ from warnings import warn
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
 from ..filter._ma import rem_off
+from ..trigger._peakdet import get_triggers
+from tqdm.auto import trange
 
 from ..data._baselines import calculate_mean_nps
 
@@ -146,7 +148,9 @@ class FeaturesMixin(object):
         :param remove_offset: Tf True the offset is removed before the events are superposed for the
             sev calculation. Highly recommended!
         :type remove_offset: bool
-        :param baseline_model: TODO
+        :param baseline_model: Either 'constant', 'linear' or 'exponential'. The baseline model substracted from all
+            events.
+        :type baseline_model: str
         :param verb: If True some verbal feedback is output about the progress of the method.
         :type verb: bool
         :param scale_fit_height: If True the parametric fit to the sev is normalized to height 1 after
@@ -163,11 +167,17 @@ class FeaturesMixin(object):
         :type t0_start: 2-tupel of floats
         :param opt_start: If true, a pre-fit is applied to find optimal start values.
         :type opt_start: bool
-        :param memsafe: TODO
-        :param batch_size: TODO
-        :param lower_bound_tau: TODO ms
-        :param upper_bound_tau: TODO ms
-        :param pretrigger_samples: TODO
+        :param memsafe: Recommended! If activated, not all events get loaded into memory.
+        :type memsafe: bool
+        :param batch_size: The batch size for the calculation of the SEV.
+        :type batch_size: int
+        :param lower_bound_tau: The lower bound for all tau values in the fit.
+        :type lower_bound_tau: float
+        :param upper_bound_tau: The upper bound for all tau values in the fit.
+        :type upper_bound_tau: float
+        :param pretrigger_samples: The number of samples from start of the record window that are considered the pre
+            trigger region.
+        :type pretrigger_samples: int
         """
 
         assert not memsafe or (use_labels == False and correct_label is None and pulse_height_interval is None and
@@ -349,7 +359,9 @@ class FeaturesMixin(object):
         :type name_appendix: string
         :param window: Include a window function to the standard event before building the filter.
         :type window: bool
-        TODO
+        :param use_this_sev: Here you can hand an alternativ list of standard events for all channels, in case you
+            do not want to use one that is stored in the HDF5 set.
+        :type use_this_sev: list
         """
 
         with h5py.File(self.path_h5, 'r+') as h5f:
@@ -400,7 +412,7 @@ class FeaturesMixin(object):
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
                  chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 baseline_model='constant', pretrigger_samples=500):
+                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -422,11 +434,23 @@ class FeaturesMixin(object):
         :param first_channel_dominant: Take the maximum position from the first channel and evaluate the others at the
             same position.
         :type first_channel_dominant: bool
-        :param baseline_model: TODO
-        :param pretrigger_samples: TODO
+        :param baseline_model: Either 'constant', 'linear' or 'exponential'. The baseline model substracted from all
+            events.
+        :type baseline_model: str
+        :param pretrigger_samples: The number of samples from start of the record window that are considered the pre
+            trigger region.
+        :type pretrigger_samples: int
+        :param onset_to_dominant_channel: The difference in the onset value to the dominant channel. If e.g. the second
+            channel has a typical max_pos value of 4000, but the first of 4100, then the onset for this would be -100.
+        :type onset_to_dominant_channel: list of ints
         """
 
         print('Calculating OF Heights.')
+
+        if onset_to_dominant_channel is None:
+            onset_to_dominant_channel = np.zeros(self.nmbr_channels)
+        assert len(onset_to_dominant_channel) == self.nmbr_channels, \
+            'onset_to_dominant_channel must have length nmbr_channels!'
 
         with h5py.File(self.path_h5, 'r+') as f:
             events = f[type]['event']
@@ -461,7 +485,7 @@ class FeaturesMixin(object):
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
-                                               peakpos=peakpos,
+                                               peakpos=peakpos + onset_to_dominant_channel[c],
                                                return_peakpos=False,
                                                baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                                transfer_function=transfer_function[c])
@@ -487,7 +511,7 @@ class FeaturesMixin(object):
                 elif first_channel_dominant:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
-                                           peakpos=peakpos, return_peakpos=False,
+                                           peakpos=peakpos + onset_to_dominant_channel[c], return_peakpos=False,
                                            baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                            transfer_function=transfer_function[c])
                 else:
@@ -868,22 +892,90 @@ class FeaturesMixin(object):
 
         print('Included values.')
 
-    def calc_ph_correlated(self, type='events', dominant_channel=0):
-        # TODO
+    def calc_ph_correlated(self, type='events', dominant_channel=0,
+                           offset_to_dominant_channel=None,
+                           max_search_range=50,
+                           ):
+        """
+        Calculate the correlated pulse heights of the channels.
+
+        :param events: The events of all channels.
+        :type events: 2D array of shape (nmbr_channels, record_length)
+        :param dominant_channel: Which channel is the one for the primary max search.
+        :type dominant_channel: int
+        :param offset_to_dominant_channel: The expected offsets of the peaks of pulses to the pesk of the dominant channel.
+        :type offset_to_dominant_channel: list of ints
+        :param max_search_range: The number of samples that are included in the search range of the maximum search in the
+            non-dominant channels.
+        :type max_search_range: int
+
+        >>> import cait as ai
+
+        >>> path_data = '../CRESST_DATA/run36/run36_Gode1/'
+        >>> fname = 'stream_bck_003'
+
+        >>> dh_stream = ai.DataHandler(channels=[9, 10, 11, ])
+        >>> dh_stream.set_filepath(path_h5=path_data, fname=fname, appendix=False)
+
+        >>> dh_stream.calc_ph_correlated()
+        """
 
         with h5py.File(self.path_h5, 'r+') as f:
-
             print('CALCULATE CORRELATED PULSE HEIGHTS.')
 
             nmbr_events = f[type]['event'].shape[1]
 
             ph_corr = np.empty((self.nmbr_channels, nmbr_events), dtype=float)
 
-            for ev in range(nmbr_events):
-                ph_corr[:, ev] = calc_correlated_ph(f[type]['event'][:, ev])
+            for ev in trange(nmbr_events):
+                ph_corr[:, ev] = calc_correlated_ph(f[type]['event'][:, ev],
+                                                    dominant_channel=dominant_channel,
+                                                    offset_to_dominant_channel=offset_to_dominant_channel,
+                                                    max_search_range=max_search_range,
+                                                    )
 
             set_ph_corr = f[type].require_dataset(name='ph_corr',
                                                   shape=ph_corr.shape,
                                                   dtype=float)
 
             set_ph_corr[...] = ph_corr
+
+    def calc_peakdet(self, type='events', lag=1024, threshold=5, look_ahead=1024):
+        """
+        Calculate the number of prominent peaks within the record window. A number > 1 points towards pile up events.
+
+        Based on https://stackoverflow.com/a/22640362/15216821.
+
+        :param type: The group name of the HDF5 set.
+        :type type: str
+        :param lag: The lag value of the algorithm, i.e. the number of samples that are taken to calculate the
+            moving mean and standard deviation.
+        :type lag: int
+        :param threshold:
+        :type threshold: int
+        :param look_ahead: When a sample triggers, we look for even higher samples in the subsequent look_ahead number
+            of samples.
+        :type look_ahead: int
+        """
+
+        with h5py.File(self.path_h5, 'r+') as f:
+
+            print('CALCULATE NUMBER OF PEAKS.')
+            nmbr_events = f[type]['event'].shape[1]
+            nmbr_peaks = np.empty((self.nmbr_channels, nmbr_events), dtype=float)
+
+            for c in range(self.nmbr_channels):
+                for i in trange(nmbr_events):
+                    signal, _, _, _ = get_triggers(array=f[type]['event'][c, i],
+                                                   lag=lag,
+                                                   threshold=threshold,
+                                                   init_mean=None,
+                                                   init_var=None,
+                                                   look_ahead=look_ahead)
+                    nmbr_peaks[c, i] = len(signal)
+
+            set_peaks = f[type].require_dataset(name='nmbr_peaks',
+                                                shape=nmbr_peaks.shape,
+                                                dtype=float)
+
+            set_peaks[...] = nmbr_peaks

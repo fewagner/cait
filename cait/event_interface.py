@@ -474,7 +474,18 @@ class EventInterface:
             print('Added the sev fit parameters.')
 
     def load_arr_par(self, name_appendix='', group_name_appendix: str = '', use_this_array=None):
-        # todo
+        """
+        Add the array fit parameters from the HDF5 file.
+
+        :param name_appendix: An appendix to the data set arr_fit_par in the HDF5 set.
+        :type name_appendix: string
+        :param group_name_appendix: A string that is appended to the group name stdevent in the HDF5 file. Typically
+            this could be _tp for a test pulse standard event.
+        :type group_name_appendix: string
+        :param use_this_array:
+        :type use_this_array:
+
+        """
 
         # save this for loading of the parameters when viewing
         self.arr_name_appendix = name_appendix

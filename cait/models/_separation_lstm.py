@@ -6,8 +6,42 @@ import numpy as np
 
 
 class SeparationLSTM(LightningModule):
-    """TODO"""
+    """
+    Lightning module for the training of an LSTM model for separation of PileUp events.
 
+    :param nmbr_pileup: The number of pile up events that are assumed to be on each trace.
+    :type nmbr_pileup: int
+    :param label_keys: The keys of the dataset that are used as labels.
+    :type label_keys: list of strings
+    :param input_size: The number of features that get passed to the LSTM in one time step.
+    :type input_size: int
+    :param hidden_size: The number of nodes in the hidden layer of the lstm.
+    :type hidden_size: int
+    :param num_layers: The number of LSTM layers.
+    :type num_layers: int
+    :param seq_steps: The number of time steps.
+    :type seq_steps: int
+    :param feature_keys: The keys of the dataset that are used as nn inputs.
+    :type feature_keys: list of strings
+    :param lr: The learning rate for the neural network training.
+    :type lr: float between 0 and 1
+    :param device_name: The device on that the NN is trained.
+    :type device_name: string, either 'cpu' or 'cude'
+    :param down: The downsample factor of the training data set, if one is applied.
+    :type down: int
+    :param down_keys: The keys of the data that is to downsample (usually the event time series).
+    :type down_keys: list of string
+    :param norm_vals: The keys of this dictionary get scaled in the sample with (x - mu)/sigma.
+    :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
+    :param offset_keys: The keys in the sample from that we want to subtract the baseline offset level.
+    :type offset_keys: list of strings
+    :param weight_decay: The weight decay parameter for the optimizer.
+    :type weight_decay: float
+    :param norm_type: Either 'z' (mu=0, sigma=1) or 'minmax' (min=0, max=1). The type of normalization.
+    :type norm_type: string
+    :param lr_scheduler: If true, a learning rate scheduler is used.
+    :type lr_scheduler: bool
+    """
     def __init__(self, nmbr_pileup, label_keys, input_size, hidden_size, num_layers, seq_steps,
                  feature_keys, lr, device_name='cpu', down=1, down_keys=None,
                  norm_vals=None, offset_keys=None, weight_decay=1e-5,

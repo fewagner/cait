@@ -200,6 +200,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             events = h5f.create_group('events')
             events.create_dataset('event', shape=(nmbr_channels, nmbr_events, record_length), dtype=event_dtype)
             events.create_dataset('hours', data=recs['hours'][idx_events], dtype=float)
+            events.create_dataset('dac_output', data=recs['dac_output'][idx_events], dtype=float)
             events.create_dataset('time_s', data=recs['abs_time_s'][idx_events], dtype='int32')
             events.create_dataset('time_mus', data=recs['abs_time_mus'][idx_events], dtype='int32')
 
@@ -231,6 +232,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             noise = h5f.create_group('noise')
             noise.create_dataset('event', shape=(nmbr_channels, nmbr_noise, record_length), dtype=event_dtype)
             noise.create_dataset('hours', data=recs['hours'][idx_noise], dtype=float)
+            noise.create_dataset('dac_output', data=recs['dac_output'][idx_noise], dtype=float)
             noise.create_dataset('time_s', data=recs['abs_time_s'][idx_noise], dtype='int32')
             noise.create_dataset('time_mus', data=recs['abs_time_mus'][idx_noise], dtype='int32')
 
@@ -264,6 +266,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             testpulses.create_dataset('testpulseamplitude', data=recs['test_pulse_amplitude'][idx_testpulses],
                                       dtype=float)
             testpulses.create_dataset('hours', data=recs['hours'][idx_testpulses], dtype=float)
+            testpulses.create_dataset('dac_output', data=recs['dac_output'][idx_testpulses], dtype=float)
             testpulses.create_dataset('time_s', data=recs['abs_time_s'][idx_testpulses], dtype='int32')
             testpulses.create_dataset('time_mus', data=recs['abs_time_mus'][idx_testpulses], dtype='int32')
 

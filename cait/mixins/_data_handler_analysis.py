@@ -401,7 +401,8 @@ class AnalysisMixin(object):
         :type poly_order: int
         :param only_channels: If set, the calibration is done only on the channels that are handed here.
         :type only_channels: list of ints or None
-        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter), 'sef' (standard event fit)
+        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter), 'sef' (standard event fit),
+            'arrf' (array fit)
             or 'true_ph' (in case of simulated events - here you probably want to hand pulser models as well).
             Test pulse heights and event heights are then estimated with this method for the calibration.
         :type method: string
@@ -409,6 +410,8 @@ class AnalysisMixin(object):
         :type name_appendix_ev: string
         :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
         :type name_appendix_tp: string
+        :param name_appendix_energy: This is appended to the name of the created recoil energy data set.
+        :type name_appendix_energy: string
         :param return_pulser_models: If set to true, a list of the used PulserModels is returned.
         :type return_pulser_models: bool
         :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful in case the
@@ -421,7 +424,6 @@ class AnalysisMixin(object):
         :type use_interpolation: bool
         :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
         :type kind: str
-
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
         ...                     cpe_factor=[1, 1],
@@ -472,6 +474,10 @@ class AnalysisMixin(object):
                 evhs = np.array(f['events']['sev_fit_par' + name_appendix_ev][:, :, 0])
                 if pulser_models is None:
                     tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
+            elif method == 'arrf':
+                evhs = np.array(f['events']['arr_fit_par' + name_appendix_ev][:, :, 0])
+                if pulser_models is None:
+                    tphs = np.array(f['testpulses']['arr_fit_par' + name_appendix_tp][:, :, 0])
             elif method == 'true_ph':
                 evhs = np.array(f['events']['true_ph'])
                 if pulser_models is None:
