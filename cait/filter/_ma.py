@@ -21,9 +21,14 @@ def box_car_smoothing(event, length=50):
 @nb.jit
 def linregfit(XX, yy):
     """"
-    Fit a large set of points to a regression.
+    Fit a large set of points to a linear regression.
 
-    TODO
+    :param XX: List of the x values of all regressions.
+    :type XX: list of 1D numpy arrays
+    :param yy: List of the y values of all regressions.
+    :type yy: list of 1D numpy arrays
+    :return: The offsets of the regressions, the scales of the regressions.
+    :rtype: list of 2 1D arrays
     """
     assert XX.shape == yy.shape, "Inputs mismatched"
     n_pnts, n_samples = XX.shape
@@ -40,7 +45,16 @@ def linregfit(XX, yy):
 
 
 def rem_off(ev: list, baseline_model: str, pretrigger_samples: int = 500):
-    """TODO"""
+    """
+    Remove the offset of a set of events in-place, with different baseline models.
+
+    :param ev: The events.
+    :type ev: 2D numpy array
+    :param baseline_model: Which baseline model to use, either "constant", "linear" or "exponential".
+    :type baseline_model: str
+    :param pretrigger_samples: The number of pre-trigger samples to use for the calculation of the offset.
+    :type pretrigger_samples: int
+    """
     if baseline_model == 'constant':
         ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
     elif baseline_model == 'linear':

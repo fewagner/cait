@@ -63,12 +63,15 @@ class SimulateMixin(object):
         :type size_tp: int
         :param size_noise: The number of noise baselines to simulate.
         :type size_noise: int
-        :param take_idx: TODO Overwrites start_from_bl_idx and rms_thresholds.
+        :param take_idx: Take only these event indices for the simulation. Overwrites start_from_bl_idx and rms_thresholds.
+        :type take_idx: list
         :param ev_ph_intervals: The interval in which the pulse heights
             are continuously distributed.
         :type ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
         :param ev_discrete_phs: The discrete values, from which the pulse heights
-            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored. TODO
+            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored. This should be one
+            list per channel with have same length. The simulation is done correlated, i.e. the same index from the lists
+            is chosen for all channels. This way e.g. light yields can be simulated.
         :type ev_discrete_phs: list of NMBR_CHANNELS lists
         :param name_appendix: A string that is appended to the group name stdevent, which contains the standard event
             that is used for simulation. This concerns only the simulation of event pulses and has no effect on the
@@ -84,7 +87,9 @@ class SimulateMixin(object):
         :type channel_exceptional_sev: list of ints
         :param tp_ph_intervals: Analogous to ev_ph_intervals, but for the testpulses.
         :type tp_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
-        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses. TODO
+        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses. This should be one
+            list per channel with have same length. The simulation is done correlated, i.e. the same index from the lists
+            is chosen for all channels. This way e.g. light yields can be simulated.
         :type tp_discrete_phs: list of NMBR_CHANNELS lists
         :param t0_interval: The interval from which the pulse onset are continuously sampled.
         :type t0_interval: 2-tuple or list

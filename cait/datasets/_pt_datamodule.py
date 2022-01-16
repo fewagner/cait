@@ -51,7 +51,6 @@ class CryoDataModule(pl.LightningDataModule):
                      dataset_size=None, only_idx=None,
                      shuffle_dataset=True, random_seed=None,
                      feature_keys=[], label_keys=[], keys_one_hot=[],
-                     # feature_dims=1,
                      ):
         """
         Called once to hand additional info about the data setup.
@@ -81,7 +80,6 @@ class CryoDataModule(pl.LightningDataModule):
         :type label_keys: list of strings
         :param keys_one_hot: This data gets one-hot encoded.
         :type keys_one_hot: list of strings
-        :param feature_dims: TODO
         """
         # called only on 1 worker
         self.test_size = test_size

@@ -48,7 +48,7 @@ class RdtMixin(object):
         event = np.zeros(self.record_length, dtype=np.short)
 
         with open(path_rdt, "rb") as f:
-            for nmbr_event in range(read_events):  # TODO -1 flag is not implemented
+            for nmbr_event in range(read_events):
 
                 dummies = []
 
@@ -298,7 +298,8 @@ class RdtMixin(object):
         :type dvm_channels: int
         :param batch_size: The batch size for loading the samples from disk.
         :type batch_size: int
-        :param memsafe: Recommended! This activates  TODO
+        :param memsafe: Recommended! This activates the version of data set conversion, which does not load all events
+            into memory.
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
@@ -666,7 +667,12 @@ class RdtMixin(object):
         print('MON File Included.')
 
     def include_metainfo(self, path_par):
-        # TODO
+        """
+        Include the metainfo from the PAR file to the HDF5 metainfo group.
+
+        :param path_par: The full path to the PAR file.
+        :type path_par: str
+        """
 
         metainfo = get_metainfo(path_par)
 
@@ -688,7 +694,8 @@ class RdtMixin(object):
 
         :param path_qdc: Path to the mon file e.g. "data/bcks/*.qdc".
         :type path_qdc: string
-        TODO
+        :param clock: The clock frequency of the recording.
+        :type clock: int
         """
 
         panels = ['cl', 'ltn', 'cr', 'ltf', 'fl', 'lbn', 'fr', 'lbf', 'ftr', 'sum', 'ftl', 'fbr', 'fbl', 'rtf', 'rtn',

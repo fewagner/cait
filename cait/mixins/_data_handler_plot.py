@@ -664,7 +664,8 @@ class PlotMixin(object):
         :type save_path: string
         :param dpi: The dots per inch of the plot.
         :type dpi: int
-        todo rasterized
+        :param rasterized: If activated, the scatter plot is done rasterized.
+        :type rasterized: bool
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:

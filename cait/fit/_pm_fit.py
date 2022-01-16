@@ -116,8 +116,10 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04,
     :type t0_bounds: tuple
     :param opt_start: If activated the start values are searched with a differential evolution algorithm.
     :type opt_start: bool
-    :param lower_bound_tau: TODO ms
-    :param upper_bound_tau: TODO ms
+    :param lower_bound_tau: The lower bound for all tau values in the fit.
+    :type lower_bound_tau: float
+    :param upper_bound_tau: The upper bound for all tau values in the fit.
+    :type upper_bound_tau: float
     :return: The fitted parameters.
     :rtype: 1D array length 6
     """

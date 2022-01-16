@@ -700,12 +700,21 @@ class DataHandler(SimulateMixin,
                 metainfo.create_dataset(name, data=eval(name))
 
     def init_empty(self):
-        # TODO
+        """
+        Initialize an empty HDF5 set.
+        """
         with h5py.File(self.path_h5, 'a') as h5f:
             pass
 
     def record_window(self, ms=True):
-        # TODO
+        """
+        Get the t array corresponding to a typical record window.
+
+        :param ms: If true, the time is in ms. Otherwise in s.
+        :type ms: bool
+        :return: the time array.
+        :rtype: 1D numpy array
+        """
         t = (np.arange(self.record_length) - self.record_length/4)/self.sample_frequency
         if ms:
             t *= 1000

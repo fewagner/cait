@@ -21,7 +21,29 @@ def get_record_window_vdaq(path,
     """
     Get a record window from a stream *.bin file.
 
-    TODO
+    :param path: The full path of the *.bin file.
+    :type path: str
+    :param start_time: The start time in seconds, from where we want to read the record window, starting with 0 at
+        the beginning of the file.
+    :type start_time: float
+    :param record_length: The record length to read from the bin file.
+    :type record_length: int
+    :param dtype: The data type with which we read the *.bin file.
+    :type dtype: numpy data type
+    :param key: The key of the dtype, corresponding to the channel that we want to read.
+    :type key: str
+    :param header_size: The size of the file header of the bin file, in bytes.
+    :type header_size: int
+    :param sample_duration: The duration of a sample, in seconds.
+    :type sample_duration: float
+    :param down: A factor by which the events are downsampled before they are returned.
+    :type down: int
+    :param bits: The precision of the digitizer.
+    :type bits: int
+    :param vswing: The total volt region covered by the ADC.
+    :type vswing: float
+    :return: List of two 1D numpy arrays: The event read from the *.bin file, and the corresponding time grid.
+    :rtype: list
     """
 
     offset = header_size + dtype.itemsize * time_to_sample(start_time, sample_duration=sample_duration)

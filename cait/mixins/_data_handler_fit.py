@@ -97,6 +97,8 @@ class FitMixin(object):
         Calculates the SEV fit for all events of type (events or tp) and stores in HDF5 file.
         The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic).
 
+        Attention! Since v11.1 it is recommended to use apply_array_fit instead, which provides a more stable fit implementation.
+
         This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
         available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
@@ -231,7 +233,39 @@ class FitMixin(object):
                         use_this_array=None, blcomp=4, no_bl_when_sat=True,
                         ):
         """
-        TODO
+        Calculates the array fit for all events of type (events or tp) and stores in HDF5 file.
+
+        The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic). This
+        method is different to apply_sev_fit, because we can use an arbitrary numerical array as standard event fit
+        component, not only one described by the parameters of the pulse shape model. Per default, the numerical sev
+        is used as sev component. Furthermore, the fit is split into a linear and nonlinear regression part, which
+        provides significant speedup. Only the t0 parameter is subject to a nonlinear optimization problem, while the
+        others are calculated by matrix inversion.
+
+        :param type: Name of the group in the HDF5 set, either events or testpulses.
+        :type type: string
+        :param only_channels: Only these channels are fitted, the others are left as is or filled with zeros.
+        :type only_channels: list of ints
+        :param sample_length: The length of a sample in milliseconds. If None, this is calculated from the sample frequency.
+        :type sample_length: float
+        :param max_shift: The maximal shift in ms allowed for the t0 value.
+        :type max_shift: float
+        :param truncation_level: The pulse height Volt value at that the detector saturation starts.
+        :type truncation_level: list of nmbr_channel floats
+        :param processes: The number of workers for the fit.
+        :type processes: int
+        :param name_appendix: This gets appendend to the dataset name in the HDF5 set.
+        :type name_appendix: string
+        :param group_name_appendix: This is appendend to the group name of the stdevent in the HDF5 set.
+        :type group_name_appendix: string
+        :param first_channel_dominant: Take the peak position from the first channel and evaluate the others at the
+            same position.
+        :type first_channel_dominant: bool
+        :param use_this_array: List of the standardevents/array that are used for the fit. Shape: (nmbr_channels,
+            record_length).
+        :type use_this_array: 2D numpy array
+        :param blcomp: Either 1,2,3 or 4 - number of the baseline components, i.e. order + 1 of the polynomial assumed for baseline.
+        :type blcomp: int
         """
 
         if sample_length is None:

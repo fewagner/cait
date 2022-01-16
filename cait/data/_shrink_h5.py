@@ -4,8 +4,18 @@ import numpy as np
 
 def shrink_h5(path_original, path_new,
               cutflag, type='events',):
+    """
+    Create a new dataset that holds only events that are not cut from the original dataset.
 
-    # TODO
+    :param path_original: The full path to the original HDF5 set.
+    :type path_original: str
+    :param path_new: The full path where the new HDF5 set is created.
+    :type path_new: str
+    :param cutflag: The cutflag corresponding to the events in the original data set.
+    :type cutflag: 1D bool array
+    :param type: The group name in the original HDF5 data set. Typically "events", "testpulses" or "noise".
+    :type type: str
+    """
 
     len_cutflag = cutflag.shape[0]
     goods_cutflag = np.sum(cutflag)

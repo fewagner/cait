@@ -13,7 +13,44 @@ from .data_handler import DataHandler
 
 
 class VizTool():
-    """ TODO """
+    """
+    A class to visualize the parameters and corresponding events, and allow for interactive cuts.
+
+    The VizTool can get the data either from a CSV file, or from an HDF5 file. Only in the second case, the calculation
+    of standard event and visualization of raw data is possible.
+
+    :param csv_path: The full path to the CSV file.
+    :type csv_path: str
+    :param nmbr_features: The number of columns in the CSV file, which is also the number of features.
+    :type nmbr_features: int
+    :param path_h5: The path to the directory which contains the HDF5 file.
+    :type path_h5: str
+    :param fname: The naming of the HDF5 file, without the .h5 appendix.
+    :type fname: str
+    :param group: The group from which we take data in the HDF5 file. Typically this is "events", "testpulses" or
+        "noise".
+    :type group: str
+    :param sample_frequency: The sample frequency of the recording.
+    :type sample_frequency: int
+    :param record_length: The record length of the recording.
+    :type record_length: int
+    :param nmbr_channels: The number of channels in the HDF5 set.
+    :type nmbr_channels: int
+    :param datasets: This dictionary describes which datasets are loaded from the HDF5 set. The keys of the dict
+        are the names that will be displayed in the VizTool. The values are lists, where the first element is the name
+        of the data set in the HDF5 group, followed by two elements which are either an integer or None. If they are
+        integer, they correspond to the index in the first and second dimension of the data set. If they are None, then
+        no indexing is done in this dimension.
+    :type datasets: dict
+    :param table_names: The VizTool shows a table of the parameters of events that are currently selected. With this list,
+        names (same names as are the keys in the datasets dict) can be provided to choose the parameters that are
+        included in the table.
+    :type table_names: list
+    :param bins: The number of bins for the histograms that are displayed of the selected parameters.
+    :type bins: int
+    :param batch_size: The batch size for the calculation of standard events.
+    :type batch_size: int
+    """
 
     def __init__(self, csv_path=None, nmbr_features=None, path_h5=None, fname=None, group=None, sample_frequency=25000,
                  record_length=16384,
@@ -48,7 +85,9 @@ class VizTool():
             self.path_h5 = path_h5
             self.fname = fname
             try:
-                self.dh.get(group, 'event')
+                with h5py.File(self.dh.path_h5, 'r') as f:
+                    dummy = f[group]['event'][0, 0]
+                    del dummy
                 self.events_in_file = True
             except:
                 self.events_in_file = False
@@ -58,18 +97,21 @@ class VizTool():
             self.data = {}
             self.names = []
             for k in datasets.keys():
-                self.names.append(k)
-                if datasets[k][1] is not None:  # not a single channel flag
-                    if datasets[k][2] is not None:
-                        self.data[k] = self.dh.get(group, datasets[k][0])[datasets[k][1], :,
-                                       datasets[k][2]]  # the indices
-                    else:
-                        self.data[k] = self.dh.get(group, datasets[k][0])[datasets[k][1]]
-                else:  # single channel flag
-                    if datasets[k][2] is not None:
-                        self.data[k] = self.dh.get(group, datasets[k][0])[:, datasets[k][2]]  # the indices
-                    else:
-                        self.data[k] = self.dh.get(group, datasets[k][0])[:]
+                try:
+                    if datasets[k][1] is not None:  # not a single channel flag
+                        if datasets[k][2] is not None:
+                            self.data[k] = self.dh.get(group, datasets[k][0])[datasets[k][1], :,
+                                           datasets[k][2]]  # the indices
+                        else:
+                            self.data[k] = self.dh.get(group, datasets[k][0])[datasets[k][1]]
+                    else:  # single channel flag
+                        if datasets[k][2] is not None:
+                            self.data[k] = self.dh.get(group, datasets[k][0])[:, datasets[k][2]]  # the indices
+                        else:
+                            self.data[k] = self.dh.get(group, datasets[k][0])[:]
+                    self.names.append(k)
+                except:
+                    print(f'Could not include dataset {k}.')
             self.data = pd.DataFrame(self.data)
 
         # general
@@ -86,7 +128,12 @@ class VizTool():
         self.batch_size = batch_size
 
     def set_idx(self, remaining_idx: list):
-        """ TODO """
+        """
+        Display only the events with these indices.
+
+        :param remaining_idx: A list of the indices that should be displayed.
+        :type remaining_idx: list
+        """
         assert len(remaining_idx.shape) == 1, 'remaining_idx needs to be a list of integers!'
         remaining_idx = np.array(remaining_idx)
         try:
@@ -100,12 +147,19 @@ class VizTool():
             raise NotImplementedError('You cannot use the set_idx function anymore once you applied cuts in this method!')
 
     def set_colors(self, color_flag: list):
-        """ TODO """
+        """
+        Provide a list with numerical values, that correspond to the color intensities of the events.
+
+        :param color_flag: The color intensities of the events.
+        :type color_flag: list
+        """
         assert len(self.remaining_idx) == len(color_flag), 'color flag must have same length as remaining indices!'
         self.color_flag = np.array(color_flag)
 
     def show(self):
-        """ TODO """
+        """
+        Start the interactive visualization.
+        """
         py.init_notebook_mode()
 
         # scatter plot

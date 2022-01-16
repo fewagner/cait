@@ -410,7 +410,8 @@ class AnalysisMixin(object):
         :type name_appendix_ev: string
         :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
         :type name_appendix_tp: string
-        TODO name_appendix_energy
+        :param name_appendix_energy: This is appended to the name of the created recoil energy data set.
+        :type name_appendix_energy: string
         :param return_pulser_models: If set to true, a list of the used PulserModels is returned.
         :type return_pulser_models: bool
         :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful in case the
@@ -423,7 +424,6 @@ class AnalysisMixin(object):
         :type use_interpolation: bool
         :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
         :type kind: str
-
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
         ...                     cpe_factor=[1, 1],
