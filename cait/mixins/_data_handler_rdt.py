@@ -265,6 +265,7 @@ class RdtMixin(object):
                         dvm_channels=0,
                         batch_size=1000,
                         trace=False,
+                        indiv_tpas=False,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -303,6 +304,9 @@ class RdtMixin(object):
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
+        :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type individual_tpas: bool
         """
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
@@ -363,6 +367,7 @@ class RdtMixin(object):
                                          record_length=self.record_length,
                                          batch_size=batch_size,
                                          trace=trace,
+                                         indiv_tpas=indiv_tpas,
                                          )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
