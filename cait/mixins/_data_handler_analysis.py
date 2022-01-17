@@ -87,6 +87,8 @@ class AnalysisMixin(object):
                 if use_tp:
                     tphs = np.array(h5['testpulses']['mainpar'])[c, :, 0]
                     tpas = np.array(h5['testpulses']['testpulseamplitude'])
+                    if len(tpas.shape) > 1:
+                        tpas = tpas[c]
                     naming = 'Testpulses'
                 # choose the correct quantity for resolution calculation
                 elif of_filter:
@@ -313,6 +315,8 @@ class AnalysisMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as f:
             tpas = f['testpulses']['testpulseamplitude']
+            if len(tpas.shape) > 1:
+                tpas = f['testpulses']['testpulseamplitude'][channel]
             tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
             hours_tp = f['testpulses']['hours']
             hours_ev = f['events']['hours']
@@ -491,12 +495,14 @@ class AnalysisMixin(object):
             ev_hours = np.array(f['events']['hours'])
             if pulser_models is None:
                 tpas = np.array(f['testpulses']['testpulseamplitude'])
+                if len(tpas.shape) == 1:
+                    tpas = np.tile(tpas, (self.nmbr_channels, 1))
                 tp_hours = np.array(f['testpulses']['hours'])
 
                 if only_stable:
                     stable = np.array(f['testpulses']['testpulse_stability'], dtype=bool)
                 else:
-                    stable = np.ones([self.nmbr_channels, len(tpas)], dtype=bool)
+                    stable = np.ones(tpas.shape, dtype=bool)
                 if cut_flag is not None:
                     stable = np.logical_and(stable, cut_flag)
 
@@ -528,7 +534,7 @@ class AnalysisMixin(object):
                                                          **kwargs)
 
                     pulser_models[channel].fit(tphs=tphs[channel, stable[channel]],
-                                               tpas=tpas[stable[channel]],
+                                               tpas=tpas[channel, stable[channel]],
                                                tp_hours=tp_hours[stable[channel]],
                                                exclude_tpas=exclude_tpas,
                                                interpolation_method=interpolation_method,

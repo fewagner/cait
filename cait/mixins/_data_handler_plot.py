@@ -1023,12 +1023,16 @@ class PlotMixin(object):
                 only_idx = list(range(len(f_h5['testpulses']['testpulseamplitude'])))
 
             tpa = f_h5['testpulses']['testpulseamplitude']
+            if len(tpa.shape) > 1:
+                tpa = tpa[channel]
             if method == 'ph':
                 ph = f_h5['testpulses']['mainpar' + name_appendix_tp][channel, only_idx, 0]
             elif method == 'of':
                 ph = f_h5['testpulses']['of_ph' + name_appendix_tp][channel, only_idx]
             elif method == 'sef':
                 ph = f_h5['testpulses']['sev_fit_par' + name_appendix_tp][channel, only_idx, 0]
+            elif method == 'arrf':
+                ph = f_h5['testpulses']['arr_fit_par' + name_appendix_tp][channel, only_idx, 0]
             else:
                 raise KeyError('Pulse Height Estimation method not implemented, try ph, of or sef.')
 
