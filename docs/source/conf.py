@@ -21,7 +21,7 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'cait'
-copyright = '2022, Felix Wagner'
+copyright = '2021, Felix Wagner'
 author = 'Felix Wagner'
 
 # The full version, including alpha/beta/rc tags

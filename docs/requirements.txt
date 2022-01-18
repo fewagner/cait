@@ -1,10 +1,10 @@
 # File: docs/requirements.txt
 
 # Defining the exact version will make sure things don't break
-Sphinx==3.3.1
+Sphinx==4.4.0
 sphinx-autobuild==2020.9.1
 sphinx-reload==0.2.0
-sphinx-rtd-theme==0.5.1
+sphinx-rtd-theme==1.0.0
 sphinx-togglebutton==0.2.3
 sphinxcontrib-applehelp==1.0.2
 sphinxcontrib-devhelp==1.0.2
@@ -12,9 +12,9 @@ sphinxcontrib-htmlhelp==1.0.3
 sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.4
-rinohtype==0.5.0
+rinohtype==0.5.3
 importlib-metadata==3.4.0
-myst-nb==0.11.1
+myst-nb==0.13.1
 setuptools>=47.1.1
 h5py>=3.2
 pickle-mixin>=1.0
