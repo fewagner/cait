@@ -149,9 +149,13 @@ class CsmplMixin(object):
 
         The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
         same module. For determining the absolute time stamp of the triggers, we also need the SQL file that belongs to
-        the measurement. TODO The absolute time stamp will be precise only to seconds, as it is only stored with this
+        the measurement. The absolute time stamp will be precise only to seconds, as it is only stored with this
         precision in the SQL file. This is not a problem for our analysis, as all events within this files are down to
         micro seconds precisely matched to each other.
+
+        New in v1.1: We can also read the start time from the PAR file. In this case, the start time needs to be already stored
+        in the metainfo dataset. We still need to provide a DIG file, to calculate the offset between the files.
+        If we do not want to exclude the offset, we don't need to provide a DIG file.
 
         The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
         low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
@@ -171,10 +175,11 @@ class CsmplMixin(object):
         :type of: list of arrays
         :param path_sql: The path to the SQL database that contains the start of file timestamp.
         :type path_sql: string
-        :param path_dig: TODO For this you need to include the metadata first!
-        :type path_dig: TODO
-        :param clock: TODO
-        :type clock: TODO
+        :param path_dig: Path to the DIG file, to read the offset between continuous DAQ and CCS. For this you need to
+            include the metadata first! If not provided, no offset is calculated.
+        :type path_dig: str
+        :param clock: The frequency of the clock that times the data recording.
+        :type clock: int
         :param csmpl_channels: The CDAQ channels that we are triggering. The channels numbers are usually appended to
             the file name of the CSMPL files and written in the SQL database.
         :type csmpl_channels: list of ints
@@ -190,8 +195,9 @@ class CsmplMixin(object):
         :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
             previous/next one. Standard value is 1/4 - it is recommended to use this value!
         :type overlap: float
-        :param read_triggerstamps: TODO
-        :type read_triggerstamps:
+        :param read_triggerstamps: In case there is already a trigger_hours data set in the HDF5 stream group, we can read
+            it instead of doing the triggering again. For this, set this argument to True.
+        :type read_triggerstamps: bool
         """
 
         assert all([os.path.isfile(p) for p in csmpl_paths]), 'One of the csmpl files does not exists!'
@@ -199,7 +205,7 @@ class CsmplMixin(object):
             assert os.path.isfile(path_dig), 'Dig file does not exists!'
         if path_sql is not None:
             assert os.path.isfile(path_sql), 'Sql file does not exists!'
-        assert np.logical_xor(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
+        assert np.logical_or(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:
             take_samples = -1
@@ -471,8 +477,9 @@ class CsmplMixin(object):
                                  min_tpa=0.0001,
                                  min_cpa=10.1,
                                  down=1,
-                                 noninteractive=False,
-                                 origin=None):
+                                 noninteractive=True,
+                                 origin=None,
+                                 individual_tpas=False,):
         """
         Include the triggered events from the CSMPL files.
 
@@ -501,6 +508,11 @@ class CsmplMixin(object):
         :type min_cpa: float
         :param down: The events get stored downsampled by this factor.
         :type down: int
+        :param origin: The name of the csmpl file from which we read, e.g. bck_xxx
+        :type origin: str
+        :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type individual_tpas: bool
         """
 
         if sample_duration is None:
@@ -544,8 +556,11 @@ class CsmplMixin(object):
                         del write_controlpulses["hours"]
                     write_testpulses.create_dataset(name="hours",
                                                     data=tp_hours[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                    data = tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)]
+                    if individual_tpas:
+                        data = np.tile(data, (self.nmbr_channels, 1))
                     write_testpulses.create_dataset(name="testpulseamplitude",
-                                                    data=tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                                                    data=data)
                     write_controlpulses.create_dataset(name="hours",
                                                        data=tp_hours[tpas >= min_cpa])
                     if "tp_time_s" in stream:

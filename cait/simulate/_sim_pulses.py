@@ -65,8 +65,8 @@ def simulate_events(path_h5,
     :type fake_noise: bool
     :param use_bl_from_idx: The start index of the baselines that are used.
     :type use_bl_from_idx: int
-    :param take_idx: TODO
-    :type take_idx: 1D numpy array
+    :param take_idx: The event indices which we want to use for the simulation.
+    :type take_idx: list
     :param rms_threshold: Above which value noise baselines are excluded for the
         distribution of polynomial coefficients; also, a cut value for the baselines if not the
         fake ones but the ones from the h5 set are taken.

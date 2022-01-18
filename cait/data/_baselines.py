@@ -42,10 +42,10 @@ def noise_function(nps,
     :type f: real valued 1D array of size N/2 + 1
     :param force_zero: Force the zero coefficient (constant offset) of the NPS to zero.
     :type force_zero: bool
-    :param size: TODO
+    :param size: The number of baselines to simulate. If None, only one is simulated.
     :type size: int
     :return: Noise Baselines.
-    :rtype: real valued 1D array of size N
+    :rtype: real valued 1D array of size N, if size is None; else 2D
     """
     f = np.sqrt(nps)
     if force_zero:

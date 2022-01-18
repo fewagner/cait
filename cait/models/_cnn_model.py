@@ -7,7 +7,36 @@ import torch.nn as nn
 
 class CNNModule(LightningModule):
     """
-    TODO
+    Lightning module for the training of a CNN model for classification.
+
+    :param input_size: The number of features that get passed to the CNN as one sample.
+    :type input_size: int
+    :param nmbr_out: The number of output nodes the last linear layer has.
+    :type nmbr_out: int
+    :param device_name: The device on that the NN is trained.
+    :type device_name: string, either 'cpu' or 'cude'
+    :param label_keys: The keys of the dataset that are used as labels.
+    :type label_keys: list of strings
+    :param feature_keys: The keys of the dataset that are used as nn inputs.
+    :type feature_keys: list of strings
+    :param lr: The learning rate for the neural network training.
+    :type lr: float between 0 and 1
+    :param down: The downsample factor of the training data set, if one is applied.
+    :type down: int
+    :param down_keys: The keys of the data that is to downsample (usually the event time series).
+    :type down_keys: list of string
+    :param norm_vals: The keys of this dictionary get scaled in the sample with (x - mu)/sigma.
+    :type norm_vals: dictionary, every enty is a list of 2 ints (mean, std)
+    :param offset_keys: The keys in the sample from that we want to subtract the baseline offset level.
+    :type offset_keys: list of strings
+    :param weight_decay: The weight decay parameter for the optimizer.
+    :type weight_decay: float
+    :param norm_type: Either 'z' (mu=0, sigma=1) or 'minmax' (min=0, max=1). The type of normalization.
+    :type norm_type: string
+    :param lr_scheduler: If true, a learning rate scheduler is used.
+    :type lr_scheduler: bool
+    :param kernelsize: The size of the kernels used for the CNN.
+    :type kernelsize: int
     """
     def __init__(self, input_size, nmbr_out,
                  label_keys, feature_keys, lr, device_name='cpu', down=1, down_keys=None,
@@ -41,9 +70,6 @@ class CNNModule(LightningModule):
         self.lr_scheduler = lr_scheduler
 
     def forward(self, x):
-        """
-        TODO
-        """
         bs = x.size()[0]
         x = x.view(bs, 1, -1)
         x = F.relu(self.conv1(x))
@@ -109,6 +135,9 @@ class CNNModule(LightningModule):
             return optimizer
 
     def get_prob(self, sample):
+        """
+        Get the outputs for all classes, before the decision rule is applied.
+        """
 
         # to tensor
         for key in sample.keys():
@@ -156,7 +185,7 @@ class CNNModule(LightningModule):
 
     def predict(self, sample):
         """
-        TODO
+        Predict the class for a sample.
         """
 
         out = self.get_prob(sample)

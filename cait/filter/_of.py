@@ -34,7 +34,6 @@ def normalization_constant(stdevent, nps):
     Remark: We do not use this function, as we want to preserve the height of a peak and not the RMS.
 
     :param stdevent:  1D array of the standardevent with length N
-    TODO
     :param nps: 1D array of the noise power spectrum with length N/2 + 1
     :return: integer, the normalization constant
     """
@@ -51,7 +50,6 @@ def optimal_transfer_function(stdevent, nps, window=True):
     This function calculates the transition function for an optimal filter.
 
     :param stdevent: 1D array, pulse shape standard event with length N
-    TODO
     :param nps: 1D array, the NPS of a baseline, with length N/2 + 1
     :param window: bool, include a window function to the standard event
     :return: 1D complex numpy array of length N/2 + 1, the optimal transfer function
@@ -70,7 +68,7 @@ def optimal_transfer_function(stdevent, nps, window=True):
         H[w] = (stdevent_fft[w].conjugate()) * np.exp(-1j * w * tau_m) / nps[w]
         # H[w] = H[w] / normalization_constant(stdevent, nps)  # divide by constant to keep size!
 
-    filtered_standardevent = filter_event(stdevent, H)
+    filtered_standardevent = filter_event(stdevent, H, window=window)
 
     return H / np.max(filtered_standardevent)
 
@@ -80,7 +78,6 @@ def filter_event(event, transfer_function, window=False):
     this function filters a single event
 
     :param event: 1D array of the one event that should be filtered, size N
-    TODO
     :param transfer_function: the filter in fourier space, size N/2 +1 complex numpy array
     :param window: bool, if activated the array is multiplied with a window function befor filtering
     :return: 1D array length N, the filtered event
@@ -98,23 +95,24 @@ def filter_event(event, transfer_function, window=False):
 
 def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False,
                    peakpos=None, return_peakpos=False, flexibility=20,
-                   baseline_model='constant', pretrigger_samples=500):
+                   baseline_model='constant', pretrigger_samples=500, transfer_function=None):
     """
     This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
     :param events_array: 2D array (nmbr_events, rec_length), the events to determine ph
-    TODO
     :param stdevent: 1D array, the standardevent
     :param nps: 1D array, length N/2 + 1, the noise power spectrum
     :param hard_restrict: bool, The maximum search is restricted to 20-30% of the record window.
     :param down: int, a factor by which the events and filter is downsampled before application
     :param window: bool, if activated the array is multiplied with a window function befor filtering
-    :param peakpos: array of length nmbr_events,
+    :param peakpos: array of length nmbr_events, use these peak positions to do the fit
     :param return_peakpos: bool, if true a second array is returned, namely the peak positions within the arrays
     :param flexibility: int, in case a peak position is provided, the maximum search can still deviate by this
         amount of samples
-    :param baseline_model: TODO
-    :param pretrigger_samples: TODO
+    :param baseline_model: str, which baseline model to use, either "constant", "linear" or "exponential"
+    :param pretrigger_samples: int, the number of samples from the start of the record window to evaluate the baseline
+    :param transition_function: 2D complex float numpy array, use this transfer function instead of calculating it
+        again from the stdevent and nps
     :return: 1D array size (nmbr_events), the phs after of filtering; if return_peakpos is true, this is instead
         a 2-tuple of the of_ph and the maximum positions
     """
@@ -131,7 +129,8 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
         nps = np.concatenate(([nps_offset], nps))
 
     # calc transition function
-    transfer_function = optimal_transfer_function(stdevent, nps, window=window)
+    if transfer_function is None:
+        transfer_function = optimal_transfer_function(stdevent, nps, window=window)
     # filter events
     events_filtered = np.array([filter_event(event, transfer_function, window=window) for event in events_array])
     # get maximal heights of filtered events

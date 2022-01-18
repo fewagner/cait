@@ -257,7 +257,6 @@ def trigger_csmpl(paths,
                                                      window=window,
                                                      )
                         if height > trigger_tres:
-
                             triggers.append(start_hours + sample_to_time(counter + trig, sample_duration=sample_length))
                             trigger_heights.append(height)
                             record_starts.append(start_hours + sample_to_time(counter, sample_duration=sample_length))
@@ -473,6 +472,7 @@ def find_nearest(array, value):
 def align_triggers(triggers,  # in seconds
                    trigger_block=16384,  # in samples
                    sample_duration=0.00004,
+                   tpas=None,
                    ):
     """
     Match the triggers from multiple csmpl file.
@@ -486,9 +486,12 @@ def align_triggers(triggers,  # in seconds
         is the same value as the record window length. This value is the smallest, that rejects overlap between record
         windows.
     :type trigger_block: int
-    :param sample_length: The length of a sample in seconds.
-        :type sample_length: float
-    :return: The aligned triggers.
+    :param sample_duration: The length of a sample in seconds.
+    :type sample_duration: float
+    :param tpas:
+    :type tpas:
+    :return: The aligned triggers. If tpas are provided, the return is a list of the aligned triggers
+        and the corresponding tpas.
     :rtype: 1D array
     """
 
@@ -496,6 +499,7 @@ def align_triggers(triggers,  # in seconds
     active_channels = list(range(nmbr_channels))
     nmbr_triggers = np.array([len(triggers[i]) for i in range(nmbr_channels)])
     aligned_triggers = []
+    aligned_tpas = []
     block_time = trigger_block * sample_duration
     idxs = np.zeros(nmbr_channels, dtype=int)
 
@@ -503,6 +507,9 @@ def align_triggers(triggers,  # in seconds
 
         times = [triggers[i][idxs[i]] for i in active_channels]
         aligned_triggers.append(np.min(times))
+        if tpas is not None:
+            this_tpas = [tpas[i][find_nearest(triggers[i], np.min(times))] for i in range(nmbr_channels)]
+            aligned_tpas.append(this_tpas)
 
         # block
         for i in np.copy(active_channels):
@@ -512,7 +519,10 @@ def align_triggers(triggers,  # in seconds
                     active_channels.remove(i)
                     break
 
-    return np.array(aligned_triggers)
+    if tpas is None:
+        return np.array(aligned_triggers)
+    else:
+        return np.array(aligned_triggers), np.array(aligned_tpas).T
 
 
 def exclude_testpulses(trigger_hours,
@@ -638,8 +648,17 @@ def get_starttime(path_sql, csmpl_channel, sql_file_label):
 
     return mktime(time_created)
 
+
 def get_offset(path_dig_stamps):
-    # TODO
+    """
+    Get the offset between start of the continuous DAQ and start of the CCS time recording.
+
+    :param path_dig_stamps: The full path to the *.dig file.
+    :type path_dig_stamps: str
+    :return: The offset that needs to be subtracted from all CCS time stamps, to get the time stamps w.r.t. the start
+        of the CSMPL file.
+    :rtype: int
+    """
 
     dig = np.dtype([
         ('stamp', np.uint64),

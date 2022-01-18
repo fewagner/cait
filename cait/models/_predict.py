@@ -42,7 +42,8 @@ def nn_predict(h5_path: str,
     :param no_channel_idx_in_pred: If True, then we assume that there is no channel index in the data set from the HDF5
         file.
     :type no_channel_idx_in_pred: bool
-    :param use_prob: TODO
+    :param use_prob: Include the probabilities corresponding to all classes, instead of the prediction for one class.
+    :type use_prob: bool
     """
 
     assert np.logical_xor(model is None, ptl_module is None or ptl_ckp_path is None), \

@@ -1,6 +1,6 @@
 .. -*- mode: rst -*-
 
-|PyPi| |DOI|
+|PyPi|_ |DOI|_
 
 .. |PyPi| image:: https://badge.fury.io/py/cait.svg
 .. _PyPi: https://badge.fury.io/py/cait
@@ -8,7 +8,9 @@
 .. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
 .. _DOI: https://doi.org/10.5281/zenodo.5091416
 
-.. image:: docs/source/logo/LogosFixedSize/Original.png
+.. image:: https://raw.githubusercontent.com/fewagner/cait/master/docs/source/logo/logo_wide.png
+  :width: 256
+  :target: https://github.com/fewagner/cait
 
 **Cait** (Cryogenic Artificial Intelligence Tools) is a Python 3 software package for the machine learning based analysis
 of raw data from cryogenic dark matter experiments. It is tailored to the needs of the CRESST and COSINUS experiment,
@@ -40,9 +42,9 @@ You can now import the library in Python, e.g.
 Version History
 ===============
 
-Master branch is on Version 1.0 and stable.
+Master branch is on the latest release version and stable.
 
-Previous version v0.1 is hosted on the accordingly named Git branch.
+Previous versions are hosted on the accordingly named Git branch.
 
 The Changelog starts with Version 1.0.
 

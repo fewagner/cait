@@ -97,6 +97,8 @@ class FitMixin(object):
         Calculates the SEV fit for all events of type (events or tp) and stores in HDF5 file.
         The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic).
 
+        Attention! Since v11.1 it is recommended to use apply_array_fit instead, which provides a more stable fit implementation.
+
         This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
         available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
 
@@ -222,99 +224,7 @@ class FitMixin(object):
 
             print('Done.')
 
-    # # apply sev fit
-    # def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
-    #                     max_shift=20,
-    #                     truncation_level=None,
-    #                     processes=4, name_appendix='', group_name_appendix='',
-    #                     first_channel_dominant=False,
-    #                     use_this_array=None,
-    #                     use_saturation=False
-    #                     ):
-    #     """
-    #     TODO
-    #     """
-    #
-    #     if sample_length is None:
-    #         sample_length = 1000 / self.sample_frequency
-    #
-    #     print('Calculating Array Fit.')
-    #
-    #     if truncation_level is None:
-    #         truncation_level = [None for i in range(self.nmbr_channels)]
-    #
-    #     # open the dataset
-    #     with h5py.File(self.path_h5, 'r+') as f:
-    #
-    #         events = f[type]['event']
-    #         if use_this_array is None:
-    #             sev = np.array(f['stdevent' + group_name_appendix]['event'])
-    #         else:
-    #             use_this_array = np.array(use_this_array, dtype=np.float32)
-    #             assert use_this_array.shape == (self.nmbr_channels, self.record_length), \
-    #                 'Array has to have shape (nmbr_channels, record_length)!'
-    #             sev = use_this_array
-    #         t = (np.arange(0, self.record_length, dtype=float) - self.record_length / 4) * sample_length
-    #
-    #         t0_start = np.array([0 for i in range(events.shape[1])])
-    #
-    #         assert not use_saturation or 'saturation' in f, 'For using the saturation you need to calculate ' \
-    #                                                         'the saturation curve first!'
-    #
-    #         # apply fit for all channels, save parameters
-    #         par = np.zeros([self.nmbr_channels, events.shape[1], 6])
-    #         for c in range(self.nmbr_channels):
-    #             if use_saturation:
-    #                 saturation_pars = np.array(f['saturation']['fitpar'][c], dtype=np.float32)
-    #             else:
-    #                 saturation_pars = None
-    #             if only_channels is None or c in only_channels:
-    #                 if first_channel_dominant and c != 0:
-    #                     t0 = par[0, :, 1]
-    #                 else:
-    #                     t0 = [None for i in range(events.shape[1])]
-    #                 with Pool(processes) as p:
-    #                     par[c, ...] = list(
-    #                         tqdm(p.imap(partial(array_fitter,
-    #                                             t=t, sev=sev[c],
-    #                                             record_length=self.record_length,
-    #                                             timebase_ms=1000 / self.sample_frequency, max_shift=max_shift,
-    #                                             truncation_level=truncation_level[c],
-    #                                             saturation_pars=saturation_pars),
-    #                                     zip(events[c], np.max(events[c], axis=1) - np.mean(events[c, :, :500], axis=1),
-    #                                         t0, t0_start)),
-    #                              total=events.shape[1]))
-    #
-    #         # write sev fit results to file
-    #         set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),
-    #                                              shape=par.shape,
-    #                                              dtype='float')
-    #         set_fitpar.attrs.create(name='pulse_height', data=0)
-    #         set_fitpar.attrs.create(name='onset', data=1)
-    #         set_fitpar.attrs.create(name='constant_coefficient', data=2)
-    #         set_fitpar.attrs.create(name='linear_coefficient', data=3)
-    #         set_fitpar.attrs.create(name='quadratic_coefficient', data=4)
-    #         set_fitpar.attrs.create(name='cubic_coefficient', data=5)
-    #
-    #         set_fitrms = f[type].require_dataset(name='arr_fit_rms{}'.format(name_appendix),
-    #                                              shape=(self.nmbr_channels, events.shape[1]),
-    #                                              dtype=float)
-    #
-    #         bound_samples = int(max_shift / 1000 * self.sample_frequency)
-    #
-    #         for c in range(self.nmbr_channels):
-    #             if only_channels is None or c in only_channels:
-    #                 set_fitpar[c, ...] = par[c]
-    #                 for i in range(len(events[0])):
-    #                     set_fitrms[c, i] = fitfunc(par[c, i], event=events[c, i],
-    #                                                t=t[bound_samples:-bound_samples], sev=sev[c],
-    #                                                timebase_ms=1000 / self.sample_frequency,
-    #                                                max_shift=max_shift,
-    #                                                truncation_flag=np.ones(events.shape[2], dtype=bool))
-    #
-    #         print('Done.')
-
-    # apply sev fit
+    # apply array fit
     def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
                         max_shift=20,
                         truncation_level=None,
@@ -323,7 +233,39 @@ class FitMixin(object):
                         use_this_array=None, blcomp=4, no_bl_when_sat=True,
                         ):
         """
-        TODO
+        Calculates the array fit for all events of type (events or tp) and stores in HDF5 file.
+
+        The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic). This
+        method is different to apply_sev_fit, because we can use an arbitrary numerical array as standard event fit
+        component, not only one described by the parameters of the pulse shape model. Per default, the numerical sev
+        is used as sev component. Furthermore, the fit is split into a linear and nonlinear regression part, which
+        provides significant speedup. Only the t0 parameter is subject to a nonlinear optimization problem, while the
+        others are calculated by matrix inversion.
+
+        :param type: Name of the group in the HDF5 set, either events or testpulses.
+        :type type: string
+        :param only_channels: Only these channels are fitted, the others are left as is or filled with zeros.
+        :type only_channels: list of ints
+        :param sample_length: The length of a sample in milliseconds. If None, this is calculated from the sample frequency.
+        :type sample_length: float
+        :param max_shift: The maximal shift in ms allowed for the t0 value.
+        :type max_shift: float
+        :param truncation_level: The pulse height Volt value at that the detector saturation starts.
+        :type truncation_level: list of nmbr_channel floats
+        :param processes: The number of workers for the fit.
+        :type processes: int
+        :param name_appendix: This gets appendend to the dataset name in the HDF5 set.
+        :type name_appendix: string
+        :param group_name_appendix: This is appendend to the group name of the stdevent in the HDF5 set.
+        :type group_name_appendix: string
+        :param first_channel_dominant: Take the peak position from the first channel and evaluate the others at the
+            same position.
+        :type first_channel_dominant: bool
+        :param use_this_array: List of the standardevents/array that are used for the fit. Shape: (nmbr_channels,
+            record_length).
+        :type use_this_array: 2D numpy array
+        :param blcomp: Either 1,2,3 or 4 - number of the baseline components, i.e. order + 1 of the polynomial assumed for baseline.
+        :type blcomp: int
         """
 
         if sample_length is None:
@@ -348,17 +290,18 @@ class FitMixin(object):
             par = np.zeros((events.shape[0], events.shape[1], 6))
             with Pool(processes) as p:
                 for c in range(events.shape[0]):
-                    print('Fitting Channel: ', c)
-                    if c == 0 or not first_channel_dominant:
-                        fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
-                                     bs=bs, no_bl_when_sat=no_bl_when_sat)
-                        par[c] = list(tqdm(p.imap(fh, zip(events[c], [None for i in range(events.shape[1])])),
-                                           total=events.shape[1]))
-                    else:
-                        fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
-                                     bs=bs, no_bl_when_sat=no_bl_when_sat)
-                        par[c] = list(tqdm(p.imap(fh, zip(events[c], par[0, :, 1])),
-                                           total=events.shape[1]))
+                    if only_channels is None or c in only_channels:
+                        print('Fitting Channel: ', c)
+                        if c == 0 or not first_channel_dominant:
+                            fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
+                                         bs=bs, no_bl_when_sat=no_bl_when_sat)
+                            par[c] = list(tqdm(p.imap(fh, zip(events[c], [None for i in range(events.shape[1])])),
+                                               total=events.shape[1]))
+                        else:
+                            fh = partial(array_fit, sev=sevs[c], t=t, blcomp=blcomp, trunclv=truncation_level[c],
+                                         bs=bs, no_bl_when_sat=no_bl_when_sat)
+                            par[c] = list(tqdm(p.imap(fh, zip(events[c], par[0, :, 1])),
+                                               total=events.shape[1]))
 
             # write sev fit results to file
             set_fitpar = f[type].require_dataset(name='arr_fit_par{}'.format(name_appendix),
@@ -383,7 +326,7 @@ class FitMixin(object):
             for c in range(self.nmbr_channels):
                 if only_channels is None or c in only_channels:
                     set_fitpar[c, ...] = par[c]
-                    for i in range(events.shape[0]):
+                    for i in range(events.shape[1]):
                         set_fitrms[c, i] = arr_fit_rms(par[c, i, :2 + blcomp], A, events[c, i, bound_samples:-bound_samples],
                                                        sevs[c], bound_samples)
 
@@ -458,7 +401,11 @@ class FitMixin(object):
                 only_idx = np.arange(h5f['testpulses']['testpulseamplitude'].shape[0])
 
             tphs = h5f['testpulses']['mainpar'][channel, only_idx, 0]
-            tpas = h5f['testpulses']['testpulseamplitude'][only_idx]
+            tpas = h5f['testpulses']['testpulseamplitude']
+            if len(tpas.shape) > 1:
+                tpas = tpas[channel, only_idx]
+            else:
+                tpas = tpas[only_idx]
 
             par, _ = curve_fit(logistic_curve_zero,
                                xdata=tpas,

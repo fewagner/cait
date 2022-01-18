@@ -48,7 +48,7 @@ class RdtMixin(object):
         event = np.zeros(self.record_length, dtype=np.short)
 
         with open(path_rdt, "rb") as f:
-            for nmbr_event in range(read_events):  # TODO -1 flag is not implemented
+            for nmbr_event in range(read_events):
 
                 dummies = []
 
@@ -265,6 +265,7 @@ class RdtMixin(object):
                         dvm_channels=0,
                         batch_size=1000,
                         trace=False,
+                        indiv_tpas=False,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -298,10 +299,14 @@ class RdtMixin(object):
         :type dvm_channels: int
         :param batch_size: The batch size for loading the samples from disk.
         :type batch_size: int
-        :param memsafe: Recommended! This activates  TODO
+        :param memsafe: Recommended! This activates the version of data set conversion, which does not load all events
+            into memory.
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
+        :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type individual_tpas: bool
         """
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
@@ -362,6 +367,7 @@ class RdtMixin(object):
                                          record_length=self.record_length,
                                          batch_size=batch_size,
                                          trace=trace,
+                                         indiv_tpas=indiv_tpas,
                                          )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -666,13 +672,20 @@ class RdtMixin(object):
         print('MON File Included.')
 
     def include_metainfo(self, path_par):
-        # TODO
+        """
+        Include the metainfo from the PAR file to the HDF5 metainfo group.
+
+        :param path_par: The full path to the PAR file.
+        :type path_par: str
+        """
 
         metainfo = get_metainfo(path_par)
 
         with h5py.File(self.path_h5, 'r+') as f:
             met = f.require_group('metainfo')
             for name in metainfo.keys():
+                if name in met:
+                    del met[name]
                 met.create_dataset(name=name,
                                    data=metainfo[name])
 
@@ -686,7 +699,8 @@ class RdtMixin(object):
 
         :param path_qdc: Path to the mon file e.g. "data/bcks/*.qdc".
         :type path_qdc: string
-        TODO
+        :param clock: The clock frequency of the recording.
+        :type clock: int
         """
 
         panels = ['cl', 'ltn', 'cr', 'ltf', 'fl', 'lbn', 'fr', 'lbf', 'ftr', 'sum', 'ftl', 'fbr', 'fbl', 'rtf', 'rtn',

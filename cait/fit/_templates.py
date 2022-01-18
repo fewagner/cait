@@ -58,7 +58,18 @@ def baseline_template_cubic(t, c0, c1, c2, c3):
 
 @nb.njit
 def exponential_bl(t, c0, c1):
-    """TODO"""
+    """
+    Template for the baseline fit, with constant and exponential component.
+
+    :param t: The time grid.
+    :type t: 1D array
+    :param c0: Constant component.
+    :type c0: float
+    :param c1: Exponential component.
+    :type c1: float
+    :return: The cubic polynomial evaluated on the time grid.
+    :rtype: 1D array
+    """
     return c0 + np.exp(t * c1)
 
 

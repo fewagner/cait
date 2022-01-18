@@ -47,7 +47,8 @@ class SimulateMixin(object):
                         reuse_bl=False,
                         pulses_per_bl=1,
                         ps_dev=False,
-                        dtype='float32'):
+                        dtype='float32',
+                        indiv_tpas=False):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise.
 
@@ -63,12 +64,15 @@ class SimulateMixin(object):
         :type size_tp: int
         :param size_noise: The number of noise baselines to simulate.
         :type size_noise: int
-        :param take_idx: TODO Overwrites start_from_bl_idx and rms_thresholds.
+        :param take_idx: Take only these event indices for the simulation. Overwrites start_from_bl_idx and rms_thresholds.
+        :type take_idx: list
         :param ev_ph_intervals: The interval in which the pulse heights
             are continuously distributed.
         :type ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
         :param ev_discrete_phs: The discrete values, from which the pulse heights
-            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored. TODO
+            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored. This should be one
+            list per channel with have same length. The simulation is done correlated, i.e. the same index from the lists
+            is chosen for all channels. This way e.g. light yields can be simulated.
         :type ev_discrete_phs: list of NMBR_CHANNELS lists
         :param name_appendix: A string that is appended to the group name stdevent, which contains the standard event
             that is used for simulation. This concerns only the simulation of event pulses and has no effect on the
@@ -84,7 +88,9 @@ class SimulateMixin(object):
         :type channel_exceptional_sev: list of ints
         :param tp_ph_intervals: Analogous to ev_ph_intervals, but for the testpulses.
         :type tp_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
-        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses. TODO
+        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses. This should be one
+            list per channel with have same length. The simulation is done correlated, i.e. the same index from the lists
+            is chosen for all channels. This way e.g. light yields can be simulated.
         :type tp_discrete_phs: list of NMBR_CHANNELS lists
         :param t0_interval: The interval from which the pulse onset are continuously sampled.
         :type t0_interval: 2-tuple or list
@@ -121,6 +127,9 @@ class SimulateMixin(object):
         :type ps_dev: bool
         :param dtype: The data format of the simulated raw data events array.
         :type dtype: string
+        :param indiv_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type indiv_tpas: bool
         """
 
         assert pulses_per_bl == 1, 'Only 1 pulse per baseline implemented!'
@@ -262,7 +271,10 @@ class SimulateMixin(object):
                     data.create_dataset(name='time_mus', data=time_mus)
                 if saturation:
                     fp = f_read['saturation']['fitpar'][0]
-                    data.create_dataset(name='testpulseamplitude', data=phs[0] / scale_factor(*fp))
+                    data_to_write = phs[0] / scale_factor(*fp)
+                    if indiv_tpas:
+                        data_to_write = np.tile(data_to_write, (self.nmbr_channels, 1))
+                    data.create_dataset(name='testpulseamplitude', data=data_to_write)
                 data.create_dataset(name='true_onset', data=t0s)
                 data.create_dataset(name='labels',
                                     data=2 * np.ones([self.nmbr_channels, size_tp]))  # 2 is the label for testpulses

@@ -346,6 +346,8 @@ class PulserModel:
             lb = tp_hours[0]
             for i in range(1, len(tp_hours)):
                 if np.abs(tp_hours[i] - tp_hours[i - 1]) > self.max_dist:
+                    print(i, np.abs(tp_hours[i] - tp_hours[i - 1]), [lb, tp_hours[i]])
+                    print(tp_hours[i], tp_hours[i - 1])
                     self.intervals.append([lb, tp_hours[i]])
                     lb = tp_hours[i]
             self.intervals.append([lb, tp_hours[-1]])

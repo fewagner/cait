@@ -7,7 +7,20 @@ from ._saturation import scaled_logistic_curve
 
 @nb.njit
 def shift(event, shift_ms=0, timebase_ms=0.04, max_shift=20):
-    """TODO"""
+    """
+    Shift an event by a number of samples.
+
+    :param event: The event that is to be shifted.
+    :type event: 1D numpy array
+    :param shift_ms: The amount of milliseconds by which we want to shift it.
+    :type shift_ms: float
+    :param timebase_ms: The length of one sample in milliseconds.
+    :type timebase_ms: float
+    :param max_shift: The maximal shift that can be applied.
+    :type max_shift: float
+    :return: The shifted event. Attention, this array is shorter than the input array!
+    :rtype: 1D numpy array
+    """
     # convert to samples
     shift_sample = int(shift_ms / timebase_ms)
     bound_samples = int(max_shift / timebase_ms)
@@ -17,100 +30,50 @@ def shift(event, shift_ms=0, timebase_ms=0.04, max_shift=20):
 
 @nb.njit
 def template(height, onset, offset, linear, quadratic, cubic, t, sev, timebase_ms=0.04, max_shift=20):
-    """TODO"""
+    """
+    Shift the standard event by a given onset value and superpose a baseline model.
+
+    :param height: The height to which we want to scale the standard event.
+    :type height: float
+    :param onset: The onset value by which we shift the sev, in ms.
+    :type onset: float
+    :param offset: The constant component of the baseline.
+    :type offset: float
+    :param linear: The linear component of the baseline.
+    :type linear: float
+    :param quadratic: The quadratic component of the baseline.
+    :type quadratic: float
+    :param cubic: The cubic component of the baseline.
+    :type cubic: float
+    :param t: The time grid on which the baseline model is evaluated, in ms.
+    :type t: 1D numpy array
+    :param sev: The standard event.
+    :type sev: 1D numpy array
+    :param timebase_ms: The length of one sample in milliseconds.
+    :type timebase_ms: float
+    :param max_shift: The maximal shift that can be applied.
+    :type max_shift: float
+    :return: The shifted standard event, superposed with the baseline model. Attention, this array is shorter than the sev array!
+    :rtype: 1D numpy array
+    """
     return height * shift(event=sev, shift_ms=onset, timebase_ms=timebase_ms,
                           max_shift=max_shift) + cubic * t ** 3 + quadratic * t ** 2 + linear * t + offset  # two times bounds samples shorter
 
 
-#
-# @nb.njit
-# def fitfunc(pars, event, t, sev, timebase_ms, max_shift, truncation_flag, truncated=False, t0=None, offset=None,
-#             linear=None, quadratic=None, cubic=None, saturation_pars=None):
-#     """TODO"""
-#     # event and t same length
-#     if t0 is not None:
-#         pars[1] = t0
-#     if offset is not None:
-#         pars[2] = offset
-#     if linear is not None:
-#         pars[3] = linear
-#     if quadratic is not None:
-#         pars[4] = quadratic
-#     if cubic is not None:
-#         pars[5] = cubic
-#     if np.abs(pars[1]) > max_shift:
-#         return 1e8 + 1e5*(np.abs(pars[1] - max_shift))
-#     if np.abs(pars[0]) > 100:
-#         return 1e5 * (np.abs(pars[0]))
-#     height = np.max(event)
-#     if height > 3 * np.std(event[:500]) and pars[0] < 0:
-#         return 1e5*(np.abs(pars[0]))
-#     if truncated:
-#         if pars[0] < height:
-#             return 1e8 + 1e4 * (height - pars[0])/height
-#     bound_samples = int(max_shift / timebase_ms)
-#     if saturation_pars is not None:
-#         sev[:] = scaled_logistic_curve(sev, saturation_pars[0], saturation_pars[1], saturation_pars[2],
-#                                     saturation_pars[3], saturation_pars[4], saturation_pars[5], )
-#     temp = template(height=pars[0], onset=pars[1], offset=pars[2], linear=pars[3], quadratic=pars[4], cubic=pars[5],
-#                     t=t, sev=sev, timebase_ms=timebase_ms, max_shift=max_shift)
-#     retval = np.mean(np.abs(temp[truncation_flag[bound_samples:-bound_samples]] -
-#                           event[bound_samples:-bound_samples][truncation_flag[bound_samples:-bound_samples]]) ** 2)
-#     return retval
-#
-#
-# def array_fitter(args, sev, t, record_length=16384, timebase_ms=0.04, max_shift=20,
-#                  truncation_level=None, saturation_pars=None):
-#     """TODO"""
-#     ev, ph_start, t0, t0_start = args
-#     bound_samples = int(max_shift/timebase_ms)
-#
-#     # set sv
-#     start_vals = np.array([ph_start, t0_start, 0, 0, 0, 0])
-#     start_vals[3], start_vals[2], _, _, _ = linregress(t[bound_samples:int(3 / 16 * record_length)],
-#                                                        ev[:int(3 / 16 * record_length) - bound_samples])
-#
-#     # truncation
-#     if truncation_level is not None:
-#         truncation_flag = ev < (truncation_level + start_vals[2])
-#     else:
-#         truncation_flag = np.ones(ev.shape[0], dtype=bool)
-#     if any(np.logical_not(truncation_flag)):
-#         truncated = True
-#     else:
-#         truncated = False
-#     if truncated:
-#         offset = start_vals[2]
-#         linear = 0
-#         quadratic = 0
-#         cubic = 0
-#     else:
-#         offset = None
-#         linear = None
-#         quadratic = None
-#         cubic = None
-#
-#     # minimize
-#     res = minimize(
-#         fun=fitfunc,
-#         x0=start_vals,
-#         method='Nelder-Mead',
-#         args=(ev, t[bound_samples:-bound_samples], sev,  # [bound_samples:-bound_samples],
-#               timebase_ms, max_shift, truncation_flag, truncated, t0, offset, linear, quadratic, cubic, saturation_pars),
-#         options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
-#     )
-#
-#     if truncated:
-#         res.x[2:6] = offset, linear, quadratic, cubic
-#     if t0 is not None:
-#         res.x[1] = t0
-#
-#     return res.x
-
-
 @nb.njit
 def doshift(arr, num, fill_value=np.nan):
-    """TODO"""
+    """
+    Shift an array by a number of samples. Attention, this function is deprecated, use numpy.roll instead!
+
+    :param arr: The array that we want to shift.
+    :type arr: 1D numpy array
+    :param num: The number of samples to shift. This is automatically rounded to the closest integer.
+    :type num: float
+    :param fill_value: The value with which we want to fill the boarders of the shifted sample.
+    :type fill_value: float
+    :return: The shifted array.
+    :rtype: 1D numpy array
+    """
     num_ = int(num)
     if num_ == 0:
         return arr
@@ -122,23 +85,68 @@ def doshift(arr, num, fill_value=np.nan):
 
 @nb.njit
 def lstsqsol(X, y):
-    """TODO"""
+    """
+    Solution to a least squares regression.
+
+    :param X: The data matrix: (nmbr_samples, nmbr_features).
+    :type X: 2-dim numpy array
+    :param y: The regression objective.
+    :type y: 1-dim numpy array
+    :return: The solution, i.e. the fitted coefficients of the features.
+    :rtype: 1D array
+    """
     return np.dot(np.dot(np.linalg.inv(np.dot(X.T, X)), X.T), y)
 
 
 @nb.njit
 def fitfunc(pars, X, event_, sev, bs):
-    """TODO"""
+    """
+    The fit function for the array fit.
+
+    :param pars: List of length one, the shift that is to be applied.
+    :type pars: list
+    :param X: The data matrix: (nmbr_samples, nmbr_features). The first column corresponds to the standard event, the
+        others to baseline components.
+    :type X: 2 dim numpy array
+    :param event_: The event that we want to fit.
+    :type event_: 1D numpy array
+    :param sev: The standard event.
+    :type sev: 1D numpy array
+    :param bs: The maximum shift value, i.e. the bounds of the minimization problem.
+    :type bs: int
+    :return: The average rms value of the fit.
+    :rtype: float
+    """
     shift, = pars
     if np.abs(np.floor(shift)) > bs:
         return 1e8 + 1e5 * np.abs(shift - bs)
     X[:, 0] = doshift(sev, shift)[bs:-bs]
-    return np.mean((np.dot(X, lstsqsol(X, event_)) - event_) ** 2)
+    try:
+        rms = np.mean((np.dot(X, lstsqsol(X, event_)) - event_) ** 2)
+    except:
+        print('Error in array fit, filling up with zeros!')
+        rms = 0
+    return rms
 
 
 @nb.njit
 def arr_fit_rms(pars, X, event_, sev, bs):
-    """TODO"""
+    """
+    Get the rms value of the array fit.
+
+    :param pars: The fitted parameters: (height, shift, ... polynomial baseline coefficients ...)
+    :type pars: list
+    :param X: The data matrix: shape (nmbr_features, record_length).
+    :type X: 2D numpy array
+    :param event_: The event to fit.
+    :type event_: 1D numpy array
+    :param sev: The standard event
+    :type sev: 1D numpy array
+    :param bs: The maximum shift value, i.e. the bounds of the minimization problem.
+    :type bs: int
+    :return: The average rms value of the fit.
+    :rtype: float
+    """
     a = np.empty(X.shape[1], dtype='f')
     a[0] = pars[0]
     shift = pars[1]
@@ -148,7 +156,29 @@ def arr_fit_rms(pars, X, event_, sev, bs):
 
 
 def array_fit(args, sev, t, blcomp, trunclv, bs, no_bl_when_sat):
-    """TODO"""
+    """
+    The wrapper function which does the array fit for one event.
+
+    :param args: The arguments which we provide to the wrapper: (event, t0). The event is the event to fit
+        (1D numpy array), t0 (in milli seconds) is either a float or None. If it is a float,
+        the t0 value is not searched but this one
+        is used.
+    :type args: list
+    :param sev: The standard event
+    :type sev: 1D float array
+    :param t: The time grid on which the baseline model is evaluated, in ms.
+    :type t: 1D float array
+    :param blcomp: The number of baseline components, i.e. (order+1) of the polynomial which is used as baseline.
+    :type blcomp: int
+    :param trunclv: The truncation level. Values higher than this are excluded from the fit.
+    :type trunclv: float
+    :param bs: The bounds for the t0 search, in milli seconds.
+    :type bs: float
+    :param no_bl_when_sat:
+    :type no_bl_when_sat: bool
+    :return: The fitted parameters: (height, t0, ... polynomial baseline components ...)
+    :rtype: list
+    """
     assert blcomp in [1, 2, 3, 4], 'blcomp must be in [1,2,3,4]!'
     event, t0 = args
     record_length = event.shape[0]
@@ -173,9 +203,13 @@ def array_fit(args, sev, t, blcomp, trunclv, bs, no_bl_when_sat):
                            args=(A, event_, sev, bs),
                            method="Powell").x[0]
         else:
-            res = t0
+            res = t0/(t[1] - t[0])
         A[:, 0] = doshift(sev, res)[bs:-bs]
-        x = lstsqsol(A, event_)
+        try:
+            x = lstsqsol(A, event_)
+        except:
+            print('Error in array fit, filling up with zeros!')
+            x = np.zeros(A.shape[1])
     else:
         if no_bl_when_sat:
             A = A[:, :2]
@@ -188,9 +222,13 @@ def array_fit(args, sev, t, blcomp, trunclv, bs, no_bl_when_sat):
                            args=(A_, event_[truncflag_], sev[truncflag], bs),
                            method="Powell").x[0]
         else:
-            res = t0
+            res = t0/(t[1] - t[0])
         A_[:, 0] = doshift(sev, res)[bs:-bs][truncflag_]
-        x = lstsqsol(A_, event_[truncflag_])
+        try:
+            x = lstsqsol(A_, event_[truncflag_])
+        except:
+            print('Error in array fit, filling up with zeros!')
+            x = np.zeros(A_.shape[1])
 
     pars[0] = x[0]
     pars[1] = res * (t[1] - t[0])
