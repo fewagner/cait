@@ -1,8 +1,8 @@
-
 from torch.utils.data import Dataset
 import h5py
 import numpy as np
 import torch
+
 
 class H5CryoData(Dataset):
     """
@@ -34,8 +34,9 @@ class H5CryoData(Dataset):
     """
 
     def __init__(self, type, keys, channel_indices, feature_indices=None,
-                 keys_one_hot=[], hdf5_path = None,
-                 transform=None, nmbr_events=None, double=False):
+                 keys_one_hot=[], hdf5_path=None,
+                 transform=None, nmbr_events=None, double=False,
+                 ):
         self.hdf5_path = hdf5_path
         self.transform = transform
         self.type = type
@@ -79,10 +80,7 @@ class H5CryoData(Dataset):
         if self.transform:
             sample = self.transform(sample)
 
-        # final check if dimensions are alright
         for k in sample.keys():
-            if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
-                raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k, len(sample[k].shape)))
             if self.double:
                 sample[k] = sample[k].double()
 
@@ -127,10 +125,13 @@ class H5CryoData(Dataset):
                                 1)  # e.g. single mp, ...
                         else:
                             sample[new_key] = np.array(f[self.type + '/' + key][c, idx, fe])
+            elif ls == 4 and self.channel_indices[i] is not None and self.feature_indices[i] is None:
+                for c in self.channel_indices[i]:
+                    new_key = key + '_ch' + str(c)
+                    sample[new_key] = np.array(f[self.type + '/' + key][c, idx])  # e.g. pulse_traces, ...
             else:
                 raise KeyError('For {} the combination of channel_indices and feature_indices is invalid.'.format(key))
         return sample
-
 
     def __getitem__(self, idx):
         """
@@ -151,10 +152,7 @@ class H5CryoData(Dataset):
         if self.transform:
             sample = self.transform(sample)
 
-        # final check if dimensions are alright
         for k in sample.keys():
-            if len(sample[k].shape) != 1 and k not in self.keys_one_hot:
-                raise KeyError('The {} must have dim=1 but has dim={}. If it is a label, put in keys_one_hot.'.format(k, len(sample[k].shape)))
             if self.double:
                 sample[k] = sample[k].double()
 

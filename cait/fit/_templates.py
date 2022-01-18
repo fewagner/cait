@@ -57,6 +57,23 @@ def baseline_template_cubic(t, c0, c1, c2, c3):
 
 
 @nb.njit
+def exponential_bl(t, c0, c1):
+    """
+    Template for the baseline fit, with constant and exponential component.
+
+    :param t: The time grid.
+    :type t: 1D array
+    :param c0: Constant component.
+    :type c0: float
+    :param c1: Exponential component.
+    :type c1: float
+    :return: The cubic polynomial evaluated on the time grid.
+    :rtype: 1D array
+    """
+    return c0 + np.exp(t * c1)
+
+
+@nb.njit
 def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
     """
     Parametric model for the pulse shape, 6 parameters.
@@ -377,7 +394,7 @@ class sev_fit_template:
         # find d, height and k approx
         a00 = 0  # np.mean(event[:1000])
         a10 = (event[-1] - sec(self.t, h0, t0_start, 0, 0, 0, 0, *self.pm_par)[-1] - event[0]) / (
-                    self.t[-1] - self.t[0])
+                self.t[-1] - self.t[0])
         a20 = 0
         a30 = 0
 
@@ -388,8 +405,9 @@ class sev_fit_template:
                                x0=np.array([t0_start]),
                                method='nelder-mead',
                                args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
-                        self.low, self.up, self.pm_par, truncation_flag),
-                               options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
+                                     self.low, self.up, self.pm_par, truncation_flag),
+                               options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8,
+                                        'adaptive': True},
                                )
                 t0 = res.x
             elif self.saturation_pars is not None:  # in case we have saturation curve
@@ -397,10 +415,11 @@ class sev_fit_template:
                                x0=np.array([t0_start]),
                                method='nelder-mead',
                                args=(h0, a00, a10, a20, a30, event, self.t, self.t0_bounds[0], self.t0_bounds[1],
-                        self.low, self.up, self.pm_par, truncation_flag,
-                        self.saturation_pars[0], self.saturation_pars[1], self.saturation_pars[2],
-                        self.saturation_pars[3], self.saturation_pars[4], self.saturation_pars[5]),
-                               options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
+                                     self.low, self.up, self.pm_par, truncation_flag,
+                                     self.saturation_pars[0], self.saturation_pars[1], self.saturation_pars[2],
+                                     self.saturation_pars[3], self.saturation_pars[4], self.saturation_pars[5]),
+                               options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8,
+                                        'adaptive': True},
                                )
                 t0 = res.x
             elif truncated:

@@ -19,6 +19,7 @@ Conversion to HDF5
     """
 
     import cait as ai
+    import argparse
 
     if __name__ == '__main__':
 

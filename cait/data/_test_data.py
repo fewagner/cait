@@ -369,6 +369,11 @@ class TestData():
         f.writelines("Record length                  : {}\n".format(self.record_length))
         f.writelines("Records written                : {}\n".format(int(np.sum(records_written))))
         f.writelines("First DVM channel              : 0\n")
+        f.writelines("\n")
+        f.writelines("**********************  Digitizer Setting *******************\n")
+        f.writelines("Pre trigger                    : 2\n")
+        f.writelines("Time base [us]                 : {}\n".format(int(1/self.sample_frequency*1e6)))
+        f.writelines("Trigger mode                   : 5\n")
         f.close()
 
         print('Par file written.')

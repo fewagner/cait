@@ -27,6 +27,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  record_length=16384,
                                  batch_size=1000,
                                  trace=False,
+                                 indiv_tpas=False,
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -56,6 +57,9 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type batch_size: int
     :param trace: Trace the runtime and memory consumption
     :type trace: bool
+    :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+    :type individual_tpas: bool
     """
 
     nmbr_channels = len(channels)
@@ -129,27 +133,14 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
 
     good_idx = []
 
+    detnmbrs = []
+
+    for r in tqdm(recs):
+        detnmbrs.append(r['detector_nmbr'])
+
+    # detnmbrs = np.array(detnmbrs)
+
     detnmbrs = np.array(recs['detector_nmbr'])
-
-    # detnmbrs = np.empty(nmbr_all_events)
-
-    # for idx in trange(0, nmbr_all_events, batch_size):
-    #     end = min(batch_size, nmbr_all_events - idx)
-    #     recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=record, offset=idx*record.itemsize, count=end)
-    #     detnmbrs[idx:idx + end] = recs['detector_nmbr']
-    #     del recs
-
-    # for idx in trange(0, nmbr_all_events, 1):
-    #     recs = np.fromfile("{}{}.rdt".format(path_rdt, fname), dtype=header, offset=idx*record.itemsize, count=1)
-    #     # print(recs['detector_nmbr'].shape)
-    #     detnmbrs[idx] = recs['detector_nmbr'][0]
-    #     # del recs
-
-    # for idx in trange(0, nmbr_all_events, batch_size):
-    #     recs = np.memmap("{}{}.rdt".format(path_rdt, fname), dtype=record, mode='c')
-    #     end = min(batch_size, nmbr_all_events - idx)
-    #     detnmbrs[idx:idx + end] = recs['detector_nmbr'][idx:idx + end]
-    #     del recs
 
     for c in channels:
         print(f'Event Counts Channel {c}: {np.sum(detnmbrs == c)}')
@@ -213,6 +204,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             events = h5f.create_group('events')
             events.create_dataset('event', shape=(nmbr_channels, nmbr_events, record_length), dtype=event_dtype)
             events.create_dataset('hours', data=recs['hours'][idx_events], dtype=float)
+            events.create_dataset('dac_output', data=recs['dac_output'][idx_events], dtype=float)
             events.create_dataset('time_s', data=recs['abs_time_s'][idx_events], dtype='int32')
             events.create_dataset('time_mus', data=recs['abs_time_mus'][idx_events], dtype='int32')
 
@@ -244,6 +236,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             noise = h5f.create_group('noise')
             noise.create_dataset('event', shape=(nmbr_channels, nmbr_noise, record_length), dtype=event_dtype)
             noise.create_dataset('hours', data=recs['hours'][idx_noise], dtype=float)
+            noise.create_dataset('dac_output', data=recs['dac_output'][idx_noise], dtype=float)
             noise.create_dataset('time_s', data=recs['abs_time_s'][idx_noise], dtype='int32')
             noise.create_dataset('time_mus', data=recs['abs_time_mus'][idx_noise], dtype='int32')
 
@@ -274,9 +267,13 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             print('CREATE DATASET WITH TESTPULSES.')
             testpulses = h5f.create_group('testpulses')
             testpulses.create_dataset('event', shape=(nmbr_channels, nmbr_testpulses, record_length), dtype=event_dtype)
-            testpulses.create_dataset('testpulseamplitude', data=recs['test_pulse_amplitude'][idx_testpulses],
+            data_to_write = recs['test_pulse_amplitude'][idx_testpulses]
+            if indiv_tpas:
+                data_to_write = np.tile(data_to_write, (nmbr_channels, 1))
+            testpulses.create_dataset('testpulseamplitude', data=data_to_write,
                                       dtype=float)
             testpulses.create_dataset('hours', data=recs['hours'][idx_testpulses], dtype=float)
+            testpulses.create_dataset('dac_output', data=recs['dac_output'][idx_testpulses], dtype=float)
             testpulses.create_dataset('time_s', data=recs['abs_time_s'][idx_testpulses], dtype='int32')
             testpulses.create_dataset('time_mus', data=recs['abs_time_mus'][idx_testpulses], dtype='int32')
 

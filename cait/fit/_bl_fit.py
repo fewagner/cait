@@ -2,6 +2,7 @@
 import numpy as np
 from scipy.optimize import curve_fit
 from ._templates import baseline_template_quad
+import numba as nb
 
 def fit_quadratic_baseline(event):
     """

@@ -6,4 +6,6 @@ __all__ = ['normalization_constant',
            'optimal_transfer_function',
            'filter_event',
            'get_amplitudes',
+           'rem_off',
+           'linregfit',
            ]

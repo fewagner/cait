@@ -13,6 +13,7 @@ from .mixins._data_handler_analysis import AnalysisMixin
 from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
+from .mixins._data_handler_bin import BinMixin
 import warnings
 
 
@@ -28,6 +29,7 @@ class DataHandler(SimulateMixin,
                   FitMixin,
                   CsmplMixin,
                   MachineLearningMixin,
+                  BinMixin,
                   ):
     """
     A class for the processing of raw data events.
@@ -96,8 +98,8 @@ class DataHandler(SimulateMixin,
         self.run = run
         self.module = module
         self.record_length = record_length
+        self.channels = channels
         if channels is not None:
-            self.channels = channels
             self.nmbr_channels = len(channels)
             if nmbr_channels is not None:
                 warnings.warn("If channels are specified, the number of channels is taken from the length of this list,"
@@ -115,9 +117,9 @@ class DataHandler(SimulateMixin,
         else:
             self.channel_names = []
             self.colors = []
-            for c in range(len(channels)):
+            for c in range(self.nmbr_channels):
                 self.channel_names.append('Channel ' + str(c))
-                if c == len(channels) - 1 and c > 0:
+                if c == self.nmbr_channels - 1 and c > 0:
                     self.colors.append('blue')
                 else:
                     self.colors.append('red')
@@ -407,6 +409,14 @@ class DataHandler(SimulateMixin,
         For this scenario, the raw data events can be deleted after the calculation of all useful features. At a later
         point, the events can be included again if needed.
 
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+
         :param type: The group in the HDF5 set from which the events are deleted,
             typically 'events', 'testpulses' or noise.
         :type type: string
@@ -424,6 +434,14 @@ class DataHandler(SimulateMixin,
     def drop(self, group: str, dataset: str = None):
         """
         Delete a dataset from a specified group in the HDF5 file.
+
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
 
         :param group: The name of the group in the HDF5 file.
         :type group: string
@@ -446,6 +464,14 @@ class DataHandler(SimulateMixin,
         For large scale analysis and limited server space, the covnerted HDF5 datasets exceed storage space capacities.
         For this scenario, the raw data events can be downsampled of a given factor. Downsampling to sample frequencies
         below 1kHz is in many situations sufficient for viewing events and most features calculations.
+
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
 
         :param type: The group in the HDF5 set from which the events are downsampled,
             typically 'events', 'testpulses' or noise.
@@ -492,6 +518,14 @@ class DataHandler(SimulateMixin,
         For measurements with high event rate (above ground, ...) a long record window might be counter productive,
         due to more pile uped events in the window. For this reason, you can truncate the length of the record window
         with this function.
+
+        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
+        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
 
         :param type: The group in the HDF5 set from which the events are downsampled,
             typically 'events', 'testpulses' or noise.
@@ -628,7 +662,7 @@ class DataHandler(SimulateMixin,
                 del last_idx[0]
                 last_idx.append(len(f['testpulses']['origin']) - 1)
 
-                origin = [name.decode('UTF-8') for name in origin]
+                origin = [name.decode('UTF-8') for name in origin]  # name.encode().decode('UTF-8')
 
                 print('Unique Files: ', origin)
 
@@ -657,10 +691,31 @@ class DataHandler(SimulateMixin,
             metainfo = f.require_group('metainfo')
 
             datasets = ["startstop_hours", "startstop_s", "startstop_mus"]
-            if 'origin' in f['testpulses']:
+            if 'origin' in f['testpulses']:  # comment, error!
                 datasets.append("origin")
 
             for name in datasets:
                 if name in metainfo:
                     del metainfo[name]
                 metainfo.create_dataset(name, data=eval(name))
+
+    def init_empty(self):
+        """
+        Initialize an empty HDF5 set.
+        """
+        with h5py.File(self.path_h5, 'a') as h5f:
+            pass
+
+    def record_window(self, ms=True):
+        """
+        Get the t array corresponding to a typical record window.
+
+        :param ms: If true, the time is in ms. Otherwise in s.
+        :type ms: bool
+        :return: the time array.
+        :rtype: 1D numpy array
+        """
+        t = (np.arange(self.record_length) - self.record_length/4)/self.sample_frequency
+        if ms:
+            t *= 1000
+        return t

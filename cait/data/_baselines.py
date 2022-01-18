@@ -6,8 +6,9 @@ import numpy as np
 from ..fit._templates import baseline_template_quad, baseline_template_cubic
 from scipy.optimize import curve_fit
 from scipy.stats import norm, uniform
-from tqdm.auto import tqdm
+from tqdm.auto import trange, tqdm
 from scipy import signal
+
 
 # -----------------------------------------------------------
 # FUNCTIONS
@@ -28,7 +29,10 @@ def get_nps(x):
     return x
 
 
-def noise_function(nps):
+def noise_function(nps,
+                   force_zero=True,
+                   size=None,
+                   ):
     """
     Simulates the function f from CC-Noise Algo
     with a given Noise Power Spectrum (NPS)
@@ -36,22 +40,40 @@ def noise_function(nps):
 
     :param f: The noise power spectrum.
     :type f: real valued 1D array of size N/2 + 1
+    :param force_zero: Force the zero coefficient (constant offset) of the NPS to zero.
+    :type force_zero: bool
+    :param size: The number of baselines to simulate. If None, only one is simulated.
+    :type size: int
     :return: Noise Baselines.
-    :rtype: real valued 1D array of size N
+    :rtype: real valued 1D array of size N, if size is None; else 2D
     """
     f = np.sqrt(nps)
-    f = np.array(f, dtype='complex')  # create array for frequencies
+    if force_zero:
+        f[0] = 0
     Np = (len(f) - 1) // 2
-    phases = np.random.rand(Np) * 2 * np.pi  # create random phases
-    phases = np.cos(phases) + 1j * np.sin(phases)
-    f[1:Np + 1] *= phases
-    f[-1:-1 - Np:-1] = np.conj(f[1:Np + 1])
-    return np.fft.irfft(f)
+    f = np.array(f, dtype='complex')  # create array for frequencies
+
+    if size is None:
+        phases = np.random.rand(Np) * 2 * np.pi  # create random phases
+        phases = np.cos(phases) + 1j * np.sin(phases)
+        f[1:Np + 1] *= phases
+        f[-1:-1 - Np:-1] = np.conj(f[1:Np + 1])
+    else:
+        f = np.tile(f, (size, 1))
+        phases = np.random.rand(size, Np) * 2 * np.pi  # create random phases
+        phases = np.cos(phases) + 1j * np.sin(phases)
+        f[:, 1:Np + 1] *= phases
+        f[:, -1:-1 - Np:-1] = np.conj(f[:, 1:Np + 1])
+
+    return np.fft.irfft(f, axis=-1)
 
 
 def get_cc_noise(nmbr_noise,
                  nps,
-                 lamb=0.01):
+                 lamb=0.01,
+                 force_zero=True,
+                 **kwargs
+                 ):
     """
     Simulation of a noise baseline, according to Carretoni Cremonesi: arXiv:1006.3289
 
@@ -61,32 +83,48 @@ def get_cc_noise(nmbr_noise,
         e.g. generated with scipy.fft.rfft().
     :type nps: 1D array of odd size
     :param lamb: Parameter of the method (overlap between ).
-    :type lamb: integer > 0
+    :type lamb: float > 0
+    :param force_zero: Force the zero coefficient (constant offset) of the NPS to zero.
+    :type force_zero: bool
     :return: The simulated baselines.
     :rtype: 2D array of size (nmbr_noise, 2*(len(nps)-1))
     """
 
-    T = (len(nps) - 1)*2
+    T = (len(nps) - 1) * 2
 
     # alpha is fixed by the function we use to 1
-    a = np.sqrt(1/lamb/T)
+    a = np.sqrt(1 / lamb / T)
 
-    noise = np.zeros((nmbr_noise, T))
+    noise = np.empty((nmbr_noise, T), dtype=float)
 
-    for i in tqdm(range(nmbr_noise)):
-        t = 0
-        while t < T:
-            noise[i] += norm.rvs(scale=a) * np.roll(noise_function(nps), t)
-            t = int(t - np.log(1 - uniform.rvs())/lamb)
+    repeats = np.random.poisson(lam=1 / lamb, size=nmbr_noise)
+    repeats[repeats == 0] = 1
+    roll_values = np.random.randint(0, T, size=np.sum(repeats))
+    noise_temps = noise_function(nps, force_zero, size=int(np.sum(repeats)))
+    noise_temps[:] = np.roll(noise_temps, roll_values, axis=1)
+    noise_temps[:] *= np.random.normal(scale=a, size=(np.sum(repeats), 1))
+
+    counter = 0
+    for i in range(nmbr_noise):
+        noise[i] = np.sum(
+            [noise_temps[c] for c in range(counter, counter + repeats[i])], axis=0)
+        counter += repeats[i]
+
+    #     for i in iterator:
+    #         t = 0
+    #         while t < T:
+    #             noise[i] += np.random.normal(scale=a) * np.roll(ai.data.noise_function(nps, force_zero), t)
+    #             t = int(t - np.log(1 - np.random.uniform(0,1))/lamb)
 
     return noise
+
 
 def calculate_mean_nps(baselines,
                        order_polynom=3,
                        clean=True,
-                       percentile=50,
+                       percentile=None,
                        down=1,
-                       sample_length = 0.00004,
+                       sample_length=0.00004,
                        rms_baselines=None,
                        rms_cutoff=None,
                        window=True):
@@ -119,7 +157,7 @@ def calculate_mean_nps(baselines,
     # downsample the baselines
     if down > 1:
         baselines = np.mean(baselines.reshape(len(baselines),
-                                              int(len(baselines[0])/down),
+                                              int(len(baselines[0]) / down),
                                               down), axis=2)
 
     record_length = baselines.shape[1]
@@ -162,10 +200,12 @@ def calculate_mean_nps(baselines,
         else:
             print('Using fitted baselines.')
 
-        rms_means = np.array(np.percentile(rms_baselines, percentile))
-
         if rms_cutoff is None:
-            baselines = baselines[rms_baselines < rms_means]
+            if percentile is not None:
+                rms_means = np.array(np.percentile(rms_baselines, percentile))
+                baselines = baselines[rms_baselines < rms_means]
+            else:
+                pass
         else:
             baselines = baselines[rms_baselines < rms_cutoff]
 

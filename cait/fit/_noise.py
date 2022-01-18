@@ -21,7 +21,7 @@ def noise_trigger_template(x_max, d, sigma):
     :type x_max: 1D array
     :param d: The number of independent samples.
     :type d: float
-    :param sigma: The baseline resolution
+    :param sigma: The baseline resolution.
     :type sigma: float
     :return: The template.
     :rtype: 1D array
@@ -459,7 +459,7 @@ def nll_fraction_gauss(pars, x):
 
 def get_noise_parameters_unbinned(events,
                                   model='gauss',
-                                  sigma_x0 = 2,
+                                  sigma_x0=2,
                                   ):
     """
     Find the maximum likelihood estimators of all noise trigger model parameters in an unbinned maximum likelihood fit.

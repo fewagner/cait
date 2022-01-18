@@ -9,6 +9,7 @@ import time
 
 
 # function
+import h5py
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses', 'stream'],
@@ -41,7 +42,8 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
     :param sets_to_merge: The sets that hold the arrays we want to concatenate, same sets for all groups.
     :type sets_to_merge: list of strings
     :param concatenate_axis: The axis along which the arrays are concatenated. Each n'th index in this list corresponds
-        to the n'th string in the sets_to_merge list.
+        to the n'th string in the sets_to_merge list. If -1, the set is originally a scalar and gets reshaped to a 1D
+        array after merge.
     :type concatenate_axis: list of ints
     :param groups_from_a: Which groups are copied from the first HDF5 set.
     :type groups_from_a: list of strings
@@ -73,8 +75,8 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
         start_time = time.time()
 
     for v in concatenate_axis:
-        if v not in [0, 1]:
-            raise KeyError('The concatenation axis must all be either 0 or 1!')
+        if v not in [-1, 0, 1]:
+            raise KeyError('The concatenation axis must all be either 0, 1 or -1!')
 
     with h5py.File(path_h5_a, 'r') as a, h5py.File(path_h5_b, 'r') as b, h5py.File(path_h5_merged, 'w') as m:
 
@@ -115,7 +117,13 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                         shape_a = a[group][set].shape
                         shape_b = b[group][set].shape
                         shape_m = np.copy(shape_a)
-                        shape_m[concatenate_axis[i]] += shape_b[concatenate_axis[i]]
+                        if concatenate_axis[i] == -1:
+                            if len(shape_a) == 0:
+                                shape_m = [2, ]
+                            else:
+                                shape_m[0] += 1
+                        else:
+                            shape_m[concatenate_axis[i]] += shape_b[concatenate_axis[i]]
 
                         # get dtype
                         data_type = a[group][set].dtype
@@ -136,6 +144,12 @@ def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                             for c in range(shape_a[0]):
                                 g[set][c, :shape_a[1]] = a[group][set][c, :]
                                 g[set][c, shape_a[1]:] = b[group][set][c, :]
+                        elif concatenate_axis[i] == -1:
+                            if len(shape_a) == 0:
+                                g[set][0] = a[group][set][()]
+                            else:
+                                g[set][:-1] = a[group][set][:]
+                            g[set][-1] = b[group][set][()]
 
                         # add the labels list
                         if set == 'labels':

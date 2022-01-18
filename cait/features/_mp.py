@@ -18,25 +18,15 @@ class MainParameters():
     Class to contain the main parameters.
 
     :param pulse_height: float, the height of the event
-
     :param t_zero: int, the sample index where the rise starts
-
     :param t_rise: int, the sample index where the rise reaches 80%
-
     :param t_max: int, the sample index of the max event
-
     :param t_decaystart: int, the sample index where the peak falls down to 90%
-
     :param t_half: int, the sample index where the peak falls down to 73%
-
     :param t_end: int, the sample index where the peak falls down to 36%
-
     :param offset: float, the mean of the first 1/8 of the record length
-
     :param linear_drift: float, the linear slope of the event baseline
-
     :param quadratic_drift: float, the quadratic slope of the event baseline
-
     """
 
     def __init__(self,
@@ -81,7 +71,6 @@ class MainParameters():
         Method to compare the main parameters with those of another instance.
 
         :param other: the other instance of main parameters
-
         :return: bool, states if the main parameters are the same
 
         """
@@ -314,7 +303,7 @@ def expectation(x, dist):
     :param x: 1D array, the function of the random vaiable, applied to the x value array
     :param dist: 1D array of same length as the other array, the values of the distribution
     """
-    return (1/len(dist))*np.dot(x,dist)
+    return (1/len(dist))*np.dot(x, dist)
 
 def distribution_skewness(density):
     """
@@ -343,7 +332,8 @@ def calc_additional_parameters(event,
     Calculate parameters additionally to the main parameters
 
     :param event: array, the event of which we want to calculate the additional main parameters
-    :param optimal_transfer_function: array, the optimum filter transfer function
+    :param optimal_transfer_function: array, the optimum filter transfer function; if None, the of values are filled
+        with zeros instead
     :param down: int, if we want to downsample the event by a factor, this can be done here
     :return: List of float values parameters (maximum of array,
                      minimum of array,
@@ -398,10 +388,15 @@ def calc_additional_parameters(event,
     der_minind = np.argmin(der)
 
     # Min Value OF: Position maximum and skewness of samples around
-    filtered = filter_event(event, transfer_function=optimal_transfer_function)
-    filtered_max = np.max(filtered[int(length_event/8):-int(length_event/8)])
-    filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
-    filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
+    if optimal_transfer_function is not None:
+        filtered = filter_event(event, transfer_function=optimal_transfer_function)
+        filtered_max = np.max(filtered[int(length_event/8):-int(length_event/8)])
+        filtered_maxind = np.argmax(filtered[int(length_event/8):-int(length_event/8)]) + int(length_event/8)
+        filtered_skew = distribution_skewness(filtered[filtered_maxind-int(length_event/32):filtered_maxind+int(length_event/32)])
+    else:
+        filtered_max = 0
+        filtered_maxind = 0
+        filtered_skew = 0
 
     return np.array([max,  # 0
                      min,  # 1

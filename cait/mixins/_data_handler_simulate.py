@@ -27,6 +27,7 @@ class SimulateMixin(object):
                         size_events=0,
                         size_tp=0,
                         size_noise=0,
+                        take_idx=None,
                         ev_ph_intervals=[[0, 1], [0, 1]],
                         ev_discrete_phs=None,
                         name_appendix='',
@@ -46,7 +47,8 @@ class SimulateMixin(object):
                         reuse_bl=False,
                         pulses_per_bl=1,
                         ps_dev=False,
-                        dtype='float32'):
+                        dtype='float32',
+                        indiv_tpas=False):
         """
         Simulates a data set of pulses by superposing the fitted SEV with fake or real noise.
 
@@ -62,11 +64,15 @@ class SimulateMixin(object):
         :type size_tp: int
         :param size_noise: The number of noise baselines to simulate.
         :type size_noise: int
+        :param take_idx: Take only these event indices for the simulation. Overwrites start_from_bl_idx and rms_thresholds.
+        :type take_idx: list
         :param ev_ph_intervals: The interval in which the pulse heights
             are continuously distributed.
         :type ev_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
         :param ev_discrete_phs: The discrete values, from which the pulse heights
-            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored.
+            are uniformly sampled. If the ph_intervals argument is set, this option will be ignored. This should be one
+            list per channel with have same length. The simulation is done correlated, i.e. the same index from the lists
+            is chosen for all channels. This way e.g. light yields can be simulated.
         :type ev_discrete_phs: list of NMBR_CHANNELS lists
         :param name_appendix: A string that is appended to the group name stdevent, which contains the standard event
             that is used for simulation. This concerns only the simulation of event pulses and has no effect on the
@@ -82,7 +88,9 @@ class SimulateMixin(object):
         :type channel_exceptional_sev: list of ints
         :param tp_ph_intervals: Analogous to ev_ph_intervals, but for the testpulses.
         :type tp_ph_intervals: list of NMBR_CHANNELS 2-tuples or lists
-        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses.
+        :param tp_discrete_phs: Analogous to ev_ph_intervals, but for the testpulses. This should be one
+            list per channel with have same length. The simulation is done correlated, i.e. the same index from the lists
+            is chosen for all channels. This way e.g. light yields can be simulated.
         :type tp_discrete_phs: list of NMBR_CHANNELS lists
         :param t0_interval: The interval from which the pulse onset are continuously sampled.
         :type t0_interval: 2-tuple or list
@@ -119,7 +127,12 @@ class SimulateMixin(object):
         :type ps_dev: bool
         :param dtype: The data format of the simulated raw data events array.
         :type dtype: string
+        :param indiv_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type indiv_tpas: bool
         """
+
+        assert pulses_per_bl == 1, 'Only 1 pulse per baseline implemented!'
 
         if exceptional_sev_naming is not None:
             warnings.warn('The exceptional standard events are with version 1.0 depricated. '
@@ -157,36 +170,36 @@ class SimulateMixin(object):
                                         shape=(size_events * pulses_per_bl,),
                                         dtype=float)
 
-                for i in range(pulses_per_bl):
-                    events, phs, t0s, nmbr_thrown_events, hours, time_s, time_mus = simulate_events(
-                        path_h5=self.path_h5,
-                        type='events',
-                        name_appendix=name_appendix,
-                        size=size_events,
-                        record_length=self.record_length,
-                        nmbr_channels=self.nmbr_channels,
-                        ph_intervals=ev_ph_intervals,
-                        discrete_ph=ev_discrete_phs,
-                        exceptional_sev_naming=exceptional_sev_naming,
-                        channels_exceptional_sev=channels_exceptional_sev,
-                        t0_interval=t0_interval,  # in ms
-                        fake_noise=fake_noise,
-                        use_bl_from_idx=start_from_bl_idx,
-                        rms_thresholds=rms_thresholds,
-                        lamb=lamb,
-                        sample_length=sample_length,
-                        saturation=saturation,
-                        reuse_bl=reuse_bl,
-                        ps_dev=ps_dev)
+                events, phs, t0s, nmbr_thrown_events, hours, time_s, time_mus = simulate_events(
+                    path_h5=self.path_h5,
+                    type='events',
+                    name_appendix=name_appendix,
+                    size=size_events,
+                    record_length=self.record_length,
+                    nmbr_channels=self.nmbr_channels,
+                    ph_intervals=ev_ph_intervals,
+                    discrete_ph=ev_discrete_phs,
+                    exceptional_sev_naming=exceptional_sev_naming,
+                    channels_exceptional_sev=channels_exceptional_sev,
+                    t0_interval=t0_interval,  # in ms
+                    fake_noise=fake_noise,
+                    use_bl_from_idx=start_from_bl_idx,
+                    take_idx=take_idx,
+                    rms_thresholds=rms_thresholds,
+                    lamb=lamb,
+                    sample_length=sample_length,
+                    saturation=saturation,
+                    reuse_bl=reuse_bl,
+                    ps_dev=ps_dev)
 
-                    if not fake_noise:
-                        data['hours'][i * size_events:(i + 1) * size_events] = hours
-                        data['time_s'][i * size_events:(i + 1) * size_events] = time_s
-                        data['time_mus'][i * size_events:(i + 1) * size_events] = time_mus
+                if not fake_noise:
+                    data['hours'][:size_events] = hours
+                    data['time_s'][:size_events] = time_s
+                    data['time_mus'][:size_events] = time_mus
 
-                    data['event'][:, i * size_events:(i + 1) * size_events, :] = events
-                    data['true_ph'][:, i * size_events:(i + 1) * size_events] = phs
-                    data['true_onset'][i * size_events:(i + 1) * size_events] = t0s
+                data['event'][:, :size_events, :] = events
+                data['true_ph'][:, :size_events] = phs
+                data['true_onset'][:size_events] = t0s
 
                 labels = np.ones([self.nmbr_channels, size_events])
                 for c in channels_exceptional_sev:
@@ -243,6 +256,7 @@ class SimulateMixin(object):
                     t0_interval=[-20, 20],  # in ms
                     fake_noise=fake_noise,
                     use_bl_from_idx=start_from_bl_idx + size_events + nmbr_thrown_events,
+                    take_idx=take_idx,
                     rms_thresholds=rms_thresholds,
                     lamb=lamb,
                     sample_length=sample_length,
@@ -257,7 +271,10 @@ class SimulateMixin(object):
                     data.create_dataset(name='time_mus', data=time_mus)
                 if saturation:
                     fp = f_read['saturation']['fitpar'][0]
-                    data.create_dataset(name='testpulseamplitude', data=phs[0] / scale_factor(*fp))
+                    data_to_write = phs[0] / scale_factor(*fp)
+                    if indiv_tpas:
+                        data_to_write = np.tile(data_to_write, (self.nmbr_channels, 1))
+                    data.create_dataset(name='testpulseamplitude', data=data_to_write)
                 data.create_dataset(name='true_onset', data=t0s)
                 data.create_dataset(name='labels',
                                     data=2 * np.ones([self.nmbr_channels, size_tp]))  # 2 is the label for testpulses
@@ -288,11 +305,13 @@ class SimulateMixin(object):
                 # store sev
 
                 sev = f_read['stdevent_tp']['event']
-                mp = np.array([calc_main_parameters(x).getArray() for x in sev])
+                mp = f_read['stdevent_tp']['mainpar']
+                fitpar = f_read['stdevent_tp']['fitpar']
 
                 data = f.create_group('stdevent_tp')
-                data.create_dataset(name='event', data=sev, dtype=dtype)
+                data.create_dataset(name='event', data=sev)
                 data.create_dataset(name='mainpar', data=mp)
+                data.create_dataset(name='fitpar', data=fitpar)
 
             data = f.create_group('noise')
             # store nps new and old
@@ -317,6 +336,7 @@ class SimulateMixin(object):
                                                                                                nmbr_channels=self.nmbr_channels,
                                                                                                fake_noise=fake_noise,
                                                                                                use_bl_from_idx=start_from_bl_idx + size_events + size_tp + nmbr_thrown_events + nmbr_thrown_testpulses,
+                                                                                               take_idx=take_idx,
                                                                                                rms_thresholds=rms_thresholds,
                                                                                                lamb=lamb,
                                                                                                sample_length=sample_length,

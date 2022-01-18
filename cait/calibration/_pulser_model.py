@@ -8,7 +8,7 @@ from scipy import odr
 from scipy.interpolate import interp1d
 from ..styles import make_grid, use_cait_style
 from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-
+import warnings
 
 # functions
 
@@ -47,20 +47,27 @@ class PolyModel:
     :type y_sigma: 1D array
     :param order: The order of the polynomial.
     :type order: int
+    :param force_zero: Force the polynomial to zero at zero.
+    :type force_zero: bool
     """
 
-    def __init__(self, xd, yd, x_sigma=None, y_sigma=None, order=5):
-        self.xd = xd
-        self.yd = yd
-        self.x_sigma = x_sigma
+    def __init__(self, xd: np.array, yd: np.array, x_sigma: np.array = None, y_sigma: np.array = None,
+                 order: int = 5, force_zero: bool = True, **kwargs):
+        assert order >= 1 and isinstance(order, int), 'The polynomial order must be integer and >= 1!'
+        self.xd = np.array(xd)
+        self.yd = np.array(yd)
+        self.x_sigma = np.array(x_sigma)
         self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
-        self.y_sigma = y_sigma
+        self.y_sigma = np.array(y_sigma)
         self.order = order
         self.poly_model = odr.polynomial(order)
         self.fix = np.ones(order + 1)
-        self.fix[0] = 0
+        if force_zero:
+            self.fix[0] = 0
         self.data = odr.RealData(self.xd, self.yd, sx=x_sigma, sy=y_sigma)
-        self.odr = odr.ODR(data=self.data, model=self.poly_model)
+        self.beta0 = np.zeros(order + 1)
+        self.beta0[1] = np.dot(self.xd, self.yd) / np.sum(self.xd ** 2)
+        self.odr = odr.ODR(data=self.data, model=self.poly_model, beta0=self.beta0, ifixb=self.fix)
         self.out = self.odr.run()
         self.y = np.poly1d(self.out.beta[::-1])
         self.dydx = np.polyder(self.y, m=1)
@@ -87,6 +94,88 @@ class PolyModel:
                        y + np.sqrt(np.abs(self.dydx(x)) * self.x_sigma_interp(x) ** 2 + self.out.res_var * d)
         return lower, y, upper
 
+class Interpolator:
+    """
+    Interpolate between given x and y data and uncertainties.
+
+    :param xd: The x values for the fit.
+    :type xd: 1D array
+    :param yd: The y values for the fit.
+    :type yd: 1D array
+    :param x_sigma: The uncertainties on the x values
+    :type x_sigma: 1D array
+    :param y_sigma: The uncertainties on the y values.
+    :type y_sigma: 1D array
+    :param order: The order of the polynomial.
+    :type order: int
+    :param force_zero: Force to zero at zero.
+    :type force_zero: bool
+    :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+    :type kind: str
+    """
+
+    def __init__(self, xd: np.array, yd: np.array, x_sigma: np.array = None, y_sigma: np.array = None,
+                 force_zero: bool = True, kind=None, **kwargs):
+        if kind is None:
+            self.kind = 'linear'
+        else:
+            self.kind = kind
+        self.xd = np.array(xd)
+        self.yd = np.array(yd)
+        if x_sigma is not None:
+            self.x_sigma = np.array(x_sigma)
+        if y_sigma is not None:
+            self.y_sigma = np.array(y_sigma)
+        if force_zero:
+            self.xd = np.concatenate(([0], self.xd))
+            self.yd = np.concatenate(([0], self.yd))
+            if x_sigma is not None:
+                self.x_sigma = np.concatenate(([self.x_sigma[0]], self.x_sigma))
+            if y_sigma is not None:
+                self.y_sigma = np.concatenate(([self.y_sigma[0]], self.y_sigma))
+        if x_sigma is not None:
+            self.x_sigma_interp = interp1d(self.xd, self.x_sigma, fill_value="extrapolate")
+        if y_sigma is not None:
+            self.y_sigma_interp = interp1d(self.xd, self.y_sigma, fill_value="extrapolate")
+
+        # avoid extrapolation problems for uncertainties of high values
+        self.xd = np.concatenate((self.xd, [self.xd[-1] + (self.xd[-1] - self.xd[-2])]))
+        self.yd = np.concatenate((self.yd, [self.yd[-1] + (self.yd[-1] - self.yd[-2])]))
+        if x_sigma is not None:
+            self.x_sigma = np.concatenate((self.x_sigma, [self.x_sigma[-1]]))
+        if y_sigma is not None:
+            self.y_sigma = np.concatenate((self.y_sigma, [self.y_sigma[-1]]))
+
+        self.y = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
+        if x_sigma is None and y_sigma is None:
+            self.y_lower = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd, self.yd, fill_value="extrapolate", kind=self.kind)
+        elif x_sigma is not None and y_sigma is None:
+            self.y_lower = interp1d(self.xd + self.x_sigma, self.yd, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd - self.x_sigma, self.yd, fill_value="extrapolate", kind=self.kind)
+        elif x_sigma is None and y_sigma is not None:
+            self.y_lower = interp1d(self.xd, self.yd - self.y_sigma, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd, self.yd + self.y_sigma, fill_value="extrapolate", kind=self.kind)
+        elif x_sigma is not None and y_sigma is not None:
+            self.y_lower = interp1d(self.xd + self.x_sigma, self.yd - self.y_sigma, fill_value="extrapolate", kind=self.kind)
+            self.y_upper = interp1d(self.xd - self.x_sigma, self.yd + self.y_sigma, fill_value="extrapolate", kind=self.kind)
+        else:
+            self.y_lower = self._dummy_bounds
+            self.y_upper = self._dummy_bounds
+
+    def _dummy_bounds(self, x):
+        return None
+
+    def y_pred(self, x):
+        """
+        Evaluate the fitted polynomial for a given x value and return the +/- 1 sigma prediction interval.
+
+        :param x: The x values for which we evaluate the fitted polynomial.
+        :type x: 1D array
+        :return: (predicted values - 1 sigma uncertainty, predicted value, predicted values + 1 sigma uncertainty)
+        :rtype: 3-tuple of 1D arrays
+        """
+        return self.y_lower(x), self.y(x), self.y_upper(x)
 
 class LinearModel:
     """
@@ -257,6 +346,8 @@ class PulserModel:
             lb = tp_hours[0]
             for i in range(1, len(tp_hours)):
                 if np.abs(tp_hours[i] - tp_hours[i - 1]) > self.max_dist:
+                    print(i, np.abs(tp_hours[i] - tp_hours[i - 1]), [lb, tp_hours[i]])
+                    print(tp_hours[i], tp_hours[i - 1])
                     self.intervals.append([lb, tp_hours[i]])
                     lb = tp_hours[i]
             self.intervals.append([lb, tp_hours[-1]])
@@ -317,11 +408,34 @@ class PulserModel:
         else:
             raise NotImplementedError('This method is not implemented.')
 
+    def _check_valid(self, x, x_sigma, name, allow_zero=False):
+        for vals, n in zip([x, x_sigma], [name, name + '_uncertainties']):
+            not_valid = np.sum(np.isnan(vals))
+            if not_valid > 0:
+                warnings.warn('Attention, {} values of {} are nan!'.format(not_valid, n))
+            not_valid = np.sum(np.isinf(vals))
+            if not_valid > 0:
+                warnings.warn('Attention, {} values of {} are inf!'.format(not_valid, n))
+            if n == name + '_uncertainties':
+                if allow_zero:
+                    errmsg = 'smaller'
+                    smaller_zero = np.sum(vals < 0)
+                else:
+                    errmsg = 'smaller or equal to'
+                    smaller_zero = np.sum(vals <= 0)
+                if smaller_zero > 0:
+                    print(x[vals < 0])
+                    print(x_sigma[vals < 0])
+                    warnings.warn('Attention, {} values of {} are {} zero!'.format(smaller_zero, n, errmsg))
+
     def predict(self,
                 evhs,
                 ev_hours,
                 poly_order,
-                cpe_factor=None
+                cpe_factor=None,
+                force_zero=True,
+                use_interpolation=True,
+                kind=None,
                 ):
         """
         Predict the equivalent test pulse value for given pulse heights.
@@ -334,9 +448,12 @@ class PulserModel:
         :type poly_order: int
         :param cpe_factor: The CPE factor, which linearly maps TPA values to recoil energies.
         :type cpe_factor: float
-        :param interpolation_method: Either 'linear' or 'tree'. Either a linear model or a regression tree is used for
-            the interpolation of test pulse pulse height.
-        :type interpolation_method: string
+        :param force_zero: Force the polynomial to zero at zero.
+        :type force_zero: bool
+        :param use_interpolation: Use interpolation instead of polynomial fit for PH->TPA regression.
+        :type use_interpolation: bool
+        :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+        :type kind: str
         :return: (the recoil energies, the 1 sigma uncertainties on the recoil energies, the equivalent tpa values, the
             2 sigma uncertainties on the equivalent tpa values)
         :rtype: 4-tuple of 1D arrays
@@ -361,8 +478,14 @@ class PulserModel:
                             xl, x, xu = s.y_sigma(ev_hours[e])
                             x_data.append(x)
                             x_sigma.append(xu - xl)
+                            self._check_valid(x_data[-1], x_sigma[-1], 'TPH_estimates', allow_zero=True)
                         y_data = self.all_linear_tpas[i]
-                        model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                        kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                                  'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                        if not use_interpolation:
+                            model = PolyModel(**kwargs)
+                        else:
+                            model = Interpolator(**kwargs)
                         yl, y, yu = model.y_pred(evhs[e])
 
                         tpa_equivalent[e] = y
@@ -379,11 +502,17 @@ class PulserModel:
                     xl, x, xu = l.predict(ev_hours[e].reshape(-1, 1)), m.predict(ev_hours[e].reshape(-1, 1)), u.predict(
                         ev_hours[e].reshape(-1, 1))
                     x_data.append(x)
-                    x_sigma.append(xu - xl)
+                    x_sigma.append(np.maximum(xu - xl, 1e-4))  # to avoid negative uncertainties
+                    self._check_valid(x_data[-1], x_sigma[-1], 'TPH_estimates', allow_zero=True)
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
                 y_data = self.linear_tpas
-                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                          'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                if not use_interpolation:
+                    model = PolyModel(**kwargs)
+                else:
+                    model = Interpolator(**kwargs)
                 yl, y, yu = model.y_pred(evhs[e])
 
                 tpa_equivalent[e] = y
@@ -391,6 +520,8 @@ class PulserModel:
 
         else:
             raise NotImplementedError('This method is not implemented.')
+
+        self._check_valid(tpa_equivalent, tpa_equivalent_sigma, 'tpa_equivalent', allow_zero=False)
 
         if cpe_factor is not None:
             energies = cpe_factor * tpa_equivalent
@@ -410,6 +541,12 @@ class PulserModel:
              xlim=None,
              tpa_range=None,
              rasterized=True,
+             show=True,
+             plot_regressions=True,
+             plot_poly=True,
+             force_zero=True,
+             use_interpolation=True,
+             kind=None,
              ):
         """
         Plot a scatter plot of the test pulse pulse heights vs time and the fitted polynomial in the TPA/PH plane.
@@ -431,57 +568,150 @@ class PulserModel:
         :type tpa_range: tuple
         :param rasterized: The scatter plot gets rasterized (much faster).
         :type rasterized: tuple
+        :param plot_poly: Plot the PH/TPA polynomials.
+        :type plot_poly: bool
+        :param plot_regressions: Plot the Pulse Height regressions.
+        :type plot_regressions: bool
+        :param force_zero: Force the polynomial to zero at zero.
+        :type force_zero: bool
+        :param use_interpolation: Use interpolation instead of polynomial fit for PH->TPA regression.
+        :type use_interpolation: bool
+        :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+        :type kind: str
         """
 
         assert self.interpolation_method is not None, 'You need to fit first!'
 
         if self.interpolation_method == 'linear':
             use_cait_style(dpi=dpi)
+            if plot_regressions:
+                # plot the regressions
+                plt.close()
+                plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
+                for i, iv in enumerate(self.intervals):
+                    if i == 0:
+                        plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
+                    t = np.linspace(iv[0], iv[1], 100)
+                    for m in range(len(self.all_linear_tpas[i])):
+                        lower, y, upper = self.all_regs[i][m].y_sigma(t)
+                        plt.plot(t, y, color='red', linewidth=2, zorder=15)
+                        plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
+                        plt.axvline(iv[1], color='green', linewidth=1, zorder=15)
+                make_grid()
+                if ylim is None:
+                    plt.ylim([0, self.start_saturation])
+                else:
+                    plt.ylim(ylim)
+                plt.xlim(xlim)
+                plt.xlabel('Hours (h)')
+                plt.ylabel('Pulse Height (V)')
+                if show:
+                    plt.show()
+
+            if plot_poly:
+                # plot the polynomials
+                for i, iv in enumerate(self.intervals):
+                    plt.close()
+                    x_data, x_sigma = [], []
+                    if plot_poly_timestamp is None:
+                        plot_timestamp = (iv[1] - iv[0]) / 2
+                    else:
+                        plot_timestamp = np.copy(plot_poly_timestamp)
+                    print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
+                    for s in self.all_regs[i]:
+                        xl, x, xu = s.y_sigma(plot_timestamp)
+                        x_data.append(x)
+                        x_sigma.append(xu - xl)
+                    y_data = self.all_linear_tpas[i]
+                    kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                              'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                    if not use_interpolation:
+                        model = PolyModel(**kwargs)
+                    else:
+                        model = Interpolator(**kwargs)
+
+                    h = np.linspace(0, self.start_saturation, 100)
+                    yl, y, yu = model.y_pred(h)
+
+                    plt.plot(h, y, color='red', linewidth=2, zorder=15)
+                    plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
+                    plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
+                    plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
+                    make_grid()
+                    if ylim is None:
+                        plt.xlim([0, self.start_saturation])
+                    else:
+                        plt.xlim(ylim)
+                    if tpa_range is None:
+                        plt.ylim(None)
+                    else:
+                        plt.ylim(tpa_range)
+                    plt.ylabel('Testpulse Amplitude (V)')
+                    plt.xlabel('Pulse Height (V)')
+                    if show:
+                        plt.show()
+
+                    if plot_only_first_poly or plot_poly_timestamp is not None:
+                        break
+
+        elif self.interpolation_method == 'tree':
+
+            use_cait_style(dpi=dpi)
             # plot the regressions
-            plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
-            for i, iv in enumerate(self.intervals):
-                if i == 0:
-                    plt.axvline(iv[0], color='green', linewidth=1, zorder=15)
-                t = np.linspace(iv[0], iv[1], 100)
-                for m in range(len(self.all_linear_tpas[i])):
-                    lower, y, upper = self.all_regs[i][m].y_sigma(t)
+            if plot_regressions:
+                plt.close()
+                plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
+                t = np.linspace(0, self.tp_hours[-1], 100)
+                for m in range(len(self.linear_tpas)):
+                    lower = self.lower_regs[m].predict(t.reshape(-1, 1))
+                    y = self.mean_regs[m].predict(t.reshape(-1, 1))
+                    upper = self.upper_regs[m].predict(t.reshape(-1, 1))
                     plt.plot(t, y, color='red', linewidth=2, zorder=15)
                     plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
-                    plt.axvline(iv[1], color='green', linewidth=1, zorder=15)
-            make_grid()
-            if ylim is None:
-                plt.ylim([0, self.start_saturation])
-            else:
-                plt.ylim(ylim)
-            plt.xlim(xlim)
-            plt.xlabel('Hours (h)')
-            plt.ylabel('Pulse Height (V)')
-            plt.show()
+                make_grid()
+                if ylim is None:
+                    plt.ylim([0, self.start_saturation])
+                else:
+                    plt.ylim(ylim)
+                plt.xlim(xlim)
+                plt.ylabel('Pulse Height (V)')
+                plt.xlabel('Time (h)')
+                if show:
+                    plt.show()
 
-            # plot the polynomials
-            for i, iv in enumerate(self.intervals):
+            if plot_poly:
+                # plot the polynomials
                 plt.close()
                 x_data, x_sigma = [], []
                 if plot_poly_timestamp is None:
-                    plot_timestamp = (iv[1] - iv[0]) / 2
+                    plot_timestamp = self.tp_hours[-1] / 2
                 else:
                     plot_timestamp = np.copy(plot_poly_timestamp)
-                print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
-                for s in self.all_regs[i]:
-                    xl, x, xu = s.y_sigma(plot_timestamp)
+                for l, m, u in zip(self.lower_regs, self.mean_regs, self.upper_regs):
+                    xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(
+                        np.array([[plot_timestamp]])), u.predict(
+                        np.array([[plot_timestamp]]))
                     x_data.append(x)
                     x_sigma.append(xu - xl)
-                y_data = self.all_linear_tpas[i]
-                model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
+                x_data = np.array(x_data).reshape(-1)
+                x_sigma = np.array(x_sigma).reshape(-1)
+                y_data = self.linear_tpas
+                kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
+                          'order': poly_order, 'force_zero': force_zero, 'kind': kind}
+                if not use_interpolation:
+                    model = PolyModel(**kwargs)
+                else:
+                    model = Interpolator(**kwargs)
 
                 h = np.linspace(0, self.start_saturation, 100)
                 yl, y, yu = model.y_pred(h)
 
+                print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
+
                 plt.plot(h, y, color='red', linewidth=2, zorder=15)
                 plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
                 plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
-                plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=1, capsize=0, zorder=20)
+                plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
                 make_grid()
                 if ylim is None:
                     plt.xlim([0, self.start_saturation])
@@ -493,72 +723,8 @@ class PulserModel:
                     plt.ylim(tpa_range)
                 plt.ylabel('Testpulse Amplitude (V)')
                 plt.xlabel('Pulse Height (V)')
-                plt.show()
-
-                if plot_only_first_poly or plot_poly_timestamp is not None:
-                    break
-
-        elif self.interpolation_method == 'tree':
-
-            use_cait_style(dpi=dpi)
-            # plot the regressions
-            plt.close()
-            plt.scatter(self.tp_hours, self.tphs, s=5, marker='.', color='blue', zorder=10, rasterized=rasterized)
-            t = np.linspace(0, self.tp_hours[-1], 100)
-            for m in range(len(self.linear_tpas)):
-                lower = self.lower_regs[m].predict(t.reshape(-1, 1))
-                y = self.mean_regs[m].predict(t.reshape(-1, 1))
-                upper = self.upper_regs[m].predict(t.reshape(-1, 1))
-                plt.plot(t, y, color='red', linewidth=2, zorder=15)
-                plt.fill_between(t, lower, upper, color='black', alpha=0.3, zorder=5)
-            make_grid()
-            if ylim is None:
-                plt.ylim([0, self.start_saturation])
-            else:
-                plt.ylim(ylim)
-            plt.xlim(xlim)
-            plt.ylabel('Pulse Height (V)')
-            plt.xlabel('Time (h)')
-            plt.show()
-
-            # plot the polynomials
-            plt.close()
-            x_data, x_sigma = [], []
-            if plot_poly_timestamp is None:
-                plot_timestamp = self.tp_hours[-1] / 2
-            else:
-                plot_timestamp = np.copy(plot_poly_timestamp)
-            for l, m, u in zip(self.lower_regs, self.mean_regs, self.upper_regs):
-                xl, x, xu = l.predict(np.array([[plot_timestamp]])), m.predict(np.array([[plot_timestamp]])), u.predict(
-                    np.array([[plot_timestamp]]))
-                x_data.append(x)
-                x_sigma.append(xu - xl)
-            x_data = np.array(x_data).reshape(-1)
-            x_sigma = np.array(x_sigma).reshape(-1)
-            y_data = self.linear_tpas
-            model = PolyModel(xd=x_data, yd=y_data, x_sigma=x_sigma, order=poly_order)
-
-            h = np.linspace(0, self.start_saturation, 100)
-            yl, y, yu = model.y_pred(h)
-
-            print('Plot Regression Polynomial at {:.3} hours.'.format(plot_timestamp))
-
-            plt.plot(h, y, color='red', linewidth=2, zorder=15)
-            plt.fill_between(h, yl, yu, color='black', alpha=0.3, zorder=5)
-            plt.plot(x_data, y_data, 'b.', markersize=3.5, zorder=10)
-            plt.errorbar(x_data, y_data, ecolor='b', xerr=x_sigma, fmt=" ", linewidth=0.5, capsize=0, zorder=20)
-            make_grid()
-            if ylim is None:
-                plt.xlim([0, self.start_saturation])
-            else:
-                plt.xlim(ylim)
-            if tpa_range is None:
-                plt.ylim(None)
-            else:
-                plt.ylim(tpa_range)
-            plt.ylabel('Testpulse Amplitude (V)')
-            plt.xlabel('Pulse Height (V)')
-            plt.show()
+                if show:
+                    plt.show()
 
         else:
             raise NotImplementedError('This method is not implemented.')

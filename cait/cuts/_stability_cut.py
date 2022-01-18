@@ -2,7 +2,6 @@
 
 import numpy as np
 
-
 # functions
 
 def controlpulse_stability(hours_ev, cphs=None, hours_cp=None, significance=3,
@@ -43,7 +42,7 @@ def controlpulse_stability(hours_ev, cphs=None, hours_cp=None, significance=3,
     :rtype: two 1D bool arrays, one list
     """
 
-    print('Do Testpulse Stability Cut')
+    print('Do Controlpulse Stability Cut')
 
     if instable_iv is None:
 
@@ -165,7 +164,7 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev,
     :rtype: 2-tuple of 1D bool arrays
     """
 
-    print('Do Control Pulse Stability Cut')
+    print('Do Test Pulse Stability Cut')
 
     unique_tpas = np.unique(tpas)
     print('Unique TPAs: ', unique_tpas)

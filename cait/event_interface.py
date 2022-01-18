@@ -12,6 +12,7 @@ from .filter._of import filter_event
 from .fit._templates import sev_fit_template
 from .styles._plt_styles import use_cait_style, make_grid
 from .fit._saturation import scaled_logistic_curve
+from .fit._numerical_fit import template
 
 # -----------------------------------------------------------
 # CLASS
@@ -55,6 +56,7 @@ class EventInterface:
     HDF5 File loaded.
     >>> ei.create_labels_csv(path='./')
     """
+
     def __init__(self,
                  record_length: int = 16384,
                  sample_frequency: int = 25000,
@@ -63,7 +65,7 @@ class EventInterface:
                  dpi: int = None,
                  run: str = None,
                  module: str = None,
-                 pre_trigger_region: float = 1/8,
+                 pre_trigger_region: float = 1 / 8,
                  ):
         self.nmbr_channels = nmbr_channels
         self.module = module
@@ -82,8 +84,10 @@ class EventInterface:
         self.only_wrong = False
         self.show_filtered = False
         self.sev = False
+        self.arr = False
         self.saturation = False
         self.fit_models = None
+        self.stdevents = None
         self.saturation_pars = None
         self.of = None
         self.subtract_offset = False
@@ -116,7 +120,7 @@ class EventInterface:
     def load_h5(self,
                 path: str,
                 fname: str,
-                channels: list=None,
+                channels: list = None,
                 appendix=True,
                 which_to_label=['events']):
         """
@@ -421,8 +425,10 @@ class EventInterface:
         with h5py.File(self.path_h5, 'r') as f:
             if down != 1:
                 try:
-                    of_real = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_real_down{}'.format(down)])
-                    of_imag = np.array(f['optimumfilter' + group_name_appendix]['optimumfilter_imag_down{}'.format(down)])
+                    of_real = np.array(
+                        f['optimumfilter' + group_name_appendix]['optimumfilter_real_down{}'.format(down)])
+                    of_imag = np.array(
+                        f['optimumfilter' + group_name_appendix]['optimumfilter_imag_down{}'.format(down)])
                 except KeyError:
                     raise KeyError(
                         'Please calculate the OF with according downsampling rate.')
@@ -467,6 +473,30 @@ class EventInterface:
 
             print('Added the sev fit parameters.')
 
+    def load_arr_par(self, name_appendix='', group_name_appendix: str = '', use_this_array=None):
+        """
+        Add the array fit parameters from the HDF5 file.
+
+        :param name_appendix: An appendix to the data set arr_fit_par in the HDF5 set.
+        :type name_appendix: string
+        :param group_name_appendix: A string that is appended to the group name stdevent in the HDF5 file. Typically
+            this could be _tp for a test pulse standard event.
+        :type group_name_appendix: string
+        :param use_this_array:
+        :type use_this_array:
+
+        """
+
+        # save this for loading of the parameters when viewing
+        self.arr_name_appendix = name_appendix
+        if use_this_array is not None:
+            self.stdevents = np.array(use_this_array)
+        else:
+            with h5py.File(self.path_h5, 'r') as f:
+                self.stdevents = np.array(f['stdevent' + group_name_appendix]['event'])
+
+        print('Added the array.')
+
     def load_saturation_par(self):
         """
         Add the saturation fit parameters from the HDF5 file.
@@ -490,6 +520,7 @@ class EventInterface:
         assert len(threshold) == self.nmbr_channels, 'You need to define one threshold for each channel!'
         self.threshold = threshold
         print('Set thresholds to: ', self.threshold)
+
 
     # ------------------------------------------------------------
     # LABEL AND VIEWER INTERFACE
@@ -557,6 +588,7 @@ class EventInterface:
         print('triang ... show triangulation')
         print('of ... show filtered event')
         print('sev ... show fitted standardevent')
+        print('arr ... show fitted array')
         print('sat ... show fitted event with saturation')
         print('threshold ... show the trigger threshold')
         print('xlim ... set the x limit')
@@ -612,6 +644,12 @@ class EventInterface:
                 assert self.fit_models is not None, 'You need to load standard event fit parameters first!'
                 self.sev = not self.sev
                 print('Show SEV fit set to: ', self.sev)
+
+            # arr fit
+            elif user_input == 'arr':
+                assert self.stdevents is not None, 'You need to load standard event fit parameters first!'
+                self.arr = not self.arr
+                print('Show SEV fit set to: ', self.arr)
 
             # saturation
             elif user_input == 'sat':
@@ -689,13 +727,14 @@ class EventInterface:
             # downsample first
             if not self.down == 1:
                 event = event.reshape((self.nmbr_channels, self.window_size,
-                                      self.down))
+                                       self.down))
                 event = np.mean(event, axis=2)
 
             # threshold
             if self.show_threshold:
-                threshold = self.threshold + np.mean(event[:, :int(len(event[0]) * self.pre_trigger_region / self.down)],
-                                                  axis=1)
+                threshold = self.threshold + np.mean(
+                    event[:, :int(len(event[0]) * self.pre_trigger_region / self.down)],
+                    axis=1)
 
             # optimum filter
             if self.show_filtered:
@@ -731,8 +770,7 @@ class EventInterface:
             if self.sev:
                 try:
                     sev_fit = []
-                    fp = f[type]['sev_fit_par{}'.format(
-                        self.name_appendix)][:, idx, :]
+                    fp = f[type]['sev_fit_par{}'.format(self.name_appendix)][:, idx, :]
                     for c in range(self.nmbr_channels):
                         sev_fit.append(self.fit_models[c]._wrap_sec(*fp[c]))
                         if self.saturation:
@@ -740,6 +778,26 @@ class EventInterface:
                             sev_fit[-1] = scaled_logistic_curve(sev_fit[-1] - offset, *self.saturation_pars[c]) + offset
                 except AttributeError:
                     raise AttributeError('No name_appendix attribute, did you load the SEV fit parameters?')
+
+            # arr
+            if self.arr:
+                try:
+                    arr_fit = []
+                    fp = f[type]['arr_fit_par{}'.format(self.arr_name_appendix)][:, idx, :]
+                    for c in range(self.nmbr_channels):
+                        t = (np.arange(0, event.shape[1], 1) - event.shape[1] / 4) * self.down / self.sample_frequency * 1000
+                        sev = self.stdevents[c]
+                        timebase_ms = 1000 / self.sample_frequency
+                        max_shift = np.abs(fp[c, 1]) + 1
+                        sample_bounds = int(max_shift / 1000 * self.sample_frequency)
+                        arr_fit.append(np.pad(array=template(*fp[c], t[sample_bounds:-sample_bounds],
+                                                             sev, timebase_ms, max_shift),
+                                              pad_width=sample_bounds, mode='edge'))
+                        if self.saturation:
+                            offset = fp[c][2]
+                            arr_fit[-1] = scaled_logistic_curve(arr_fit[-1] - offset, *self.saturation_pars[c]) + offset
+                except AttributeError:
+                    raise AttributeError('No arr_name_appendix attribute, did you load the arr fit parameters?')
 
             # def colors
             if self.nmbr_channels == 1:
@@ -811,6 +869,10 @@ class EventInterface:
                 if self.sev:
                     plt.plot(x[mask], sev_fit[i][mask] - offset, color='orange', zorder=15)
 
+                # arr
+                if self.arr:
+                    plt.plot(x[mask], arr_fit[i][mask] - offset, color='c', zorder=15)
+
                 make_grid()
                 plt.ylim(self.ylim)
 
@@ -837,7 +899,11 @@ class EventInterface:
 
             # TPA
             if type == 'testpulses':
-                tpa = f['testpulses']['testpulseamplitude'][idx]
+                tpa = f['testpulses']['testpulseamplitude']
+                if len(tpa.shape) > 1:
+                    tpa = f['testpulses']['testpulseamplitude'][:, idx]
+                else:
+                    tpa = f['testpulses']['testpulseamplitude'][idx]
                 print('TPA: {}'.format(tpa))
 
     def _print_labels(self):
@@ -893,7 +959,9 @@ class EventInterface:
         :param which: string, the naming of the channel, e.g. phonon/light
         :return: int > 0 or option code (int < 0) if the user input was one of the option flag
         """
-        print('Assign label for event idx: {} {} (q end, b back, n next, o options, i idx, p for (de)activate label list)\n' .format(idx, which))
+        print(
+            'Assign label for event idx: {} {} (q end, b back, n next, o options, i idx, p for (de)activate label list)\n'.format(
+                idx, which))
 
         while True:
             user_input = input('{}: '.format(which))
@@ -991,7 +1059,8 @@ class EventInterface:
                     if viewer_mode.lower() == 'y':
                         viewer_mode = True
                         print('You have selected viewer mode!')
-                        print('Navigate through events by pressing b back or n next. All other options are also available.')
+                        print(
+                            'Navigate through events by pressing b back or n next. All other options are also available.')
                         break
                     elif viewer_mode.lower() == 'n':
                         raise AttributeError('Load or create labels file first!')
@@ -1024,7 +1093,8 @@ class EventInterface:
                         if not viewer_mode:
                             user_input = self._ask_for_label(idx, channel)
                         else:
-                            user_input = input('Enter q end, b back, n next, o options, i idx, p for (de)activate label list')
+                            user_input = input(
+                                'Enter q end, b back, n next, o options, i idx, p for (de)activate label list')
                             user_input = self._ask_for_options(user_input)
 
                         if user_input == -1:
@@ -1052,9 +1122,9 @@ class EventInterface:
                         elif not viewer_mode:
                             self.labels[type][i, idx] = user_input
                             np.savetxt(self.path_csv_labels + type + '.csv',
-                                    self.labels[type],
-                                    fmt='%i',
-                                    delimiter='\n')
+                                       self.labels[type],
+                                       fmt='%i',
+                                       delimiter='\n')
                         else:
                             print('Only option keys are valid!')
                             pass

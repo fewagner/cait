@@ -98,7 +98,7 @@ def ps_minimizer(par, t, event, t0_lb, t0_ub, tau_lb):
 
 
 def fit_pulse_shape(event, x0=None, sample_length=0.04,
-                    down=1, t0_start=-3, t0_bounds=(-10, 5), opt_start=False):
+                    down=1, t0_start=-3, t0_bounds=(-10, 5), opt_start=False, lower_bound_tau=1e-2, upper_bound_tau=3e3):
     """
     Fits the pulse shape model to a given event and returns the fit parameters.
 
@@ -116,6 +116,10 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04,
     :type t0_bounds: tuple
     :param opt_start: If activated the start values are searched with a differential evolution algorithm.
     :type opt_start: bool
+    :param lower_bound_tau: The lower bound for all tau values in the fit.
+    :type lower_bound_tau: float
+    :param upper_bound_tau: The upper bound for all tau values in the fit.
+    :type upper_bound_tau: float
     :return: The fitted parameters.
     :rtype: 1D array length 6
     """
@@ -134,12 +138,12 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04,
 
     if opt_start:
 
-        bounds = Bounds(lb=[t0_bounds[0], 0, 0, 1e-1, 1e-2, 1e-1],
-                        ub=[t0_bounds[1], 5 * height_event, 5 * height_event, 3e3, 1e2, 1e3],
+        bounds = Bounds(lb=[t0_bounds[0], 0, 0, lower_bound_tau, lower_bound_tau, lower_bound_tau],
+                        ub=[t0_bounds[1], 5 * height_event, 5 * height_event, upper_bound_tau, upper_bound_tau, upper_bound_tau],
                         )
 
         par = differential_evolution(ps_minimizer,
-                                     args=(t_dummy, event, t0_bounds[0], t0_bounds[1], 1e-2),
+                                     args=(t_dummy, event, t0_bounds[0], t0_bounds[1], lower_bound_tau),
                                      bounds=bounds,
                                      strategy='rand1bin',
                                      workers=-1,
@@ -154,7 +158,7 @@ def fit_pulse_shape(event, x0=None, sample_length=0.04,
     par = minimize(ps_minimizer,
                    x0=x0,
                    method='nelder-mead',
-                   args=(t_dummy, event, t0_bounds[0], t0_bounds[1], 1e-2),
+                   args=(t_dummy, event, t0_bounds[0], t0_bounds[1], lower_bound_tau),
                    options={'maxiter': None, 'maxfev': None, 'xatol': 1e-8, 'fatol': 1e-8, 'adaptive': True},
                    )
 

@@ -12,6 +12,7 @@
    tips
    magic
    changelog
+   governance
 
 .. toctree::
    :caption: Tutorials
@@ -28,6 +29,10 @@
    tutorials/08ptl_classification
    tutorials/09regression
    tutorials/10limit
+   tutorials/11viztool
+   tutorials/12cryoaug
+   tutorials/13universaltrainingset
+   tutorials/14pileupseparation
 
 .. toctree::
    :caption: Templates

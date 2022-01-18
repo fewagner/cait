@@ -7,7 +7,7 @@ import struct
 from ..data._gen_h5 import gen_dataset_from_rdt
 from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
 import h5py
-from ..data._raw import read_rdt_file
+from ..data._raw import read_rdt_file, get_metainfo
 import warnings
 import time
 import tracemalloc
@@ -64,7 +64,7 @@ class RdtMixin(object):
                         delay_ch_tp = struct.unpack('i', f.read(4))[0]
                     time_low = struct.unpack('I', f.read(4))[0]  # 'L'
                     time_high = struct.unpack('I', f.read(4))[0]  # 'L'
-                    qcd_events = struct.unpack('I', f.read(4))[0]  # 'L'
+                    qdc_events = struct.unpack('I', f.read(4))[0]  # 'L'
                     hours = struct.unpack('f', f.read(4))[0]  # 'f'
                     dead_time = struct.unpack('f', f.read(4))[0]  # 'f'
                     test_pulse_amplitude = struct.unpack('f', f.read(4))[0]  # 'f'
@@ -102,7 +102,7 @@ class RdtMixin(object):
                             print('Delay of channel trigger to testpulse [us]: ', delay_ch_tp)
                         print('time stamp of module trigger low word (10 MHz clock, 0 @ START WRITE ): ', time_low)
                         print('time stamp of module trigger high word (10 MHz clock, 0 @ START WRITE ): ', time_high)
-                        print('number of qdc events accumulated until digitizer trigger: ', qcd_events)
+                        print('number of qdc events accumulated until digitizer trigger: ', qdc_events)
                     print('measuring hours (0 @ START WRITE): ', hours)
                     if verb:
                         print('accumulated dead time of channel [s] (0 @ START WRITE): ', dead_time)
@@ -265,6 +265,7 @@ class RdtMixin(object):
                         dvm_channels=0,
                         batch_size=1000,
                         trace=False,
+                        indiv_tpas=False,
                         ):
         """
         Wrapper for the gen_dataset_from_rdt function, creates HDF5 dataset from Rdt file.
@@ -298,14 +299,18 @@ class RdtMixin(object):
         :type dvm_channels: int
         :param batch_size: The batch size for loading the samples from disk.
         :type batch_size: int
-        :param memsafe: Recommended! This activates
+        :param memsafe: Recommended! This activates the version of data set conversion, which does not load all events
+            into memory.
         :type memsafe: bool
         :param trace: Trace the runtime and memory consumption
         :type trace: bool
+        :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type individual_tpas: bool
         """
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
-                                      'instanciation or when setting the file path for this instance!'
+                                          'instanciation or when setting the file path for this instance!'
 
         print('Start converting.')
 
@@ -362,6 +367,7 @@ class RdtMixin(object):
                                          record_length=self.record_length,
                                          batch_size=batch_size,
                                          trace=trace,
+                                         indiv_tpas=indiv_tpas,
                                          )
 
         print('Hdf5 dataset created in  {}'.format(path_h5))
@@ -409,7 +415,7 @@ class RdtMixin(object):
         print('Accessing RDT File ...')
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
-                                      'instanciation or when setting the file path for this instance!'
+                                          'instanciation or when setting the file path for this instance!'
 
         if channels is None:
             channels = self.channels
@@ -425,7 +431,7 @@ class RdtMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             # events
-            if 0.0 in tpa_list and not "event" in h5f["events"]:
+            if 0.0 in tpa_list:
 
                 metainfo_event = metainfo[:, metainfo[0, :, 12] == 0, :]
                 pulse_event = pulse[:, metainfo[0, :, 12] == 0, :]
@@ -437,9 +443,9 @@ class RdtMixin(object):
 
                 if origin is not None:
                     try:
-                        idx = np.array([st == origin for st in events['origin'][:]]).nonzero()[0]
-                    except:
                         idx = np.array([st.decode() == origin for st in events['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st == origin for st in events['origin'][:]]).nonzero()[0]
                     events.require_dataset('event',
                                            shape=(self.nmbr_channels, len(events['hours']), self.record_length),
                                            dtype=event_dtype)
@@ -456,7 +462,7 @@ class RdtMixin(object):
                     events['time_mus'][...] = np.array(metainfo_event[0, :, 5], dtype='int32')
 
             # noise
-            if -1.0 in tpa_list and not "event" in h5f["noise"]:
+            if -1.0 in tpa_list:
 
                 metainfo_noise = metainfo[:, metainfo[0, :, 12] == -1.0, :]
                 pulse_noise = pulse[:, metainfo[0, :, 12] == -1.0, :]
@@ -467,7 +473,10 @@ class RdtMixin(object):
                 noise = h5f.require_group('noise')
 
                 if origin is not None:
-                    idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
+                    try:
+                        idx = np.array([st.decode() == origin for st in noise['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st == origin for st in noise['origin'][:]]).nonzero()[0]
                     noise.require_dataset('event',
                                           shape=(self.nmbr_channels, len(noise['hours']), self.record_length),
                                           dtype=event_dtype)
@@ -484,9 +493,10 @@ class RdtMixin(object):
                     noise['time_mus'][...] = np.array(metainfo_noise[0, :, 5], dtype='int32')
 
             # testpulses
-            if any(el > 0 for el in tpa_list) and not "event" in h5f["testpulses"]:
+            if any(el > 0 for el in tpa_list):
 
                 tp_list = metainfo[0, :, 12] > 0.0
+
                 # np.logical_and(
                 #     metainfo[0, :, 12] != -1.0, metainfo[0, :, 12] != 0.0)
 
@@ -499,7 +509,10 @@ class RdtMixin(object):
                 testpulses = h5f.require_group('testpulses')
 
                 if origin is not None:
-                    idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
+                    try:
+                        idx = np.array([st.decode() == origin for st in testpulses['origin'][:]]).nonzero()[0]
+                    except:
+                        idx = np.array([st == origin for st in testpulses['origin'][:]]).nonzero()[0]
                     testpulses.require_dataset('event',
                                                shape=(self.nmbr_channels, len(testpulses['hours']), self.record_length),
                                                dtype=event_dtype)
@@ -540,7 +553,7 @@ class RdtMixin(object):
                            ('delay_ch_tp', 'i4', (int(ints_in_header == 7),)),
                            ('time_low', 'i4'),
                            ('time_high', 'i4'),
-                           ('qcd_events', 'i4'),
+                           ('qdc_events', 'i4'),
                            ('hours', 'f4'),
                            ('dead_time', 'f4'),
                            ('test_pulse_amplitude', 'f4'),
@@ -575,7 +588,7 @@ class RdtMixin(object):
         print('Accessing CON File...')
 
         assert self.channels is not None, 'To use this function, you need to specify the channel numbers either in the ' \
-                                      'instanciation or when setting the file path for this instance!'
+                                          'instanciation or when setting the file path for this instance!'
 
         if clock_frequency is None:
             if ints_in_header == 7:
@@ -657,3 +670,78 @@ class RdtMixin(object):
                                    data=mon_pars[name])
 
         print('MON File Included.')
+
+    def include_metainfo(self, path_par):
+        """
+        Include the metainfo from the PAR file to the HDF5 metainfo group.
+
+        :param path_par: The full path to the PAR file.
+        :type path_par: str
+        """
+
+        metainfo = get_metainfo(path_par)
+
+        with h5py.File(self.path_h5, 'r+') as f:
+            met = f.require_group('metainfo')
+            for name in metainfo.keys():
+                if name in met:
+                    del met[name]
+                met.create_dataset(name=name,
+                                   data=metainfo[name])
+
+        print('Metainfo included.')
+
+    def include_qdc(self, path_qdc, clock=1e7):
+        """
+        Read the content of an QDC file an add to HDF5.
+
+        These files contain the hits of the muon veto.
+
+        :param path_qdc: Path to the mon file e.g. "data/bcks/*.qdc".
+        :type path_qdc: string
+        :param clock: The clock frequency of the recording.
+        :type clock: int
+        """
+
+        panels = ['cl', 'ltn', 'cr', 'ltf', 'fl', 'lbn', 'fr', 'lbf', 'ftr', 'sum', 'ftl', 'fbr', 'fbl', 'rtf', 'rtn',
+                  'rbf', 'rbn', 'btl', 'btr', 'bbl', 'bbr']
+
+        dtype = np.dtype([('time_low', 'uint32'), ('time_high', 'uint32'), ('number_channels', 'int16')] +
+                         [(p, 'int16') for p in panels] +
+                         [('id{}'.format(i), 'int16') for i, p in enumerate(panels)])
+
+        data = np.fromfile(path_qdc, dtype)
+
+        # create file handles
+        with h5py.File(self.path_h5, 'r+') as f:
+            qdc = f.require_group('qdc')
+            for name in dtype.names:
+                if name in qdc:
+                    del qdc[name]
+                qdc.create_dataset(name=name,
+                                   data=data[name])
+            if 'hours' in qdc:
+                del qdc['hours']
+            hours = (data['time_high'] * 2 ** 32 + data['time_low']) / clock / 3600
+            qdc.create_dataset(name='hours',
+                               data=hours)
+            if 'metainfo' in f:
+                if 'time_s' in qdc:
+                    del qdc['time_s']
+                    del qdc['time_mus']
+
+                start_s = f['metainfo']['start_s'][()]
+                start_mus = f['metainfo']['start_mus'][()]
+
+                stamp_s = (data['time_high'] * 2 ** 32 + data['time_low']) / clock
+                time_s = np.array(stamp_s + start_s + start_mus, dtype=int)
+                time_mus = np.array((stamp_s + start_s + start_mus) * 1e6 % 1e6, dtype=int)
+
+                qdc.create_dataset(name='time_s',
+                                   data=time_s)
+                qdc.create_dataset(name='time_mus',
+                                   data=time_mus)
+            else:
+                print('To include absolute time information, include metainfo first!')
+
+        print('QDC File Included.')

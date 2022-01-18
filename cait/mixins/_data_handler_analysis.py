@@ -87,6 +87,8 @@ class AnalysisMixin(object):
                 if use_tp:
                     tphs = np.array(h5['testpulses']['mainpar'])[c, :, 0]
                     tpas = np.array(h5['testpulses']['testpulseamplitude'])
+                    if len(tpas.shape) > 1:
+                        tpas = tpas[c]
                     naming = 'Testpulses'
                 # choose the correct quantity for resolution calculation
                 elif of_filter:
@@ -162,7 +164,7 @@ class AnalysisMixin(object):
         :type use_poisson: bool
         :param intervals: A list of the stable intervals, in hours. If this is handed, these intervals are used instead of
             calculating them from scratch. This is useful e.g. for the cut efficiency.
-        :rtype intervals: list of 2-tuples
+        :type intervals: list of 2-tuples
         """
 
         if intervals is not None:
@@ -237,7 +239,7 @@ class AnalysisMixin(object):
         :type ub: float
         :param instable_iv: A list of the instable intervals. If this is handed, the instable intervals are not calculated
             but those are used. Useful for e.g. the cut efficiency.
-        :rtype instable_iv: list
+        :type instable_iv: list
         """
 
         with h5py.File(self.path_h5, 'r+') as f:
@@ -313,6 +315,8 @@ class AnalysisMixin(object):
 
         with h5py.File(self.path_h5, 'r+') as f:
             tpas = f['testpulses']['testpulseamplitude']
+            if len(tpas.shape) > 1:
+                tpas = f['testpulses']['testpulseamplitude'][channel]
             tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
             hours_tp = f['testpulses']['hours']
             hours_ev = f['events']['hours']
@@ -349,6 +353,8 @@ class AnalysisMixin(object):
                          pulser_models: object = None,
                          name_appendix_energy: str = '',
                          rasterized: bool = True,
+                         use_interpolation: bool = True,
+                         kind:str=None,
                          **kwargs,
                          ):
         """
@@ -399,7 +405,8 @@ class AnalysisMixin(object):
         :type poly_order: int
         :param only_channels: If set, the calibration is done only on the channels that are handed here.
         :type only_channels: list of ints or None
-        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter), 'sef' (standard event fit)
+        :param method: Either 'ph' (main parameter pulse height), 'of' (optimum filter), 'sef' (standard event fit),
+            'arrf' (array fit)
             or 'true_ph' (in case of simulated events - here you probably want to hand pulser models as well).
             Test pulse heights and event heights are then estimated with this method for the calibration.
         :type method: string
@@ -407,6 +414,8 @@ class AnalysisMixin(object):
         :type name_appendix_ev: string
         :param name_appendix_tp: This is appended to the test pulse height estimation method, e.g. '_down16'.
         :type name_appendix_tp: string
+        :param name_appendix_energy: This is appended to the name of the created recoil energy data set.
+        :type name_appendix_energy: string
         :param return_pulser_models: If set to true, a list of the used PulserModels is returned.
         :type return_pulser_models: bool
         :param pulser_models: Here a list of PulserModels that shall be used can be passed. This is useful in case the
@@ -414,8 +423,11 @@ class AnalysisMixin(object):
             data set, e.g. the resolution data set, with the same pulser models.
         :type pulser_models: list of instances of PulserModel
         :param rasterized: The scatter plot gets rasterized (much faster).
-        :type rasterized: tuple
-
+        :type rasterized: bool
+        :param use_interpolation: Use interpolation instead of polynomial fit for PH->TPA regression.
+        :type use_interpolation: bool
+        :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
+        :type kind: str
 
         >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
         ...                     cpe_factor=[1, 1],
@@ -466,6 +478,10 @@ class AnalysisMixin(object):
                 evhs = np.array(f['events']['sev_fit_par' + name_appendix_ev][:, :, 0])
                 if pulser_models is None:
                     tphs = np.array(f['testpulses']['sev_fit_par' + name_appendix_tp][:, :, 0])
+            elif method == 'arrf':
+                evhs = np.array(f['events']['arr_fit_par' + name_appendix_ev][:, :, 0])
+                if pulser_models is None:
+                    tphs = np.array(f['testpulses']['arr_fit_par' + name_appendix_tp][:, :, 0])
             elif method == 'true_ph':
                 evhs = np.array(f['events']['true_ph'])
                 if pulser_models is None:
@@ -479,12 +495,14 @@ class AnalysisMixin(object):
             ev_hours = np.array(f['events']['hours'])
             if pulser_models is None:
                 tpas = np.array(f['testpulses']['testpulseamplitude'])
+                if len(tpas.shape) == 1:
+                    tpas = np.tile(tpas, (self.nmbr_channels, 1))
                 tp_hours = np.array(f['testpulses']['hours'])
 
                 if only_stable:
                     stable = np.array(f['testpulses']['testpulse_stability'], dtype=bool)
                 else:
-                    stable = np.ones([self.nmbr_channels, len(tpas)], dtype=bool)
+                    stable = np.ones(tpas.shape, dtype=bool)
                 if cut_flag is not None:
                     stable = np.logical_and(stable, cut_flag)
 
@@ -516,14 +534,18 @@ class AnalysisMixin(object):
                                                          **kwargs)
 
                     pulser_models[channel].fit(tphs=tphs[channel, stable[channel]],
-                                               tpas=tpas[stable[channel]],
+                                               tpas=tpas[channel, stable[channel]],
                                                tp_hours=tp_hours[stable[channel]],
                                                exclude_tpas=exclude_tpas,
                                                interpolation_method=interpolation_method,
                                                )
 
                 if plot:
-                    pulser_models[channel].plot(poly_order=poly_order, rasterized=rasterized)
+                    pulser_models[channel].plot(poly_order=poly_order,
+                                                rasterized=rasterized,
+                                                use_interpolation=use_interpolation,
+                                                kind=kind,
+                                                )
 
                 f['events']['recoil_energy' + name_appendix_energy][channel, ...], \
                 f['events']['recoil_energy_sigma' + name_appendix_energy][channel, ...], \
@@ -532,7 +554,9 @@ class AnalysisMixin(object):
                     channel].predict(evhs=evhs[channel],
                                      ev_hours=ev_hours,
                                      poly_order=poly_order,
-                                     cpe_factor=cpe_factor[channel]
+                                     cpe_factor=cpe_factor[channel],
+                                     use_interpolation=use_interpolation,
+                                     kind=kind,
                                      )
         print('Finished.')
         if return_pulser_models:
@@ -594,7 +618,7 @@ class AnalysisMixin(object):
             as measurement time.
         :type max_dist: float
         :param tp_exclusion_interval: The time in seconds that has to be excluded for every test pulse. Typically this
-        is 1.5*length of record window, i.e. ~ a second for a window of length 16384 samples and 25 kHz sample frequency.
+            is 1.5*length of record window, i.e. ~ a second for a window of length 16384 samples and 25 kHz sample frequency.
         :type tp_exclusion_interval: float
         :param return_values: If this is set to True, a tuple of (exposure, live_time) is returned.
         :type return_values: bool

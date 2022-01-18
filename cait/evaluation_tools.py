@@ -25,9 +25,9 @@ from .styles._plt_styles import use_cait_style, make_grid
 from .features._mp import *
 
 import json
-import dash
-import dash_core_components as dcc
-import dash_html_components as html
+from jupyter_dash import JupyterDash as Dash
+from dash import dcc
+from dash import html
 from dash.dependencies import Input, Output
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -2206,13 +2206,13 @@ class EvaluationTools:
         plt.close()
 
     def plt_pred_with_tsne_plotly(self, pred_methods, what='all',
-                                  perplexity=30, rdseed=None, verb=False):
+                                  perplexity=30, rdseed=None, verb=False, inline=True):
         """
         Plots data with TSNE when given a one or a list of predictions method
         to compare different labels.
 
         :param pred_methods: Required. Prediction method that should be used.
-        :type pred_methods: str
+        :type pred_methods: list
         :param what: Required. Which data is plotted, 'all', 'test' or 'train'.
         :type what: str
         :param perplexity: Optional, default 30. Perplexity parameter for TSNE.
@@ -2221,6 +2221,8 @@ class EvaluationTools:
         :type rdseed: int
         :param verb: Optional, default False. Additional output is printed.
         :type verb: bool
+        :param inline: Activates the inline mode of the Dash server, recommended for usage with Jupyter Notebooks
+        :type inline: bool
         """
 
         if type(rdseed) == int:
@@ -2255,7 +2257,7 @@ class EvaluationTools:
             self.get_features(what, verb=verb))
 
         external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-        app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+        app = Dash(__name__, external_stylesheets=external_stylesheets)
 
         styles = {
             'pre': {
@@ -2303,7 +2305,7 @@ class EvaluationTools:
 
                 for i in np.unique(self.get_label_nbrs(what, verb)):
                     sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
-                    fig.add_trace(go.Scatter(
+                    fig.add_trace(go.Scattergl(
                         x=princcomp[sep, 0],
                         y=princcomp[sep, 1],
                         name=self.labels[i],
@@ -2335,7 +2337,7 @@ class EvaluationTools:
                     sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
 
-                    fig.add_trace(go.Scatter(
+                    fig.add_trace(go.Scattergl(
                         x=princcomp[sep, 0],
                         y=princcomp[sep, 1],
                         name=name,
@@ -2445,16 +2447,19 @@ class EvaluationTools:
         def display_scatter_plot(pred_meth):
             return scatter_plot(pred_meth)
 
-        app.run_server()
+        if inline:
+            app.run_server(mode='inline')
+        else:
+            app.run_server(mode='external')
 
     def plt_pred_with_pca_plotly(self, pred_methods, xy_comp=(1, 2), what='all',
-                                 rdseed=None, verb=False):
+                                 rdseed=None, verb=False, inline=True):
         """
         Plots data with PCE when given a one or a list of predictions method
         to compare different labels.
 
         :param pred_methods: Required. Prediction method that should be used.
-        :type pred_methods: str
+        :type pred_methods: list
         :param xy_comp: Optional, default (1,2). Select with pc's are used for x and y axis.
         :type xy_comp: tuple
         :param what: Optional, default 'all'. Which data is plotted.
@@ -2463,6 +2468,8 @@ class EvaluationTools:
         :type rdseed: int
         :param verb: Optional, default False. Additional output is printed.
         :type verb: bool
+        :param inline: Activates the inline mode of the Dash server, recommended for usage with Jupyter Notebooks
+        :type inline: bool
         """
 
         if type(rdseed) == int:
@@ -2498,7 +2505,7 @@ class EvaluationTools:
         princcomp = princcomp[:, (xy_comp[0], xy_comp[1])]
 
         external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-        app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+        app = Dash(__name__, external_stylesheets=external_stylesheets)
 
         styles = {
             'pre': {
@@ -2546,7 +2553,7 @@ class EvaluationTools:
 
                 for i in np.unique(self.get_label_nbrs(what, verb)):
                     sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
-                    fig.add_trace(go.Scatter(
+                    fig.add_trace(go.Scattergl(
                         x=princcomp[sep, 0],
                         y=princcomp[sep, 1],
                         name=self.labels[i],
@@ -2578,7 +2585,7 @@ class EvaluationTools:
                     sep = self.get_label_nbrs(what, verb) == i  # seperating label numbers
                     name = self.labels[i] if self.get_pred_true_labels(pred_meth) else "{}".format(i)
 
-                    fig.add_trace(go.Scatter(
+                    fig.add_trace(go.Scattergl(
                         x=princcomp[sep, 0],
                         y=princcomp[sep, 1],
                         name=name,
@@ -2688,4 +2695,7 @@ class EvaluationTools:
         def display_scatter_plot(pred_meth):
             return scatter_plot(pred_meth)
 
-        app.run_server()
+        if inline:
+            app.run_server(mode='inline')
+        else:
+            app.run_server(mode='external')

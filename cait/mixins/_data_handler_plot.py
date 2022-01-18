@@ -369,7 +369,7 @@ class PlotMixin(object):
                         plot=True,
                         xran=None,
                         yran=None,
-                        block=False,
+                        block=True,
                         save_path=None,
                         dpi=150,
                         range=None,
@@ -500,7 +500,7 @@ class PlotMixin(object):
                     idx0=None,
                     idx1=None,
                     idx2=None,
-                    block=False,
+                    block=True,
                     bins=100,
                     range=None,
                     show=True,
@@ -614,13 +614,15 @@ class PlotMixin(object):
                      idx0s=[None, None],
                      idx1s=[None, None],
                      idx2s=[None, None],
-                     block=False,
+                     block=True,
                      marker='.',
                      xran=None,
                      yran=None,
                      show=True,
                      save_path=None,
-                     dpi=150):
+                     dpi=150,
+                     rasterized=False,
+                     ):
         """
         Shows a scatter plot of some values from the HDF5 file
 
@@ -662,6 +664,8 @@ class PlotMixin(object):
         :type save_path: string
         :param dpi: The dots per inch of the plot.
         :type dpi: int
+        :param rasterized: If activated, the scatter plot is done rasterized.
+        :type rasterized: bool
         """
 
         with h5py.File(self.path_h5, 'r+') as hf5:
@@ -692,7 +696,7 @@ class PlotMixin(object):
             plt.close()
             plt.scatter(vals[0],
                         vals[1],
-                        marker=marker, zorder=10)
+                        marker=marker, zorder=10, rasterized=rasterized)
             make_grid()
             if xlabel is None:
                 plt.xlabel('{} {} [{},{},{}]'.format(groups[0], keys[0], _str_empty(idx0s[0]), _str_empty(idx1s[0]),
@@ -724,7 +728,7 @@ class PlotMixin(object):
                   which_predictions=None,
                   pred_model=None,
                   bins=100,
-                  block=False,
+                  block=True,
                   ran=None,
                   show=True,
                   save_path=None,
@@ -807,7 +811,7 @@ class PlotMixin(object):
                 good_y_classes=None,
                 which_predictions=None,
                 pred_model=None,
-                block=False,
+                block=True,
                 marker='.',
                 alpha=0.8,
                 s=10,
@@ -970,7 +974,7 @@ class PlotMixin(object):
                         alpha=1,
                         only_idx=None,
                         title=None,
-                        block=False,
+                        block=True,
                         show=True,
                         save_path=None,
                         dpi=150,
@@ -1019,12 +1023,16 @@ class PlotMixin(object):
                 only_idx = list(range(len(f_h5['testpulses']['testpulseamplitude'])))
 
             tpa = f_h5['testpulses']['testpulseamplitude']
+            if len(tpa.shape) > 1:
+                tpa = tpa[channel]
             if method == 'ph':
                 ph = f_h5['testpulses']['mainpar' + name_appendix_tp][channel, only_idx, 0]
             elif method == 'of':
                 ph = f_h5['testpulses']['of_ph' + name_appendix_tp][channel, only_idx]
             elif method == 'sef':
                 ph = f_h5['testpulses']['sev_fit_par' + name_appendix_tp][channel, only_idx, 0]
+            elif method == 'arrf':
+                ph = f_h5['testpulses']['arr_fit_par' + name_appendix_tp][channel, only_idx, 0]
             else:
                 raise KeyError('Pulse Height Estimation method not implemented, try ph, of or sef.')
 

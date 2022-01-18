@@ -141,3 +141,69 @@ class OneHotEncode(object):
         for key in self.keys:
             sample[key] = F.one_hot(sample[key].long(), num_classes=self.nmbr_classes)
         return sample
+
+class SingleMinMaxNorm(object):
+    """
+    A transform that normalizes to the min-max range 0 to 1.
+
+    :param keys: The keys of the sample (which is a dict) that are to normalize.
+    :type keys: list
+    """
+
+    def __init__(self, keys):
+        self.keys = keys
+
+    def __call__(self, sample):
+        """
+        Normalize the sample.
+
+        :param sample: The sample to normalize.
+        :type sample: dict
+        :return: The sample which is normalized in all keys.
+        :rtype: dict
+        """
+
+        for key in self.keys:
+            sample[key] = (sample[key] - np.min(sample[key]))/(np.max(sample[key]) - np.min(sample[key]))
+        return sample
+
+class PileUpDownSample(object):
+    """
+    A transform that downsamples samples with pile up events.
+
+    This is different to the usual downsample transform, because the pile up events form a dataset of shape
+    (2, record_length), while usual events are a data set (record_length).
+
+    :param keys: The keys of the sample (which is a dict) that are to downsample.
+    :type keys: list
+    :param down: The value by which we want to downsample.
+    :type down: int
+    """
+
+    def __init__(self, keys, down):
+        self.keys = keys
+        self.down = down
+
+    def __call__(self, sample):
+        """
+        Downsample the sample.
+
+        :param sample: The sample to normalize.
+        :type sample: dict
+        :return: The sample which is downsampled in all keys.
+        :rtype: dict
+        """
+        for key in self.keys:
+            s = sample[key].shape
+            l = len(s)
+            if l == 1:
+                sample[key] = np.mean(sample[key].
+                                      reshape(-1, self.down),
+                                      axis=-1)
+            elif l == 2:
+                sample[key] = np.mean(sample[key].
+                                      reshape(s[0], -1, self.down),
+                                      axis=-1)
+            else:
+                raise NotImplemented
+        return sample
