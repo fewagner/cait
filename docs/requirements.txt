@@ -1,7 +1,7 @@
 # File: docs/requirements.txt
 
 # Defining the exact version will make sure things don't break
-Sphinx==4.4.0
+Sphinx==4.3.0
 sphinx-autobuild==2020.9.1
 sphinx-reload==0.2.0
 sphinx-rtd-theme==1.0.0
@@ -13,12 +13,12 @@ sphinxcontrib-jsmath==1.0.1
 sphinxcontrib-qthelp==1.0.3
 sphinxcontrib-serializinghtml==1.1.5
 rinohtype==0.5.3
-importlib-metadata==4.4.0
+importlib-metadata==3.4.0
 myst-nb==0.13.1
 setuptools>=47.1.1
 h5py>=3.2
 pickle-mixin>=1.0
-numpy==1.21
+numpy==1.21.0
 matplotlib>=3.3
 scipy>=1.6
 numba>=0.54
@@ -34,4 +34,3 @@ pandas>=1.1
 plotly>=5.3
 dash>=2.0
 jupyter_dash>=0.4
-ipywidgets
