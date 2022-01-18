@@ -14,7 +14,7 @@ setup(
     author_email="felix.wagner@oeaw.ac.at",
     description='Cryogenic Artificial Intelligence Tools - A Python Package for the Data Analysis of Rare Event Search Experiments with Machine Learning.',
     long_description=long_description,
-    long_description_content_type="text/markdown",
+    long_description_content_type="text/x-rst",
     url="https://github.com/fewagner/cait",
     license='GPLv3',
     packages=find_packages(include=['cait', 'cait.*']),
