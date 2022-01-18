@@ -21,7 +21,7 @@ setup(
     install_requires=['setuptools>=47.1',
                       'h5py>=3.2',
                       'pickle-mixin>=1.0',
-                      'numpy>=1.19',
+                      'numpy==1.21',
                       'matplotlib>=3.3',
                       'scipy>=1.6',
                       'numba>=0.54',

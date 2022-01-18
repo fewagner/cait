@@ -21,7 +21,7 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'cait'
-copyright = '2021, Felix Wagner'
+copyright = '2022, Felix Wagner'
 author = 'Felix Wagner'
 
 # The full version, including alpha/beta/rc tags
@@ -40,6 +40,7 @@ extensions = ['rinoh.frontend.sphinx',
               "sphinx.ext.intersphinx",
               "sphinx.ext.mathjax",
               "sphinx.ext.viewcode",
+              "sphinx.ext.doctest",
               ]
 
 # Add any paths that contain templates here, relative to this directory.

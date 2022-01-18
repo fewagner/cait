@@ -164,7 +164,7 @@ class AnalysisMixin(object):
         :type use_poisson: bool
         :param intervals: A list of the stable intervals, in hours. If this is handed, these intervals are used instead of
             calculating them from scratch. This is useful e.g. for the cut efficiency.
-        :rtype intervals: list of 2-tuples
+        :type intervals: list of 2-tuples
         """
 
         if intervals is not None:
@@ -239,7 +239,7 @@ class AnalysisMixin(object):
         :type ub: float
         :param instable_iv: A list of the instable intervals. If this is handed, the instable intervals are not calculated
             but those are used. Useful for e.g. the cut efficiency.
-        :rtype instable_iv: list
+        :type instable_iv: list
         """
 
         with h5py.File(self.path_h5, 'r+') as f:

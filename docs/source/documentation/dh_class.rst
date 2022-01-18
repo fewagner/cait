@@ -20,7 +20,4 @@ documantation page exists.
    mixins/plot_mixin
    mixins/rdt_mixin
    mixins/simulate_mixin
-
-Used in:
-
-- :ref:`conversion`
+   mixins/bin_mixin
