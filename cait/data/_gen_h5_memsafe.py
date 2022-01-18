@@ -27,6 +27,7 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
                                  record_length=16384,
                                  batch_size=1000,
                                  trace=False,
+                                 indiv_tpas=False,
                                  ):
     """
     Generates a HDF5 File from an RDT File, with an memory safe implementation. This is recommended, in case the RDT
@@ -56,6 +57,9 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
     :type batch_size: int
     :param trace: Trace the runtime and memory consumption
     :type trace: bool
+    :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+    :type individual_tpas: bool
     """
 
     nmbr_channels = len(channels)
@@ -263,7 +267,10 @@ def gen_dataset_from_rdt_memsafe(path_rdt,
             print('CREATE DATASET WITH TESTPULSES.')
             testpulses = h5f.create_group('testpulses')
             testpulses.create_dataset('event', shape=(nmbr_channels, nmbr_testpulses, record_length), dtype=event_dtype)
-            testpulses.create_dataset('testpulseamplitude', data=recs['test_pulse_amplitude'][idx_testpulses],
+            data_to_write = recs['test_pulse_amplitude'][idx_testpulses]
+            if indiv_tpas:
+                data_to_write = np.tile(data_to_write, (nmbr_channels, 1))
+            testpulses.create_dataset('testpulseamplitude', data=data_to_write,
                                       dtype=float)
             testpulses.create_dataset('hours', data=recs['hours'][idx_testpulses], dtype=float)
             testpulses.create_dataset('dac_output', data=recs['dac_output'][idx_testpulses], dtype=float)

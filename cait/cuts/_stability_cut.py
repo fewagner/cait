@@ -164,7 +164,7 @@ def testpulse_stability(tpas, tphs, hours_tp, hours_ev,
     :rtype: 2-tuple of 1D bool arrays
     """
 
-    print('Do Control Pulse Stability Cut')
+    print('Do Test Pulse Stability Cut')
 
     unique_tpas = np.unique(tpas)
     print('Unique TPAs: ', unique_tpas)

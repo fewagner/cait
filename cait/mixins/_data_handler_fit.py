@@ -401,7 +401,11 @@ class FitMixin(object):
                 only_idx = np.arange(h5f['testpulses']['testpulseamplitude'].shape[0])
 
             tphs = h5f['testpulses']['mainpar'][channel, only_idx, 0]
-            tpas = h5f['testpulses']['testpulseamplitude'][only_idx]
+            tpas = h5f['testpulses']['testpulseamplitude']
+            if len(tpas.shape) > 1:
+                tpas = tpas[channel, only_idx]
+            else:
+                tpas = tpas[only_idx]
 
             par, _ = curve_fit(logistic_curve_zero,
                                xdata=tpas,

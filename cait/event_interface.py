@@ -899,7 +899,11 @@ class EventInterface:
 
             # TPA
             if type == 'testpulses':
-                tpa = f['testpulses']['testpulseamplitude'][idx]
+                tpa = f['testpulses']['testpulseamplitude']
+                if len(tpa.shape) > 1:
+                    tpa = f['testpulses']['testpulseamplitude'][:, idx]
+                else:
+                    tpa = f['testpulses']['testpulseamplitude'][idx]
                 print('TPA: {}'.format(tpa))
 
     def _print_labels(self):

@@ -205,7 +205,7 @@ class CsmplMixin(object):
             assert os.path.isfile(path_dig), 'Dig file does not exists!'
         if path_sql is not None:
             assert os.path.isfile(path_sql), 'Sql file does not exists!'
-        assert np.logical_xor(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
+        assert np.logical_or(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:
             take_samples = -1
@@ -478,7 +478,8 @@ class CsmplMixin(object):
                                  min_cpa=10.1,
                                  down=1,
                                  noninteractive=True,
-                                 origin=None):
+                                 origin=None,
+                                 individual_tpas=False,):
         """
         Include the triggered events from the CSMPL files.
 
@@ -509,6 +510,9 @@ class CsmplMixin(object):
         :type down: int
         :param origin: The name of the csmpl file from which we read, e.g. bck_xxx
         :type origin: str
+        :param individual_tpas: Write individual TPAs for the all channels. This results in a testpulseamplitude dataset
+            of shape (nmbr_channels, nmbr_testpulses). Otherwise we have (nmbr_testpulses).
+        :type individual_tpas: bool
         """
 
         if sample_duration is None:
@@ -552,8 +556,11 @@ class CsmplMixin(object):
                         del write_controlpulses["hours"]
                     write_testpulses.create_dataset(name="hours",
                                                     data=tp_hours[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                    data = tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)]
+                    if individual_tpas:
+                        data = np.tile(data, (self.nmbr_channels, 1))
                     write_testpulses.create_dataset(name="testpulseamplitude",
-                                                    data=tpas[np.logical_and(tpas >= min_tpa, tpas < min_cpa)])
+                                                    data=data)
                     write_controlpulses.create_dataset(name="hours",
                                                        data=tp_hours[tpas >= min_cpa])
                     if "tp_time_s" in stream:
