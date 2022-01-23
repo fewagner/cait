@@ -266,6 +266,11 @@ class VizTool():
                           self.slider_out, self.f3,
                           HBox([linear_button, log_button]),
                           self.f1, self.f2)))  # , self.t
+        elif self.mode == 'h5' and not self.events_in_file:
+            display(VBox((HBox(axis_dropdowns.children), self.f0,
+                          HBox([cut_button, input_text, export_button]), self.output,
+                          HBox([linear_button, log_button]),
+                          self.f1, self.f2)))
         else:
             raise NotImplementedError('Mode {} is not implemented!'.format(self.mode))
 
