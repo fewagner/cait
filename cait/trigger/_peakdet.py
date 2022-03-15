@@ -6,16 +6,16 @@ def add_to_moments(x_new, mean, var, n):
     """
     Update existing mean and variance values by adding a new data point.
 
-    :param x_new:
-    :type x_new:
-    :param mean:
-    :type mean:
-    :param var:
-    :type var:
-    :param n:
-    :type n:
-    :return:
-    :rtype:
+    :param x_new: The new data point.
+    :type x_new: float
+    :param mean: The old mean value.
+    :type mean: float
+    :param var: The old variance value.
+    :type var: float
+    :param n: The number of data points used to calculate the old mean and var.
+    :type n: int
+    :return: The new mean value, the new variance, the new number of data points.
+    :rtype: list
     """
     mean_n_minus_one = mean
     var_n_minus_one = var
@@ -30,16 +30,16 @@ def sub_from_moments(x_new, mean, var, n):
     """
     Update existing mean and variance values by substracting a new data point.
 
-    :param x_new:
-    :type x_new:
-    :param mean:
-    :type mean:
-    :param var:
-    :type var:
-    :param n:
-    :type n:
-    :return:
-    :rtype:
+    :param x_new: The new data point.
+    :type x_new: float
+    :param mean: The old mean value.
+    :type mean: float
+    :param var: The old variance value.
+    :type var: float
+    :param n: The number of data points used to calculate the old mean and var.
+    :type n: int
+    :return: The new mean value, the new variance, the new number of data points.
+    :rtype: list
     """
     n_minus_one = n - 1
     mean_n = mean
