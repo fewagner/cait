@@ -47,6 +47,8 @@
    templates/trigger
    templates/stream_analysis
    templates/efficiency_simulation
+   templates/vdaq_viewer
+   templates/trigger_vdaq
 
 .. toctree::
    :caption: Documentation
@@ -55,6 +57,7 @@
    documentation/dh_class
    documentation/eventinterface
    documentation/evaluationtools
+   documentation/viztool
    documentation/calibration
    documentation/cuts
    documentation/data

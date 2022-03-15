@@ -18,4 +18,7 @@ __all__=['MovingAverageTrigger',
          'find_peaks',
          'add_to_moments',
          'sub_from_moments',
+         'bin',
+         'read_header',
+         'trigger_bin',
          ]
