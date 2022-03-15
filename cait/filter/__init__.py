@@ -1,5 +1,6 @@
 from ._ma import *
 from ._of import *
+from ._extend import *
 
 __all__ = ['normalization_constant',
            'box_car_smoothing',
@@ -8,4 +9,6 @@ __all__ = ['normalization_constant',
            'get_amplitudes',
            'rem_off',
            'linregfit',
+           'extend_filter',
+           'extend_nps',
            ]

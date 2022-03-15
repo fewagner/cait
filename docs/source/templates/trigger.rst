@@ -7,16 +7,10 @@ Stream Triggering
     """
     trigger.py
 
-    This script is for the efficient triggering of CSMPL files.
+    The main script for triggering CSMPL files.
 
-    Usage:
-    - Adapt the section 'Constants and Paths' to your measurement.
-    - Adapt the section 'Apply Cuts' (around line 220) to your individual cut values.
-    - If you start the script without command line arguments, it will trigger all files and merge them one after another.
-    - If you start the script with the flag -f n, if will only trigger the n'th file from the list of files.
-    - If you start the script with the flag -m, it will only do the merge between all files.
-    - For time efficient triggering, a good workflow is to write a bash script, that starts the triggering of all files
-        simultaneously with the -f flags, then call the script again with the -m flag when all files are done.
+    All parameters are explained when you run the script with -h flag. You need to have the file trigger_utils in the same directory.
+
     """
 
     # ---------------------------------------------
@@ -28,6 +22,10 @@ Stream Triggering
     import numpy as np
     from tqdm.auto import tqdm
     import argparse
+    from trigger_utils import read_hw_data, get_filestart
+    import pickle
+    import os
+
 
     if __name__ == '__main__':
 
@@ -38,123 +36,139 @@ Stream Triggering
         # Construct the argument parser
         ap = argparse.ArgumentParser()
 
-        # Add the arguments to the parser
-        ap.add_argument("-f", "--file", type=int, required=False, default=None, help="Trigger only this index from the files list.")
-        ap.add_argument("-m", "--merge", action='store_true', help="Only merge the files list.")
+        # Add the REQUIRED arguments to the parser
+        ap.add_argument("-l", "--file_list", type=str, nargs='+', default=None, help="List of the file numbers.")
+        ap.add_argument("-p", "--rdt_path", type=str, help="Path to hardware data, e.g. /eos/vbc/group/darkmatter/cresst/gsdata/hwtrig/Run36/bck/")
+        ap.add_argument("-s", "--csmpl_path", type=str, help="Path to stream data, e.g. /eos/vbc/group/darkmatter/cresst/gsdata/cstream/Run36/data/")
+        ap.add_argument("-x", "--xy_files", type=str, help="Path to the folder that contains filter, nps, sev, sev mainpar and sev fitpar files.")
+        ap.add_argument("-y", "--path_pulser_model", type=str, help="Path where the pulser models get written - the naming is <path_you_put>_<file_nmbr>.pm ; e.g. /.../Li1_040.pm")
+        ap.add_argument("-z", "--path_h5", type=str, help="Path where the HDF5 files should be stored.")
+
+        # Add the OPTIONAL arguments to the parser
+        ap.add_argument("-c", "--rdt_channels", type=int, default=[0, 1],  nargs='+', help="List of the rdt channels of this module, e.g. 12 13.")
+        ap.add_argument("-d", "--csmpl_channels", type=int, default=[0, 1], nargs='+', help="List of the csmpl channels of this module, e.g. 12 13.")
+        ap.add_argument("-g", "--no_features", action='store_true', help="Skip the calculation of features and do only the triggering (not recommended).")
+        ap.add_argument("-k", "--no_trigger", action='store_true', help="Skip the file triggering, e.g. if you already triggered and want to do onle the featurecalculation.")
+        ap.add_argument("--no_ecal", action='store_true', help="Skip the energy calibration, e.g. if you dont have CPE factors.")
+        ap.add_argument("-i", "--run_nmbr", type=str, default='36', help="Number of the Run, e.g. 36.")
+        ap.add_argument("-m", "--merge", action='store_true', help="Only merge the files list. You need to call this once you converted all the files.")
+        ap.add_argument("-n", "--naming", type=str, default='bck', help="Naming of the files.")
+        ap.add_argument("-o", "--out_name", type=str, default='stream', help="Naming of the output file.")
+        ap.add_argument("-q", "--sample_frequency", type=int, default=25000, help="The sample frequency.")
+        ap.add_argument("-r", "--record_length", type=int, default=16384, help="The length of the record window.")
+        ap.add_argument("-t", "--trigger_thresholds", type=float, default=[5.428, 11.017], nargs='+', help="List of the trigger threshold for all channels in mV, e.g. 5.428 11.017.")
+        ap.add_argument("-u", "--truncation_levels", type=float, default=[0.9, 1.5], nargs='+', help="List of the truncation levels for all channels in V, e.g. 0.9 1.5.")
+        ap.add_argument("-v", "--processes", type=int, default=4, help="The number of processes to use for the sev fit.")
+        ap.add_argument("-w", "--uncorrelated", action='store_true', help="Do the height evaluations uncorrelated, if not activated the first channel is dominant, i.e. evaluate the height in the other channels at the maximum position of the first channel.")
+        ap.add_argument("--cpe_factors", type=float, default=[2.956196019429851, 18.24242689975974], nargs='+', help="List of the CPE factors for all channels.")
+
         args = vars(ap.parse_args())
-
-        THIS_FILE_ONLY = args['file']
-        MERGE_ONLY = args['merge']
-
-        assert THIS_FILE_ONLY is None or THIS_FILE_ONLY >= 0, "The file number must be integer >= 0!"
-        assert not (THIS_FILE_ONLY is not None and MERGE_ONLY), "Attention, you cannot choose a specific file and merge only together!"
 
         # ---------------------------------------------
         # Constants and Paths
         # ---------------------------------------------
 
-        RUN = ...  # put an string for the number of the experiments run, e.g. '34'
-        MODULE = ...  # put a name for the detector, e.g. 'DetA'
-        PATH_HW_DATA = ...  # path to the directory in which the RDT and CON files are stored
-        PATH_STREAM_DATA = ...  # path to the directory in which the CSMPL file directories are stored
-        PATH_DB = ...  # path to the SQL data base with information about the CSMPL files
-        PATH_PROC_DATA = ...  # path to where you want to store the HDF5 files
-        FILE_NMBRS = []  # a list of string, the file number you want to analyse, e.g. ['001', '002', '003']
-        FNAMING = ...  # the naming of the files, typically 'bck', for calibration data 'cal'
-        RDT_CHANNELS = []  # a list of strings of the channels, e.g. [0, 1] (written in PAR file - attention, the PAR file counts from 1, Cait from 0)
-        CSMPL_CHANNELS = [0, 1]  # the channel numbers of the CDAQ, written in the SQL data base
-        RECORD_LENGTH = 16384  # the number of samples within a record window  (read in PAR file)
-        SAMPLE_FREQUENCY = 25000  # the sample frequency of the measurement (read in PAR file)
-        DOWN_SEF = 4  # the downsample rate for the standard event fit
-        DOWN_BLF = 16  # the downsample rate for the baseline fit
-        PROCESSES = 8  # the number of processes for parallelization
-        PCA_COMPONENTS = 2  # the number of pca components to calculate
-        SKIP_FILE_NMBRS = []  # in case the loop crashed at some point and you want to start from a specific file number, write here the numbers to ignore, e.g. ['001', '002']
-        THRESHOLDS = []  # a list of the trigger thresholds in V
-        TRUNCATION_LEVELS = []  # list of the truncation levels
+        THRESHOLDS = np.array(args['trigger_thresholds']) * 0.001
 
+        datasets = {
+            'event': 1,
+            'mainpar': 1,
+            'add_mainpar': 1,
+            'true_ph': 1,
+            'true_onset': 0,
+            'of_ph': 1,
+            'of_ph_direct': 1,
+            'arr_fit_par': 1,
+            'arr_fit_rms': 1,
+            'arr_fit_par_direct': 1,
+            'arr_fit_rms_direct': 1,
+            'hours': 0,
+            'labels': 1,
+            'testpulseamplitude': 0,
+            'time_s': 0,
+            'time_mus': 0,
+            'pulse_height': 1,
+            'tp_hours': 0,
+            'tp_time_mus': 0,
+            'tp_time_s': 0,
+            'tpa': 0,
+            'trigger_hours': 0,
+            'trigger_time_mus': 0,
+            'trigger_time_s': 0,
+            'start_s': -1,
+            'start_mus': -1,
+            'stop_s': -1,
+            'stop_mus': -1,
+            'sample_frequency': -1,
+            'record_length': -1,
+            'runtime': -1,
+            'recoil_energy': 1,
+            'recoil_energy_sigma': 1,
+            'tpa_equivalent': 1,
+            'tpa_equivalent_sigma': 1,
+            'testpulse_stability': 1,
+                   }
 
-        # typically you need not change the values below this line!
-
-        FNAME_HW = 'hw_{:03d}'.format(len(FILE_NMBRS) - 1)
-        FNAME_STREAM = 'stream_{:03d}'.format(len(FILE_NMBRS) - 1)
-        H5_CHANNELS = list(range(len(RDT_CHANNELS)))
-        SEF_APP = '_down{}'.format(DOWN_SEF) if DOWN_SEF > 1 else ''
-        CORRELATED_FIT = True
-
-        assert len(FILE_NMBRS) > 0, "Choose some file numbers!"
-        assert THIS_FILE_ONLY not in SKIP_FILE_NMBRS, "Attention, you chose a file that is in the skip list!"
-
-        if THIS_FILE_ONLY is not None:
-            SKIP_FILE_NMBRS = FILE_NMBRS.copy()
-            del SKIP_FILE_NMBRS[THIS_FILE_ONLY]
-
-        print('OF thresholds in V: ', THRESHOLDS)
+        merge_keywords = {
+            'groups_to_merge': ['events', 'testpulses', 'controlpulses', 'stream', 'metainfo'],
+            'sets_to_merge': list(datasets.keys()),
+            'concatenate_axis': list(datasets.values()),
+            'continue_hours': True,
+            'keep_original_files': True,
+            'groups_from_a': ['optimumfilter', 'optimumfilter_tp', 'optimumfilter_direct', 'stdevent', 'stdevent_tp', 'stdevent_direct', 'noise'],
+                         }
 
         # ---------------------------------------------
-        # Get Filter from HW Data
+        # Get Infos from HW Data
         # ---------------------------------------------
 
-        dh_hw = ai.DataHandler(run=RUN,
-                            module=MODULE,
-                            channels=RDT_CHANNELS)
-
-        dh_hw.set_filepath(path_h5=PATH_PROC_DATA,
-                        fname='hw_{:03d}'.format(len(FILE_NMBRS)-1),
-                        appendix=False)
-
-        of_r = dh_hw.get(group='optimumfilter', dataset='optimumfilter_real')
-        of_i = dh_hw.get(group='optimumfilter', dataset='optimumfilter_imag')
-        of = of_r + 1j*of_i
+        xy_files = read_hw_data(args)
 
         # ---------------------------------------------
         # Start the Trigger Loop
         # ---------------------------------------------
 
-        for i, fn in enumerate(FILE_NMBRS):
+        for i, fn in enumerate(args['file_list']):
 
             print('-----------------------------------------------------')
             print('>> {} WORKING ON FILE: {}'.format(i, fn))
 
-            if fn in SKIP_FILE_NMBRS:
-                print('Skipping this file.')
 
-            else:
-                if not MERGE_ONLY:
-                    dh = ai.DataHandler(run=RUN,
-                                        channels=RDT_CHANNELS,
-                                        record_length=RECORD_LENGTH,
-                                        sample_frequency=SAMPLE_FREQUENCY)
+            if not args['merge']:
+                dh = ai.DataHandler(channels=args['rdt_channels'],
+                                    record_length=args['record_length'],
+                                    sample_frequency=args['sample_frequency'])
 
-                    dh.set_filepath(path_h5=PATH_PROC_DATA,
-                                    fname='stream_' + FNAMING + '_' + fn,
-                                    appendix=False)
+                dh.set_filepath(path_h5=args['path_h5'],
+                                fname=args['out_name'] + '_' + args['naming'] + '_' + fn,
+                                appendix=False)
 
-                    csmpl_paths = [PATH_STREAM_DATA + 'Ch' + str(c+1) + '/' + 'Run' + RUN + '_' + FNAMING + '_' + fn + '_Ch' + str(c+1) + '.csmpl' for c in CSMPL_CHANNELS]
+                csmpl_paths = [args['csmpl_path'] + 'Ch' + str(c+1) + '/' + 'Run' + args['run_nmbr'] + '_' + args['naming'] + '_' + fn + '_Ch' + str(c+1) + '.csmpl' for c in args['csmpl_channels']]
+
+                if not args['no_trigger']:
 
                     # --------------------------------------------------
                     # Trigger Files
                     # --------------------------------------------------
 
+                    # include metadata
+                    dh.init_empty()
+                    dh.include_metainfo(args['rdt_path'] + args['naming'] + '_' + fn + '.par')
+
                     dh.include_csmpl_triggers(csmpl_paths=csmpl_paths,
                                               thresholds=THRESHOLDS,
-                                              of=of,
-                                              path_sql=PATH_DB,
-                                              csmpl_channels=CSMPL_CHANNELS,  # the channel numbers in the csmpl file are different from rdt
-                                              sql_file_label=FNAMING + '_{}'.format(fn),
-                                              down=1,  # downsampling not properly implemented yet
+                                              of=xy_files['of'],
+                                              path_dig=args['rdt_path'] + args['naming'] + '_' + fn + '.dig_stamps',
+                                              read_triggerstamps=False,
                                               )
 
                     # --------------------------------------------------
                     # Include Test Pulse Time Stamps
                     # --------------------------------------------------
 
-                    dh.include_test_stamps(path_teststamps=PATH_HW_DATA + FNAMING + '_' + fn + '.test_stamps',
-                                           path_dig_stamps=PATH_HW_DATA + FNAMING + '_' + fn + '.dig_stamps',
-                                           path_sql=PATH_DB,
-                                           csmpl_channels=CSMPL_CHANNELS,
-                                           sql_file_label=FNAMING + '_' + fn,
-                                           fix_offset=True)
+                    dh.include_test_stamps(path_teststamps=args['rdt_path'] + args['naming'] + '_' + fn + '.test_stamps',
+                                           path_dig_stamps=args['rdt_path'] + args['naming'] + '_' + fn + '.dig_stamps',
+                                          )
 
                     # --------------------------------------------------
                     # Include Triggered Events
@@ -163,33 +177,51 @@ Stream Triggering
                     dh.include_triggered_events(csmpl_paths=csmpl_paths,
                                                 max_time_diff=0.5, # in sec - this prevents all pile up with test pulses
                                                 exclude_tp=True,
-                                                sample_duration=1/SAMPLE_FREQUENCY,
-                                                datatype='float32',
-                                                min_tpa=0.001,
-                                                min_cpa=10.1,
-                                                down=1)
+                                                sample_duration=1/args['sample_frequency'],
+                                                datatype='float32')
+
+                if not args['no_features']:
 
                     # ----------------------------------------------------------
                     # Include OF, SEV, NPS to first set (we keep them at merge)
                     # ----------------------------------------------------------
 
-                    dh.include_sev(sev=dh_hw.get('stdevent','event'),
-                                   fitpar=dh_hw.get('stdevent','fitpar'),
-                                   mainpar=dh_hw.get('stdevent','mainpar'))
+                    dh.include_sev(sev=xy_files['sev'],
+                                   fitpar=xy_files['sev_fitpar'],
+                                   mainpar=xy_files['sev_mainpar'])
 
-                    dh.include_nps(nps=dh_hw.get('noise','nps'))
+                    dh.include_nps(nps=xy_files['nps'])
 
-                    dh.include_of(of_real=dh_hw.get('optimumfilter','optimumfilter_real'),
-                                  of_imag=dh_hw.get('optimumfilter','optimumfilter_imag'))
+                    dh.include_of(of_real=np.real(xy_files['of']),
+                                  of_imag=np.imag(xy_files['of']))
 
-                    dh.include_sev(sev=dh_hw.get('stdevent_tp','event'),
-                                   fitpar=dh_hw.get('stdevent_tp','fitpar'),
-                                   mainpar=dh_hw.get('stdevent_tp','mainpar'),
-                                   group_name_appendix='_tp')
+                    # for tp
 
-                    dh.include_of(of_real=dh_hw.get('optimumfilter_tp','optimumfilter_real'),
-                                  of_imag=dh_hw.get('optimumfilter_tp','optimumfilter_imag'),
-                                  group_name_appendix='_tp')
+                    if 'sev_tp' in xy_files:
+
+                        dh.include_sev(sev=xy_files['sev_tp'],
+                                       fitpar=xy_files['sev_tp_fitpar'],
+                                       mainpar=xy_files['sev_tp_mainpar'],
+                                       group_name_appendix='_tp')
+
+                        dh.include_of(of_real=np.real(xy_files['of_tp']),
+                                      of_imag=np.imag(xy_files['of_tp']),
+                                      group_name_appendix='_tp')
+
+                    # for direct hits
+
+                    if 'sev_direct' in xy_files:
+
+                        dh.include_sev(sev=xy_files['sev_direct'],
+                                       fitpar=xy_files['sev_direct_fitpar'],
+                                       mainpar=xy_files['sev_direct_mainpar'],
+                                       group_name_appendix='_direct')
+
+                    if 'of_direct' in xy_files:
+
+                        dh.include_of(of_real=np.real(xy_files['of_direct']),
+                                      of_imag=np.imag(xy_files['of_direct']),
+                                      group_name_appendix='_direct')
 
                     # --------------------------------------------------
                     # Calc Mainpar for Events and Testpulses
@@ -197,87 +229,130 @@ Stream Triggering
 
                     dh.calc_mp(type='events')
                     dh.calc_mp(type='testpulses')
-                    dh.calc_additional_mp()
+                    dh.calc_additional_mp(type='events')
+                    dh.calc_additional_mp(type='testpulses')
 
                     # --------------------------------------------------
                     # Apply OF for Events and Testpulses
                     # --------------------------------------------------
 
-                    dh.apply_of(first_channel_dominant=CORRELATED_FIT)
-                    dh.apply_of(type='testpulses', name_appendix_group='_tp')
+                    dh.apply_of(first_channel_dominant=not args['uncorrelated'])
+                    if 'of_tp' in xy_files:
+                        dh.apply_of(type='testpulses', name_appendix_group='_tp')
+                    if 'of_direct' in xy_files:
+                        dh.apply_of(name_appendix_group='_direct', name_appendix_set='_direct')
 
                     # --------------------------------------------------
                     # Do SEV Fit for Events and Testpulses
                     # --------------------------------------------------
 
-                    dh.apply_sev_fit(down=DOWN_SEF, name_appendix='_down{}'.format(DOWN_SEF), processes=PROCESSES,
-                                     truncation_level=TRUNCATION_LEVELS, verb=True, first_channel_dominant=CORRELATED_FIT)
-                    dh.apply_sev_fit(type='testpulses', group_name_appendix='_tp',
-                                     down=DOWN_SEF, name_appendix='_down{}'.format(DOWN_SEF), processes=PROCESSES,
-                                     truncation_level=TRUNCATION_LEVELS, verb=True)
+                    # get the sevs with the fit parameters
+
+                    t = dh.record_window()
+                    sev_array = []
+                    for i,c in enumerate(args['rdt_channels']):
+                        sev_array.append(ai.fit.pulse_template(t, *xy_files['sev_fitpar'][c]))
+
+                    if 'sev_direct' in xy_files:
+                        sev_direct_array = []
+                        for i,c in enumerate(args['rdt_channels']):
+                            sev_direct_array.append(ai.fit.pulse_template(t, *xy_files['sev_direct_fitpar'][c]))
+
+                    if 'sev_tp' in xy_files:
+                        sev_tp_array = []
+                        for i,c in enumerate(args['rdt_channels']):
+                            sev_tp_array.append(ai.fit.pulse_template(t, *xy_files['sev_tp_fitpar'][c]))
+
+                    # do the fits
+
+                    dh.apply_array_fit(processes=args['processes'],
+                                       truncation_level=args['truncation_levels'],
+                                       first_channel_dominant=not args['uncorrelated'], use_this_array=sev_array)
+
+                    if 'sev_tp' in xy_files:
+                        dh.apply_array_fit(type='testpulses', group_name_appendix='_tp',
+                                           processes=args['processes'],
+                                           truncation_level=args['truncation_levels'],
+                                           use_this_array=sev_tp_array)
+
+                    # do the fit for the direct hits
+
+                    if 'sev_direct' in xy_files:
+                        dh.apply_array_fit(group_name_appendix = '_direct', name_appendix = '_direct',
+                                           processes=args['processes'],
+                                           truncation_level=args['truncation_levels'], only_channels=[1],
+                                           use_this_array=sev_direct_array)
+
+                if not args['no_ecal']:
 
                     # --------------------------------------------------
-                    # Apply Cuts
+                    # Energy calibration
                     # --------------------------------------------------
 
-                    # change this to your individual cut values!
+                    tp_tpa = dh.get('testpulses', 'testpulseamplitude')
+                    tp_ph = dh.get('testpulses', 'pulse_height')[:, :]
+                    unique_tp = np.unique(tp_tpa)
+                    print('Unique testpulse heights: ', unique_tp)
 
-                    clean_events = ai.cuts.LogicalCut(initial_condition=np.abs(dh.get('events', 'mainpar')[0,:,8]) < 2e-6)
-                    clean_events.add_condition(np.abs(dh.get('events', 'mainpar')[1,:,8]) < 2e-6)
-                    clean_events.add_condition(dh.get('events', 'mainpar')[0,:,0] < 1)
-                    clean_events.add_condition(dh.get('events', 'mainpar')[1,:,0] < 1.5)
-                    clean_events.add_condition(dh.get('events', 'mainpar')[0,:,3] < 4500)
-                    clean_events.add_condition(dh.get('events', 'mainpar')[0,:,3] > 3900)
-                    clean_events.add_condition(dh.get('events', 'mainpar')[1,:,3] < 4500)
-                    clean_events.add_condition(dh.get('events', 'mainpar')[1,:,3] > 3900)
+                    lb = []
+                    ub = []
 
-                    # typically you need not change anything below here
+                    for c in range(len(args['rdt_channels'])):
 
-                    for c in H5_CHANNELS:
-                        dh.apply_logical_cut(cut_flag=clean_events.get_flag(),
-                                             naming='clean_events',
-                                             channel=c,
-                                             type='events',
-                                             delete_old=False)
+                        medians = [np.median(tp_ph[c][tp_tpa == tpa]) for tpa in unique_tp]
+                        lower_quantiles = [np.quantile(tp_ph[c][tp_tpa == tpa], 0.18) for tpa in unique_tp]
+                        upper_quantiles = [np.quantile(tp_ph[c][tp_tpa == tpa], 0.82) for tpa in unique_tp]
+                        mean_deviations = [u - l for l,u in zip(lower_quantiles, upper_quantiles)]
 
-                    # --------------------------------------------------
-                    # PCA
-                    # --------------------------------------------------
+                        lb.append([ l - 5*m for l,m in zip(lower_quantiles, mean_deviations)])
+                        ub.append([ u + 5*m for u,m in zip(upper_quantiles, mean_deviations)])
 
-                    dh.apply_pca(nmbr_components=PCA_COMPONENTS,
-                                 down=DOWN_SEF,
-                                 fit_idx=clean_events.get_idx())
+                    for c in range(len(args['rdt_channels'])):
+                        dh.calc_testpulse_stability(c, significance=3, ub = ub[c], lb = lb[c])
 
-                else:
-                    print('Doing only the merge.')
+                    pm = dh.calc_calibration(starts_saturation=[1.6, 0.3],  # stop energy calibration at these values
+                        cpe_factor=args['cpe_factors'],
+                        plot=False,
+                        only_stable=True,
+                        exclude_tpas=[],
+                        interpolation_method='linear',
+                        method='of',
+                        return_pulser_models=True,
+                        use_interpolation=True,
+                        )
 
-                # --------------------------------------------------
-                # Merge the files
-                # --------------------------------------------------
+                    with open(args['path_pulser_model'] + args['out_name'] + '_' + args['naming'] + '_' + fn + '.pm', 'wb') as f:
+                        pickle.dump(pm, f)
 
-                if i > 0 and THIS_FILE_ONLY is None:
+            # --------------------------------------------------
+            # Merge the files
+            # --------------------------------------------------
 
-                    file_name_a = PATH_PROC_DATA + 'stream_' + FNAMING + '_{}.h5'.format(FILE_NMBRS[0]) if i == 1 else PATH_PROC_DATA + 'stream_{:03d}.h5'.format(i-1)
-                    a_name = 'stream_' + FNAMING + '_{}'.format(FILE_NMBRS[0]) if i == 1 else 'keep'
+            if i > 0 and args['merge']:
 
-                    ai.data.merge_h5_sets(path_h5_a=file_name_a,
-                                          path_h5_b=PATH_PROC_DATA + 'stream_' + FNAMING + '_{}.h5'.format(fn),
-                                          path_h5_merged=PATH_PROC_DATA + 'stream_{:03d}.h5'.format(i),
-                                          groups_to_merge=['events', 'testpulses', 'controlpulses', 'stream'],
-                                          sets_to_merge=['event', 'mainpar', 'true_ph', 'true_onset', 'of_ph',
-                                                         'sev_fit_par' + SEF_APP, 'sev_fit_rms' + SEF_APP,
-                                                         'hours', 'labels', 'testpulseamplitude', 'time_s',
-                                                         'time_mus', 'pulse_height', 'pca_error', 'pca_projection', 'tp_hours',
-                                                         'tp_time_mus', 'tp_time_s', 'tpa',
-                                                         'trigger_hours', 'trigger_time_mus', 'trigger_time_s'],
-                                          concatenate_axis=[1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0],
-                                          continue_hours=True,
-                                          keep_original_files=False,
-                                          groups_from_a=['optimumfilter', 'optimumfilter_tp', 'stdevent', 'stdevent_tp', 'noise'],
-                                          a_name=a_name,
-                                          b_name='stream_' + FNAMING + '_{}'.format(fn),
-                                          verb=False,
-                                          )
+                merge_keywords_ = merge_keywords.copy()
+
+                merge_keywords_['path_h5_a'] = args['path_h5'] + args['out_name'] + '_' + args['naming'] + '_{}.h5'.format(args['file_list'][0]) if i == 1 else args['path_h5'] + '{}_{:03d}.h5'.format(args['out_name'], i-1)
+                merge_keywords_['a_name'] = args['out_name'] + '_' + args['naming'] + '_{}'.format(args['file_list'][0]) if i == 1 else 'keep'
+                merge_keywords_['path_h5_b'] = args['path_h5'] + args['out_name'] + '_' + args['naming'] + '_{}.h5'.format(fn)
+                merge_keywords_['b_name'] = args['out_name'] + '_' + args['naming'] + '_{}'.format(fn)
+                merge_keywords_['path_h5_merged'] = args['path_h5'] + '{}_{:03d}.h5'.format(args['out_name'], i)
+
+                start_a = get_filestart(merge_keywords_['path_h5_a'], args)
+                start_b = get_filestart(merge_keywords_['path_h5_b'], args)
+
+                merge_keywords_['second_file_start'] = (start_b[0] + 1e-6*start_b[1] - start_a[0] - 1e-6*start_a[1])/3600
+
+                ai.data.merge_h5_sets(verb=False,
+                                      **merge_keywords_,
+                                      )
+
+                if i > 1 and merge_keywords['keep_original_files']:
+                    try:
+                        os.remove(merge_keywords_['path_h5_a'])
+                        print('File removed ', merge_keywords_['path_h5_a'])
+                    except:
+                        print('Could not remove file ', merge_keywords_['path_h5_a'])
 
         # ---------------------------------------------
         # Finishing Notes
@@ -285,3 +360,4 @@ Stream Triggering
 
         print('-----------------------------------------------------')
         print('>> DONE WITH ALL FILES.')
+

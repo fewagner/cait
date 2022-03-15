@@ -22,8 +22,8 @@ def convert_to_V(event,
 
     :param event: The event we want to convert.
     :type event: 1D array
-    :param bits: Nnumber of bits in each sample.
-    :type bits: int,
+    :param bits: Number of bits in each sample.
+    :type bits: int
     :param max: The max volt value.
     :type max: int
     :param min: The min volt value.

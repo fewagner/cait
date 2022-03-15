@@ -191,13 +191,13 @@ class VizTool():
                                      xaxis=self.data.select_dtypes('float64').columns)
 
         # table
-        self.t = go.FigureWidget([go.Table(
-            header=dict(values=self.table_names,
-                        fill=dict(color='#C2D4FF'),
-                        align=['left'] * 5),
-            cells=dict(values=[self.data[col] for col in self.table_names],
-                       fill=dict(color='#F5F8FF'),
-                       align=['left'] * 5))])
+        # self.t = go.FigureWidget([go.Table(
+        #     header=dict(values=self.table_names,
+        #                 fill=dict(color='#C2D4FF'),
+        #                 align=['left'] * 5),
+        #     cells=dict(values=[self.data[col] for col in self.table_names],
+        #                fill=dict(color='#F5F8FF'),
+        #                align=['left'] * 5))])
 
         scatter.on_selection(self._selection_scatter_fn)
 
@@ -229,7 +229,8 @@ class VizTool():
 
         # plot event
         if self.mode == 'h5' and self.events_in_file:
-            ev = self.dh.get(self.group, 'event')[:, 0, :]
+            with h5py.File(self.path_h5 + self.fname + '.h5', 'r') as f:
+                ev = np.array(f[self.group]['event'][:,0,:])
             self.f3 = go.FigureWidget([go.Scattergl(
                 x=np.arange(len(ev[0])),
                 y=ev[c] - np.mean(ev[c, :500]),
@@ -258,13 +259,18 @@ class VizTool():
             display(VBox((HBox(axis_dropdowns.children), self.f0,
                           HBox([cut_button, input_text, export_button]), self.output,
                           HBox([linear_button, log_button]),
-                          self.f1, self.f2, self.t)))
+                          self.f1, self.f2)))  # , self.t
         elif self.mode == 'h5' and self.events_in_file:
             display(VBox((HBox(axis_dropdowns.children), self.f0,
                           HBox([cut_button, input_text, export_button, save_button, sev_button]), self.output,
                           self.slider_out, self.f3,
                           HBox([linear_button, log_button]),
-                          self.f1, self.f2, self.t)))
+                          self.f1, self.f2)))  # , self.t
+        elif self.mode == 'h5' and not self.events_in_file:
+            display(VBox((HBox(axis_dropdowns.children), self.f0,
+                          HBox([cut_button, input_text, export_button]), self.output,
+                          HBox([linear_button, log_button]),
+                          self.f1, self.f2)))
         else:
             raise NotImplementedError('Mode {} is not implemented!'.format(self.mode))
 
@@ -286,8 +292,8 @@ class VizTool():
         self.f2.layout.xaxis.title = yaxis
 
     def _selection_scatter_fn(self, trace, points, selector):
-        self.t.data[0].cells.values = [self.data.loc[self.remaining_idx[points.point_inds]][col] for col in
-                                       self.table_names]
+        # self.t.data[0].cells.values = [self.data.loc[self.remaining_idx[points.point_inds]][col] for col in
+        #                                self.table_names]
         self.f1.data[0].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
         self.f2.data[0].x = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
         self.sel = points.point_inds

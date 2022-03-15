@@ -65,7 +65,8 @@ def plot_ev(event):
     plt.show()
 
 
-def plot_events(event_array, t=None, t_unit='s', savepath=None, show=True, text=None):
+def plot_events(event_array, t=None, t_unit='s', savepath=None, show=True, text=None,
+                nmbr_x=None, nmbr_y=None):
     """
     Plot multiple events together in a subplot.
 
@@ -81,6 +82,10 @@ def plot_events(event_array, t=None, t_unit='s', savepath=None, show=True, text=
     :type show: bool
     :param text: Optional, these texts will be shown next to the events.
     :type text: list of str
+    :param nmbr_x: The number of rows of the subplot. Only valid in combination with nmbr_y, otherwise ignored.
+    :type nmbr_x: int
+    :param nmbr_y: The number of columns of the subplot. Only valid in combination with nmbr_x, otherwise ignored.
+    :type nmbr_y: int
     """
     nmbr_events = event_array.shape[0]
     assert text is None or len(text) == nmbr_events, 'The list of text labels must be as long as the number of events!'
@@ -91,15 +96,16 @@ def plot_events(event_array, t=None, t_unit='s', savepath=None, show=True, text=
         xlabel = 'Time ({})'.format(t_unit)
     assert nmbr_events <= 9, 'Cannot plot more than 9 events!'
 
-    if nmbr_events > 4:
-        nmbr_x = 3
-        nmbr_y = 3
-    elif nmbr_events > 1:
-        nmbr_x = 2
-        nmbr_y = 2
-    else:
-        nmbr_x = 1
-        nmbr_y = 1
+    if nmbr_x is None or nmbr_y is None:
+        if nmbr_events > 4:
+            nmbr_x = 3
+            nmbr_y = 3
+        elif nmbr_events > 1:
+            nmbr_x = 2
+            nmbr_y = 2
+        else:
+            nmbr_x = 1
+            nmbr_y = 1
 
     if nmbr_x == nmbr_y == 1:
         fig, ax = plt.subplots(nmbr_y, nmbr_x, constrained_layout=True)
