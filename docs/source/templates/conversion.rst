@@ -7,135 +7,172 @@ Conversion to HDF5
     """
     conversion.py
 
-    This script is for the efficient conversion and merge of several RDT and CON files, into one HDF5 file.
-
     Usage:
-    - Adapt the section 'Constants and Paths' to your measurement.
-    - If you start the script without command line arguments, it will convert all files and merge them one after another.
-    - If you start the script with the flag -f n, if will only convert the n'th file from the list of files.
-    - If you start the script with the flag -m, it will only do the merge between all files.
-    - For time efficient conversion, a good workflow is to write a bash script, that starts the conversion of all files
-        simultaneously with the -f flags, then call the script again with the -m flag when all conversions are done.
+
+    First convert all files rdt -> HDF5
+
+    python conversion.py -f <filename_1> … <filename_n> -c <channel_number> -p /eos/vbc/group/darkmatter/cosinus/data/cryo/fridge2/run577/run577/ -s /scratch-cbe/shared/darkmatter/cosinus/run577/ -t 100000 -q 100000 -r 32768 -d 1 -i 6
+
+
+    python conversion.py -f <filename_1> -c <channel_number> -p <path_to_rdt_files> -s <path_to_store_hdf5_files> -t <clock_frequency> -q <sample_frequency> -r <record_length> -d <nmbr_dvm_channels> -i <integers_in_header>
+
+    ...
+
+    python conversion.py -f <filename_n> -c <channel_number> -p <path_to_rdt_files> -s <path_to_store_hdf5_files> -t <clock_frequency> -q <sample_frequency> -r <record_length> -d <nmbr_dvm_channels> -i <integers_in_header>
+
+    (this can be done in parallel, or you can list the file names in the same script call)
+
+    python conversion.py -f <filename_1> … <filename_n> -c <channel_number> -p <path_to_rdt_files> -s <path_to_store_hdf5_files> -t <clock_frequency> -q <sample_frequency> -r <record_length> -d <nmbr_dvm_channels> -i <integers_in_header>
+
+    Then call the same script again with the -m flag to merge them together to one HDF5 file.
+
+    python conversion.py -f <filename_1> … <filename_n> -c <channel_number> -p <path_to_rdt_files> -s <path_to_store_hdf5_files> -t <clock_frequency> -q <sample_frequency> -r <record_length> -d <nmbr_dvm_channels> -i <integers_in_header> -m
     """
 
     import cait as ai
     import argparse
+    import os
 
     if __name__ == '__main__':
-
-        # ---------------------------------------------
-        # Read command line arguments
-        # ---------------------------------------------
 
         # Construct the argument parser
         ap = argparse.ArgumentParser()
 
         # Add the arguments to the parser
-        ap.add_argument("-f", "--file", type=int, required=False, default=None, help="Trigger only this index from the files list.")
+        ap.add_argument("-f", "--file_list", type=str, nargs='+', help="List of the file names, e.g. bck_001 bck_002.")
+        ap.add_argument("-c", "--channels", type=int, nargs='+', help="List of the channels of this module, e.g. 12 13.")
+        ap.add_argument("-p", "--path_raw", type=str, help="Path to the RDT, PAR and CON files.")
+        ap.add_argument("-s", "--path_h5", type=str, help="Path to the converted HDF5 files.")
+        ap.add_argument("-t", "--clock_frequency", type=int, help="The frequency of the timer clock.")
+        ap.add_argument("-q", "--sample_frequency", type=int, help="The sample frequency.")
+        ap.add_argument("-r", "--record_length", type=int, help="The length of the record window.")
+        ap.add_argument("-d", "--dvm_channels", type=int, help="The number of DVM channels.")
+        ap.add_argument("-i", "--ints_in_header", type=int, help="The number of integers in the header.")
         ap.add_argument("-m", "--merge", action='store_true', help="Only merge the files list.")
         args = vars(ap.parse_args())
 
-        THIS_FILE_ONLY = args['file']
-        MERGE_ONLY = args['merge']
+        for i, fname in enumerate(args['file_list']):
 
-        assert THIS_FILE_ONLY is None or THIS_FILE_ONLY >= 0, "The file number must be integer >= 0!"
-        assert not (THIS_FILE_ONLY is not None and MERGE_ONLY), "Attention, you cannot choose a specific file and merge only together!"
+            if not args['merge']:
 
-        # ---------------------------------------------
-        # Constants and Paths
-        # ---------------------------------------------
+                # conversion rdt --> h5
 
-        # adapt these values to your measurement!
+                dh = ai.DataHandler(channels=args['channels'],
+                                    record_length=args['record_length'],
+                                    sample_frequency=args['sample_frequency'])
 
-        RUN = ...  # put an string for the number of the experiments run, e.g. '34'
-        MODULE = ...  # put a name for the detector, e.g. 'DetA'
-        PATH_HW_DATA = ...  # path to the directory in which the RDT and CON files are stored
-        PATH_PROC_DATA = ...  # path to where you want to store the HDF5 files
-        FILE_NMBRS = []  # a list of string, the file number you want to analyse, e.g. ['001', '002', '003']
-        FNAMING = ...  # the naming of the files, typically 'bck', for calibration data 'cal'
-        RDT_CHANNELS = []  # a list of strings of the channels, e.g. [0, 1] (written in PAR file - attention, the PAR file counts from 1, Cait from 0)
-        RECORD_LENGTH = 16384  # the number of samples within a record window  (read in PAR file)
-        SAMPLE_FREQUENCY = 25000  # the sample frequency of the measurement (read in PAR file)
-        SKIP_FILE_NMBRS = []  # in case the loop crashed at some point and you want to start from a specific file number, write here the numbers to ignore, e.g. ['001', '002']
+                dh.convert_dataset(path_rdt=args['path_raw'],
+                                   fname=fname,
+                                   path_h5=args['path_h5'],
+                                   tpa_list=[0, 1, -1],
+                                   ints_in_header=args['ints_in_header'],
+                                   dvm_channels=args['dvm_channels'],
+                                  )
 
-        # do not change anything below here!
+                # include par and con file
 
-        FNAME_HW = 'hw_{:03d}'.format(len(FILE_NMBRS) - 1)
-        if len(RDT_CHANNELS) == 2:
-            FILE_APP = '-P_Ch{}-L_Ch{}'.format(*RDT_CHANNELS)
-        else:
-            FILE_APP = ''
-            for i, c in enumerate(RDT_CHANNELS):
-                FILE_APP += '-{}_Ch{}'.format(i+1,c)
-        H5_CHANNELS = list(range(len(RDT_CHANNELS)))
+                # dh.include_metainfo(args['path_raw'] + fname + '.par')
+                # dh.include_con_file(path_con_file=args['path_raw'] + fname + '.con')
 
-        assert THIS_FILE_ONLY not in SKIP_FILE_NMBRS, "Attention, you chose a file that is in the skip list!"
-        assert len(FILE_NMBRS) > 0, "Choose some file numbers!"
+                # calc main parameters
 
-        if THIS_FILE_ONLY is not None:
-            SKIP_FILE_NMBRS = FILE_NMBRS.copy()
-            del SKIP_FILE_NMBRS[THIS_FILE_ONLY]
+                dh.calc_mp('events')
+                dh.calc_mp('noise')
+                dh.calc_mp('testpulses')
 
-        # ---------------------------------------------
-        # Start the Loop
-        # ---------------------------------------------
+                dh.calc_additional_mp('events', no_of=True)
+                dh.calc_additional_mp('noise', no_of=True)
+                dh.calc_additional_mp('testpulses', no_of=True)
 
-        for i, fn in enumerate(FILE_NMBRS):
+                if len(args['channels']) == 2:
 
-            print('-----------------------------------------------------')
-            print('>> {} WORKING ON FILE: {}'.format(i, fn))
+                    dh.calc_ph_correlated()
+                    dh.include_values(dh_stream.get('events', 'ph_corr')[1]/dh_stream.get('events', 'ph_corr')[0],
+                                 naming='pseudo_ly', channel=0)
 
-            if fn in SKIP_FILE_NMBRS:
-                print('Skipping this file.')
+                dh.calc_peakdet(type='events')
+                dh.calc_peakdet(type='testpulses')
+                dh.calc_peakdet(type='noise')
 
-            else:
-                if not MERGE_ONLY:
-                    # --------------------------------------------------
-                    # Convert Rdt to H5
-                    # --------------------------------------------------
+                try:
+                    ckp_path = ai.resources.get_resource_path('cnn-clf-binary-v1.ckpt')
+                    model = ai.models.CNNModule.load_from_checkpoint(ckp_path)
 
-                    dh = ai.DataHandler(run=RUN,
-                                        module=MODULE,
-                                        channels=RDT_CHANNELS,
-                                        record_length=RECORD_LENGTH,
-                                        sample_frequency=SAMPLE_FREQUENCY)
+                    if args['record_length'] == 8192:
+                        model.down = 2
+                    elif args['record_length'] == 4096:
+                        model.down = 1
 
-                    dh.convert_dataset(path_rdt=PATH_HW_DATA,
-                                       fname='{}_{}'.format(FNAMING, fn),
-                                       path_h5=PATH_PROC_DATA,
-                                       tpa_list=[0, 1, -1],
-                                       calc_mp=False,
-                                       calc_nps=False,
-                                       memsafe=True,  # this option is currently under testing for bugs
-                                       trace=True,  # plot memory usage and runtime
-                                       lazy_loading=True,
-                                       batch_size=1000,  # usually this does not affect memory usuage or runtime a lot - 1000 should be fine
-                                       )
+                    for type in ['events', 'testpulses', 'noise']:
+                        for c in range(len(dh.channels)):
+                            ai.models.nn_predict(h5_path=dh.path_h5,
+                                       model=model,
+                                       feature_channel=c,
+                                       group_name=type,
+                                       prediction_name='cnn_cut',
+                                       keys=['event'],
+                                       no_channel_idx_in_pred=False,
+                                       use_prob=False)
 
-                    # --------------------------------------------------
-                    # Include control pulses
-                    # --------------------------------------------------
-
-                    dh.include_con_file(path_con_file=PATH_HW_DATA + '{}_{}.con'.format(FNAMING, fn))
-
-                    del dh
+                except:
+                    pass
 
                 # --------------------------------------------------
                 # Merge the files
                 # --------------------------------------------------
 
-                if i > 0 and THIS_FILE_ONLY is None:
+            if i > 0 and args['merge']:
 
-                    file_name_a = PATH_PROC_DATA + '{}_{}{}.h5'.format(FNAMING, FILE_NMBRS[0], FILE_APP) if i == 1 else PATH_PROC_DATA + 'hw_{:03d}.h5'.format(i-1)
-                    a_name = '{}_{}'.format(FNAMING, FILE_NMBRS[0]) if i == 1 else 'keep'
+                naming = ''
+                for c in args['channels']:
+                    naming += 'ch{}_'.format(c)
 
-                    ai.data.merge_h5_sets(path_h5_a=file_name_a,
-                                      path_h5_b=PATH_PROC_DATA + '{}_{}{}.h5'.format(FNAMING, fn, FILE_APP),
-                                      path_h5_merged=PATH_PROC_DATA + 'hw_{:03d}.h5'.format(i),
-                                      continue_hours=True,
-                                      keep_original_files=False,
-                                      a_name=a_name,
-                                      b_name='{}_{}'.format(FNAMING, fn),
-                                      verb=False,
-                                      trace=True,
-                                     )
+                if len(args['channels']) == 2:
+                    file_app = '-P_Ch{}-L_Ch{}'.format(*args['channels'])
+                else:
+                    file_app = ''
+                    for j, c in enumerate(args['channels']):
+                        file_app += '-{}_Ch{}'.format(j+1,c)
+
+                file_path_a = args['path_h5'] + args['file_list'][i-1] + file_app + '.h5' if i == 1 else args['path_h5'] + naming + '{:03d}.h5'.format(i-1)
+                a_name = args['file_list'][i-1] if i == 1 else 'keep'
+
+                file_path_b = args['path_h5'] + fname + file_app + '.h5'
+                b_name = fname
+
+                sets_merge = {
+                    'event': 1,
+                    'mainpar': 1,
+                    'hours': 0,
+                    'testpulseamplitude': 0,
+                    'time_s': 0,
+                    'time_mus': 0,
+                    'pulse_height': 1,
+                    'tp_hours': 0,
+                    'tp_time_mus': 0,
+                    'tp_time_s': 0,
+                    'tpa': 0,
+                    'trigger_hours': 0,
+                    'trigger_time_mus': 0,
+                    'trigger_time_s': 0,
+                    'add_mainpar': 1,
+                    'ph_corr': 1,
+                    'cnn_cut': 1,
+                    'pseudo_ly': 1,
+                    'nmbr_peaks': 1,
+                }
+
+                ai.data.merge_h5_sets(path_h5_a=file_path_a,
+                                  path_h5_b=file_path_b,
+                                  path_h5_merged=args['path_h5'] + naming + '{:03d}.h5'.format(i),
+                                  sets_to_merge=list(sets_merge.keys()),
+                                  concatenate_axis=list(sets_merge.values()),
+                                  continue_hours=False,
+                                  keep_original_files=True,
+                                  a_name=a_name,
+                                  b_name=fname,
+                                  verb=False,
+                                 )
+
+                if i > 1:
+                    os.remove(file_path_a)

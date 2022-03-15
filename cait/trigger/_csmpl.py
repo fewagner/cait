@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import sqlite3
 from time import time, strptime, mktime
 from tqdm.auto import tqdm
+import pdb
 
 
 # functions
@@ -86,6 +87,10 @@ def get_max_index(stream,  # memmap array
                   transfer_function,  # if use down, this must already be downsampled
                   down=1,
                   window=True,
+                  bits=16,
+                  max=10,
+                  min=-10,
+                  square=False,
                   ):
     """
     Filter a record window from the stream array and return the maximum and maximum position.
@@ -107,6 +112,14 @@ def get_max_index(stream,  # memmap array
     :type down: int
     :param window: If true, a window function is applied to the record window before filtering. Recommended!
     :type window: bool
+    :param bits: Number of bits in each sample.
+    :type bits: int
+    :param max: The max volt value.
+    :type max: int
+    :param min: The min volt value.
+    :type min: int
+    :param square: Square the stream values before triggering, this needs to be done for DAC channels.
+    :type square: bool
     :return: (the trigger index inside the record window, the height of the triggered value)
     :rtype: 2-tuple (int, float)
     """
@@ -119,7 +132,11 @@ def get_max_index(stream,  # memmap array
         record = np.mean(record.reshape((int(len(record) / down), down)), axis=1)
         overlap = int(overlap / down)
         block = int(block / down)
-    record = convert_to_V(record)
+    record = convert_to_V(record, bits=bits, max=max, min=min)
+
+    # square the value in case its a DAC
+    if square:
+        record **= 2
 
     # remove offset
     record -= np.mean(record[:int(overlap / 2)])
@@ -128,6 +145,7 @@ def get_max_index(stream,  # memmap array
         filtered_record = signal.medfilt(record, 51)
     else:
         filtered_record = filter_event(record, transfer_function=transfer_function, window=window)
+
     # get max
     if block > overlap:
         trig = np.argmax(filtered_record[block:-overlap])

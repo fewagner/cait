@@ -7,7 +7,7 @@ import h5py
 from ..features._mp import calc_main_parameters
 from ..trigger._csmpl import trigger_csmpl, align_triggers, sample_to_time, \
     exclude_testpulses, get_starttime, get_test_stamps, get_offset
-from ..trigger._bin import get_record_window_vdaq
+from ..trigger._bin import get_record_window_vdaq, trigger_bin
 from tqdm.auto import tqdm
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
@@ -89,6 +89,154 @@ class BinMixin(object):
                         aligned_triggers + file_start - np.floor(aligned_triggers + file_start)), dtype='int32')
 
             print('DONE')
+
+    def include_bin_triggers(self,
+                             path: str,
+                             dtype: np.dtype,
+                             keys: list,
+                             header_size: int,
+                             thresholds: list,  # in V
+                             adc_bits=16,
+                             trigger_block: int = None,
+                             take_samples: int = None,
+                             of: list = None,
+                             down: int = 1,
+                             window: bool = True,
+                             overlap: float = None,
+                             read_triggerstamps: bool = False,
+                             ):
+        """
+        Trigger the *.bin file of a detector module and include them in the HDF5 set.
+
+        The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
+        same module.
+
+        :param path: The full path for the BIN file.
+        :type path: str
+        :param dtype: The data type with which we read the *.bin file.
+        :type dtype: numpy data type
+        :param key: The key of the dtype, corresponding to the channel that we want to read.
+        :type key: str
+        :param header_size: The size of the file header of the bin file, in bytes.
+        :type header_size: int
+        :param thresholds: The trigger tresholds for all channels in Volt.
+        :type thresholds: list of floats
+        :param adc_bits: The precision of the digitizer.
+        :type adc_bits: int
+        :param trigger_block: The number of samples for that the trigger is blocked after a trigger. If None, it is
+            the length of a record window.
+        :type trigger_block: int or None
+        :param take_samples: The number of samples that we trigger from the stream file. Standard argument is None, which
+            means all samples are triggered.
+        :type take_samples: int or None
+        :param of: The optimum filter transfer functions for all channels.
+        :type of: list of arrays
+        :param down: The downsampling factor for triggering.
+        :type down: int
+        :param window: If true, the trigger window is multiplied with a window function before the filtering.
+            This is strongly recommended! Otherwise some artifacts from major differences in the left and right baseline
+            level can appear somewhere in the middle of the record window.
+        :type window: bool
+        :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
+            previous/next one. Standard value is 1/4 - it is recommended to use this value!
+        :type overlap: float
+        :param read_triggerstamps: In case there is already a trigger_hours data set in the HDF5 stream group, we can read
+            it instead of doing the triggering again. For this, set this argument to True.
+        :type read_triggerstamps: bool
+        """
+
+        assert os.path.isfile(path), 'The bin file does not exist!'
+
+        if take_samples is None:
+            take_samples = -1
+
+        if trigger_block is None:
+            trigger_block = self.record_length
+
+        # open write file
+        with h5py.File(self.path_h5, 'a') as h5f:
+
+            stream = h5f.require_group(name='stream')
+
+            if not read_triggerstamps:
+
+                if of is None:
+                    print("Read OF Transfer Function from h5 file. Alternatively provide one through the of argument.")
+                    of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=np.complex)
+                    of.real = h5f['optimumfilter']['optimumfilter_real']
+                    of.imag = h5f['optimumfilter']['optimumfilter_imag']
+
+                # do the triggering
+                time = []
+                for c, k in enumerate(keys):
+                    print('TRIGGER CHANNEL ', k)
+                    # get triggers
+                    trig = trigger_bin(paths=[path],
+                                         dtype=dtype,
+                                         key=k,
+                                         header_size=header_size,
+                                         trigger_tres=thresholds[c],
+                                         bits=adc_bits,
+                                         transfer_function=of[c],
+                                         take_samples=take_samples,
+                                         record_length=self.record_length,
+                                         sample_length=1 / self.sample_frequency,
+                                         start_hours=0,
+                                         trigger_block=trigger_block,
+                                         down=down,
+                                         window=window,
+                                         overlap=overlap,
+                                         )
+
+                    time.append(trig)
+
+                # fix the number of triggers
+                if len(keys) > 1:
+                    print('ALIGN TRIGGERS')
+                    aligned_triggers = align_triggers(triggers=time,  # in seconds
+                                                      trigger_block=trigger_block,
+                                                      sample_duration=1 / self.sample_frequency,
+                                                      )
+                else:
+                    aligned_triggers = time[0]
+
+                # write them to file
+                print('ADD DATASETS TO HDF5')
+                if "trigger_hours" in stream:
+                    print('overwrite old trigger_hours')
+                    del stream['trigger_hours']
+                stream.create_dataset(name='trigger_hours',
+                                      data=aligned_triggers / 3600)
+
+            else:
+
+                aligned_triggers = stream['trigger_hours'][:] * 3600
+
+
+            # include start time, get file handle
+            if "trigger_time_s" in stream:
+                print('overwrite old trigger_time_s')
+                del stream['trigger_time_s']
+            stream.create_dataset(name='trigger_time_s',
+                                  shape=aligned_triggers.shape,
+                                  dtype=np.int64)
+            if "trigger_time_mus" in stream:
+                print('overwrite old trigger_time_mus')
+                del stream['trigger_time_mus']
+            stream.create_dataset(name='trigger_time_mus',
+                                  shape=aligned_triggers.shape,
+                                  dtype=np.int64)
+
+            file_start_s = np.fromfile(path, dtype=dtype, count=1, offset=header_size)['Time'][0]/1e9
+
+            stream['trigger_time_s'][...] = np.array(
+                aligned_triggers + file_start_s, dtype='int32')
+            stream['trigger_time_mus'][...] = np.array(1e6 * (
+                    aligned_triggers + file_start_s -
+                    np.floor(aligned_triggers + file_start_s)), dtype='int32')
+
+            print('DONE')
+
 
     def include_triggered_events_vdaq(self,
                                       path,
@@ -342,6 +490,101 @@ class BinMixin(object):
                             cphs[c, ...] = np.max(cp_array)
 
             print('DONE')
+
+    def include_dac_triggers(self,
+                             path: str,
+                             dtype,
+                             keys,
+                             header_size,
+                             thresholds: list,  # in V
+                             dac_bits=16,
+                             trigger_block: int = None,
+                             take_samples: int = None,
+                             down: int = 1,
+                             window: bool = True,
+                             overlap: float = None,
+                             ):
+        """
+        Trigger the DAC channels of a *.bin file of a detector module and include them in the HDF5 set.
+
+        The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
+        same module.
+
+        :param path: The full paths for the bin file.
+        :type path: str
+        :param dtype: The data type with which we read the *.bin file.
+        :type dtype: numpy data type
+        :param keys: The keys of the dtype, corresponding to the channels that we want to read.
+        :type keys: list of str
+        :param header_size: The size of the file header of the bin file, in bytes.
+        :type header_size: int
+        :param thresholds: The trigger tresholds for all channels in Volt.
+        :type thresholds: list of floats
+        :param adc_bits: The precision of the digitizer.
+        :type adc_bits: int
+        :param trigger_block: The number of samples for that the trigger is blocked after a trigger. If None, it is
+            the length of a record window.
+        :type trigger_block: int or None
+        :param take_samples: The number of samples that we trigger from the stream file. Standard argument is None, which
+            means all samples are triggered.
+        :type take_samples: int or None
+        :param down: The downsampling factor for triggering.
+        :type down: int
+        :param window: If true, the trigger window is multiplied with a window function before the filtering.
+            This is strongly recommended! Otherwise some artifacts from major differences in the left and right baseline
+            level can appear somewhere in the middle of the record window.
+        :type window: bool
+        :param overlap: A value between 0 and 1 that defines the part of the record window that overlaps with the
+            previous/next one. Standard value is 1/4 - it is recommended to use this value!
+        :type overlap: float
+        """
+
+        assert os.path.isfile(path), 'The bin file does not exist!'
+
+        if take_samples is None:
+            take_samples = -1
+
+        if trigger_block is None:
+            trigger_block = self.record_length
+
+        of = [np.ones(int(self.record_length/2 + 1))/self.record_length/2 + 1 for k in keys]
+
+        # do the triggering
+        time = []
+        heights = []
+        for c, k in enumerate(keys):
+            print('TRIGGER CHANNEL ', k)
+            # get triggers
+            trig, height, _, _ = trigger_bin(paths=[path],
+                                 dtype=dtype,
+                                 key=k,
+                                 header_size=header_size,
+                                 trigger_tres=thresholds[c],
+                                 bits=dac_bits,
+                                 transfer_function=of[c],
+                                 take_samples=take_samples,
+                                 record_length=self.record_length,
+                                 sample_length=1 / self.sample_frequency,
+                                 start_hours=0,
+                                 trigger_block=trigger_block,
+                                 down=down,
+                                 window=window,
+                                 overlap=overlap,
+                                 return_info=True,
+                                 square=True,
+                                 )
+
+            time.append(trig)
+            heights.append(height)
+
+        file_start_s = np.fromfile(path, dtype=dtype, count=1, offset=header_size)['Time'][0] / 1e9
+
+        self.include_test_stamps_vdaq(triggers=time,
+                                     tpas=heights,
+                                     trigger_block=trigger_block,
+                                     file_start=file_start_s)
+
+        print('DONE')
 
     def include_test_stamps_vdaq(self,
                                  triggers: list,  # in seconds
