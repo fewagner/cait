@@ -45,6 +45,7 @@
    templates/hw_analysis
    templates/estimate_noise_trigger_rate
    templates/trigger
+   templates/trigger_utils
    templates/stream_analysis
    templates/efficiency_simulation
    templates/vdaq_viewer
