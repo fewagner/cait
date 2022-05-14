@@ -698,7 +698,7 @@ class CsmplMixin(object):
                             cp_array -= np.mean(cp_array[:int(len(cp_array) / 8)])
 
                             # write the heights to file
-                            cphs[c, ...] = np.max(cp_array)
+                            cphs[c, i] = np.max(cp_array)
 
             print('DONE')
 

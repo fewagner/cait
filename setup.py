@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setup(
     name='cait',
-    version='1.1.1',
+    version='1.1.2dev',
     author='Daniel Bartolot, '
            'Jens Burkhart, '
            'Damir Rizvanovic, '
