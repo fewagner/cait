@@ -561,7 +561,8 @@ class DataHandler(SimulateMixin,
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
-    def get(self, group: str, dataset: str):
+    def get(self, group: str, dataset: str,
+            idx0:int=None,idx1:int=None,idx2:int=None):
         """
         Get a dataset from the HDF5 file with save closing of the file stream.
 
@@ -571,6 +572,21 @@ class DataHandler(SimulateMixin,
             from the main parameters, namely 'pulse_height', 'onset', 'rise_time', 'decay_time', 'slope'. These are
             consistent with used in the cut when generating a standard event.
         :type dataset: string
+        :param idx0: An index passed to the data set inside the HDF5 file as the first index,
+            before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
+            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
+            for names of individual features from the main or additional main parameters (e.g. pulse height).
+        :type idx0: int
+        :param idx1: An index passed to the data set inside the HDF5 file as the second index,
+            before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
+            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
+            for names of individual features from the main or additional main parameters (e.g. pulse height).
+        :type idx1: int
+        :param idx2: An index passed to the data set inside the HDF5 file as the third index,
+            before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
+            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
+            for names of individual features from the main or additional main parameters (e.g. pulse height).
+        :type idx2: int
         :return: The dataset from the HDF5 file
         :rtype: numpy array
         """
@@ -598,7 +614,25 @@ class DataHandler(SimulateMixin,
                         data = np.array(f[group]['add_mainpar'][:, :, i])
                         break
                 else:
-                    data = np.array(f[group][dataset])
+                    data = f[group][dataset]
+                    if len(data.shape) == 3:
+                        if idx0 is not None and idx1 is not None and idx2 is not None:
+                            data = data[idx0, idx1, idx2]
+                        elif idx0 is not None and idx1 is not None and idx2 is None:
+                            data = data[idx0, idx1, :]
+                        elif idx0 is not None and idx1 is None and idx2 is not None:
+                            data = data[idx0, :, idx2]
+                        elif idx0 is not None and idx1 is None and idx2 is None:
+                            data = data[idx0, :, :]
+                        elif idx0 is None and idx1 is not None and idx2 is not None:
+                            data = data[:, idx1, idx2]
+                        elif idx0 is None and idx1 is not None and idx2 is None:
+                            data = data[:, idx1, :]
+                        elif idx0 is None and idx1 is None and idx2 is not None:
+                            data = data[:, :, idx2]
+                        elif idx0 is None and idx1 is None and idx2 is None:
+                            pass
+                    data = np.array(data)
         return data
 
     def keys(self, group: str = None):

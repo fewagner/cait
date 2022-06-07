@@ -21,4 +21,5 @@ __all__=['MovingAverageTrigger',
          'bin',
          'read_header',
          'trigger_bin',
+         'get_offset',
          ]
