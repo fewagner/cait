@@ -71,6 +71,9 @@ class FeaturesMixin(object):
                         [(events['event'][c, i, :], down, max_bounds) for i in range(nmbr_ev)]))
             mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
 
+            if 'mainpar' in events:
+                del events['mainpar']
+
             events.require_dataset(name='mainpar',
                                    shape=(mainpar_event.shape),
                                    dtype='float')
@@ -412,7 +415,8 @@ class FeaturesMixin(object):
     # apply the optimum filter
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
                  chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None):
+                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None,
+                 flexibility=1):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -443,6 +447,9 @@ class FeaturesMixin(object):
         :param onset_to_dominant_channel: The difference in the onset value to the dominant channel. If e.g. the second
             channel has a typical max_pos value of 4000, but the first of 4100, then the onset for this would be -100.
         :type onset_to_dominant_channel: list of ints
+        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this
+        amount of samples.
+        :type flexibility: int
         """
 
         print('Calculating OF Heights.')
@@ -481,20 +488,23 @@ class FeaturesMixin(object):
                                                         return_peakpos=True,
                                                         baseline_model=baseline_model,
                                                         pretrigger_samples=pretrigger_samples,
-                                                        transfer_function=transfer_function[c])
+                                                        transfer_function=transfer_function[c],
+                                                        flexibility=flexibility)
                     elif first_channel_dominant:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
                                                peakpos=peakpos + onset_to_dominant_channel[c],
                                                return_peakpos=False,
                                                baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                               transfer_function=transfer_function[c])
+                                               transfer_function=transfer_function[c],
+                                                        flexibility=flexibility)
                     else:
                         of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
                                                return_peakpos=False,
                                                baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                               transfer_function=transfer_function[c])
+                                               transfer_function=transfer_function[c],
+                                                        flexibility=flexibility)
 
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
                 counter += chunk_size
@@ -507,19 +517,22 @@ class FeaturesMixin(object):
                                                     return_peakpos=True,
                                                     baseline_model=baseline_model,
                                                     pretrigger_samples=pretrigger_samples,
-                                                    transfer_function=transfer_function[c])
+                                                    transfer_function=transfer_function[c],
+                                                        flexibility=flexibility)
                 elif first_channel_dominant:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
                                            peakpos=peakpos + onset_to_dominant_channel[c], return_peakpos=False,
                                            baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                           transfer_function=transfer_function[c])
+                                           transfer_function=transfer_function[c],
+                                                        flexibility=flexibility)
                 else:
                     of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
                                            return_peakpos=False,
                                            baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                           transfer_function=transfer_function[c])
+                                           transfer_function=transfer_function[c],
+                                                        flexibility=flexibility)
                 f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
 
     # calc stdevent carrier

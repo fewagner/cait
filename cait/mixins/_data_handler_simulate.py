@@ -163,12 +163,13 @@ class SimulateMixin(object):
                     data.create_dataset(name='hours',
                                         shape=(size_events * pulses_per_bl,),
                                         dtype=float)
-                    data.create_dataset(name='time_s',
-                                        shape=(size_events * pulses_per_bl,),
-                                        dtype=float)
-                    data.create_dataset(name='time_mus',
-                                        shape=(size_events * pulses_per_bl,),
-                                        dtype=float)
+                    if 'time_s' in f_read['noise']:
+                        data.create_dataset(name='time_s',
+                                            shape=(size_events * pulses_per_bl,),
+                                            dtype=float)
+                        data.create_dataset(name='time_mus',
+                                            shape=(size_events * pulses_per_bl,),
+                                            dtype=float)
 
                 events, phs, t0s, nmbr_thrown_events, hours, time_s, time_mus = simulate_events(
                     path_h5=self.path_h5,
@@ -194,8 +195,9 @@ class SimulateMixin(object):
 
                 if not fake_noise:
                     data['hours'][:size_events] = hours
-                    data['time_s'][:size_events] = time_s
-                    data['time_mus'][:size_events] = time_mus
+                    if 'time_s' in f_read['noise']:
+                        data['time_s'][:size_events] = time_s
+                        data['time_mus'][:size_events] = time_mus
 
                 data['event'][:, :size_events, :] = events
                 data['true_ph'][:, :size_events] = phs
@@ -267,8 +269,9 @@ class SimulateMixin(object):
                 data.create_dataset(name='true_ph', data=phs)
                 if not fake_noise:
                     data.create_dataset(name='hours', data=hours)
-                    data.create_dataset(name='time_s', data=time_s)
-                    data.create_dataset(name='time_mus', data=time_mus)
+                    if 'time_s' in f_read['noise']:
+                        data.create_dataset(name='time_s', data=time_s)
+                        data.create_dataset(name='time_mus', data=time_mus)
                 if saturation:
                     fp = f_read['saturation']['fitpar'][0]
                     data_to_write = phs[0] / scale_factor(*fp)
@@ -346,8 +349,9 @@ class SimulateMixin(object):
                                                                                                )
                 if not fake_noise:
                     data.create_dataset(name='hours', data=hours)
-                    data.create_dataset(name='time_s', data=time_s)
-                    data.create_dataset(name='time_mus', data=time_mus)
+                    if 'time_s' in f_read['noise']:
+                        data.create_dataset(name='time_s', data=time_s)
+                        data.create_dataset(name='time_mus', data=time_mus)
                 data.create_dataset(name='event', data=events, dtype=dtype)
                 data.create_dataset(name='labels',
                                     data=3 * np.ones([self.nmbr_channels, size_noise]))  # 3 is the noise label

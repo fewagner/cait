@@ -457,7 +457,7 @@ class DataHandler(SimulateMixin,
                 raise FileNotFoundError('There is no dataset {} in group {} in the HDF5 file.'.format(dataset, group))
 
     def downsample_raw_data(self, type: str = 'events', down: int = 16, dtype: str = 'float32',
-                            name_appendix: str = '', delete_old: bool = True):
+                            name_appendix: str = '', delete_old: bool = True, batch_size: int = 1000):
         """
         Downsample the dataset "event" from a specified group in the HDF5 file.
 
@@ -484,6 +484,8 @@ class DataHandler(SimulateMixin,
         :type name_appendix: string
         :param delete_old: If true, the old events are deleted. Deactivate only, if an unique name_appendix is choosen.
         :type delete_old: bool
+        :param batch_size: The batch size for the copy, reduce if you face memory problems.
+        :type batch_size: int
 
         >>> dh.downsample_raw_data()
         Old Dataset Event deleted from group events.
@@ -495,14 +497,37 @@ class DataHandler(SimulateMixin,
 
         with h5py.File(self.path_h5, 'r+') as h5f:
             if "event" in h5f[type]:
-                events = np.array(h5f[type]['event'])
-                if delete_old:
+
+                h5f[type]['event_temp_'] = h5f[type]['event']
+                if delete_old or name_appendix == '':
                     del h5f[type]['event']
-                print('Old Dataset Event deleted from group {}.'.format(type))
-                events = np.mean(events.reshape((events.shape[0], events.shape[1], int(events.shape[2] / down), down)),
-                                 axis=3)
-                h5f[type].create_dataset('event' + name_appendix, data=events, dtype=dtype)
+                    print('Old dataset event deleted from group {}.'.format(type))
+
+                # get number batches and shape
+                nmbr_channels, nmbr_events, record_length = h5f[type]['event_temp_'].shape
+                nmbr_batches = int(nmbr_events / batch_size)
+
+                h5f[type].create_dataset('event' + name_appendix,
+                                         shape=(nmbr_channels, nmbr_events, int(record_length / down)),
+                                         dtype=dtype)
                 print('New Dataset Event with downsample rate {} created in group {}.'.format(down, type))
+
+                # define function to downsample and write to new data set
+
+                for i in range(nmbr_batches + 1):
+                    events = np.array(
+                        h5f[type]['event_temp_'][:, (i) * batch_size:(i + 1) * batch_size])
+                    if events.shape[1] > 0:
+                        events = np.mean(
+                            events.reshape((events.shape[0], events.shape[1], int(events.shape[2] / down), down)),
+                            axis=3)
+                        h5f[type]['event' + name_appendix][:,
+                        (i) * batch_size:(i + 1) * batch_size] = events
+
+                print('Done.')
+
+                del h5f[type]['event_temp_']
+
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
@@ -561,7 +586,8 @@ class DataHandler(SimulateMixin,
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
 
-    def get(self, group: str, dataset: str):
+    def get(self, group: str, dataset: str,
+            idx0: int = None, idx1: int = None, idx2: int = None):
         """
         Get a dataset from the HDF5 file with save closing of the file stream.
 
@@ -571,6 +597,21 @@ class DataHandler(SimulateMixin,
             from the main parameters, namely 'pulse_height', 'onset', 'rise_time', 'decay_time', 'slope'. These are
             consistent with used in the cut when generating a standard event.
         :type dataset: string
+        :param idx0: An index passed to the data set inside the HDF5 file as the first index,
+            before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
+            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
+            for names of individual features from the main or additional main parameters (e.g. pulse height).
+        :type idx0: int
+        :param idx1: An index passed to the data set inside the HDF5 file as the second index,
+            before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
+            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
+            for names of individual features from the main or additional main parameters (e.g. pulse height).
+        :type idx1: int
+        :param idx2: An index passed to the data set inside the HDF5 file as the third index,
+            before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
+            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
+            for names of individual features from the main or additional main parameters (e.g. pulse height).
+        :type idx2: int
         :return: The dataset from the HDF5 file
         :rtype: numpy array
         """
@@ -598,7 +639,25 @@ class DataHandler(SimulateMixin,
                         data = np.array(f[group]['add_mainpar'][:, :, i])
                         break
                 else:
-                    data = np.array(f[group][dataset])
+                    data = f[group][dataset]
+                    if len(data.shape) == 3:
+                        if idx0 is not None and idx1 is not None and idx2 is not None:
+                            data = data[idx0, idx1, idx2]
+                        elif idx0 is not None and idx1 is not None and idx2 is None:
+                            data = data[idx0, idx1, :]
+                        elif idx0 is not None and idx1 is None and idx2 is not None:
+                            data = data[idx0, :, idx2]
+                        elif idx0 is not None and idx1 is None and idx2 is None:
+                            data = data[idx0, :, :]
+                        elif idx0 is None and idx1 is not None and idx2 is not None:
+                            data = data[:, idx1, idx2]
+                        elif idx0 is None and idx1 is not None and idx2 is None:
+                            data = data[:, idx1, :]
+                        elif idx0 is None and idx1 is None and idx2 is not None:
+                            data = data[:, :, idx2]
+                        elif idx0 is None and idx1 is None and idx2 is None:
+                            pass
+                    data = np.array(data)
         return data
 
     def keys(self, group: str = None):
@@ -715,7 +774,7 @@ class DataHandler(SimulateMixin,
         :return: the time array.
         :rtype: 1D numpy array
         """
-        t = (np.arange(self.record_length) - self.record_length/4)/self.sample_frequency
+        t = (np.arange(self.record_length) - self.record_length / 4) / self.sample_frequency
         if ms:
             t *= 1000
         return t
