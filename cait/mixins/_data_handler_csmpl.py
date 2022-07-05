@@ -748,7 +748,7 @@ class CsmplMixin(object):
 
             # read the test pulse time stamps from the test_stamps file
 
-            hours, tpas, _ = get_test_stamps(path=path_teststamps, channels=[0])  # TODO
+            hours, tpas, _ = get_test_stamps(path=path_teststamps, channels=[0])
 
             if fix_offset:
                 # determine the offset of the trigger time stamps from the digitizer stamps
