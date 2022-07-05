@@ -125,8 +125,9 @@ def simulate_events(path_h5,
                         take_idx = np.array(take_idx) + use_bl_from_idx
                         sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
                         hours = np.array(h5f['noise']['hours'][take_idx])
-                        time_s = np.array(h5f['noise']['time_s'][take_idx])
-                        time_mus = np.array(h5f['noise']['time_mus'][take_idx])
+                        if 'time_s' in h5f['noise']:
+                            time_s = np.array(h5f['noise']['time_s'][take_idx])
+                            time_mus = np.array(h5f['noise']['time_mus'][take_idx])
 
                     else:
                         raise KeyError('Size must not exceed number of noise bl in hdf5 file!')
@@ -158,8 +159,9 @@ def simulate_events(path_h5,
 
                     sim_events = np.concatenate([np.array(h5f['noise']['event'][:, il, :]) for il in idx_lists], axis=1)
                     hours = np.concatenate([np.array(h5f['noise']['hours'][il]) for il in idx_lists], axis=0)
-                    time_s = np.concatenate([np.array(h5f['noise']['time_s'][il]) for il in idx_lists], axis=0)
-                    time_mus = np.concatenate([np.array(h5f['noise']['time_mus'][il]) for il in idx_lists], axis=0)
+                    if 'time_s' in h5f['noise']:
+                        time_s = np.concatenate([np.array(h5f['noise']['time_s'][il]) for il in idx_lists], axis=0)
+                        time_mus = np.concatenate([np.array(h5f['noise']['time_mus'][il]) for il in idx_lists], axis=0)
             else:
                 if size > len(take_idx):
                     if reuse_bl:
@@ -170,8 +172,9 @@ def simulate_events(path_h5,
                 take_idx = take_idx[:size]
                 sim_events = np.array(h5f['noise']['event'][:, take_idx, :])
                 hours = np.array(h5f['noise']['hours'][take_idx])
-                time_s = np.array(h5f['noise']['time_s'][take_idx])
-                time_mus = np.array(h5f['noise']['time_mus'][take_idx])
+                if 'time_s' in h5f['noise']:
+                    time_s = np.array(h5f['noise']['time_s'][take_idx])
+                    time_mus = np.array(h5f['noise']['time_mus'][take_idx])
 
         # get pulse heights
         print('Get Pulse Heights.')
@@ -257,5 +260,8 @@ def simulate_events(path_h5,
                     ev_no_offset = event - offset
                     ev_sat = scaled_logistic_curve(ev_no_offset, *log_fitpar)
                     sim_events[c, e] = ev_sat + offset
+
+        if 'time_s' not in h5f['noise']:
+            time_s, time_mus = None, None
 
     return sim_events, phs, t0s, nmbr_thrown, hours, time_s, time_mus

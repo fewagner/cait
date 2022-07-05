@@ -670,9 +670,9 @@ class AnalysisMixin(object):
 
             print('\n Exclude Test Pulses.')
             # exclude the record windows of testpulses
-            tp_flag = np.ones(len(hours_tp), dtype=bool)
+            tp_flag = np.zeros(len(hours_tp), dtype=bool)
             for (l, u) in tqdm(good_intervals):
-                tp_flag[np.logical_and(hours_tp > l, hours_tp < u)] = False
+                tp_flag[np.logical_and(hours_tp > l, hours_tp < u)] = True
 
             dead_time += np.sum(tp_flag) * tp_exclusion_interval / 3600
 

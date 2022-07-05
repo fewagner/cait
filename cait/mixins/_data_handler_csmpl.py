@@ -698,7 +698,7 @@ class CsmplMixin(object):
                             cp_array -= np.mean(cp_array[:int(len(cp_array) / 8)])
 
                             # write the heights to file
-                            cphs[c, ...] = np.max(cp_array)
+                            cphs[c, i] = np.max(cp_array)
 
             print('DONE')
 
@@ -795,6 +795,7 @@ class CsmplMixin(object):
                                record_window_length=None,
                                max_attempts=5,
                                no_pileup=False,
+                               start_end=None,
                                ):
         """
         Include a number of random triggers from the Stream.
@@ -824,6 +825,9 @@ class CsmplMixin(object):
         :param no_pileup: If activated, not only test pulses but also triggered events are excluded from the noise
             trigger windows.
         :type no_pileup: bool
+        :param start_end: Only used, if there are no test pulse hours. This determines the start ond stop of the
+            interval in which noise triggers are sampled.
+        :type start_end: list of two floats
         """
 
         if record_window_length is None:
@@ -835,7 +839,11 @@ class CsmplMixin(object):
 
         # open file stream
         with h5py.File(self.path_h5, 'r+') as h5f:
-            test_stamps = h5f['stream']['tp_hours']
+            if 'tp_hours' in h5f['stream']:
+                test_stamps = h5f['stream']['tp_hours']
+            else:
+                assert start_end is not None, 'If there are no test pulse hours, you must provide a start_end interval!'
+                test_stamps = np.array([start_end[0], start_end[0], start_end[1]])
 
             if no_pileup:
                 trigger_stamps = h5f['stream']['trigger_hours']
@@ -894,25 +902,28 @@ class CsmplMixin(object):
 
             # match the s and mus stamps
             first_tp_hours = test_stamps[0]
-            first_tp = h5f['stream']['tp_time_s'][0] + 10e-6 * h5f['stream']['tp_time_mus'][0]  # in sec
+            if 'tp_time_s' in 'stream':
+                first_tp = h5f['stream']['tp_time_s'][0] + 10e-6 * h5f['stream']['tp_time_mus'][0]  # in sec
 
-            difference_s = (noise_triggers - first_tp_hours) * 3600
-            noise_trigger_s = np.floor(first_tp + difference_s)
-            noise_trigger_mus = np.floor(((first_tp + difference_s) % 1) * 1e6)
+                difference_s = (noise_triggers - first_tp_hours) * 3600
+                noise_trigger_s = np.floor(first_tp + difference_s)
+                noise_trigger_mus = np.floor(((first_tp + difference_s) % 1) * 1e6)
 
             h5f['stream'].require_dataset(name='noise_hours',
                                           shape=noise_triggers.shape,
                                           dtype=float)
-            h5f['stream'].require_dataset(name='noise_time_s',
-                                          shape=noise_trigger_s.shape,
-                                          dtype=int)
-            h5f['stream'].require_dataset(name='noise_time_mus',
-                                          shape=noise_trigger_mus.shape,
-                                          dtype=int)
+            if 'tp_time_s' in 'stream':
+                h5f['stream'].require_dataset(name='noise_time_s',
+                                              shape=noise_trigger_s.shape,
+                                              dtype=int)
+                h5f['stream'].require_dataset(name='noise_time_mus',
+                                              shape=noise_trigger_mus.shape,
+                                              dtype=int)
 
             h5f['stream']['noise_hours'][...] = noise_triggers
-            h5f['stream']['noise_time_s'][...] = noise_trigger_s
-            h5f['stream']['noise_time_mus'][...] = noise_trigger_mus
+            if 'tp_time_s' in 'stream':
+                h5f['stream']['noise_time_s'][...] = noise_trigger_s
+                h5f['stream']['noise_time_mus'][...] = noise_trigger_mus
 
         print('Done.')
 
@@ -943,8 +954,9 @@ class CsmplMixin(object):
 
             # get the time stamps
             noise_hours = h5f['stream']['noise_hours']
-            noise_time_s = h5f['stream']['noise_time_s']
-            noise_time_mus = h5f['stream']['noise_time_mus']
+            if 'noise_time_s' in h5f['stream']:
+                noise_time_s = h5f['stream']['noise_time_s']
+                noise_time_mus = h5f['stream']['noise_time_mus']
 
             nmbr_all_events = len(noise_hours)
 
@@ -960,15 +972,17 @@ class CsmplMixin(object):
                 hours_h5 = noise.require_dataset(name='hours',
                                                  shape=(nmbr_all_events),
                                                  dtype=float)
-                time_s_h5 = noise.require_dataset(name='time_s',
-                                                  shape=(nmbr_all_events),
-                                                  dtype=int)
-                time_mus_h5 = noise.require_dataset(name='time_mus',
-                                                    shape=(nmbr_all_events),
-                                                    dtype=int)
+                if 'noise_time_s' in h5f['stream']:
+                    time_s_h5 = noise.require_dataset(name='time_s',
+                                                      shape=(nmbr_all_events),
+                                                      dtype=int)
+                    time_mus_h5 = noise.require_dataset(name='time_mus',
+                                                        shape=(nmbr_all_events),
+                                                        dtype=int)
                 hours_h5[...] = noise_hours
-                time_s_h5[...] = noise_time_s
-                time_mus_h5[...] = noise_time_mus
+                if 'noise_time_s' in h5f['stream']:
+                    time_s_h5[...] = noise_time_s
+                    time_mus_h5[...] = noise_time_mus
 
             # get the record windows
             print('Include the triggered events.')
