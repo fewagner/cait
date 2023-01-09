@@ -246,7 +246,7 @@ class FeaturesMixin(object):
                 sev = h5f.require_group('stdevent' + name_appendix)
 
             if use_idx is None:
-                use_idx = list(range(events.shape[0]))
+                use_idx = list(range(events.shape[1]))
 
             for c in range(self.nmbr_channels):
                 print('\nCalculating SEV for Channel {}'.format(c))

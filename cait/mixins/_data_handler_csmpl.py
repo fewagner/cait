@@ -902,7 +902,9 @@ class CsmplMixin(object):
 
             # match the s and mus stamps
             first_tp_hours = test_stamps[0]
-            if 'tp_time_s' in 'stream':
+            
+            if 'tp_time_s' in h5f['stream']:
+            
                 first_tp = h5f['stream']['tp_time_s'][0] + 10e-6 * h5f['stream']['tp_time_mus'][0]  # in sec
 
                 difference_s = (noise_triggers - first_tp_hours) * 3600
@@ -912,7 +914,7 @@ class CsmplMixin(object):
             h5f['stream'].require_dataset(name='noise_hours',
                                           shape=noise_triggers.shape,
                                           dtype=float)
-            if 'tp_time_s' in 'stream':
+            if 'tp_time_s' in h5f['stream']:
                 h5f['stream'].require_dataset(name='noise_time_s',
                                               shape=noise_trigger_s.shape,
                                               dtype=int)
@@ -921,7 +923,7 @@ class CsmplMixin(object):
                                               dtype=int)
 
             h5f['stream']['noise_hours'][...] = noise_triggers
-            if 'tp_time_s' in 'stream':
+            if 'tp_time_s' in h5f['stream']:
                 h5f['stream']['noise_time_s'][...] = noise_trigger_s
                 h5f['stream']['noise_time_mus'][...] = noise_trigger_mus
 
