@@ -302,6 +302,8 @@ def trigger_bin(paths,
                     if height > trigger_tres:
                         # resample in case higher trigger is in record window
                         counter += (trig - overlap) - 1
+                        if counter > take_samples - record_length: #check if new record window would end outside sample
+                            continue
                         pbar.update((trig - overlap) - 1)
                         trig, height = get_max_index(stream=stream,  # memmap array
                                                      counter=counter,  # in samples
