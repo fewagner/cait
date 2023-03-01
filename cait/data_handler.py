@@ -673,29 +673,54 @@ class DataHandler(SimulateMixin,
             else:
                 print(list(f[group].keys()))
 
-    def content(self):
+    def content(self, group: str = None):
         """
         Print the whole content of the HDF5 and all derived properties.
+
+        :param group: The name of a group in the HDF5 file of that we print the content.
+        :type group: string or None
         """
-        print('The following properties are in the HDF5 sets can be accessed through the get(group, dataset) methode.')
+        # The following can be used for styling print output:
+        # PURPLE = '\033[95m'
+        # CYAN = '\033[96m'
+        # DARKCYAN = '\033[36m'
+        # BLUE = '\033[94m'
+        # GREEN = '\033[92m'
+        # YELLOW = '\033[93m'
+        # RED = '\033[91m'
+        # BOLD = '\033[1m'
+        # UNDERLINE = '\033[4m'
+        # END = '\033[0m'
+
+        print('The HDF5 file contains the following \033[1m\033[95mgroups\033[0m and \033[1m\033[36mdatasets\033[0m, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.')
 
         with h5py.File(self.path_h5, 'r+') as f:
-            for group in f.keys():
-                print(f'The following data sets are contained in the the group {group}:')
+            if group is None:
+                groups = f.keys()
+            else:
+                groups = [group]
+
+            for group in groups:
+                print(f'\n\033[95m\033[1m{group}\033[0m')
+                # 22 is the length of the longest add_mainpar string
+                width_dataset = max(len(max(f[group].keys(), key=len)), 22)
+
                 for dataset in f[group].keys():
-                    print(f'dataset: {dataset}, shape: {f[group][dataset].shape}')
-                if 'mainpar' in f[group].keys():
-                    shape = f[group]['mainpar'].shape[:2]
-                    for dataset in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
-                        print(f'dataset: {dataset}, shape: {shape}')
-                if 'add_mainpar' in f[group].keys():
-                    shape = f[group]['add_mainpar'].shape[:2]
-                    for dataset in ['array_max', 'array_min', 'var_first_eight', 'mean_first_eight', 'var_last_eight',
-                                    'mean_last_eight', 'var', 'mean', 'skewness', 'max_derivative',
-                                    'ind_max_derivative',
-                                    'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
-                                    'skewness_filtered_peak']:
-                        print(f'dataset: {dataset}, shape: {shape}')
+                    print(f'  \033[1m\033[36m{dataset:<{width_dataset+1}}\033[0m {f[group][dataset].shape}')
+
+                    if dataset=='mainpar':
+                        shape = f[group]['mainpar'].shape[:2]
+                        for dataset in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
+                            print(f'  |{dataset:<{width_dataset}} {shape}')
+                
+                    if dataset=='add_mainpar':
+                        shape = f[group]['add_mainpar'].shape[:2]
+                        for dataset in ['array_max', 'array_min', 'var_first_eight', 'mean_first_eight', 'var_last_eight',
+                                        'mean_last_eight', 'var', 'mean', 'skewness', 'max_derivative',
+                                        'ind_max_derivative',
+                                        'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
+                                        'skewness_filtered_peak']:
+                            print(f'  |{dataset:<{width_dataset}} {shape}')
 
     def generate_startstop(self):
         """
