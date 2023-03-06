@@ -36,6 +36,7 @@ setup(
                       'tqdm>=4.62',
                       'pandas>=1.1',
                       'plotly==5.13.0',
+                      'datashader>=0.14.4',
                       'IPython>=7.19',
                       'dash>=2.0',
                       'jupyter_dash>=0.4',
