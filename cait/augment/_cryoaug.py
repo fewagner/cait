@@ -833,8 +833,8 @@ class ParameterSampler:
                     event[i] += pulse
                     if highest_pileup > 1:
                         info['pulse_traces'][i, j] = pulse
-                    info['pulse_height_pileup_{}'.format(j)] = pulse_info['pulse_height'][i]
-                    info['t0_pileup_{}'.format(j)] = pulse_par['t0'][i]
+                        info['pulse_height_pileup_{}'.format(j)][i] = pulse_info['pulse_height'][i]
+                        info['t0_pileup_{}'.format(j)][i] = pulse_par['t0'][i]
 
             cond = j == pileups - 1
             info['pulse_height'][cond] = pulse_info['pulse_height'][cond]
@@ -1019,8 +1019,9 @@ class ParameterSampler:
             resolution = kwargs['resolution']
         else:
             resolution = np.random.uniform(0.0005, 0.01, size=size)
-        pars['nps'] *= resolution.reshape(-1, 1) ** 2 / np.std(np.sqrt(pars['nps'] / self.record_length), axis=1,
-                                                               keepdims=True) ** 2 * 0.65 ** 2
+        if self.args['nps'] is None:
+            pars['nps'] *= resolution.reshape(-1, 1) ** 2 / np.std(np.sqrt(pars['nps'] / self.record_length), axis=1,
+                                                                   keepdims=True) ** 2 * 0.65 ** 2
 
         pars['lamb'] = np.random.uniform(0.01, 0.1, size=size)
         info['resolution'] = resolution
