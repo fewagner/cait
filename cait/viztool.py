@@ -322,9 +322,10 @@ class VizTool():
                                  visible=False,
                                  mode='lines',
                                  name='Channel {}'.format(c),
-                                 xaxis = 'x3',
-                                 yaxis = 'y3',
-                                 marker = {'color': colors[c%10]}
+                                 xaxis='x3',
+                                 yaxis='y3',
+                                 marker={'color': colors[c%10]},
+                                 showlegend=True
                                 ) for c in range(len(ev))]
             
             # Make separate plot for events
