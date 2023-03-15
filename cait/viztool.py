@@ -119,7 +119,10 @@ class VizTool():
                     # 1d numpy arrays can be included directly.
                     if isinstance(datasets[k],np.ndarray):
                         if datasets[k].ndim == 1:
-                            self.data[k] = datasets[k]
+                            try:
+                                self.data[k] = np.asarray(datasets[k], dtype='float64')
+                            except:
+                                print(f'Failed to include {k} because it could not be converted to float64.')
                         else:
                             print(f'Failed to include {k} because it is not one-dimensional.')
                         
@@ -314,18 +317,31 @@ class VizTool():
         if self.mode == 'h5' and self.events_in_file:
             with h5py.File(self.path_h5, 'r') as f:
                 ev = np.array(f[self.group]['event'][:,0,:])
-            traces = [go.Scatter(mode='lines',
+                colors = px.colors.qualitative.Plotly
+            traces = [go.Scatter(x=self.dh.record_window(ms=True),
+                                 visible=False,
+                                 mode='lines',
                                  name='Channel {}'.format(c),
                                  xaxis = 'x3',
-                                 yaxis = 'y3'
+                                 yaxis = 'y3',
+                                 marker = {'color': colors[c%10]}
                                 ) for c in range(len(ev))]
+            
             # Make separate plot for events
             self.f1 = go.FigureWidget(traces)
-            self.f1.layout.xaxis.title = 'Sample Index'
-            self.f1.layout.yaxis.title = 'Amplitude (V)'
-            self.f1.layout.title = 'Event idx {}'.format(0)
+            self.f1.update_layout(  xaxis3=dict(title="Time (ms)"),
+                                    yaxis3=dict(title='Amplitude (V)'),
+                                    legend=dict(x=0.99,
+                                                y=0.95,
+                                                xanchor="right",
+                                                yanchor="top",
+                                            ),
+                                    template='ggplot2',
+                                    legend_title_text='Event idx {}'.format(0)
+                                    )
+            self.f1.update_traces(dict(visible=True)) #default invisible for f0 plot but not for f1
 
-            # Also add to figure0 for quick inspection
+            # Also add to figure0 for quick inspection 
             self.f0.add_traces(traces)
 
             # Plot upon event selection in scatter plot
@@ -333,7 +349,8 @@ class VizTool():
 
             # slider
             self.slider = widgets.SelectionSlider(description='Event idx', options=self.remaining_idx[self.sel],
-                                                  layout=Layout(width='500px'))
+                                                  layout=Layout(width='500px')
+                                                  )
             self.slider_out = widgets.interactive(self._plot_event_slider, i=self.slider)
 
         # button for standard event
@@ -348,7 +365,7 @@ class VizTool():
         elif self.mode == 'h5' and self.events_in_file:
             display(VBox((HBox(axis_dropdowns.children, layout=Layout(flex_flow='row wrap')), self.f0,
                           HBox([cut_button, input_text, export_button, save_button, sev_button]), self.output,
-                          self.slider_out, self.f1)))  # , self.t
+                          self.f1, self.slider_out)))  # , self.t
         elif self.mode == 'h5' and not self.events_in_file:
             display(VBox((HBox(axis_dropdowns.children, layout=Layout(flex_flow='row wrap')), self.f0,
                           HBox([cut_button, input_text, export_button]), self.output)))
@@ -463,15 +480,16 @@ class VizTool():
                     n = len(ev)
                     for c in range(n):
                         self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :500])
+                        if not self.f0.data[-n+c].visible: self.f0.data[-n+c].update({"visible":True})
                         self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
-                    self.f1.update_layout(title='Event idx {}'.format(i))
+                    self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
 
     def _plot_event_slider(self, i):
         with h5py.File(self.path_h5, 'r') as f:
             ev = np.array(f[self.group]['event'][:, i, :])
             for c in range(len(ev)):
                 self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
-            self.f1.update_layout(title='Event idx {}'.format(i))
+            self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
 
     def _button_cut_fn(self, b):
         if list(self.sel) == list(self.data.index):
@@ -538,7 +556,7 @@ class VizTool():
 
                 for c in range(len(self.sevs)):
                     self.f1.data[c].y = self.sevs[c]
-                self.f1.update_layout(title='Standard Event')
+                self.f1.update_layout(legend_title_text='Standard Event')
 
     def _set_savepath(self, path):
         self.savepath = path.value
