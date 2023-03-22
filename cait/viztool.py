@@ -5,7 +5,7 @@ import plotly.offline as py
 import pandas as pd  # new to cait
 import numpy as np
 import ipywidgets as widgets  # new to cait
-from ipywidgets import interactive, HBox, VBox, Button, Layout
+from ipywidgets import interactive, HBox, VBox, Layout
 import h5py
 from IPython.display import display
 import datashader as ds
@@ -185,9 +185,12 @@ class VizTool():
         assert len(self.remaining_idx) == len(color_flag), 'color flag must have same length as remaining indices!'
         self.color_flag = np.array(color_flag)
 
-    def show(self):
+    def show(self, template='ggplot2'):
         """
         Start the interactive visualization.
+
+        :param template: The plotly template to be used, e.g. "plotly", "plotly_white", "plotly_dark", "ggplot2", "seaborn", "simple_white", "none"
+        :type template: str
         """
         py.init_notebook_mode()
 
@@ -261,8 +264,10 @@ class VizTool():
                         #width = 800,
                         bargap = 0,
                         hovermode = 'closest',
+                        xaxis_hoverformat='0.3g',
+                        yaxis_hoverformat='0.3g',
                         showlegend = False,
-                        template='ggplot2'
+                        template=template
                     )
         
         scatter = self.f0.data[0]
@@ -337,8 +342,11 @@ class VizTool():
                                                 xanchor="right",
                                                 yanchor="top",
                                             ),
-                                    template='ggplot2',
-                                    legend_title_text='Event idx {}'.format(0)
+                                    template=template,
+                                    legend_title_text='Event idx {}'.format(0),
+                                    hovermode="x unified",
+                                    xaxis3_hoverformat='0.3g',
+                                    yaxis3_hoverformat='0.3g'
                                     )
             self.f1.update_traces(dict(visible=True)) #default invisible for f0 plot but not for f1
 
