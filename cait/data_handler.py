@@ -495,7 +495,7 @@ class DataHandler(SimulateMixin,
                 h5f[type]['event_temp_'] = h5f[type]['event']
                 if delete_old or name_appendix == '':
                     del h5f[type]['event']
-                    print('Old dataset event deleted from group {}.'.format(type))
+                    print(f'Old dataset {fmt_ds(event)} deleted from group {fmt_gr(type)}.')
 
                 # get number batches and shape
                 nmbr_channels, nmbr_events, record_length = h5f[type]['event_temp_'].shape
@@ -504,7 +504,7 @@ class DataHandler(SimulateMixin,
                 h5f[type].create_dataset('event' + name_appendix,
                                          shape=(nmbr_channels, nmbr_events, int(record_length / down)),
                                          dtype=dtype)
-                print('New Dataset Event with downsample rate {} created in group {}.'.format(down, type))
+                print(f'New Dataset {fmt_ds("event"+ name_appendix)} with downsample rate {down} created in group {fmt_gr(type)}.')
 
                 # define function to downsample and write to new data set
 
@@ -571,12 +571,10 @@ class DataHandler(SimulateMixin,
                 events = np.array(h5f[type]['event'])
                 if delete_old:
                     del h5f[type]['event']
-                print('Old Dataset Event deleted from group {}.'.format(type))
+                    print(f'Old Dataset {fmt_ds("event")} deleted from group {fmt_gr(type)}.')
                 events = events[:, :, truncated_idx_low:truncated_idx_up]
                 h5f[type].create_dataset('event' + name_appendix, data=events, dtype=dtype)
-                print('New Dataset Event truncated to interval {}:{} created in group {}.'.format(truncated_idx_low,
-                                                                                                  truncated_idx_up,
-                                                                                                  type))
+                print(f'New Dataset {fmt_ds("event"+ name_appendix)} truncated to interval {truncated_idx_low}:{truncated_idx_up} created in group {fmt_gr(type)}.')
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
             
