@@ -444,9 +444,7 @@ class VizTool():
                 figim = px.imshow(agg, origin='lower')
 
                 # update density plot
-                if x_changed or which_changed: self.f0.data[1].update({"x": figim.data[0].x})
-                if y_changed or which_changed: self.f0.data[1].update({"y": figim.data[0].y})
-                self.f0.data[1].update({"z": figim.data[0].z})
+                self.f0.data[1].update({"x": figim.data[0].x, "y": figim.data[0].y, "z": figim.data[0].z})
             
         # update histograms
         if self.yaxis is not None and y_changed: self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[self.sel]]
