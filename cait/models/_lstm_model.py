@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data
-from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning.core import LightningModule
 import numpy as np
 
 
