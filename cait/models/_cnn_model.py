@@ -1,7 +1,7 @@
 import numpy as np
 import torch.nn.functional as F
 import torch
-from pytorch_lightning.core.lightning import LightningModule
+from pytorch_lightning.core import LightningModule
 import torch.nn as nn
 
 

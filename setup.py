@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setup(
     name='cait',
-    version='1.1.3dev',
+    version='1.1.3',
     author='Philipp Schreiner, '
            'Felix Wagner',
     author_email="felix.wagner@oeaw.ac.at",
@@ -50,5 +50,5 @@ setup(
         "License :: OSI Approved",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.8, <=3.10',
+    python_requires='>=3.8, <3.11',
 )
