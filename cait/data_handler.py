@@ -3,6 +3,7 @@
 # -----------------------------------------------------------
 
 import os
+import subprocess
 import numpy as np
 import h5py
 from .mixins._data_handler_simulate import SimulateMixin
@@ -14,6 +15,7 @@ from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
+from .styles._print_styles import fmt_gr, fmt_ds
 import warnings
 
 
@@ -172,6 +174,10 @@ class DataHandler(SimulateMixin,
         self.path_directory = path_h5
         self.fname = fname
 
+    def get_filepath(self):
+        try: return self.path_h5
+        except: raise Exception("Filepath is not set!")
+
     def import_labels(self,
                       path_labels: str,
                       type: str = 'events',
@@ -201,7 +207,7 @@ class DataHandler(SimulateMixin,
         """
 
         if not path_h5:
-            path_h5 = self.path_h5
+            path_h5 = self.get_filepath()
 
         if path_labels == '':
             path_labels = './'
@@ -284,7 +290,7 @@ class DataHandler(SimulateMixin,
         """
 
         if not path_h5:
-            path_h5 = self.path_h5
+            path_h5 = self.get_filepath()
 
         if only_channel is not None:
             app = '_Ch{}'.format(only_channel)
@@ -396,82 +402,68 @@ class DataHandler(SimulateMixin,
         <KeysViewHDF5 ['events', 'noise', 'testpulses']>
         """
         if path is None:
-            f = h5py.File(self.path_h5, 'r+')
+            f = h5py.File(self.get_filepath(), 'r+')
         else:
             f = h5py.File(path, 'r+')
         return f
-
-    def drop_raw_data(self, type: str = 'events'):
+    
+    def drop(self, group: str, dataset: str = None, repackage: bool = False):
         """
-        Delete the dataset "event" from a specified group in the HDF5 file.
+        Delete a dataset from a specified group in the HDF5 file. If no dataset is provided, the entire group is deleted.
 
-        For large scale analysis and limited server space, the covnerted HDF5 datasets exceed storage space capacities.
-        For this scenario, the raw data events can be deleted after the calculation of all useful features. At a later
-        point, the events can be included again if needed.
-
-        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
-        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
-        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
-
-        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
-        >>> rm test_data/test_001.h5
-        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
-
-        :param type: The group in the HDF5 set from which the events are deleted,
-            typically 'events', 'testpulses' or noise.
-        :type type: string
-
-        >>> dh.drop_raw_data()
-        Dataset Event deleted from group events.
-        """
-        with h5py.File(self.path_h5, 'r+') as h5f:
-            if "event" in h5f[type]:
-                del h5f[type]['event']
-                print('Dataset Event deleted from group {}.'.format(type))
-            else:
-                raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
-
-    def drop(self, group: str, dataset: str = None):
-        """
-        Delete a dataset from a specified group in the HDF5 file.
-
-        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
-        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
-        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
-
-        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
-        >>> rm test_data/test_001.h5
-        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        See :func:`cait.DataHandler.repackage` for details.
 
         :param group: The name of the group in the HDF5 file.
         :type group: string
         :param dataset: The name of the dataset in the HDF5 file. If None, the would group is deleted.
         :type dataset: string
+        :param repackage: If set to True, the HDF5 file will be repackaged.
+        :type repackage: bool
         """
 
-        with h5py.File(self.path_h5, 'r+') as h5f:
-            if dataset in h5f[group]:
+        with h5py.File(self.get_filepath(), 'r+') as h5f:
+            if dataset is None:
+                del h5f[group]
+                print(f'Group {fmt_gr(group)} deleted.')
+            elif dataset in h5f[group]:
                 del h5f[group][dataset]
-                print('Dataset {} deleted from group {}.'.format(dataset, group))
+                print(f'Dataset {fmt_ds(dataset)} deleted from group {fmt_gr(group)}.')
             else:
                 raise FileNotFoundError('There is no dataset {} in group {} in the HDF5 file.'.format(dataset, group))
+            
+        if repackage: self.repackage()
+
+    def drop_raw_data(self, type: str = 'events', repackage: bool = False):
+        """
+        Delete the dataset "event" from a specified group in the HDF5 file.
+
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        See :func:`cait.DataHandler.repackage` for details.
+
+        :param type: The group in the HDF5 set from which the events are deleted,
+            typically 'events', 'testpulses' or noise.
+        :type type: string
+        :param repackage: If set to True, the HDF5 file will be repackaged.
+        :type repackage: bool
+
+        >>> dh.drop_raw_data()
+        Dataset Event deleted from group events.
+        """
+        self.drop(group=type, dataset='event', repackage=repackage)
 
     def downsample_raw_data(self, type: str = 'events', down: int = 16, dtype: str = 'float32',
-                            name_appendix: str = '', delete_old: bool = True, batch_size: int = 1000):
+                            name_appendix: str = '', delete_old: bool = True, batch_size: int = 1000,
+                            repackage: bool = False):
         """
         Downsample the dataset "event" from a specified group in the HDF5 file.
 
-        For large scale analysis and limited server space, the covnerted HDF5 datasets exceed storage space capacities.
-        For this scenario, the raw data events can be downsampled of a given factor. Downsampling to sample frequencies
+        For large scale analysis and limited server space, the converted HDF5 datasets exceed storage space capacities.
+        For this scenario, the raw data events can be downsampled by a given factor. Downsampling to sample frequencies
         below 1kHz is in many situations sufficient for viewing events and most features calculations.
 
-        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
-        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
-        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
-
-        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
-        >>> rm test_data/test_001.h5
-        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        See :func:`cait.DataHandler.repackage` for details.
 
         :param type: The group in the HDF5 set from which the events are downsampled,
             typically 'events', 'testpulses' or noise.
@@ -482,10 +474,12 @@ class DataHandler(SimulateMixin,
         :type dtype: string
         :param name_appendix: An appendix to the dataset event in order to keep the old and the new events.
         :type name_appendix: string
-        :param delete_old: If true, the old events are deleted. Deactivate only, if an unique name_appendix is choosen.
+        :param delete_old: If true, the old events are deleted. Deactivate only, if an unique name_appendix is chosen.
         :type delete_old: bool
         :param batch_size: The batch size for the copy, reduce if you face memory problems.
         :type batch_size: int
+        :param repackage: If set to True, the HDF5 file will be repackaged.
+        :type repackage: bool
 
         >>> dh.downsample_raw_data()
         Old Dataset Event deleted from group events.
@@ -495,13 +489,13 @@ class DataHandler(SimulateMixin,
         if name_appendix == '' and not delete_old:
             raise KeyError('To keep the old events please choose appropriate name appendix for the new!')
 
-        with h5py.File(self.path_h5, 'r+') as h5f:
+        with h5py.File(self.get_filepath(), 'r+') as h5f:
             if "event" in h5f[type]:
 
                 h5f[type]['event_temp_'] = h5f[type]['event']
                 if delete_old or name_appendix == '':
                     del h5f[type]['event']
-                    print('Old dataset event deleted from group {}.'.format(type))
+                    print(f'Old dataset {fmt_ds(event)} deleted from group {fmt_gr(type)}.')
 
                 # get number batches and shape
                 nmbr_channels, nmbr_events, record_length = h5f[type]['event_temp_'].shape
@@ -510,7 +504,7 @@ class DataHandler(SimulateMixin,
                 h5f[type].create_dataset('event' + name_appendix,
                                          shape=(nmbr_channels, nmbr_events, int(record_length / down)),
                                          dtype=dtype)
-                print('New Dataset Event with downsample rate {} created in group {}.'.format(down, type))
+                print(f'New Dataset {fmt_ds("event"+ name_appendix)} with downsample rate {down} created in group {fmt_gr(type)}.')
 
                 # define function to downsample and write to new data set
 
@@ -530,27 +524,25 @@ class DataHandler(SimulateMixin,
 
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
+            
+        if repackage: self.repackage()
 
     def truncate_raw_data(self, type: str,
                           truncated_idx_low: int,
                           truncated_idx_up: int,
                           dtype: str = 'float32',
                           name_appendix: str = '',
-                          delete_old: bool = True):
+                          delete_old: bool = True,
+                          repackage: bool = False):
         """
         Truncate the record window of the dataset "event" from a specified group in the HDF5 file.
 
         For measurements with high event rate (above ground, ...) a long record window might be counter productive,
-        due to more pile uped events in the window. For this reason, you can truncate the length of the record window
+        due to more piled up events in the window. For this reason, you can truncate the length of the record window
         with this function.
 
-        Attention, due to the tree structure of the HDF5 file, this will not actually reduce the size!
-        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools,
-        see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. This can be done on Ubuntu/Mac e.g. with
-
-        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
-        >>> rm test_data/test_001.h5
-        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        See :func:`cait.DataHandler.repackage` for details.
 
         :param type: The group in the HDF5 set from which the events are downsampled,
             typically 'events', 'testpulses' or noise.
@@ -567,24 +559,26 @@ class DataHandler(SimulateMixin,
         :type name_appendix: string
         :param delete_old: If true, the old events are deleted. Deactivate only, if an unique name_appendix is choosen.
         :type delete_old: bool
+        :param repackage: If set to True, the HDF5 file will be repackaged.
+        :type repackage: bool
         """
 
         if name_appendix == '' and not delete_old:
             raise KeyError('To keep the old events please choose appropriate name appendix for the new!')
 
-        with h5py.File(self.path_h5, 'r+') as h5f:
+        with h5py.File(self.get_filepath(), 'r+') as h5f:
             if "event" in h5f[type]:
                 events = np.array(h5f[type]['event'])
                 if delete_old:
                     del h5f[type]['event']
-                print('Old Dataset Event deleted from group {}.'.format(type))
+                    print(f'Old Dataset {fmt_ds("event")} deleted from group {fmt_gr(type)}.')
                 events = events[:, :, truncated_idx_low:truncated_idx_up]
                 h5f[type].create_dataset('event' + name_appendix, data=events, dtype=dtype)
-                print('New Dataset Event truncated to interval {}:{} created in group {}.'.format(truncated_idx_low,
-                                                                                                  truncated_idx_up,
-                                                                                                  type))
+                print(f'New Dataset {fmt_ds("event"+ name_appendix)} truncated to interval {truncated_idx_low}:{truncated_idx_up} created in group {fmt_gr(type)}.')
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
+            
+        if repackage: self.repackage()
 
     def get(self, group: str, dataset: str,
             idx0: int = None, idx1: int = None, idx2: int = None):
@@ -620,7 +614,7 @@ class DataHandler(SimulateMixin,
                              'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
                              'skewness_filtered_peak']
 
-        with h5py.File(self.path_h5, 'r') as f:
+        with h5py.File(self.get_filepath(), 'r') as f:
             if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][:, :, 0])
             elif dataset == 'onset':
@@ -667,7 +661,7 @@ class DataHandler(SimulateMixin,
         :param group: The name of a group in the HDF5 file of that we print the keys.
         :type group: string or None
         """
-        with h5py.File(self.path_h5, 'r+') as f:
+        with h5py.File(self.get_filepath(), 'r+') as f:
             if group is None:
                 print(list(f.keys()))
             else:
@@ -680,19 +674,7 @@ class DataHandler(SimulateMixin,
         :param group: The name of a group in the HDF5 file of that we print the content.
         :type group: string or None
         """
-        # The following can be used for styling print output:
-        # PURPLE = '\033[95m'
-        # CYAN = '\033[96m'
-        # DARKCYAN = '\033[36m'
-        # BLUE = '\033[94m'
-        # GREEN = '\033[92m'
-        # YELLOW = '\033[93m'
-        # RED = '\033[91m'
-        # BOLD = '\033[1m'
-        # UNDERLINE = '\033[4m'
-        # END = '\033[0m'
-
-        print('The HDF5 file contains the following \033[1m\033[95mgroups\033[0m and \033[1m\033[36mdatasets\033[0m, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.')
+        print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.')
 
         with h5py.File(self.path_h5, 'r+') as f:
             if group is None:
@@ -701,12 +683,12 @@ class DataHandler(SimulateMixin,
                 groups = [group]
 
             for group in groups:
-                print(f'\n\033[95m\033[1m{group}\033[0m')
+                print(fmt_gr(group))
                 # 22 is the length of the longest add_mainpar string
                 width_dataset = max(len(max(f[group].keys(), key=len)), 22)
 
                 for dataset in f[group].keys():
-                    print(f'  \033[1m\033[36m{dataset:<{width_dataset+1}}\033[0m {f[group][dataset].shape}')
+                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")} {f[group][dataset].shape}')
 
                     if dataset=='mainpar':
                         shape = f[group]['mainpar'].shape[:2]
@@ -722,6 +704,7 @@ class DataHandler(SimulateMixin,
                                         'skewness_filtered_peak']:
                             print(f'  |{dataset:<{width_dataset}} {shape}')
 
+
     def generate_startstop(self):
         """
         Generate a startstop data set in the metainfo group from the testpulses time stamps.
@@ -729,7 +712,7 @@ class DataHandler(SimulateMixin,
 
         print('Generating Start Stop Metainfo.')
 
-        with h5py.File(self.path_h5, 'r+') as f:
+        with h5py.File(self.get_filepath(), 'r+') as f:
 
             assert 'testpulses' in f, 'No testpulses in file!'
 
@@ -787,7 +770,7 @@ class DataHandler(SimulateMixin,
         """
         Initialize an empty HDF5 set.
         """
-        with h5py.File(self.path_h5, 'a') as h5f:
+        with h5py.File(self.get_filepath(), 'a') as h5f:
             pass
 
     def record_window(self, ms=True):
@@ -803,3 +786,38 @@ class DataHandler(SimulateMixin,
         if ms:
             t *= 1000
         return t
+
+    def repackage(self):
+        """
+        Repackage the HDF5 file of DataHandler to reduce its file size in case datasets were deleted previously. 
+
+        For large scale analysis and limited server space, the converted HDF5 datasets exceed storage space capacities.
+        For this scenario, the raw data events can be deleted after the calculation of all useful features. At a later point, the events can be included again if needed. Similarly, one might have included some temporary datasets which one wishes to delete at a later point to avoid clutter.
+        Unwanted datasets can be dropped using :func:`cait.DataHandler.drop` and :func:`cait.DataHandler.drop_raw_data`, HOWEVER this does not reduce the HDF5 file's size due to the tree structure of the HDF5 file!
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools, see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. 
+    
+        This method is equivalent to and can also be done on Ubuntu/Mac e.g. with
+
+        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+        >>> rm test_data/test_001.h5
+        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+        """
+
+        def sizeof_fmt(num, suffix="B"):
+            for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+                if abs(num) < 1024.0:
+                    return f"{num:3.1f}{unit}{suffix}"
+                num /= 1024.0
+            return f"{num:.1f}Yi{suffix}"
+
+        oldFile = self.get_filepath()
+        oldSize = os.path.getsize(oldFile)
+        newFile = list(os.path.splitext(oldFile))
+        newFile[0] = newFile[0] + '_copy'
+        newFile = ''.join(newFile)
+
+        subprocess.run(['h5repack', oldFile, newFile], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+        memorySaved = oldSize - os.path.getsize(newFile)
+        
+        os.replace(newFile, oldFile)
+        print(f'Successfully repackaged {oldFile}. Memory saved: {sizeof_fmt(memorySaved)}')
