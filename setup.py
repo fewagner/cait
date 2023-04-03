@@ -36,6 +36,7 @@ setup(
         'ipywidgets>=7.5',
         'matplotlib==3.5.2',
         'plotly==5.7',
+        'datashader>=0.14.4',
         'ipympl==0.9.2',
         'numpy==1.23.5',
         'jupyterlab-widgets==1.0.2'
