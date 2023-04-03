@@ -1,4 +1,3 @@
-
 # imports
 
 import matplotlib as mpl
@@ -51,16 +50,16 @@ def make_grid(ax=None):
     """
     if ax is None:
         # major grid lines
-        plt.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        plt.grid(which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
         # minor grid lines
         plt.minorticks_on()
-        plt.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        plt.grid(which='minor', color='beige', alpha=0.8, ls='-', lw=1)
     else:
         # major grid lines
-        ax.grid(b=True, which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
+        ax.grid(which='major', color='gray', alpha=0.6, linestyle='dashdot', lw=1.5)
         # minor grid lines
         ax.minorticks_on()
-        ax.grid(b=True, which='minor', color='beige', alpha=0.8, ls='-', lw=1)
+        ax.grid(which='minor', color='beige', alpha=0.8, ls='-', lw=1)
 
 
 def scatter_img(x_data, y_data, height=2800, width=2800, alpha=0.3, xlims=None, ylims=None):
