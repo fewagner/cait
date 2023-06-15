@@ -1,3 +1,16 @@
+from datetime import datetime, timezone
+
+def sizeof_fmt(num, suffix="B"):
+            for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
+                if abs(num) < 1024.0:
+                    return f"{num:3.1f} {unit}{suffix}"
+                num /= 1024.0
+            return f"{num:.1f}Yi{suffix}"
+
+
+def datetime_fmt(timestamp):
+     return str(datetime.fromtimestamp(timestamp, tz=timezone.utc)) + " (UTC)"
+     
 def txt_fmt(text: str, color: str, style: str = None):
     """
     Format output string with color and style.
@@ -39,3 +52,12 @@ def fmt_ds(text):
     :type text: str
     """
     return txt_fmt(text, "darkcyan", "bold")
+
+def fmt_virt(text):
+    """
+    Format HDF5 virtual dataset identifiers consistently.
+
+    :param text: The identifier string to format
+    :type text: str
+    """
+    return txt_fmt(text, "yellow")

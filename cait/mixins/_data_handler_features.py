@@ -5,6 +5,7 @@
 import h5py
 import numpy as np
 from multiprocessing import Pool
+from deprecation import deprecated
 from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..features._ph_corr import calc_correlated_ph
 from ..filter._of import optimal_transfer_function
@@ -868,6 +869,7 @@ class FeaturesMixin(object):
 
         print('Applied logical cut.')
 
+    @deprecated(details="This method is deprecated. Use DataHandler.set() instead.")
     def include_values(self,
                        values: list,
                        naming: str,

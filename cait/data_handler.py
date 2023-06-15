@@ -6,6 +6,7 @@ import os
 import subprocess
 import numpy as np
 import h5py
+from typing import List, Union
 from .mixins._data_handler_simulate import SimulateMixin
 from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_plot import PlotMixin
@@ -15,9 +16,16 @@ from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
-from .styles._print_styles import fmt_gr, fmt_ds
+from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
+from .versatile.file import EventIterator, ds_source_available
 import warnings
 
+MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
+ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
+               'mean_first_eight', 'var_last_eight', 'mean_last_eight', 
+               'var', 'mean', 'skewness', 'max_derivative',
+               'ind_max_derivative', 'min_derivative', 'ind_min_derivative', 
+               'max_filtered', 'ind_max_filtered', 'skewness_filtered_peak']
 
 # -----------------------------------------------------------
 # CLASS
@@ -92,10 +100,10 @@ class DataHandler(SimulateMixin,
                  channels: list = None,
                  nmbr_channels: int = None,
                  run: str = None,
-                 module: str = None):
+                 module: str = None,
+                 ):
 
-        assert channels is not None or nmbr_channels is not None, 'You need to specify either the channels numbers or the number' \
-                                                                  ' of channels!'
+        assert channels is not None or nmbr_channels is not None, 'You need to specify either the channels numbers or the number of channels!'
 
         self.run = run
         self.module = module
@@ -128,6 +136,47 @@ class DataHandler(SimulateMixin,
 
         print('DataHandler Instance created.')
 
+    def __str__(self):
+        # Info on size, file, groups and possibly connected virtual datasets
+        size = sizeof_fmt(os.path.getsize(self.get_filepath()))
+        info = f"DataHandler linked to HDF5 file '{self.get_filepath()}'\n"
+        info += f"HDF5 file size on disk: {size}\n"
+        n_virtual = 0
+        available = True
+        external_files = set()
+
+        with self.get_filehandle(mode="r") as f:
+            groups = list(f.keys())
+            for group in groups:
+                for ds in f[group]:
+                    if not ds_source_available(f,group,ds): available = False
+
+                    if f[group][ds].is_virtual:
+                        n_virtual+=1
+                        filenames = [x[1] for x in f[group][ds].virtual_sources()]
+                        external_files = external_files.union(filenames)
+        
+        info+= f"Groups in file: {groups}.\n\n"
+
+        if n_virtual > 0:
+            info += f"The HDF5 file contains virtual datasets linked to the following files: {external_files}\n"
+            if available:
+                info += f"All of the external sources are currently available.\n\n"
+            else:
+                info += f"{txt_fmt('Some of the external sources are currently unavailable.', 'red', 'bold')}\n\n"
+
+        # Info on start/end/length, if available
+        with self.get_filehandle(mode="r") as f:
+            if "testpulses" in f.keys():
+                if "hours" in f["testpulses"]:
+                    total_time = f["testpulses/hours"][-1] - f["testpulses/hours"][0]
+                    info += f"Time between first and last testpulse: {total_time:.2f} h\n"
+                if "time_s" in f["testpulses"]:
+                    info += f"First testpulse on/at: {datetime_fmt(f['testpulses/time_s'][0])}\n"
+                    info += f"Last testpulse on/at: {datetime_fmt(f['testpulses/time_s'][-1])}\n"
+
+        return info
+        
     def set_filepath(self,
                      path_h5: str,
                      fname: str,
@@ -136,7 +185,7 @@ class DataHandler(SimulateMixin,
         """
         Set the path to the *.h5 file for further processing.
 
-        This function is usually called right after the initialization of a new object. If the intance has already done
+        This function is usually called right after the initialization of a new object. If the instance has already done
         the conversion from *.rdt to *.h5, the path is already set automatically and the call is obsolete.
 
         :param path_h5: The path to the directory that contains the H5 file, e.g. "data/" --> file name "data/bck_001-P_Ch01-L_Ch02.csv".
@@ -151,33 +200,123 @@ class DataHandler(SimulateMixin,
         >>> dh.set_filepath(path_h5='./', fname='test_001')
         """
 
-        if channels is not None:
-            self.channels = channels
-
-        if path_h5 == '':
-            path_h5 = './'
-        if path_h5[-1] != '/':
-            path_h5 = path_h5 + '/'
+        if channels is not None: self.channels = channels
 
         app = ''
         if appendix:
-            assert self.channels is not None, 'To generate the file appendix automatically, you need to specify the channel' \
-                                              'numbers.'
+            assert self.channels is not None, 'To generate the file appendix automatically, you need to specify the channel numbers.'
             if self.nmbr_channels == 2:
                 app = '-P_Ch{}-L_Ch{}'.format(*self.channels)
             else:
                 for i, c in enumerate(self.channels):
                     app += '-{}_Ch{}'.format(i + 1, c)
 
-        # check if the channel number matches the file, otherwise error
-        self.path_h5 = "{}{}{}.h5".format(path_h5, fname, app)
-        self.path_directory = path_h5
         self.fname = fname
+        self.path_directory = path_h5
+        self.path_h5 = os.path.join(self.path_directory, self.fname + app + ".h5")
 
-    def get_filepath(self):
-        try: return self.path_h5
-        except: raise Exception("Filepath is not set!")
+        if not os.path.exists(self.path_h5):
+            print(f"{self.path_h5} does not exist. Use dh.init_empty() if you mean to initialize a new (empty) file.")
 
+    def get_filepath(self, absolute: bool = False):
+        """
+        Get the relative path to the HDF5 file assigned to this instance of DataHandler.
+
+        :param absolute: If true, the absolute path is returned instead.
+        :type absolute: bool
+
+        :raises Exception: If filepath has not yet been set (using DataHandler.set_filepath()).
+        :raises FileNotFoundError: If the HDF5 file corresponding to the set filepath does not exist. In such a chase, an empty HDF5 file can be created using DataHandler.init_empty().
+
+        :return: Path to the file connected to this DataHandler.
+        :rtype: str
+        """
+        if not hasattr(self, "path_h5"): 
+            raise Exception("Filepath has not been set. Use dh.set_filepath() first.")
+        if not os.path.exists(self.path_h5):
+            raise FileNotFoundError(f"{self.path_h5} does not exist. Use dh.init_empty() to initialize an empty HDF5 file if that is what you intend.")
+
+        return os.path.abspath(self.path_h5) if absolute else os.path.relpath(self.path_h5)
+
+    def get_filedirectory(self, absolute: bool = False):
+        """
+        Get the relative path to the directory where the HDF5 file assigned to this instance of DataHandler is stored.
+
+        :param absolute: If true, the absolute path is returned instead.
+        :type absolute: bool
+
+        :return: Path to the directory of the HDF5 file.
+        :rtype: str
+        """
+        return os.path.dirname(self.get_filepath(absolute))
+
+    def get_filename(self):
+        """
+        Get name of the HDF5 file assigned to this instance of DataHandler.
+
+        :param absolute: If true, the absolute path is returned instead.
+        :type absolute: bool
+
+        :return: Name of the HDF5 file (without *.h5 extension).
+        :rtype: str
+        """
+        return os.path.splitext(os.path.basename(self.get_filepath()))[0]
+    
+    def get_filehandle(self, path: str = None, mode: str = "r+"):
+            """
+            Get the opened filestream to the HDF5 file.
+
+            This is usually needed for individual feature calculations, plots or cuts, that are not ready-to-play implemented.
+
+            :param path: Provide an alternative full path to the HDF5 file of that we want to open the file stream.
+            :type path: string or None
+            :return: The opened file stream. Please look into the h5py Python library for details about the file stream.
+            :rtype: h5py file stream
+
+            >>> with dh.get_filehandle() as f:
+            ...     f.keys()
+            ...
+            <KeysViewHDF5 ['events', 'noise', 'testpulses']>
+            """
+            if path is None:
+                f = h5py.File(self.get_filepath(), mode)
+            else:
+                f = h5py.File(path, mode)
+            return f
+    
+    def get_event_iterator(self, group: str, channel: int = None, flag: List[bool] = None, batch_size: int = None):
+        """
+        Returns EventIterator object that can be used to iterate events of a given group and channel. When used within a with statement, the corresponding HDF5 file is kept open for faster access.
+
+        :param group: The name of the group in the HDF5 file.
+        :type group: string
+        :param channel: The channel to use. Defaults to None, which means "all channels"
+        :type channel: int
+        :param flag: A boolean flag of events to include in the iterator
+        :type flag: list of bool
+
+        :return: EventIterator
+        :rtype: Context Manager / Iterator
+
+        >>> # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
+        >>> ev_it = dh.get_event_iterator("events", 0)
+        >>> for ev in ev_it:
+        ...    print(np.max(ev))
+
+        >>> # Usage as context manager (HDF5 file is kept open)
+
+        >>> with dh.get_event_iterator("events", 0) as ev_it:
+        ...     for ev in ev_it:
+        ...         print(np.max(ev))
+        """
+        if channel is None: channel = slice(None)
+        # Use the first channel and the first datapoint of a voltage trace to get the total number of events
+        inds = np.arange(self.get(group, "event", 0, None, 0).size)
+
+        if flag is not None: inds = inds[flag]
+
+        return EventIterator(path_h5=self.get_filepath(), group=group, channels=channel, inds=inds, batch_size=batch_size)
+    
     def import_labels(self,
                       path_labels: str,
                       type: str = 'events',
@@ -384,28 +523,6 @@ class DataHandler(SimulateMixin,
             else:
                 raise KeyError(
                     'No prediction file found at {}.'.format(path_predictions))
-
-    def get_filehandle(self, path=None):
-        """
-        Get the opened filestream to the HDF5 file.
-
-        This is usually needed for individual feature calculations, plots or cuts, that are not ready-to-play implemented.
-
-        :param path: Provide an alternative full path to the HDF5 file of that we want to open the file stream.
-        :type path: string or None
-        :return: The opened file stream. Please look into the h5py Python library for details about the file stream.
-        :rtype: h5py file stream
-
-        >>> with dh.get_filehandle() as f:
-        ...     f.keys()
-        ...
-        <KeysViewHDF5 ['events', 'noise', 'testpulses']>
-        """
-        if path is None:
-            f = h5py.File(self.get_filepath(), 'r+')
-        else:
-            f = h5py.File(path, 'r+')
-        return f
     
     def drop(self, group: str, dataset: str = None, repackage: bool = False):
         """
@@ -495,7 +612,7 @@ class DataHandler(SimulateMixin,
                 h5f[type]['event_temp_'] = h5f[type]['event']
                 if delete_old or name_appendix == '':
                     del h5f[type]['event']
-                    print(f'Old dataset {fmt_ds(event)} deleted from group {fmt_gr(type)}.')
+                    print(f'Old dataset {fmt_ds("event")} deleted from group {fmt_gr(type)}.')
 
                 # get number batches and shape
                 nmbr_channels, nmbr_events, record_length = h5f[type]['event_temp_'].shape
@@ -581,9 +698,14 @@ class DataHandler(SimulateMixin,
         if repackage: self.repackage()
 
     def get(self, group: str, dataset: str,
-            idx0: int = None, idx1: int = None, idx2: int = None):
+            idx0: Union[int, List[Union[int, bool]]] = None, 
+            idx1: Union[int, List[Union[int, bool]]] = None, 
+            idx2: Union[int, List[Union[int, bool]]] = None):
         """
         Get a dataset from the HDF5 file with save closing of the file stream.
+        The additional indices idx0, idx1 and idx2 can be integers, lists of integers or boolean arrays, and are used where appropriate.
+        E.g. a 3-dimensional dataset will accept all three indices while a 2d set ignores the last one, etc. 
+        If boolean arrays are used, their shape has to match the data's shape along the respective dimension.
 
         :param group: The name of the group in the HDF5 set.
         :type group: string
@@ -593,67 +715,229 @@ class DataHandler(SimulateMixin,
         :type dataset: string
         :param idx0: An index passed to the data set inside the HDF5 file as the first index,
             before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
-            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
-            for names of individual features from the main or additional main parameters (e.g. pulse height).
         :type idx0: int
         :param idx1: An index passed to the data set inside the HDF5 file as the second index,
             before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
-            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
-            for names of individual features from the main or additional main parameters (e.g. pulse height).
         :type idx1: int
         :param idx2: An index passed to the data set inside the HDF5 file as the third index,
             before it is converted to a numpy array. If left at None value, the slice : operator is passed instead.
-            Attention, this works only for 3D data sets that are stored directly in the file (e.g. event data set), not
-            for names of individual features from the main or additional main parameters (e.g. pulse height).
         :type idx2: int
         :return: The dataset from the HDF5 file
         :rtype: numpy array
         """
-        add_mainpar_names = ['array_max', 'array_min', 'var_first_eight', 'mean_first_eight', 'var_last_eight',
-                             'mean_last_eight', 'var', 'mean', 'skewness', 'max_derivative', 'ind_max_derivative',
-                             'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
-                             'skewness_filtered_peak']
 
-        with h5py.File(self.get_filepath(), 'r') as f:
+        # if requested dataset is a virtual dataset, we have to make sure that the original files still 
+        # exist. Otherwise the returned data is nonsensical
+        with self.get_filehandle(mode="r") as f:
+            if dataset in MAINPAR:
+                if dataset == "pulse_height" and 'pulse_height' in f[group]:
+                    available = ds_source_available(f, group, "pulse_height")
+                else: 
+                    available = ds_source_available(f, group, "mainpar")
+            elif dataset in ADD_MAINPAR:
+                available = ds_source_available(f, group, "add_mainpar")
+            else:
+                available = ds_source_available(f, group, dataset)
+
+        if not available:
+            raise FileNotFoundError(f"One or more of the source files for the virtual dataset '{dataset}' in group '{group}' are unavailable.")
+        
+        # For indices not specified we use all entries along the corresponding axis (equivalent to numpy's [:] operator)
+        if idx0 is None: idx0 = slice(None)
+        if idx1 is None: idx1 = slice(None)
+        if idx2 is None: idx2 = slice(None)
+
+        with self.get_filehandle(mode="r") as f:
             if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
-                data = np.array(f[group]['mainpar'][:, :, 0])
+                data = np.array(f[group]['mainpar'][idx0, idx1, 0])
             elif dataset == 'onset':
-                data = np.array((f[group]['mainpar'][:, :, 1] - self.record_length / 4) / self.sample_frequency * 1000)
+                data = np.array((f[group]['mainpar'][idx0, idx1, 1] - self.record_length / 4) / self.sample_frequency * 1000)
             elif dataset == 'rise_time':
                 data = np.array(
-                    (f[group]['mainpar'][:, :, 2] - f[group]['mainpar'][:, :, 1]) / self.sample_frequency * 1000)
+                    (f[group]['mainpar'][idx0, idx1, 2] - f[group]['mainpar'][idx0, idx1, 1]) / self.sample_frequency * 1000)
             elif dataset == 'decay_time':
                 data = np.array(
-                    (f[group]['mainpar'][:, :, 6] - f[group]['mainpar'][:, :, 4]) / self.sample_frequency * 1000)
+                    (f[group]['mainpar'][idx0, idx1, 6] - f[group]['mainpar'][idx0, idx1, 4]) / self.sample_frequency * 1000)
             elif dataset == 'slope':
-                data = np.array(f[group]['mainpar'][:, :, 8] * self.record_length)
+                data = np.array(f[group]['mainpar'][idx0, idx1, 8] * self.record_length)
             else:
-                for i, name in enumerate(add_mainpar_names):
+                for i, name in enumerate(ADD_MAINPAR):
                     if dataset == name and name not in f[group]:
-                        data = np.array(f[group]['add_mainpar'][:, :, i])
+                        data = np.array(f[group]['add_mainpar'][idx0, idx1, i])
                         break
                 else:
                     data = f[group][dataset]
-                    if len(data.shape) == 3:
-                        if idx0 is not None and idx1 is not None and idx2 is not None:
-                            data = data[idx0, idx1, idx2]
-                        elif idx0 is not None and idx1 is not None and idx2 is None:
-                            data = data[idx0, idx1, :]
-                        elif idx0 is not None and idx1 is None and idx2 is not None:
-                            data = data[idx0, :, idx2]
-                        elif idx0 is not None and idx1 is None and idx2 is None:
-                            data = data[idx0, :, :]
-                        elif idx0 is None and idx1 is not None and idx2 is not None:
-                            data = data[:, idx1, idx2]
-                        elif idx0 is None and idx1 is not None and idx2 is None:
-                            data = data[:, idx1, :]
-                        elif idx0 is None and idx1 is None and idx2 is not None:
-                            data = data[:, :, idx2]
-                        elif idx0 is None and idx1 is None and idx2 is None:
-                            pass
+                    dim = data.ndim
+                    if dim == 3: data = data[idx0, idx1, idx2]
+                    elif dim == 2: data = data[idx0, idx1]
+                    elif dim == 1: data = data[idx0]
+                
                     data = np.array(data)
         return data
 
+    def set(self, 
+            group: str, 
+            n_channels: int = None, 
+            channel: int = None, 
+            change_existing: bool = False,
+            overwrite_existing: bool = False,
+            write_to_virtual: bool = None,
+            dtype: str = None,
+            **kwargs: List[Union[float, bool]]):
+        """
+        Include data into the HDF5 file. Datasets are passed as keyword arguments and the keys are used as names for the datasets. 
+        E.g. set("events", pulse_heights=data) creates a dataset "pulse_heights" in the group "events". The shape of the dataset matches data's shape.
+        Alternatively, one-dimensional data can be written to a multi-dimensional array (as is often necessary for multiple channels).
+        This is achieved by specifying the number of desired channels (n_channels) and the channel index (channel) to write to.
+        E.g. set("events", n_channels=2, channel=0, pulse_heights=data) creates a "pulse_heights" dataset in the "events" group of shape (2, *data.shape), and `data` is written into the 0-th channel.
+        Notice that in most cases you probably want `data` to be of shape (n, ). Otherwise it will probably lead to unexpectedly high-dimensional datasets.
+
+        :param group: The name of the group in the HDF5 file. If it doesn't exist yet, it will be created.
+        :type group: string
+        :param n_channels: The number of channels that the data should have (first dimension of the dataset).
+        :type n_channels: int
+        :param channel: The channel that the data gets added to.
+        :type channel: int
+        :param change_existing: If set to True, already existing datasets are overwritten. For that, the shape and dtype of the new dataset have to match the already existing one's.
+        :type change_existing: bool
+        :param overwrite_existing: If set to True, already existing datasets are overwritten in case the new dtype and/or shape does not match the existing dtype/shape.
+        :type overwrite_existing: bool
+        :param write_to_virtual: If set to True and the target dataset is an already existing virtual dataset, the new data is written to the virtual dataset, i.e. it will end up in the source HDF5 files. This might be intended but in most cases, you will probably want this to be set to False to avoid unexpectedly changing remote files. Note that this parameter is None by default and has to be set to True or False when attempting to write to a virtual dataset. Note further, that if set to True, the shape and dtype of the new dataset must match the virtual dataset exactly. Otherwise, a non-remote dataset is created regardless.
+        :type write_to_virtual: bool, Default: None
+        :param dtype: The desired dtype of the dataset in the HDF5 file. If none is specified, "bool" and "float32" are used for boolean and numeric arrays, respectively.
+        :type dtype: string
+        :param kwargs: datasets to include (see below)
+        :type kwargs: List[Union[float, bool]]
+
+        :Keyword Arguments:
+        Pass a keyword argument of the form dataset_name=dataset_data for every dataset that you want to include in the HDF5 file.
+
+        >>> # Include 'data1' and 'data2' as datasets 'new_ds1' and 'new_ds2' in group 'noise' 
+        >>> # ('new_ds1' and 'new_ds2' do not yet exist)
+        >>> dh.set(group="noise", new_ds1=data1, new_ds2=data2)
+
+        >>> # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+        >>> # (either or both of 'ds1' and 'ds2' already exist and have correct shape/dtype for new
+        >>> # data)
+        >>> dh.set(group="noise", ds1=data1, ds2=data2, change_existing=True) 
+
+        >>> # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+        >>> # (either or both of 'ds1' and 'ds2' already exist and have incorrect shape/dtype for new
+        >>> # data, but we want to force the new dtype/shape)
+        >>> dh.set(group="noise", ds1=data1, ds2=data2, overwrite_existing=True)
+
+        >>> # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+        >>> # ('data1' and 'data2' are 1-dimensional but we want to create 2-dimensional 
+        >>> # datasets (for different channels e.g.) and write the data into the 0-th channel. This also
+        >>> # works for writing single channels to already existing multi-channel datasets.)
+        >>> dh.set(group="noise", n_channels=2, channel=0, ds1=data1, ds2=data2)
+
+        >>> # Include 'data1' as dataset 'ds1' in group 'noise' 
+        >>> # ('ds1' already exists and is a virtual dataset with matching shape but dtype 'float64'.
+        >>> # We want to write to the original data in the respective source files.)
+        >>> dh.set(group="noise", ds1=data1, dtype='float64', write_to_virtual=True)
+
+        >>> # Include 'data1' as dataset 'ds1' in group 'noise' 
+        >>> # ('ds1' already exists and is a virtual dataset. We want to overwrite it and create a 
+        >>> # non-virtual dataset instead)
+        >>> dh.set(group="noise", ds1=data1, write_to_virtual=False)
+        """
+
+        if np.logical_xor(n_channels==None, channel==None):
+            warnings.warn("You have to specify 'n_channels' and 'channel' together", UserWarning)
+            return
+        
+        in_channel_mode = n_channels is not None
+
+        with self.get_filehandle(mode="r+") as f:
+            hdf5group = f.require_group(group)
+            for key, value in kwargs.items():
+                if isinstance(value, list): value = np.array(value)
+                if dtype is None: dtype = "bool" if value.dtype == bool else "float32"
+                shape = (n_channels, *value.shape) if in_channel_mode else value.shape
+
+                # If a key exists, change_existing has to be set to True.
+                # If the new data doesn't match the existing dataset's shape or dtype, it is deleted (if overwrite_existing=True)
+                if key in hdf5group.keys():
+                    # Check if dataset is virtual. In this case 'write_to_virtual' has to be set.
+                    if hdf5group[key].is_virtual and write_to_virtual is None:
+                        warnings.warn(f"You are attempting to write to the virtual dataset {fmt_ds(key)}. Set 'write_to_virtual' to True, if you intend to change the original data in the remote file(s), or set it to False to create a new (non-virtual) dataset {fmt_ds(key)} instead.\n", UserWarning)
+                        continue
+
+                    # If virtual dataset should not be changed, we delete it and create a new one later
+                    # Note that this does NOT delete the dataset from the remote HDF5 files.
+                    if hdf5group[key].is_virtual:
+                        if write_to_virtual:
+                            if (hdf5group[key].shape != shape) or (hdf5group[key].dtype != dtype):
+                                warnings.warn(f"The virtual dataset {fmt_ds(key)} has different shape and/or dtype. If you want to write to the original files, these two have to match exactly. Alternatively, you can set 'write_to_virtual' to False to create a new (non-virtual) dataset {fmt_ds(key)}.\nOriginal shape: {hdf5group[key].shape}, New shape: {shape}, Original dtype: {hdf5group[key].dtype}, New dtype: {dtype}\n", UserWarning)
+                                continue
+                        else:
+                            del hdf5group[key]
+
+                    # If there is a shape/dtype mismatch (applies both to virtual and regular datasets), 
+                    # the dataset has to be deleted regardless of what else is set
+                    elif (hdf5group[key].shape != shape) or (hdf5group[key].dtype != dtype):
+                        if overwrite_existing:
+                            del hdf5group[key]
+                        else:
+                            warnings.warn(f"Dataset {fmt_ds(key)} already exists in group {fmt_gr(group)} and has different shape and/or dtype. To overwrite the old set, set 'overwrite_existing' to True. If there is just a dtype mismatch you can also set the dtype using the respective argument.\nOriginal shape: {hdf5group[key].shape}, New shape: {shape}, Original dtype: {hdf5group[key].dtype}, New dtype: {dtype}\n", UserWarning)
+                            continue    
+                    else:
+                        # If dtype and shape agree, change must be explicitly permitted regardless.
+                        if not (change_existing or overwrite_existing):
+                            warnings.warn(f"Dataset {fmt_ds(key)} already exists in group {fmt_gr(group)}. To change it, set 'change_existing' or 'overwrite_existing' to True\n", UserWarning)
+                            continue
+
+                ds = hdf5group.require_dataset(name=key, shape=shape, dtype=dtype)
+                if in_channel_mode: 
+                    ds[channel, ...] = value
+                else: 
+                    ds[...] = value
+
+                print(f"Successfully written {fmt_ds(key)} with shape {ds.shape} and dtype '{ds.dtype}' to group {fmt_gr(group)}.\n")
+
+    def rename(self, group: str = None, **kwargs: str):
+        """
+        Rename groups or datasets in the HDF5 file. Names to change are passed as keyword arguments.
+
+        By default, `group` is set to None. In this case, **kwargs are interpreted as HDF5 group names to change. 
+        
+        If `group` is set (e.g. to 'events' or 'noise'), **kwargs are interpreted as HDF5 dataset names within that group.
+
+        Notice that we forbid to rename virtual datasets or groups that contain virtual datasets as this could lead to confusion (it is best practice to keep the dataset names between the 'master file' and the source files consistent)
+
+        :param group: The group within which we want to rename datasets. If set to None, groups themselves will be renamed.
+        :type group: str, Default: None
+        :param kwargs: groups/datasets to be renamed
+        :type kwargs: str
+
+        :Keyword Arguments:
+        Pass a keyword argument of the form old_name=new_name for every dataset/group that you want to rename in the HDF5 file.
+
+        >>> # Rename groups 'old_group1' and 'old_group2' to 'new_group1' and 'new_group2'
+        >>> dh.rename(old_group1='new_group1', old_group2='new_group2')
+
+        >>> # Rename datasets 'old_ds1' and 'old_ds2' in group 'noise' to 'new_ds1' and 'new_ds2'
+        >>> dh.rename(group='noise', old_ds1='new_ds1', old_ds2='new_ds2')
+        """
+        with self.get_filehandle(mode="r+") as h5f:
+            if group is None:
+                for key, value in kwargs.items():
+                    if any([h5f[key][ds].is_virtual for ds in h5f[key].keys()]):
+                        print(f"Cannot rename group {fmt_gr(key)} because it contains virtual datasets.")
+                        continue
+
+                    h5f.move(key, value)
+                    print(f"Successfully renamed group {fmt_gr(key)} -> {fmt_gr(value)}.")
+            else:
+                for key, value in kwargs.items(): 
+                    if h5f[group][key].is_virtual:
+                        print(f"Cannot rename virtual dataset {fmt_gr(group)}/{fmt_ds(key)}.")
+                        continue
+
+                    h5f[group].move(key, value)
+                    print(f"Successfully renamed dataset {fmt_gr(group)}/{fmt_ds(key)} -> {fmt_gr(group)}/{fmt_ds(value)}.")
+    
     def keys(self, group: str = None):
         """
         Print the keys of the HDF5 file or a group within it.
@@ -669,41 +953,45 @@ class DataHandler(SimulateMixin,
 
     def content(self, group: str = None):
         """
-        Print the whole content of the HDF5 and all derived properties.
+        Print the whole content of the HDF5 and all derived properties. The shape of the datasets as well as their datatypes are also given.
 
-        :param group: The name of a group in the HDF5 file of that we print the content.
+        :param group: The name of a group in the HDF5 file of which we print the content. If None, all groups are printed.
         :type group: string or None
         """
-        print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.')
 
-        with h5py.File(self.path_h5, 'r+') as f:
+        print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.\nDatasets marked with {fmt_virt("(v)")} are virtual datasets, i.e. they are stored in another (or multiple other) HDF5 file(s). They are treated like regular datasets but be aware that writing to such datasets actually writes to the respective original files.\n')
+
+        with self.get_filehandle(mode="r") as f:
             if group is None:
                 groups = f.keys()
             else:
+                # would be nice to have regex support at some point
                 groups = [group]
 
             for group in groups:
                 print(fmt_gr(group))
+                # move on to next group in case there are no datasets in this group
+                if not f[group].keys(): continue
+
                 # 22 is the length of the longest add_mainpar string
                 width_dataset = max(len(max(f[group].keys(), key=len)), 22)
+                width_shape = max([len(str(f[group][ds].shape)) for ds in f[group].keys()])
 
                 for dataset in f[group].keys():
-                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")} {f[group][dataset].shape}')
+                    # if dataset is virtual, we include an identifier
+                    virt_str = " (v)" if f[group][dataset].is_virtual else ' '*4 
+
+                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")}{fmt_virt(virt_str)} {str(f[group][dataset].shape):<{width_shape+1}} {f[group][dataset].dtype}')
 
                     if dataset=='mainpar':
                         shape = f[group]['mainpar'].shape[:2]
-                        for dataset in ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']:
-                            print(f'  |{dataset:<{width_dataset}} {shape}')
+                        for dataset in MAINPAR:
+                            print(f'  |{dataset:<{width_dataset+len(virt_str)}} {shape}')
                 
                     if dataset=='add_mainpar':
                         shape = f[group]['add_mainpar'].shape[:2]
-                        for dataset in ['array_max', 'array_min', 'var_first_eight', 'mean_first_eight', 'var_last_eight',
-                                        'mean_last_eight', 'var', 'mean', 'skewness', 'max_derivative',
-                                        'ind_max_derivative',
-                                        'min_derivative', 'ind_min_derivative', 'max_filtered', 'ind_max_filtered',
-                                        'skewness_filtered_peak']:
-                            print(f'  |{dataset:<{width_dataset}} {shape}')
-
+                        for dataset in ADD_MAINPAR:
+                            print(f'  |{dataset:<{width_dataset+len(virt_str)}} {shape}')
 
     def generate_startstop(self):
         """
@@ -768,11 +1056,12 @@ class DataHandler(SimulateMixin,
 
     def init_empty(self):
         """
-        Initialize an empty HDF5 set.
+        Initialize an empty HDF5 set with name/path as set by dh.set_filepath().
         """
-        with h5py.File(self.get_filepath(), 'a') as h5f:
+        assert hasattr(self, "path_h5"), "To initialize an empty HDF5 file you have to first set its name/path using dh.set_filepath()."
+        with h5py.File(self.path_h5, 'a') as h5f:
             pass
-
+        
     def record_window(self, ms=True):
         """
         Get the t array corresponding to a typical record window.
@@ -783,8 +1072,7 @@ class DataHandler(SimulateMixin,
         :rtype: 1D numpy array
         """
         t = (np.arange(self.record_length) - self.record_length / 4) / self.sample_frequency
-        if ms:
-            t *= 1000
+        if ms: t *= 1000
         return t
 
     def repackage(self):
@@ -803,13 +1091,6 @@ class DataHandler(SimulateMixin,
         >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
         """
 
-        def sizeof_fmt(num, suffix="B"):
-            for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
-                if abs(num) < 1024.0:
-                    return f"{num:3.1f}{unit}{suffix}"
-                num /= 1024.0
-            return f"{num:.1f}Yi{suffix}"
-
         oldFile = self.get_filepath()
         oldSize = os.path.getsize(oldFile)
         newFile = list(os.path.splitext(oldFile))
@@ -820,4 +1101,4 @@ class DataHandler(SimulateMixin,
         memorySaved = oldSize - os.path.getsize(newFile)
         
         os.replace(newFile, oldFile)
-        print(f'Successfully repackaged {oldFile}. Memory saved: {sizeof_fmt(memorySaved)}')
+        print(f"Successfully repackaged '{oldFile}'. Memory saved: {sizeof_fmt(memorySaved)}")
