@@ -17,6 +17,7 @@ setup(
     packages=find_packages(include=['cait', 'cait.*']),
     install_requires=[
         'setuptools>=47.1',
+        'deprecation>=2.1.0',
         'h5py>=3.2',
         'pickle-mixin>=1.0',
         'scipy>=1.6',

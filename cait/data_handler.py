@@ -309,13 +309,12 @@ class DataHandler(SimulateMixin,
         ...     for ev in ev_it:
         ...         print(np.max(ev))
         """
-        if channel is None: channel = slice(None)
         # Use the first channel and the first datapoint of a voltage trace to get the total number of events
         inds = np.arange(self.get(group, "event", 0, None, 0).size)
 
         if flag is not None: inds = inds[flag]
 
-        return EventIterator(path_h5=self.get_filepath(), group=group, channels=channel, inds=inds, batch_size=batch_size)
+        return EventIterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
     
     def import_labels(self,
                       path_labels: str,

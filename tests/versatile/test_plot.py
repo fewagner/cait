@@ -26,12 +26,41 @@ class TestViewer(unittest.TestCase):
         vai.plot.Viewer(data=DATA, backend="plotly", template="seaborn")
         
     def test_mpl(self): # has to be implemented
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(TypeError):
             vai.plot.Viewer(backend="mpl")
 
     def test_not_implemented(self):
         with self.assertRaises(NotImplementedError):
             vai.plot.Viewer(backend="other_backend")
+
+    def test_add_update(self):
+        v = vai.plot.Viewer(backend="plotly")
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.add_scatter(x=DATA["scatter"]["scatter1"][0], y=DATA["scatter"]["scatter1"][1], name="scatter")
+        v.add_histogram(data=DATA["scatter"]["scatter1"][1], bins=10, name="histogram1")
+        v.add_histogram(data=DATA["scatter"]["scatter2"][1], bins=(0,1,10), name="histogram2")
+
+        v.update_line(name="line", x=DATA["line"]["line2"][0], y=DATA["line"]["line2"][1])
+        v.update_scatter(name="scatter", x=DATA["scatter"]["scatter2"][0], y=DATA["scatter"]["scatter2"][1])
+        v.update_histogram(name="histogram1", data=DATA["scatter"]["scatter2"][1], bins=10)
+        v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
+
+    def test_getter_setter(self):
+        v = vai.plot.Viewer(backend="plotly")
+        v.get_figure()
+
+        v.set_xlabel("x")
+        v.set_ylabel("y")
+
+        v.set_xscale("linear")
+        v.set_xscale("log")
+        v.set_yscale("linear")
+        v.set_yscale("log")
+
+    def test_legend(self):
+        v = vai.plot.Viewer(backend="plotly")
+        v.show_legend(True)
+        v.show_legend(False)
 
 class TestLine(unittest.TestCase):
     def test_plotly(self):
@@ -44,7 +73,7 @@ class TestLine(unittest.TestCase):
         vai.plot.Line(y=DATA["line"]["line1"][1], template="seaborn")
         
     def test_mpl(self): # has to be implemented
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(TypeError):
             vai.plot.Line(y=DATA["line"]["line1"][1], backend="mpl")
 
 class TestScatter(unittest.TestCase):
@@ -58,8 +87,29 @@ class TestScatter(unittest.TestCase):
         vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], template="seaborn")
 
     def test_mpl(self): # has to be implemented
-        with self.assertRaises(NotImplementedError):
+        with self.assertRaises(TypeError):
             vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], backend="mpl")
+
+class TestHistogram(unittest.TestCase):
+    def test_plotly(self):
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1])
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10)
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
+        vai.plot.Histogram(data=dict(first=DATA["scatter"]["scatter1"][1],
+                                     second=DATA["scatter"]["scatter2"][1]), 
+                           bins=(0,1,10))
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, template="seaborn")
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], 
+                           xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel")
+        
+        with self.assertRaises(TypeError):
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins="nonsense")
+        with self.assertRaises(TypeError):
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2))
+
+    def test_mpl(self): # has to be implemented
+        with self.assertRaises(TypeError):
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], backend="mpl")
 
 class TestPreview(unittest.TestCase):
     def test_plotly(self):

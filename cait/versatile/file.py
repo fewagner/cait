@@ -7,29 +7,82 @@ from ..styles._print_styles import sizeof_fmt
 
             
 class EventIterator:
-    def __init__(self, path_h5: str, group: str, dataset: str = "event", inds: List[int] = None, channels: Union[int, List[int]] = None, batch_size: int = None):
+    """
+    Iterator object for HDF5 datasets that iterates along the "event-dimension" (first dimension for 1-dimensional data, or second dimension for 2- and 3-dimensional data) of a dataset. Most important use-case is iterating over event voltage traces in an analysis routine.
+    If the Iterator is used as a context manager, the HDF5 file is not closed during iteration which improves file access speed.
+
+    The datasets in the HDF5 file are assumed to have shape `(events, data)` or `(channels, events, data)` but the iterator *always* returns data event by event. If batches are used (see below), they are returned with the events dimension being the first dimension. To explain the returned shapes we start from a general dataset with shape `(n_channels, n_events, n_data)`. Note that `n_channels` and/or `n_data` could be 1 such that the shapes reduce to `(n_events, n_data)` or `(n_channels, n_events)` respectively. 
+    For a batch size of 1, the iterator in these cases returns shapes `(n_channels, n_data)`, `(n_data)` and `(n_channels)`. 
+    For a batch size > 1, the iterator in these cases returns shapes `(batch_size, n_channels, n_data)`, `(batch_size, n_data)` and `(batch_size, n_channels)`. Notice that the first dimension always has the events (batch_size).
+
+    :param path_h5: Path to the HDF5 file.
+    :type path_h5: str
+    :param group: Group in the HDF5 file.
+    :type group: str
+    :param dataset: Dataset in the HDF5 file.
+    :type dataset: str
+    :param inds: List of event indices to iterate. If left None, the EventIterator will iterate over all events.
+    :type inds: List[int]
+    :param channels: Integer or list of integers specifying the channel(s) to iterate. If left None, the EventIterator will iterate over all channels.
+    :type channels: Union[int, List[int]]
+    :param batch_size: The number of events to be returned at once (these are all read together). There will be a trade-off: large batch_sizes cause faster read speed but increase the memory usage.
+    :type batch_size: int
+
+    :return: Iterable object
+    :rtype: EventIterator
+
+    >>> it = EventIterator("path_to_file.h5", "events", "event", batch_size=100, channels=1, inds=[0,2,19,232])
+    >>> for i in it:
+    ...    print(i.shape)
+    
+    >>> with it as opened_it:
+    ...     for i in opened_it:
+    ...         print(i.shape)
+    """
+
+    def __init__(self, path_h5: str, group: str, dataset: str, inds: List[int] = None, channels: Union[int, List[int]] = None, batch_size: int = None):
         self.path = path_h5
         self.group = group
         self.dataset = dataset
         
-        with h5py.File(self.path, 'r') as f:
-            self.ds_shape = f[self.group][self.dataset].shape
-            
-        if inds is None: inds = np.arange(self.ds_shape[0])
-        if channels is None: channels = slice(None)
+        # total number of events, shape of dataset, and axis along which events extend
+        # function returns a list of n_events (which in this case is of length 1)
+        n_events_total, shape, _, self.events_dim = get_dataset_properties([os.path.splitext(path_h5)[0]], group, dataset)
+        n_events_total = n_events_total[0]
 
+        if channels is not None:
+            assert len(shape)>0, "The dataset is one-dimensional. Specifying channels is not supported here."
+            self.channels = channels
+            self.n_channels = 1 if isinstance(channels, int) else len(channels)
+
+        elif len(shape)>0:
+            self.channels = slice(None) 
+            self.n_channels = shape[0]
+        else:
+            self.channels = None
+            self.n_channels = 1
+            
+        if inds is None: inds = np.arange(n_events_total)
+        self.n_events = len(inds)
+
+        # self.inds will be a list of batches. If we just take the inds list, we have batches of size 1, if we take [inds]
+        # all inds are in one batch, otherwise it is a list of lists where each list is a batch
         if batch_size is None or batch_size == 1:
             self.inds = inds
+            self.uses_batches = False
         elif batch_size == -1:
             self.inds = [inds]
+            self.uses_batches = True
         else: 
             self.inds = [inds[i:i+batch_size] for i in range(0, len(inds), batch_size)]
-            
-        
-        self.channels = channels
-        self.iter_N = len(self.inds)
+            self.uses_batches = True
+
+        self.n_batches = len(self.inds)
 
         self.file_open = False
+    
+    def __len__(self):
+        return self.n_events
 
     def __enter__(self):
         self.f = h5py.File(self.path, 'r')
@@ -41,19 +94,42 @@ class EventIterator:
         self.file_open = False
     
     def __iter__(self):
-        self.current = 0
+        self.current_batch_ind = 0
         return self
 
     def __next__(self):
-        if self.current < self.iter_N:
-            ind = self.inds[self.current]
-            self.current += 1
+        if self.current_batch_ind < self.n_batches:
+            event_inds_in_batch = self.inds[self.current_batch_ind]
+            self.current_batch_ind += 1
+
+            # For single channel data, the first dimension is always the event dimension (possibly 0-dimensional if 
+            # batch size is 1). For multi-channel data and batch size = 1, the first dimension is (implicitly) the
+            # event dimension (because it is 0-dimensional). Only for multi-channel data and batch size > 1 we have 
+            # the event dimension in second place (and therefore have to transpose)
+            should_be_transposed = self.uses_batches and self.n_channels > 1 and self.events_dim > 0 
 
             if self.file_open:
-                return self.f[self.group][self.dataset][self.channels, ind, :]
+                if self.events_dim > 0:
+                    if should_be_transposed:
+                        # transpose data such that first dimension is ALWAYS the event dimension
+                        return np.transpose(self.f[self.group][self.dataset][self.channels, event_inds_in_batch], 
+                                            axes=[1,0,2])
+                    else:
+                        return self.f[self.group][self.dataset][self.channels, event_inds_in_batch]
+                else:
+                    return self.f[self.group][self.dataset][event_inds_in_batch]
+                    
             else:
                 with h5py.File(self.path, 'r') as f:
-                    return f[self.group][self.dataset][self.channels, ind, :]
+                    if self.events_dim > 0:
+                        if should_be_transposed:
+                            # transpose data such that first dimension is ALWAYS the event dimension
+                            return np.transpose(f[self.group][self.dataset][self.channels, event_inds_in_batch], 
+                                                axes=[1,0,2])
+                        else:
+                            return f[self.group][self.dataset][self.channels, event_inds_in_batch]
+                    else:
+                        return f[self.group][self.dataset][event_inds_in_batch]
         else:
             raise StopIteration
         
@@ -80,12 +156,26 @@ def ds_source_available(file: h5py.File, group: str, dataset: str):
     else:
         return True
         
-def _get_dataset_properties(files: List[str], group: str, dataset: str, src_dir: str = ''):
-    ###
-    # convenience function to get the number of events for a list of files, the dimension along which these events
-    # are oriented, the remaining shape of the dataset as well as the dtype
-    ###
-    # assess some infos from first file (that the files are consistent has to be checked by check_file_consistency)
+def get_dataset_properties(files: List[str], group: str, dataset: str, src_dir: str = ''):
+    """
+    Convenience function to get the number of events for a list of files, the dimension along which these events are oriented, the remaining shape of the dataset as well as the dtype. 
+
+    Assesses information from first file (that the files are consistent has to be checked by func:`check_file_consistency`
+
+    :param files: Names of the HDF5 files (without path and .h5 extension).
+    :type files: List[str]
+    :param group: The HDF5 group of the dataset we want to get the properties from,
+    :type group: str
+    :param dataset: The HDF5 dataset we want to get the properties from,
+    :type dataset: str
+    :param src_dir: Source path of the files in the [files] list.
+    :type src_dir: str
+    
+    The following returns a list `[n_events_file1, n_events_file2]` of the number of events for each file, the `shape` of the dataset `event` in group `events` (where the dimension of the events has been dropped, i.e. `len(shape) = dataset.ndim - 1`), the `dtype` of the dataset `event` and the dimension along which the events extend, `events_dim`. See func:`combine` for more information.
+
+    >>> n_events, shape, dtype, events_dim = get_dataset_properties([file1, file2], "events", "event", "directory")
+    """
+
     with h5py.File(os.path.join(src_dir, files[0] + ".h5"), 'r') as h5f:
         dtype = h5f[group][dataset].dtype
         shape = list(h5f[group][dataset].shape)
@@ -158,7 +248,7 @@ def combine(fname: str,
             src_dir: str = '', 
             out_dir: str = '', 
             groups_combine: List[str] = ["events", "testpulses", "noise"], 
-            groups_include: List[str] = ["stdevent", "optimumfilter"]
+            groups_include: List[str] = []
             ):
     """
     Combines multiple HDF5 files into a single file using virtual datasets, i.e. none of the data is actually copied, yet it can be accessed as if it was stored in the same file. It is important that the initial HDF5 files have the same structure, at least for the data groups handed by groups_merge. Otherwise the function might crash or, even worse, yield nonsensical data combinations.
@@ -200,7 +290,7 @@ def combine(fname: str,
                 datasets = list(ref_file[g].keys())
 
             for ds in datasets:
-                n_events, shape, dtype, events_dim = _get_dataset_properties(files, g, ds, src_dir)
+                n_events, shape, dtype, events_dim = get_dataset_properties(files, g, ds, src_dir)
                 # add number of total events back into shape (along events-dimension)
                 shape.insert(events_dim, sum(n_events))
 
@@ -237,7 +327,7 @@ def combine(fname: str,
 
     print(f"Successfully combined files {files} into '{out_path}' ({sizeof_fmt(os.path.getsize(out_path))}).")
 
-def merge(fname: str, files: List[str], src_dir: str = '', out_dir: str = '', groups_merge: List[str] = ["events", "testpulses", "noise"], groups_include: List[str] = ["stdevent", "optimumfilter"]):
+def merge(fname: str, files: List[str], src_dir: str = '', out_dir: str = '', groups_merge: List[str] = ["events", "testpulses", "noise"], groups_include: List[str] = []):
     """
     Merges multiple HDF5 files into a single one just like `func:combine` but it actually copies the data.
 
