@@ -437,6 +437,8 @@ class Viewer():
     :type data: dict, optional
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
     :type backend: str, optional
+    :param show_controls: Set to True if plot controls should be shown. For the Viewer alone, this is just an "Exit" button which closes the plot, but inhereted objects can add more buttons with arbitrary functionality. Defaults to False
+    :type show_controls: bool, optional
 
     `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
     :param template: Valid backend theme. E.g. for `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
@@ -470,7 +472,7 @@ class Viewer():
       }
     ```
     """
-    def __init__(self, data=None, backend="plotly", **kwargs):
+    def __init__(self, data=None, backend="plotly", show_controls=False, **kwargs):
         if backend=="plotly":
             self.fig_widget = BaseClassPlotly(**kwargs)
         elif backend=="mpl":
@@ -478,9 +480,11 @@ class Viewer():
         else:
             raise NotImplementedError('Only backend "plotly" and "mpl" are supported.')
         
+        self.show_controls = show_controls
+
         self.buttons = list()
 
-        self._button_exit = widgets.Button(description="Exit")
+        self._button_exit = widgets.Button(description="Exit", tooltip="Close plot widget.")
         self._button_exit.on_click(self.close)   
         self.buttons.append(self._button_exit)   
 
@@ -491,7 +495,10 @@ class Viewer():
             self.show()
 
     def _init_UI(self):
-        self.UI = widgets.VBox([widgets.HBox(self.buttons), self.fig_widget.fig])
+        if self.show_controls:
+            self.UI = widgets.VBox([widgets.HBox(self.buttons), self.fig_widget.fig])
+        else:
+            self.UI = self.fig_widget.fig
 
     def show_legend(self, show: bool = True):
         """
