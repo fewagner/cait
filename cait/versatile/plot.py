@@ -212,9 +212,10 @@ class StreamViewer(Viewer):
     def update(self):
         # Retrieve data from stream object. (tuple of time array and dictionary 
         # with keys=trace-names, values=voltage-trace)
-        self.current_data = self.stream[self.current_start:(self.current_start + self.n_points*self.downsample_factor)]
-        for trace in self.current_data[1].keys():
-            self.update_line(name=trace, x=self.current_data[0][::self.downsample_factor], y=self.current_data[1][trace][::self.downsample_factor])
+        data = self.stream[self.current_start:(self.current_start + self.n_points*self.downsample_factor):self.downsample_factor]
+        
+        for trace in data[1].keys():
+            self.update_line(name=trace, x=data[0], y=data[1][trace])
 
     def _move_right(self, b):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
@@ -233,17 +234,12 @@ class StreamViewer(Viewer):
 
         ymin, ymax = self.get_figure().layout.yaxis.range
 
-        x = self.current_data[0]
-        x_mask = np.logical_and(x > xmin, x < xmax)
-
         y_vals = list()
-        for trace in self.current_data[1].keys():
-            # Check if data from file is still in plot (there's no reason to believe it is not
-            # but the next check - whether it is hidden or not - is important!)
-            line = list(self.get_figure().select_traces(selector=dict(name=trace)))
-            if len(line) > 0 and line[0].visible is True:
-                # Only include in calculation if visible (not deactivated in legend)
-                y = self.current_data[1][trace]
+        for trace in self.get_figure().select_traces():
+            if trace.visible is True:
+                x = trace.x
+                y = trace.y
+                x_mask = np.logical_and(x > xmin, x < xmax)
                 y_mask = np.logical_and(y > ymin, y < ymax)
                 y_vals.append(y[np.logical_and(x_mask, y_mask)])
 
@@ -255,7 +251,7 @@ class StreamViewer(Viewer):
             dat_min, dat_max = np.min(y_vals), np.max(y_vals)
             dat_diff = dat_max - dat_min
             dat_mean, dat_std = np.mean(y_vals), np.std(y_vals)
-            out_str = f"mean_y:  {dat_mean:.3f}, min_y: {dat_min:.3f}, delta_y: {dat_diff:.3f}\nsigma_y: {dat_std:.3f}, max_y: {dat_max:.3f}"
+            out_str = f"mean_y: {dat_mean:6.3f}, min_y: {dat_min:6.3f}, delta_y: {dat_diff:5.3f}\nsigma_y: {dat_std:5.3f}, max_y: {dat_max:6.3f}"
         
         with self._output:
             self._output.clear_output()
