@@ -1,10 +1,276 @@
 import numpy as np
 from ipywidgets import widgets
-from typing import List, Union, Callable
+from typing import List, Union, Callable, Iterable
 
-from .stream import StreamFile
-from ._baseClasses import InspectBaseClass, Viewer
-   
+from IPython.display import display
+
+from .stream import Stream
+from ._baseClasses import BaseClassPlotly, BaseClassMPL, FncBaseClass
+
+##### HELPER FUNCTIONS AND CLASSES #####
+class PreviewEvent(FncBaseClass):
+    """
+    Helper class to use :class:`Preview` also to display iterables of events.
+
+    >>> # Multiple channels
+    >>> it = dh.get_event_iterator("events")
+    >>> Preview(it)
+
+    >>> # Single channel
+    >>> it = dh.get_event_iterator("events", channel=0)
+    >>> Preview(it)
+
+    >>> # Using batches; this works (and shows events in batches
+    >>> # as different channels) but should be avoided
+    >>> it = dh.get_event_iterator("events", channel=0, batch_size=10)
+    >>> Preview(it)
+    """
+    def __call__(self, event):
+        return None
+    def preview(self, event):
+        if event.ndim > 1:
+            lines = {f'channel {k}': [None, ev] for k, ev in enumerate(event)}
+        else:
+            lines = {'channel 0': [None, event]}
+
+        return dict(line=lines, 
+                    axes={"xaxis": {"label": "data index"},
+                          "yaxis": {"label": "data (V)"}
+                         })
+
+##### PLOT ROUTINES #####
+class Viewer():
+    """Class for plotting data given a dictionary of instructions (see below).
+
+    :param data: Data dictionary containing line/scatter/axes informations (see below), defaults to None
+    :type data: dict, optional
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
+    :type backend: str, optional
+    :param show_controls: Set to True if plot controls should be shown. For the Viewer alone, this is just an "Exit" button which closes the plot, but inhereted objects can add more buttons with arbitrary functionality. Defaults to False
+    :type show_controls: bool, optional
+
+    `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
+    :param template: Valid backend theme. E.g. for `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :type template: str, optional
+    :param height: Figure height, defaults to 500
+    :type height: float, optional
+    :param width: Figure width, defaults to 700
+    :type width: float, optional
+
+    Convention for `data` Dictionary:
+    ```
+    { line: { line1: [x_data1, y_data1],
+               line2: [x_data2, y_data2]
+              },
+      scatter: { scatter1: [x_data1, y_data1],
+                 scatter2: [x_data2, y_data2]
+                },
+      histogram: { hist11: [bin_data1, hist_data1],
+                   hist2: [bin_data2, hist_data2]
+                },
+      heatmap: { heat1: [(xbin_data1, ybin_data1), (hist_xdata1, hist_ydata1)],
+                 heat2: [(xbin_data2, ybin_data2), (hist_xdata2, hist_ydata2)]
+                },
+      axes: { xaxis: { label: "xlabel",
+                       scale: "linear"
+                      },
+              yaxis: { label: "ylabel",
+                       scale: "log"
+                      }
+            }
+      }
+    ```
+    """
+    def __init__(self, data=None, backend="plotly", show_controls=False, **kwargs):
+        if backend=="plotly":
+            self.fig_widget = BaseClassPlotly(**kwargs)
+        elif backend=="mpl":
+            self.fig_widget = BaseClassMPL(**kwargs)
+        else:
+            raise NotImplementedError('Only backend "plotly" and "mpl" are supported.')
+        
+        self.show_controls = show_controls
+
+        self.buttons = list()
+
+        self._button_exit = widgets.Button(description="Exit", tooltip="Close plot widget.")
+        self._button_exit.on_click(self.close)   
+        self.buttons.append(self._button_exit)   
+
+        self.visible = False
+
+        if data is not None: 
+            self.plot(data)  
+            self.show()
+
+    def _init_UI(self):
+        if self.show_controls:
+            self.UI = widgets.VBox([widgets.HBox(self.buttons), self.fig_widget.fig])
+        else:
+            self.UI = self.fig_widget.fig
+
+    def show_legend(self, show: bool = True):
+        """
+        Show/hide legend.
+
+        :param show: If True, legend is shown. If False, legend is hidden.
+        :type show: bool
+        """
+        self.fig_widget._show_legend(show)
+
+    def set_xlabel(self, xlabel: str):
+        """
+        Set the x-label of the figure.
+
+        :param xlabel: x-label
+        :type xlabel: str
+        """
+        self.fig_widget._set_axes(dict(xaxis={"label":xlabel}))
+
+    def set_ylabel(self, ylabel: str):
+        """
+        Set the y-label of the figure.
+
+        :param ylabel: y-label
+        :type ylabel: str
+        """
+        self.fig_widget._set_axes(dict(yaxis={"label":ylabel}))
+
+    def set_xscale(self, xscale: str):
+        """
+        Set the x-scale of the figure. Either linear or logarithmic.
+
+        :param xscale: x-scale. Either of ["linear", "log"]
+        :type xscale: str
+        """
+        self.fig_widget._set_axes(dict(xaxis={"scale":xscale}))
+
+    def set_yscale(self, yscale: str):
+        """
+        Set the y-scale of the figure. Either linear or logarithmic.
+
+        :param yscale: y-scale. Either of ["linear", "log"]
+        :type yscale: str
+        """
+        self.fig_widget._set_axes(dict(yaxis={"scale":yscale}))
+
+    def add_line(self, x: List[float], y: List[float], name: str = None):
+        """
+        Add a line plot to the figure. If a name is provided, it is registered and can later be updated.
+
+        :param x: The x-data of the line.
+        :type x: List[float]
+        :param y: The y-data of the line.
+        :type y: List[float]
+        :param name: The name of the line in the legend and its unique identifier for later updates. If None, the line does not show up in the legend and is not registered for later update.
+        :type name: str, optional
+        """
+        self.fig_widget._add_line(x, y, name)
+
+    def add_scatter(self, x: List[float], y: List[float], name: str = None):
+        """
+        Add a scatter plot to the figure. If a name is provided, it is registered and can later be updated.
+
+        :param x: The x-data of the scatter.
+        :type x: List[float]
+        :param y: The y-data of the scatter.
+        :type y: List[float]
+        :param name: The name of the scatter in the legend and its unique identifier for later updates. If None, the scatter does not show up in the legend and is not registered for later update.
+        :type name: str, optional
+        """
+        self.fig_widget._add_scatter(x, y, name)
+
+    def add_histogram(self, bins: Union[int, tuple], data: List[float], name: str = None):
+        """
+        Add a histogram to the figure. If a name is provided, it is registered and can later be updated.
+
+        :param bins: The binning data to use. If None, the binning is done automatically. An integer is interpreted as the desired total number of bins. You can also parse a tuple of the form `(start, end, nbins)` to bin the data between `start` and `end` into a total of `nbins` bins
+        :type bins: Union[None, int, tuple], optional
+        :param data: The data to bin.
+        :type data: List[float]
+        :param name: The name of the histogram in the legend and its unique identifier for later updates. If None, the histogram does not show up in the legend and is not registered for later update.
+        :type name: str, optional
+        """
+        self.fig_widget._add_histogram(bins, data, name)
+
+    def update_line(self, name: str, x: List[float], y: List[float]):
+        """
+        Update the line called `name` with data `x` and `y`.
+        See `func:add_line` for an explanation of the arguments.
+        """
+        self.fig_widget._update_line(name, x, y)
+
+    def update_scatter(self, name: str, x: List[float], y: List[float]):
+        """
+        Update the scatter called `name` with data `x` and `y`.
+        See `func:add_scatter` for an explanation of the arguments.
+        """
+        self.fig_widget._update_scatter(name, x, y)
+
+    def update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+        """
+        Update the histogram called `name` with data `data` and bins `bins`.
+        See `func:add_histogram` for an explanation of the arguments.
+        """
+        self.fig_widget._update_histogram(name, bins, data)
+
+    def get_figure(self):
+        """
+        Returns the figure object of the plot. Can be used to further manipulate the plot.
+        """
+        return self.fig_widget.fig
+
+    def plot(self, data: dict):
+        """
+        Plot data stored in dictionary.
+
+        :param data: The data dictionary to plot (see :class:`Viewer` for details on how the dictionary needs to be structured)
+        :type data: dict
+        """
+        for key, value in data.items():
+            if key == "line":
+                for line_name, line_data in value.items():
+                    assert 2==len(line_data), "Line data has to be a tuple/list of length 2 containing x/y data respectively"
+                    if line_name in self.fig_widget.line_names:
+                        self.fig_widget._update_line(name=line_name, x=line_data[0], y=line_data[1])
+                    else:
+                        self.fig_widget._add_line(x=line_data[0], y=line_data[1], name=line_name)
+
+            if key == "scatter":
+                for scatter_name, scatter_data in value.items():
+                    assert 2==len(scatter_data), "Scatter data has to be a tuple/list of length 2 containing x/y data respectively"
+                    if scatter_name in self.fig_widget.scatter_names:
+                        self.fig_widget._update_scatter(name=scatter_name, x=scatter_data[0], y=scatter_data[1])
+                    else:
+                        self.fig_widget._add_scatter(x=scatter_data[0], y=scatter_data[1], name=scatter_name)
+
+            if key == "histogram":
+                for histogram_name, histogram_data in value.items():
+                    assert 2==len(histogram_data), "Histogram data has to be a tuple/list of length 2 containing x(bins)/y data respectively"
+                    if histogram_name in self.fig_widget.histogram_names:
+                        self.fig_widget._update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
+                    else:
+                        self.fig_widget._add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
+
+            if key == "axes":
+                self.fig_widget._set_axes(value)
+
+    def show(self):
+        """
+        Show the plot in Jupyter.
+        """
+        self._init_UI()
+        display(self.UI)
+        self.visible = True
+    
+    def close(self, b=None):
+        """
+        Hide the plot in Jupyter.
+        """
+        if self.visible: 
+            self.UI.close()
+            self.visible = False
+
 class Line(Viewer):
     """
     Plot a line graph. 
@@ -191,10 +457,10 @@ class StreamViewer(Viewer):
 
         # Linking the stream-file (note that the file extension is handled by the StreamFile object as
         # it could be different for different hardware)
-        self.stream = StreamFile(file=file, hardware=hardware)
+        self.stream = Stream(src=file, hardware=hardware)
 
         # Adding lines for all the channels present in the hardware file
-        for name in self.stream.available_channel_names:
+        for name in self.stream.keys:
             self.add_line(x=None, y=None, name=name)
 
         # Adding labels
@@ -210,12 +476,16 @@ class StreamViewer(Viewer):
         self.show()
 
     def update(self):
-        # Retrieve data from stream object. (tuple of time array and dictionary 
-        # with keys=trace-names, values=voltage-trace)
-        data = self.stream[self.current_start:(self.current_start + self.n_points*self.downsample_factor):self.downsample_factor]
+        # Create slice for data access
+        where = slice(self.current_start, self.current_start + self.n_points*self.downsample_factor, self.downsample_factor)
         
-        for trace in data[1].keys():
-            self.update_line(name=trace, x=data[0], y=data[1][trace])
+        # Time array is the same for all channels
+        t = self.stream.time[where]
+        # Convert to datetime
+        t_datetime = self.stream.time.timestamp_to_datetime(t)
+        
+        for name in self.stream.keys:
+            self.update_line(name=name, x=t_datetime, y=self.stream[name, where, "as_voltage"])
 
     def _move_right(self, b):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
@@ -257,15 +527,16 @@ class StreamViewer(Viewer):
             self._output.clear_output()
             print(out_str)
             
-##### EXPERIMENTAL START ######
-class Preview(InspectBaseClass):
+# Has no test case (yet)
+class Preview(Viewer):
     """
     Class for inspecting the behavior of functions which were subclassed from :class:`._baseClasses.FncBase`.
+    Can also be used to display single events.
 
-    :param fnc: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection.
-    :type fnc: :class:`._baseClasses.FncBase`
-    :param events: An iterable of events. Can be e.g. :class:`.file.EventIterator`, a 2d :class:`numpy.ndarray` or a list of List[float].
-    :type events: iterable
+    :param events: An iterable of events. Can be e.g. :class:`EventIterator`, a 2d :class:`numpy.ndarray` or a list of List[float].
+    :type events: Iterable
+    :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Default None (which means that just the events of the iterable will be displayed)
+    :type f: :class:`._baseClasses.FncBaseClass`
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
@@ -279,15 +550,37 @@ class Preview(InspectBaseClass):
     :param width: Figure width, defaults to 700
     :type width: float, optional
     """
-    def __init__(self, fnc: Callable, events, **kwargs):
-        super().__init__(events, **kwargs)
-        self.fnc = fnc
+    def __init__(self, events: Iterable, f: Callable = None, **kwargs):
+        #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
+        #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
+        super().__init__(data=None, show_controls=True, **kwargs)
+
+        self.f = f if f is not None else PreviewEvent()
+        self.events = iter(events)
+
+        self._button_next = widgets.Button(description="Next", tooltip="Show next event.")
+        self._button_next.on_click(self._update_plot)
+        self.buttons.append(self._button_next)
         
         self.start()
-        
-    def _calc_next(self, ev):
-        return self.fnc.preview(ev)
+    
+    def _update_plot(self, b=None):
+        try: 
+            self.plot(self.f.preview(next(self.events)))
+        except StopIteration: 
+            self.close()
+        except:
+            self.close()
+            raise
+    
+    def start(self):
+        """
+        Show the plot and start iterating over the events.
+        """
+        self._update_plot()
+        self.show()
  
+##### EXPERIMENTAL START ######    
 class Heatmap(Viewer): # not yet finished (TODO)
     """
     Plot a Heatmap. 
