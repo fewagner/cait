@@ -1,13 +1,8 @@
-# -----------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------
-
 import numpy as np
 from scipy.optimize import minimize
 import numba as nb
-import torch
-from ._saturation import scaled_logistic_curve
 
+from ._saturation import scaled_logistic_curve
 
 # -----------------------------------------------------
 # FUNCTIONS

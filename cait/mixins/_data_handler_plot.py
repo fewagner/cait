@@ -1,15 +1,12 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
+import warnings
 
-import h5py
 import numpy as np
+import h5py
 import matplotlib.pyplot as plt
+
 from ..fit._templates import pulse_template
 from ..fit._saturation import logistic_curve
 from ..styles._plt_styles import use_cait_style, make_grid
-import warnings
-
 
 # functions
 

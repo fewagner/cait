@@ -1,10 +1,11 @@
+import numpy as np
 import h5py
 from tqdm.auto import tqdm
 import pickle
-import cait as ai
-import numpy as np
-import os
+
 from ..resources import change_channel
+
+import cait as ai
 
 def nn_predict(h5_path: str,
                feature_channel: int,

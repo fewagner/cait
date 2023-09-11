@@ -1,14 +1,9 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
 import numpy as np
-from ..fit._templates import baseline_template_quad, baseline_template_cubic
-from scipy.optimize import curve_fit
-from scipy.stats import norm, uniform
-from tqdm.auto import trange, tqdm
 from scipy import signal
+from scipy.optimize import curve_fit
+from tqdm.auto import tqdm
 
+from ..fit._templates import baseline_template_quad, baseline_template_cubic
 
 # -----------------------------------------------------------
 # FUNCTIONS

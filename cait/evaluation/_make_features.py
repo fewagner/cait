@@ -1,6 +1,5 @@
 import numpy as np
 
-
 def make_features(X):
     """
     Takes a list of chosen features and attaches them to one another.

@@ -1,39 +1,29 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
 import os
-import h5py
-import numpy as np
 import math
 
-import multiprocessing
-
+import numpy as np
+import pandas as pd
+import h5py
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+#import json
+#from jupyter_dash import JupyterDash as Dash
+from dash import Dash, dcc, html, Input, Output
+#from dash.dependencies import Input, Output
+import plotly.express as px
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+
+from .evaluation._color import console_colors, mpl_default_colors
+from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
+from .styles._plt_styles import use_cait_style, make_grid
+from .features._mp import *
 
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA
-
-from .evaluation._color import console_colors, mpl_default_colors
-from .evaluation._pgf_config import set_mpl_backend_pgf, set_mpl_backend_fontsize
-from .styles._plt_styles import use_cait_style, make_grid
-
-from .features._mp import *
-
-import json
-from jupyter_dash import JupyterDash as Dash
-from dash import dcc
-from dash import html
-from dash.dependencies import Input, Output
-import plotly.express as px
-from plotly.subplots import make_subplots
-import plotly.graph_objects as go
-import pandas as pd
-
 
 # -----------------------------------------------------------
 # CLASS

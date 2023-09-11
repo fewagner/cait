@@ -8,7 +8,7 @@ import ipywidgets as widgets  # new to cait
 from ipywidgets import interactive, HBox, VBox, Layout
 import h5py
 from IPython.display import display
-import datashader as ds
+#import datashader as ds
 import plotly.express as px
 
 from .data_handler import DataHandler

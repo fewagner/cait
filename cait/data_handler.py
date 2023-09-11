@@ -1,11 +1,10 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
 import os
 import subprocess
+import warnings
+
 import numpy as np
 import h5py
+
 from .mixins._data_handler_simulate import SimulateMixin
 from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_plot import PlotMixin
@@ -16,8 +15,6 @@ from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds
-import warnings
-
 
 # -----------------------------------------------------------
 # CLASS
@@ -495,7 +492,7 @@ class DataHandler(SimulateMixin,
                 h5f[type]['event_temp_'] = h5f[type]['event']
                 if delete_old or name_appendix == '':
                     del h5f[type]['event']
-                    print(f'Old dataset {fmt_ds(event)} deleted from group {fmt_gr(type)}.')
+                    print(f'Old dataset {fmt_ds("event")} deleted from group {fmt_gr(type)}.')
 
                 # get number batches and shape
                 nmbr_channels, nmbr_events, record_length = h5f[type]['event_temp_'].shape

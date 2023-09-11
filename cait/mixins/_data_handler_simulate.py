@@ -1,15 +1,11 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import h5py
-import numpy as np
-from ..simulate._sim_pulses import simulate_events
-from ..features._mp import calc_main_parameters
-from ..data._baselines import calculate_mean_nps
-from ..fit._saturation import scale_factor
 import warnings
 
+import numpy as np
+import h5py
+
+from ..simulate._sim_pulses import simulate_events
+from ..data._baselines import calculate_mean_nps
+from ..fit._saturation import scale_factor
 
 # -----------------------------------------------------------
 # CLASS

@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import lstsq
 import numba as nb
 from scipy.optimize import curve_fit
+
 from ..fit._templates import exponential_bl
 
 
@@ -18,7 +19,7 @@ def box_car_smoothing(event, length=50):
     return event[length:-length]
 
 
-@nb.jit
+@nb.jit(nopython=True)
 def linregfit(XX, yy):
     """"
     Fit a large set of points to a linear regression.

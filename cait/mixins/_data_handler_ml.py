@@ -1,13 +1,9 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
 import numpy as np
 import h5py
-from sklearn.decomposition import PCA, IncrementalPCA
+from tqdm.auto import tqdm
+from sklearn.decomposition import IncrementalPCA
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.pipeline import Pipeline
-from tqdm.auto import tqdm
 
 # -----------------------------------------------------------
 # CLASS

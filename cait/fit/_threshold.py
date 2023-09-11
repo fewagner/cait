@@ -1,11 +1,9 @@
-# imports
-
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.special import erf
 import matplotlib.pyplot as plt
-from ..styles import make_grid, use_cait_style
 
+from ..styles import make_grid, use_cait_style
 
 # function
 

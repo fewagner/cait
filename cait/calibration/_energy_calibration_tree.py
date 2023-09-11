@@ -1,13 +1,12 @@
-# imports
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.ensemble import GradientBoostingRegressor
-from ..styles._plt_styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
-from ._energy_calibration_linear import PolyModel
-import warnings
+from sklearn.ensemble import GradientBoostingRegressor
 
+from ..styles._plt_styles import use_cait_style, make_grid
+from ._energy_calibration_linear import PolyModel
 
 # functions
 

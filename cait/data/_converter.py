@@ -1,7 +1,6 @@
-
-import uproot
-import h5py
 import numpy as np
+import h5py
+import uproot
 
 def convert_h5_to_root(path_h5,
                        path_root,

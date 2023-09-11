@@ -1,12 +1,11 @@
-# imports
+import os
+import datetime
+import sqlite3
 
 import numpy as np
+
 from ._raw import convert_to_int
 from ..fit._templates import pulse_template
-import sqlite3
-import datetime
-import os
-
 
 # class
 
