@@ -17,7 +17,8 @@ from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
-from .versatile.file import EventIterator, ds_source_available
+from .versatile.file import ds_source_available
+from .versatile.iterators import EventIterator
 import warnings
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
@@ -950,15 +951,18 @@ class DataHandler(SimulateMixin,
             else:
                 print(list(f[group].keys()))
 
-    def content(self, group: str = None):
+    def content(self, group: str = None, print_info: bool = False):
         """
         Print the whole content of the HDF5 and all derived properties. The shape of the datasets as well as their datatypes are also given.
 
         :param group: The name of a group in the HDF5 file of which we print the content. If None, all groups are printed.
         :type group: string or None
+        :param print_info: Print an explanation of the content output.
+        :type print_info: bool
         """
 
-        print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.\nDatasets marked with {fmt_virt("(v)")} are virtual datasets, i.e. they are stored in another (or multiple other) HDF5 file(s). They are treated like regular datasets but be aware that writing to such datasets actually writes to the respective original files.\n')
+        if print_info:
+            print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.\nDatasets marked with {fmt_virt("(v)")} are virtual datasets, i.e. they are stored in another (or multiple other) HDF5 file(s). They are treated like regular datasets when read.\n')
 
         with self.get_filehandle(mode="r") as f:
             if group is None:

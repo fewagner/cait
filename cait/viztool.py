@@ -580,8 +580,10 @@ class VizTool():
         # self.t.data[0].cells.values = [self.data.loc[self.remaining_idx[points.point_inds]][col] for col in
         #                                self.table_names]
         if self.f0.data[0].visible:
-            self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
-            self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
+            # USING THE FOLLOWING LINES, THE HISTOGRAMS WOULD BE RESAMPLED WITH THE
+            # SELECTED DATAPOINTS
+            #self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
+            #self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
             self.sel = points.point_inds
             self.slider.options = self.remaining_idx[self.sel]
 
@@ -595,8 +597,10 @@ class VizTool():
 
     def _deselection_scatter_fn(self, trace, points):
         if self.f0.data[0].visible:
-            self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx]
-            self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx]
+            # USING THE FOLLOWING LINES, THE HISTOGRAMS WOULD BE RESAMPLED WITH THE
+            # SELECTED DATAPOINTS
+            #self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx]
+            #self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx]
             self.sel = np.arange(len(self.remaining_idx)) # vizTool will treat all events as selected
             self.slider.options = self.remaining_idx
 

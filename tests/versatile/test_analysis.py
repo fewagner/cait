@@ -99,5 +99,17 @@ class TestApply(unittest.TestCase):
         self.assertTrue(arr1.shape == arr2.shape)
         self.assertTrue(arr1.shape == (100, 2, 3))
 
+    def test_unpack(self):
+        it1 = self.dh.get_event_iterator("events", 0)
+        it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
+
+        out1, out2 = vai.analysis.apply(func2_multi, it1, unpack=True)
+        out3, out4 = vai.analysis.apply(func2_multi, it2, unpack=True)
+
+        self.assertTrue(out1.shape == (100,))
+        self.assertTrue(out2.shape == (100,))
+        self.assertTrue(out3.shape == (100,))
+        self.assertTrue(out4.shape == (100,))
+
 if __name__ == '__main__':
     unittest.main()
