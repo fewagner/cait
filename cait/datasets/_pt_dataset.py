@@ -1,8 +1,8 @@
-from torch.utils.data import Dataset
-import h5py
 import numpy as np
-import torch
+import h5py
 
+try: from torch.utils.data import Dataset
+except ImportError: Dataset = object
 
 class H5CryoData(Dataset):
     """
@@ -37,6 +37,10 @@ class H5CryoData(Dataset):
                  keys_one_hot=[], hdf5_path=None,
                  transform=None, nmbr_events=None, double=False,
                  ):
+        
+        # CHECK IF TORCH IS INSTALLED
+        if Dataset is object: raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+
         self.hdf5_path = hdf5_path
         self.transform = transform
         self.type = type

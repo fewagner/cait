@@ -1,17 +1,15 @@
-# imports
+import sqlite3
+from time import strptime, mktime
 
 import numpy as np
 import numba as nb
+from scipy import signal
+from tqdm.auto import tqdm
+import matplotlib.pyplot as plt
+
 from ..data._raw import convert_to_V
 from ..filter._of import filter_event
 from ..styles import use_cait_style, make_grid
-from scipy import signal
-import matplotlib.pyplot as plt
-import sqlite3
-from time import time, strptime, mktime
-from tqdm.auto import tqdm
-import pdb
-
 
 # functions
 

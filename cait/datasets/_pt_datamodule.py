@@ -1,13 +1,17 @@
-from torch.utils.data import DataLoader, BatchSampler
-import pytorch_lightning as pl
-from ._pt_dataset import H5CryoData
-from ._pt_sampler import get_random_samplers
-import torch.nn.functional as F
-from ._pt_dataloader import FastDataLoader
 import warnings
 
+from ._pt_dataset import H5CryoData
+from ._pt_sampler import get_random_samplers
+from ._pt_dataloader import FastDataLoader
 
-class CryoDataModule(pl.LightningDataModule):
+try:
+    from torch.utils.data import BatchSampler
+    from pytorch_lightning import LightningDataModule
+except ImportError:
+    BatchSampler = None
+    LightningDataModule = object
+
+class CryoDataModule(LightningDataModule):
     """
     Pytorch Lightning DataModule for processing of HDF5 dataset.
 
@@ -36,6 +40,11 @@ class CryoDataModule(pl.LightningDataModule):
 
     def __init__(self, hdf5_path, type, keys, channel_indices, feature_indices=None,
                  transform=None, nmbr_events=None, double=False):
+        
+        # CHECK IF TORCH IS INSTALLED
+        if LightningDataModule is object: raise RuntimeError("Install 'pytorch-lightning==1.9.4' to use this feature.")
+        if BatchSampler is None: raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+
         super().__init__()
         self.hdf5_path = hdf5_path
         self.transform = transform

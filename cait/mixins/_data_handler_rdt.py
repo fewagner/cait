@@ -1,17 +1,14 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import numpy as np
-import struct
-from ..data._gen_h5 import gen_dataset_from_rdt
-from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
-import h5py
-from ..data._raw import read_rdt_file, get_metainfo
 import warnings
 import time
 import tracemalloc
+import struct
 
+import numpy as np
+import h5py
+
+from ..data._gen_h5 import gen_dataset_from_rdt
+from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
+from ..data._raw import read_rdt_file, get_metainfo
 
 # -----------------------------------------------------------
 # CLASS

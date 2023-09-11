@@ -1,11 +1,7 @@
-# imports
-
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from scipy.stats import linregress
-
 
 # functions
 

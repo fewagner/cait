@@ -1,6 +1,6 @@
 import numpy as np
+
 from ..filter._ma import box_car_smoothing
-import numba as nb
 
 def calc_correlated_ph(events, dominant_channel=0,
                        offset_to_dominant_channel=None,

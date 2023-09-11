@@ -1,20 +1,15 @@
-# ------------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------------
-
 import os
 from multiprocessing import get_context  # Pool
-import h5py
+
 import numpy as np
-from ..data._raw import read_rdt_file, convert_to_V
+import h5py
+
+from ..data._raw import read_rdt_file
 from ..features._mp import calc_main_parameters
 from ..fit._pm_fit import fit_pulse_shape
 from ._baselines import calculate_mean_nps
 from ..fit._sev import generate_standard_event
 from ..filter._of import optimal_transfer_function
-
-
-# import ipdb
 
 # ------------------------------------------------------------
 # FUNCTION
