@@ -1,14 +1,13 @@
-import plotly.graph_objects as go
-import plotly.express as px
-
-import matplotlib.pyplot as plt
-
 from itertools import cycle
 from abc import ABC, abstractmethod
 from typing import List, Union
 
+import plotly.graph_objects as go
+import plotly.express as px
+import matplotlib.pyplot as plt
+
 #########################
-# Function base classes #
+# Function Base Classes #
 #########################
 
 class FncBaseClass(ABC):
@@ -43,7 +42,7 @@ class FitFncBaseClass(FncBaseClass):
         raise NotImplementedError(f"No model function defined for {self.__class__.__name__}.")
     
 #####################
-# Plot base classes #
+# Plot Base Classes #
 #####################
 
 class BackendBaseClass(ABC):
@@ -262,52 +261,6 @@ class BaseClassPlotly(BackendBaseClass):
 
     # def _add_annotation(self):
     #     ...
-
-    
-        
-        # update heatmaps # not yet finished (TODO)
-        # for k in self.heatmap_names:
-        #     opacity = 0.8 if len(self.heatmap_names)>1 else 1
-
-        #     # x binning
-        #     if data["heatmap"][k][0][0] is None:
-        #         argx = dict()
-        #     elif isinstance(data["heatmap"][k][0][0], int):
-        #         argx = dict(nbinsx=data["heatmap"][k][0][0])
-        #     elif isinstance(data["heatmap"][k][0][0], tuple):
-        #         argx = dict(xbins=dict(start=data["heatmap"][k][0][0][0],
-        #                               end=data["heatmap"][k][0][0][1],
-        #                               size=(data["heatmap"][k][0][0][1]-data["heatmap"][k][0][0][0])/data["heatmap"][k][0][0][2])
-        #                   )
-        #     else:
-        #         raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
-                
-        #     # y binning
-        #     if data["heatmap"][k][0][1] is None:
-        #         argy = dict()
-        #     elif isinstance(data["heatmap"][k][0][1], int):
-        #         argy = dict(nbinsy=data["heatmap"][k][0][1])
-        #     elif isinstance(data["heatmap"][k][0][1], tuple):
-        #         argy = dict(ybins=dict(start=data["heatmap"][k][0][1][0],
-        #                               end=data["heatmap"][k][0][1][1],
-        #                               size=(data["heatmap"][k][0][1][1]-data["heatmap"][k][0][1][0])/data["heatmap"][k][0][1][2])
-        #                   )
-        #     else:
-        #         raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
-
-        #     H, xedges, yedges = np.histogram2d(x=data["heatmap"][k][1][0],
-        #                                        y=data["heatmap"][k][1][1])
-            
-        #     self.fig.update_traces(dict(z=H,
-        #                                 y=data["heatmap"][k][1][1],
-        #                                 opacity=opacity,
-        #                                 **argx, **argy),
-        #                                 selector=dict(name=k))
-        # for k in self.y_marker_names:
-        #     self.fig.update_shapes(dict(y0=data["y_marker"][k], y1=data["y_marker"][k]), selector=dict(name=k))
-
-        # for k in self.x_marker_names:
-        #     self.fig.update_shapes(dict(x0=data["x_marker"][k], x1=data["x_marker"][k]), selector=dict(name=k))
 
 ##### EXPERIMENTAL START ######  
 class BaseClassMPL(BackendBaseClass):

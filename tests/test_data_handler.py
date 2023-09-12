@@ -13,7 +13,7 @@ DATA_3D = np.random.rand(2, 100, RECORD_LENGTH)
 
 class TestDataHandler(unittest.TestCase):
 	# tests all methods directly defined in DataHandler (not within mixins) except:
-	# get_event_iterator, import_labels, import_predictions, drop_raw_data
+	# import_labels, import_predictions, drop_raw_data
 	# downsample_raw_data, truncate_raw_data, generate_startstop, record_window
 	# methods are also not tested for virtual datasets
 	@classmethod
@@ -198,5 +198,34 @@ class TestDataHandler(unittest.TestCase):
 		d = self.dh.get("group3_new", "ds1d_new") - np.array([DATA_1D, 10*DATA_1D])
 		self.assertTrue( np.all(np.abs(d) < 1e-5))
 
+	def test_event_iterator(self): # The correct functioning of EventIterator is tested in the respective test file
+		self.dh.set("iterator_testing", event=DATA_3D)
+		it = self.dh.get_event_iterator("iterator_testing")
+
+		self.dh.include_iterator("iterator_testing", "target1", it)
+		self.dh.include_iterator("iterator_testing", "target2", it, event_axis=0)
+
+		self.assertEqual(self.dh.get("iterator_testing", "target1").shape, (2, 100, RECORD_LENGTH))
+		self.assertEqual(self.dh.get("iterator_testing", "target2").shape, (100, 2, RECORD_LENGTH))
+
+		it = self.dh.get_event_iterator("iterator_testing", channel=0)
+		self.dh.include_iterator("iterator_testing", "target3", it)
+		self.dh.include_iterator("iterator_testing", "target4", it, event_axis=0)
+
+		self.assertEqual(self.dh.get("iterator_testing", "target3").shape, (1, 100, RECORD_LENGTH))
+		self.assertEqual(self.dh.get("iterator_testing", "target4").shape, (100, 1, RECORD_LENGTH))
+
+		with self.assertRaises(NotImplementedError): # iterator returning batches
+			it = self.dh.get_event_iterator("iterator_testing", batch_size=10)
+			self.dh.include_iterator("iterator_testing", "target5", it)
+
+		with self.assertRaises(Exception): # already existing dataset
+			it = self.dh.get_event_iterator("iterator_testing")
+			self.dh.include_iterator("iterator_testing", "target1", it)
+
+		with self.assertRaises(ValueError): # out of data axis bounds
+			it = self.dh.get_event_iterator("iterator_testing")
+			self.dh.include_iterator("iterator_testing", "target6", it, event_axis=3)
+		
 if __name__ == '__main__':
     unittest.main()

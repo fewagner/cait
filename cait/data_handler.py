@@ -1,12 +1,12 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
 import os
 import subprocess
+import warnings
+from typing import List, Union, Type
+
 import numpy as np
 import h5py
-from typing import List, Union
+from tqdm.auto import tqdm
+
 from .mixins._data_handler_simulate import SimulateMixin
 from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_plot import PlotMixin
@@ -18,8 +18,7 @@ from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
 from .versatile.file import ds_source_available
-from .versatile.iterators import EventIterator
-import warnings
+from .versatile.iterators import EventIterator, _IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
@@ -316,6 +315,58 @@ class DataHandler(SimulateMixin,
         if flag is not None: inds = inds[flag]
 
         return EventIterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
+    
+    def include_iterator(self, group: str, dataset: str, it: Type[_IteratorBaseClass], event_axis: int = 1):
+        """
+        Includes the events returned by an iterator into a specified group/dataset. 
+        Note that this method does not support iterators that return events in batches.
+
+        :param group: The target group in the HDF5 file.
+        :type group: str
+        :param dataset: The target dataset in the HDF5 file.
+        :type dataset: str
+        :param it: The iterator whose events we want to include.
+        :type it: Type[IteratorBaseClass]
+        :param event_axis: The axis along which you want to stack the events. If you include event voltage traces, you most likely want the final dataset to have shape (n_channels, n_events, record_length). In this case, the event_axis is 1. An event_axis of 0 would result in a dataset of shape (n_events, n_channels, record_length). Defaults to 1.
+        :type event_axis: int
+        """
+        # Check for unsupported inputs
+        if it.uses_batches: raise NotImplementedError("Iterators that use batches are not supported.")
+
+        # Check if dataset exists (this function does not support overwriting)
+        with self.get_filehandle(mode="r+") as f:
+            hdf5group = f.require_group(group)
+            if dataset in hdf5group.keys():
+                raise Exception(f"Dataset '{dataset}' already exists in group '{group}'. If you want to overwrite it, delete it first using dh.drop('{group}', '{dataset}')")
+            
+        # Assess size of dataset:
+        # get first event returned by iterator
+        out = next(iter(it)) 
+        
+        # Check if event_axis is reasonable: (add extra dimension for single channel
+        # iterators to stay consistent with cait's conventions)
+        target_shape = list(np.array(out).shape)
+        if it.n_channels == 1: target_shape = [1] + target_shape
+
+        if event_axis > len(target_shape): raise ValueError(f"'event_axis' is too large for {len(target_shape)+1}-dimensional output.")
+
+        # build final shape. len(it) gives number of events in iterator
+        target_shape.insert(event_axis, len(it))                  
+        target_shape = (*target_shape, )
+        n_dims = len(target_shape)
+
+        # Write iterator contents
+        with self.get_filehandle(mode="r+") as f:
+            hdf5group = f.require_group(group)
+            hdf5ds = hdf5group.require_dataset(name=dataset, shape=target_shape, dtype=np.array(out).dtype)
+
+            with it as events:
+                for j, ev in tqdm(enumerate(events)):
+                    # Create slicing tuple. Basically this is equivalent to 
+                    # [:, j, :] or [j, :] or [:, j], depending on the target shape
+                    sl = [slice(None,None,None)]*(n_dims)
+                    sl[event_axis] = j
+                    hdf5ds[(*sl,)] = ev
     
     def import_labels(self,
                       path_labels: str,

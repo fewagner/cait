@@ -1,6 +1,7 @@
 from multiprocessing import Pool
-from tqdm.auto import tqdm
+
 import numpy as np
+from tqdm.auto import tqdm
 
 class _BatchResolver:
     def __init__(self, f):
@@ -32,7 +33,7 @@ def apply(f, ev_iter, n_processes=1, unpack=False):
     >>> it = dh.get_event_iterator("events", batch_size=42)
     >>> arr = apply(func, it)
     
-    >>> out1, out2, = apply(func, it, unpack=True)
+    >>> out1, out2 = apply(func, it, unpack=True)
     """
     if ev_iter.uses_batches: f = _BatchResolver(f)
 

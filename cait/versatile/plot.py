@@ -42,11 +42,11 @@ class PreviewEvent(FncBaseClass):
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
 
-    :param data: Data dictionary containing line/scatter/axes informations (see below), defaults to None
+    :param data: Data dictionary containing line/scatter/axes information (see below), defaults to None
     :type data: dict, optional
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
     :type backend: str, optional
-    :param show_controls: Set to True if plot controls should be shown. For the Viewer alone, this is just an "Exit" button which closes the plot, but inhereted objects can add more buttons with arbitrary functionality. Defaults to False
+    :param show_controls: Set to True if plot controls should be shown. For the Viewer alone, this is just an "Exit" button which closes the plot, but inherited objects can add more buttons with arbitrary functionality. Defaults to False
     :type show_controls: bool, optional
 
     `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
@@ -583,7 +583,7 @@ class Preview(Viewer):
 ##### EXPERIMENTAL START ######    
 class Heatmap(Viewer): # not yet finished (TODO)
     """
-    Plot a Heatmap. 
+    Plot a Heatmap. (DO NOT USE, UNFINISHED)
 
     :param xdata: The xdata to bin and plot.
     :type xdata: List[float]

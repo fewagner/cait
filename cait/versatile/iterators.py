@@ -1,11 +1,49 @@
 import os
+from typing import List, Union
+from abc import ABC, abstractmethod
+
 import numpy as np
 import h5py
-from typing import List, Union
 
 from .file import get_dataset_properties
 
-class EventIterator:
+class _IteratorBaseClass(ABC):
+    @abstractmethod
+    def __len__(self):
+        ...
+
+    @abstractmethod
+    def __enter__(self):
+        ...
+    
+    @abstractmethod
+    def __exit__(self, typ, val, tb):
+        ...
+    
+    @abstractmethod
+    def __iter__(self):
+        ...
+
+    @abstractmethod
+    def __next__(self):
+        ...
+        
+    @property
+    @abstractmethod
+    def uses_batches(self):
+        ...
+    
+    @property
+    @abstractmethod
+    def n_batches(self):
+        ...
+
+    @property
+    @abstractmethod
+    def n_channels(self):
+        ...
+
+class EventIterator(_IteratorBaseClass):
     """
     Iterator object for HDF5 datasets that iterates along the "event-dimension" (first dimension for 1-dimensional data, or second dimension for 2- and 3-dimensional data) of a dataset. Most important use-case is iterating over event voltage traces in an analysis routine.
     If the Iterator is used as a context manager, the HDF5 file is not closed during iteration which improves file access speed.
@@ -52,14 +90,14 @@ class EventIterator:
         if channels is not None:
             assert len(shape)>0, "The dataset is one-dimensional. Specifying channels is not supported here."
             self.channels = channels
-            self.n_channels = 1 if isinstance(channels, int) else len(channels)
+            self._n_channels = 1 if isinstance(channels, int) else len(channels)
 
         elif len(shape)>0:
             self.channels = slice(None) 
-            self.n_channels = shape[0]
+            self._n_channels = shape[0]
         else:
             self.channels = None
-            self.n_channels = 1
+            self._n_channels = 1
             
         if inds is None: inds = np.arange(n_events_total)
         self.n_events = len(inds)
@@ -105,7 +143,7 @@ class EventIterator:
             # batch size is 1). For multi-channel data and batch size = 1, the first dimension is (implicitly) the
             # event dimension (because it is 0-dimensional). Only for multi-channel data and batch size > 1 we have 
             # the event dimension in second place (and therefore have to transpose)
-            should_be_transposed = self._uses_batches and self.n_channels > 1 and self.events_dim > 0 
+            should_be_transposed = self._uses_batches and self._n_channels > 1 and self.events_dim > 0 
 
             if self.file_open:
                 if self.events_dim > 0:
@@ -139,10 +177,13 @@ class EventIterator:
     @property
     def n_batches(self):
         return self._n_batches
+    
+    @property
+    def n_channels(self):
+        return self._n_channels
         
-
 # TODO: add test case
-class StreamIterator:
+class StreamIterator(_IteratorBaseClass):
     """
     Iterator object that returns voltage traces for given trigger indices of a stream file. 
 
@@ -167,7 +208,7 @@ class StreamIterator:
         
         self._stream = stream
         self._keys = [keys] if type(keys) is str else keys
-        self._inds = [inds] if type(inds) is not list else inds
+        self._inds = [inds] if type(inds) is int else [int(i) for i in inds]
         self._record_length = record_length
 
         self._interval = (int(alignment*record_length), record_length - int(alignment*record_length))
@@ -207,4 +248,8 @@ class StreamIterator:
     @property
     def n_batches(self):
         return len(self)
+    
+    @property
+    def n_channels(self):
+        return len(self._keys)
             

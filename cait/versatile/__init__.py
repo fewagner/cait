@@ -4,3 +4,4 @@ from . import analysis
 from . import plot
 from . import utils
 from . import stream
+from . import iterators
