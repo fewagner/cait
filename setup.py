@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setup(
     name='cait',
-    version='1.1.3',
+    version='1.2.0',
     author='Philipp Schreiner, '
            'Felix Wagner',
     author_email="felix.wagner@oeaw.ac.at",

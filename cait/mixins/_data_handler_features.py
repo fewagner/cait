@@ -1,5 +1,6 @@
 from multiprocessing import Pool
 from warnings import warn
+from deprecation import deprecated
 
 import numpy as np
 import h5py
@@ -865,6 +866,7 @@ class FeaturesMixin(object):
 
         print('Applied logical cut.')
 
+    @deprecated(details="This method is deprecated. Use DataHandler.set() instead.")
     def include_values(self,
                        values: list,
                        naming: str,

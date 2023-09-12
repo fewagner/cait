@@ -1,18 +1,13 @@
 import numpy as np
+import pandas as pd
 
 import plotly.graph_objs as go
-import plotly.offline as py
-import pandas as pd  # new to cait
-import numpy as np
-import ipywidgets as widgets  # new to cait
-from ipywidgets import interactive, HBox, VBox, Layout
-import h5py
+import plotly.colors as colors
+
+import ipywidgets as widgets
 from IPython.display import display
-#import datashader as ds
-import plotly.express as px
 
 from .data_handler import DataHandler
-
 
 class VizTool():
     """
@@ -60,7 +55,7 @@ class VizTool():
 
     def __init__(self, csv_path=None, nmbr_features=None, datahandler=None, path_h5=None, fname=None, group=None, sample_frequency=25000,
                  record_length=16384,
-                 nmbr_channels=None, datasets=None, table_names=None, bins=100, batch_size=1000, *args, **kwargs):
+                 nmbr_channels=None, datasets=None, table_names=None, bins=200, batch_size=1000, *args, **kwargs):
 
         # exactly one of the options has to be chosen
         assert np.sum([csv_path is not None, path_h5 is not None, datahandler is not None])==1, 'Use either reading from csv OR from HDF5 OR from existing datahandler!'
@@ -103,9 +98,7 @@ class VizTool():
                 self.dh.set_filepath(path_h5=path_h5, fname=fname, appendix=False)
                 self.path_h5 = path_h5 + fname + '.h5'
             try:
-                with h5py.File(self.dh.path_h5, 'r') as f:
-                    dummy = f[group]['event'][0, 0]
-                    del dummy
+                self.dh.get(group, "event", 0, 0)
                 self.events_in_file = True
             except:
                 self.events_in_file = False
@@ -192,15 +185,14 @@ class VizTool():
         :param template: The plotly template to be used, e.g. "plotly", "plotly_white", "plotly_dark", "ggplot2", "seaborn", "simple_white", "none"
         :type template: str
         """
-        py.init_notebook_mode()
-
         # Initialize plots (empty yet)
         self.f0 = go.FigureWidget([go.Scatter(  name='Datapoints',
                                                 mode='markers',
                                                 marker=dict(
                                                         size=6,
                                                         opacity=0.8,
-                                                        colorscale='plasma'
+                                                        colorscale='plasma',
+                                                        #line={'width':1}
                                                     ),
                                                 xaxis='x',
                                                 yaxis='y',
@@ -208,18 +200,20 @@ class VizTool():
                                     go.Heatmap( name='Density',
                                                 xaxis='x',
                                                 yaxis='y',
+                                                hoverongaps=False,
+                                                hovertemplate = '(%{x}, %{y})<br>counts: %{customdata}',
                                                 colorscale='jet',
                                                 colorbar={'thickness':5, 'outlinewidth':0},
                                                 visible=False),
                                   go.Histogram( name='Histogram y',
-                                                nbinsx=self.bins,
+                                                #nbinsy=self.bins,
                                                 xaxis='x2',
                                                 marker=dict(
                                                     color = 'rgba(94,94,94,1)'
                                                     )
                                                 ),
                                   go.Histogram( name='Histogram x',
-                                                nbinsx=self.bins,
+                                                #nbinsx=self.bins,
                                                 yaxis='y2',
                                                 marker=dict(
                                                     color = 'rgba(94,94,94,1)'
@@ -269,14 +263,6 @@ class VizTool():
                         yaxis_hoverformat='0.3g',
                         showlegend = False,
                         template=template,
-                        annotations= [dict(x=0.84, y=0.84, 
-                                           xref="paper", yref="paper", 
-                                           xanchor="right", yanchor="top",
-                                           showarrow=False,
-                                           bgcolor="rgba(255,255,255,0.7)",
-                                           borderpad=2,
-                                           visible=False,
-                                           text="test")]
                     )
         
         scatter = self.f0.data[0]
@@ -292,14 +278,39 @@ class VizTool():
         # DROPDOWN SETTINGS
         # Initializing dropdown values
         self.xaxis, self.yaxis, self.which, self.color, self.scale = None, None, None, 'None', 'linear'
-        # Creating dropdown menues
-        axis_dropdowns = interactive(self._update_axes, 
-                                     y=self.data.select_dtypes('float64').columns,
-                                     x=self.data.select_dtypes('float64').columns, 
-                                     color= ['None'] + self.data.select_dtypes('float64').columns.to_list(),
-                                     which=['select','datapoints','density'],
-                                     scale=['linear','log'])
+        # Creating dropdown menus
+        names = self.data.select_dtypes('float64').columns
+        controls = widgets.interactive(self._update_axes, 
+                    x=widgets.Dropdown(options=names,
+                                       value=names[0],
+                                       layout={'width': '20ex'},
+                                       style={'description_width': '2ex'}), 
+                    y=widgets.Dropdown(options=names,
+                                       value=names[1],
+                                       layout={'width': '20ex'},
+                                       style={'description_width': '2ex'}
+                                       ),
+                    color=widgets.Dropdown(options=['None'] + names.to_list(),
+                                           value='None',
+                                           layout={'width': '26ex'},
+                                           style={'description_width': '6ex'}
+                                           ),
+                    which=widgets.RadioButtons(options=['datapoints','density'],
+                                               value='datapoints',
+                                               layout={'width': '15ex'}
+                                               ),
+                    scale=widgets.RadioButtons(options=['linear','log'],
+                                               value='linear',
+                                               layout={'width': '11ex'}
+                                               ))
+        # Remove 'which' and 'scale' description from controls
+        controls.children[3].description = ''
+        controls.children[4].description = ''
 
+        self.info_box = widgets.Output()
+        with self.info_box: 
+            self.info_box.clear_output()
+            print('0 selected')
         # table
         # self.t = go.FigureWidget([go.Table(
         #     header=dict(values=self.table_names,
@@ -328,39 +339,37 @@ class VizTool():
             save_button.on_click(self._button_save_fn)
 
             # button for standard event
-            sev_button = widgets.Button(description="Calc SEV")
-            self.mp_button = widgets.ToggleButton(value=False, description="Show/Hide MP")
+            sev_button = widgets.Button(description="Calc SEV") 
             sev_button.on_click(self._button_sev_fn)
-            self.mp_button.observe(self._toggle_mp_event, "value")
             
-            # traces for event/MP plot
-            with h5py.File(self.path_h5, 'r') as f:
-                ev = np.array(f[self.group]['event'][:,0,:])
+            # traces for event plot
+            ev = self.dh.get(self.group, "event", None, 0, None)
             
-            colors = px.colors.qualitative.Plotly
             traces = [go.Scatter(x=self.dh.record_window(ms=True),
                                  visible=False,
                                  mode='lines',
                                  name='Channel {}'.format(c),
                                  xaxis='x3',
                                  yaxis='y3',
-                                 marker={'color': colors[c%10]},
+                                 marker={'color': colors.qualitative.Plotly[c%10]},
                                  showlegend=True
                                 ) for c in range(len(ev))]
             
             # Add to figure0 as is for quick inspection 
             self.f0.add_traces(traces)
 
-            # Also include main parameters for figure1
-            mp_markers = [go.Scatter(   visible=False,
-                                        mode='markers',
-                                        name='MPs channel {}'.format(c),
-                                        xaxis='x3',
-                                        yaxis='y3',
-                                        marker={'color': colors[c%10], 'size': 6, 'line' : {'width' :2}},
-                                        showlegend=False
-                                        ) for c in range(len(ev))]
-            traces.extend(mp_markers)
+            # MAIN PARAMETER VIEW (currently not in use)
+            #self.mp_button = widgets.ToggleButton(value=False, description="Show/Hide MP")
+            #self.mp_button.observe(self._toggle_mp_event, "value")
+            #mp_markers = [go.Scatter(   visible=False,
+            #                            mode='markers',
+            #                            name='MPs channel {}'.format(c),
+            #                            xaxis='x3',
+            #                            yaxis='y3',
+            #                            marker={'color': colors[c%10], 'size': 6, 'line' : {'width' :2}},
+            #                            showlegend=False
+            #                            ) for c in range(len(ev))]
+            #traces.extend(mp_markers)
             
             # Make separate plot for events
             self.f1 = go.FigureWidget(traces)
@@ -387,27 +396,60 @@ class VizTool():
 
             # slider
             self.slider = widgets.SelectionSlider(description='Event idx', options=self.remaining_idx[self.sel],
-                                                  layout=Layout(width='500px')
+                                                  layout=widgets.Layout(width='500px')
                                                   )
             self.slider_out = widgets.interactive(self._plot_event_slider, i=self.slider)
 
         # Put everything together
         if self.mode == 'csv':
-            display(VBox((HBox(axis_dropdowns.children, layout=Layout(flex_flow='row wrap')), self.f0,
-                          HBox([cut_button, input_text, export_button]), self.output)))  # , self.t
+            display(widgets.VBox((widgets.HBox(controls.children, 
+                               layout=widgets.Layout(flex_flow='row wrap',  
+                                             justify_content='space-between',
+                                             align_items='center')
+                               ), 
+                          self.f0,
+                          widgets.HBox([self.info_box, cut_button, input_text, export_button],
+                               layout=widgets.Layout(align_items='center')
+                               ), 
+                          self.output)
+                          )
+                    )  # , self.t
         elif self.mode == 'h5' and self.events_in_file:
-            display(VBox((HBox(axis_dropdowns.children, layout=Layout(flex_flow='row wrap')), self.f0,
-                          HBox([cut_button, input_text, export_button, save_button, sev_button]), self.output,
-                          self.f1, HBox([self.slider_out, self.mp_button]))))  # , self.t
+            display(widgets.VBox((widgets.HBox(controls.children, 
+                               layout=widgets.Layout(flex_flow='row wrap',
+                                             justify_content='space-between',
+                                             align_items='center')
+                               ), 
+                          self.f0,
+                          widgets.HBox([self.info_box, cut_button, input_text, export_button, save_button, sev_button],
+                               layout=widgets.Layout(align_items='center')
+                               ), 
+                          self.output,
+                          self.f1, 
+                          widgets.HBox([self.slider_out, 
+                                         #self.mp_button
+                                         ])
+                            )
+                            ))  # , self.t
         elif self.mode == 'h5' and not self.events_in_file:
-            display(VBox((HBox(axis_dropdowns.children, layout=Layout(flex_flow='row wrap')), self.f0,
-                          HBox([cut_button, input_text, export_button]), self.output)))
+            display(widgets.VBox((widgets.HBox(controls.children, 
+                               layout=widgets.Layout(flex_flow='row wrap',
+                                             justify_content='space-between',
+                                             align_items='center')
+                               ), 
+                          self.f0,
+                          widgets.HBox([self.info_box, cut_button, input_text, export_button],
+                               layout=widgets.Layout(align_items='center')
+                               ), 
+                          self.output)
+                        )
+                    )
         else:
             raise NotImplementedError('Mode {} is not implemented!'.format(self.mode))
 
     # private
 
-    def _update_axes(self, which=None, x=None, y=None, color=None, scale=None):
+    def _update_axes(self, x=None, y=None, color=None, which=None, scale=None):
         # check which property changed (only updated as much as necessary)
         which_changed = False if which is self.which else True
         x_changed = False if x is self.xaxis else True
@@ -455,29 +497,76 @@ class VizTool():
 
             # prepare density plot
             if self.xaxis is not None and self.yaxis is not None:
-                cvs = ds.Canvas(plot_width=self.bins, plot_height=self.bins)
-                agg = cvs.points(self.data, self.xaxis, self.yaxis)
-                zero_mask = agg.values == 0
+                # Do binning with numpy
+                # y first argument, so that we don't have to transpose output
+                counts, y_edges, x_edges = np.histogram2d(self.data[self.yaxis], 
+                                                     self.data[self.xaxis], 
+                                                     self.bins) 
+                x_centers = (x_edges[:-1] + x_edges[1:])/2
+                y_centers = (y_edges[:-1] + y_edges[1:])/2
+                mask = counts == 0
+
                 if self.scale == 'log':
-                    agg.values = np.log10(agg.values, where=np.logical_not(zero_mask))
+                    z = np.log10(counts, where=~mask)
                     self.f0.data[1].colorbar["tickprefix"] = '1.e'
                 else:
+                    z = counts
                     self.f0.data[1].colorbar["tickprefix"] = None
 
                 self.f0.data[1].colorbar.title = "counts"
                 self.f0.data[1].colorbar.titleside = "right"
 
                 # json doesn't support np.nan which is why we have to convert to object dtype
-                agg.values = np.asarray(agg.values, dtype=object) 
-                agg.values[zero_mask] = None
-                figim = px.imshow(agg, origin='lower')
+                z = np.asarray(z, dtype=object)
+                z[mask] = None
 
-                # update density plot
-                self.f0.data[1].update({"x": figim.data[0].x, "y": figim.data[0].y, "z": figim.data[0].z})
+                # Independent of whether we display log values or not, we want the
+                # count values to show. The required hovertemplate is specified above
+                # (where Heatmap is constructed)
+                self.f0.data[1].update({"x": x_centers, 
+                                        "y": y_centers, 
+                                        "z": z,
+                                        "customdata": counts})
+
+
+                # ALTERNATIVE IMPLEMENTATION (requires datashader, might be faster
+                # for large amounts of data)
+                # cvs = ds.Canvas(plot_width=self.bins, plot_height=self.bins)
+                # agg = cvs.points(self.data, self.xaxis, self.yaxis)
+                # zero_mask = agg.values == 0
+                # if self.scale == 'log':
+                #     agg.values = np.log10(agg.values, where=np.logical_not(zero_mask))
+                #     self.f0.data[1].colorbar["tickprefix"] = '1.e'
+                # else:
+                #     self.f0.data[1].colorbar["tickprefix"] = None
+
+                # self.f0.data[1].colorbar.title = "counts"
+                # self.f0.data[1].colorbar.titleside = "right"
+
+                # # json doesn't support np.nan which is why we have to convert to object dtype
+                # agg.values = np.asarray(agg.values, dtype=object) 
+                # agg.values[zero_mask] = None
+                # figim = px.imshow(agg, origin='lower')
+
+                # # update density plot
+                # self.f0.data[1].update({"x": figim.data[0].x, "y": figim.data[0].y, "z": figim.data[0].z})
             
         # update histograms
-        if self.yaxis is not None and y_changed: self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[self.sel]]
-        if self.xaxis is not None and x_changed: self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[self.sel]]
+        if self.yaxis is not None and y_changed: 
+            temp = self.data[self.yaxis][self.remaining_idx[self.sel]]
+            self.f0.data[2].update(
+                    dict(y = temp,
+                         ybins = {"start": np.min(temp), 
+                                  "end": np.max(temp), 
+                                  "size": (np.max(temp)-np.min(temp))/self.bins}))
+        if self.xaxis is not None and x_changed: 
+            temp = self.data[self.xaxis][self.remaining_idx[self.sel]]
+            self.f0.data[3].update(
+                    dict(x = temp,
+                         xbins = {"start": np.min(temp), 
+                                  "end": np.max(temp), 
+                                  "size": (np.max(temp)-np.min(temp))/self.bins}))
+
         if scale_changed:
             if self.scale is not None and self.f0.layout.xaxis2.type != self.scale:
                 self.f0.layout.xaxis2.update(type=self.scale)
@@ -491,59 +580,67 @@ class VizTool():
         # self.t.data[0].cells.values = [self.data.loc[self.remaining_idx[points.point_inds]][col] for col in
         #                                self.table_names]
         if self.f0.data[0].visible:
-            self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
-            self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
+            # USING THE FOLLOWING LINES, THE HISTOGRAMS WOULD BE RESAMPLED WITH THE
+            # SELECTED DATAPOINTS
+            #self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
+            #self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
             self.sel = points.point_inds
             self.slider.options = self.remaining_idx[self.sel]
-            self.f0.layout.annotations[0].update({"visible":True, 
-                                                  "text": f"{len(self.f0.data[0].selectedpoints)} events selected"})
+
+            with self.info_box:
+                self.info_box.clear_output()
+                print(f"{len(self.f0.data[0].selectedpoints)} selected")
+
         elif self.f0.data[1].visible:
             with self.output:
                 raise NotImplementedError('plotly does not support selection of heatmaps at the moment. Therefore, selection is only possible in "datapoints" mode.')
 
     def _deselection_scatter_fn(self, trace, points):
         if self.f0.data[0].visible:
-            self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx]
-            self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx]
+            # USING THE FOLLOWING LINES, THE HISTOGRAMS WOULD BE RESAMPLED WITH THE
+            # SELECTED DATAPOINTS
+            #self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx]
+            #self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx]
             self.sel = np.arange(len(self.remaining_idx)) # vizTool will treat all events as selected
             self.slider.options = self.remaining_idx
-            self.f0.layout.annotations[0].visible = False
+
+            with self.info_box:
+                self.info_box.clear_output()
+                print('0 selected')
 
     def _plot_event(self, trace, points, state):
-        with h5py.File(self.path_h5, 'r') as f:
-            if len(points.point_inds) > 1:
-                print('Click only one Event!')
-            else:
-                for i in self.remaining_idx[points.point_inds]:
-                    ev = np.array(f[self.group]['event'][:, i, :])
-                    if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
-                    n = len(ev)
-                    for c in range(n):
-                        self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :500])
-                        if not self.f0.data[-n+c].visible: self.f0.data[-n+c].update({"visible":True})
-                        self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
-                        if self.mp_button.value:
-                            self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
-                            self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
-                    self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
+        if len(points.point_inds) > 1:
+            print('Click only one Event!')
+        else:
+            for i in self.remaining_idx[points.point_inds]:
+                ev = self.dh.get(self.group, "event", None, i, None)
+                #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
+                n = len(ev)
+                for c in range(n):
+                    self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :500])
+                    if not self.f0.data[-n+c].visible: self.f0.data[-n+c].update({"visible":True})
+                    self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
+                    #if self.mp_button.value:
+                    #    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
+                    #    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
+                self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
 
     def _plot_event_slider(self, i):
-        with h5py.File(self.path_h5, 'r') as f:
-            ev = np.array(f[self.group]['event'][:, i, :])
-            if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
-            n = len(ev)
-            for c in range(n):
-                self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
-                if self.mp_button.value:
-                    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
-                    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
-            self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
+        ev = self.dh.get(self.group, "event", None, i, None)
+        #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
+        n = len(ev)
+        for c in range(n):
+            self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
+            #if self.mp_button.value:
+            #    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
+            #    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
+        self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
 
-    def _toggle_mp_event(self, b):
-        shown = self.mp_button.value
-        if shown: self._plot_event_slider(self.slider.value)
+    # def _toggle_mp_event(self, b):
+    #     shown = self.mp_button.value
+    #     if shown: self._plot_event_slider(self.slider.value)
 
-        self.f1.update_traces(dict(visible=shown), lambda x: x.name.startswith("MP"))            
+    #     self.f1.update_traces(dict(visible=shown), lambda x: x.name.startswith("MP"))            
     
     def _button_cut_fn(self, b):
         if list(self.sel) == list(self.data.index):
@@ -587,30 +684,29 @@ class VizTool():
         if self.sel is self.data.index:
             with self.output:
                 print('Select events first!')
-        else:
-            with h5py.File(self.path_h5, 'r') as f:
-                nmbr_batches = int(len(self.sel) / self.batch_size)
-                self.sevs = [np.zeros(f[self.group]['event'][0, 0].shape[0]) for c in
-                             range(self.dh.nmbr_channels)]
-                for b in range(nmbr_batches):
-                    for c in range(self.dh.nmbr_channels):
-                        start = int(b * self.batch_size)
-                        stop = int((b + 1) * self.batch_size)
-                        ev = np.array(f[self.group]['event'][c, self.remaining_idx[self.sel[start:stop]]])
-                        ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
-                        self.sevs[c] += np.sum(ev, axis=0)
+        else:   
+            nmbr_batches = int(len(self.sel) / self.batch_size)
+            self.sevs = [np.zeros(self.dh.get(self.group, "event", 0, 0).shape[0]) for c in range(self.dh.nmbr_channels)]
+
+            for b in range(nmbr_batches):
                 for c in range(self.dh.nmbr_channels):
-                    start = int(nmbr_batches * self.batch_size)
-                    ev = np.array(f[self.group]['event'][c, self.remaining_idx[self.sel[start:]]])
+                    start = int(b * self.batch_size)
+                    stop = int((b + 1) * self.batch_size)
+                    ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:stop]])
                     ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
                     self.sevs[c] += np.sum(ev, axis=0)
-                    self.sevs[c] /= len(self.sel)
-                with self.output:
-                    print('Standardevent calculated.')
+            for c in range(self.dh.nmbr_channels):
+                start = int(nmbr_batches * self.batch_size)
+                ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:]])
+                ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
+                self.sevs[c] += np.sum(ev, axis=0)
+                self.sevs[c] /= len(self.sel)
+            with self.output:
+                print('Standardevent calculated.')
 
-                for c in range(len(self.sevs)):
-                    self.f1.data[c].y = self.sevs[c]
-                self.f1.update_layout(legend_title_text='Standard Event')
+            for c in range(len(self.sevs)):
+                self.f1.data[c].y = self.sevs[c]
+            self.f1.update_layout(legend_title_text='Standard Event')
 
     def _set_savepath(self, path):
         self.savepath = path.value
