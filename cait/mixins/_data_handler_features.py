@@ -1,9 +1,11 @@
 from multiprocessing import Pool
 from warnings import warn
+from deprecation import deprecated
 
 import numpy as np
-from multiprocessing import Pool
-from deprecation import deprecated
+import h5py
+from tqdm.auto import trange
+
 from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..features._ph_corr import calc_correlated_ph
 from ..filter._of import optimal_transfer_function

@@ -5,7 +5,7 @@ import h5py
 from tqdm.auto import tqdm
 
 from ..trigger._csmpl import align_triggers, sample_to_time, exclude_testpulses
-from ..trigger._bin import get_record_window_vdaq, trigger_bin
+from ..trigger._bin import get_record_window_vdaq, trigger_bin, read_header
 
 # -----------------------------------------------------------
 # CLASS
