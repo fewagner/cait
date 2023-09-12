@@ -1,8 +1,6 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
+from multiprocessing import Pool
+from warnings import warn
 
-import h5py
 import numpy as np
 from multiprocessing import Pool
 from deprecation import deprecated
@@ -11,13 +9,10 @@ from ..features._ph_corr import calc_correlated_ph
 from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
 from ..filter._of import get_amplitudes
-from warnings import warn
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
 from ..filter._ma import rem_off
 from ..trigger._peakdet import get_triggers
-from tqdm.auto import trange
-
 from ..data._baselines import calculate_mean_nps
 
 

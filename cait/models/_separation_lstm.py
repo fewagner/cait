@@ -1,9 +1,15 @@
-from pytorch_lightning.core import LightningModule
-import torch.nn as nn
-import torch
-import torch.nn.functional as F
 import numpy as np
 
+try:
+    from pytorch_lightning.core import LightningModule
+    import torch.nn as nn
+    import torch
+    import torch.nn.functional as F
+except ImportError:
+    F = None
+    torch = None
+    LightningModule = object
+    nn = None
 
 class SeparationLSTM(LightningModule):
     """
@@ -46,6 +52,11 @@ class SeparationLSTM(LightningModule):
                  feature_keys, lr, device_name='cpu', down=1, down_keys=None,
                  norm_vals=None, offset_keys=None, weight_decay=1e-5,
                  norm_type='minmax', lr_scheduler=True):
+        
+        # CHECK IF TORCH IS INSTALLED
+        if LightningModule is object: raise RuntimeError("Install 'pytorch-lightning==1.9.4' to use this feature.")
+        if any([x is None for x in [F, torch, nn]]): raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+        
         super().__init__()
         self.save_hyperparameters()
 

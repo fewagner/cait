@@ -1,14 +1,12 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import h5py
-import numpy as np
 from collections import Counter
+
+import numpy as np
 from scipy.stats import norm
+import h5py
+from tqdm.auto import tqdm
+
 from ..cuts import rate_cut, testpulse_stability, controlpulse_stability
 from ..calibration import light_yield_correction
-from tqdm.auto import tqdm
 from ..calibration import PulserModel
 
 

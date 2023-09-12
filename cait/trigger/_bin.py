@@ -1,10 +1,8 @@
-# imports
-
 import numpy as np
+from tqdm.auto import tqdm
+
 from ..data._raw import convert_to_V
 from ._csmpl import time_to_sample, get_max_index, sample_to_time
-from tqdm.auto import tqdm
-import pdb
 
 # functions
 

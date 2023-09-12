@@ -1,23 +1,33 @@
 # ------------------------------------------------------
 # IMPORTS
 # ------------------------------------------------------
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.data
-from pytorch_lightning.core import LightningModule
 import numpy as np
 import math
 
+try:
+    import torch
+    import torch.nn as nn
+    from torch.nn import Module
+    import torch.nn.functional as F
+    from pytorch_lightning.core import LightningModule
+except ImportError:
+    F = None
+    torch = None
+    LightningModule = object
+    Module = object
+    nn = None
 
 # ------------------------------------------------------
 # MODEL
 # ------------------------------------------------------
 
-class PositionalEncoding(nn.Module):
+class PositionalEncoding(Module):
 
     def __init__(self, d_model, dropout=0.1, max_len=5000):
+        # CHECK IF TORCH IS INSTALLED
+        if Module is object: raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+        if any([x is None for x in [torch, nn]]): raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
@@ -88,6 +98,10 @@ class TransformerModule(LightningModule):
                  seq_steps, device_name, label_keys, feature_keys, lr, is_classifier,
                  down, down_keys, offset_keys, norm_vals, weight_decay=1e-5, dropout=0.5,
                  norm_type='minmax', pos_enc=True, lr_scheduler=True):
+        
+        # CHECK IF TORCH IS INSTALLED
+        if LightningModule is object: raise RuntimeError("Install 'pytorch_lightning==1.9.4' to use this feature.")
+        if any([x is None for x in [torch, nn]]): raise RuntimeError("Install 'torch>=1.8' to use this feature.")
 
         super().__init__()
         self.save_hyperparameters()

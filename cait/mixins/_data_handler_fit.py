@@ -1,12 +1,11 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import h5py
-import numpy as np
-import matplotlib.pyplot as plt
+import warnings
 from functools import partial
 from multiprocessing import Pool
+
+import numpy as np
+import h5py
+from tqdm.auto import tqdm
+
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import baseline_template_cubic, sev_fit_template
 from scipy.optimize import curve_fit
@@ -14,12 +13,7 @@ from ..fit._bl_fit import get_rms
 from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbinned, \
     plot_noise_trigger_model, calc_threshold
 from ..fit._saturation import logistic_curve_zero, A_zero
-from ..styles import use_cait_style, make_grid
-from tqdm.auto import tqdm
-import warnings
-from ..fit._numerical_fit import array_fit, fitfunc, arr_fit_rms
-import numba as nb
-
+from ..fit._numerical_fit import array_fit, arr_fit_rms
 
 # -----------------------------------------------------------
 # CLASS

@@ -1,4 +1,4 @@
-# imports
+import warnings
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -6,9 +6,9 @@ from tqdm.auto import tqdm
 from scipy.stats import linregress, t, norm
 from scipy import odr
 from scipy.interpolate import interp1d
+from sklearn.ensemble import GradientBoostingRegressor
+
 from ..styles import make_grid, use_cait_style
-from sklearn.ensemble import GradientBoostingRegressor, RandomForestRegressor
-import warnings
 
 # functions
 

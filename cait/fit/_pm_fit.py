@@ -1,13 +1,8 @@
-# -------------------------------------------------------
-# IMPORTS
-# -------------------------------------------------------
-
 import numpy as np
 import numba as nb
-from scipy.optimize import curve_fit, minimize, differential_evolution, Bounds
-from ..fit._templates import pulse_template
-import warnings
+from scipy.optimize import minimize, differential_evolution, Bounds
 
+from ..fit._templates import pulse_template
 
 # -------------------------------------------------------
 # FUNCTIONS

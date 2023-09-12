@@ -1,12 +1,11 @@
-# imports
+import warnings
 
 import numpy as np
-from scipy.optimize import curve_fit
 import matplotlib.pyplot as plt
-from ..styles._plt_styles import use_cait_style, make_grid
 from tqdm.auto import tqdm
+
+from ..styles._plt_styles import use_cait_style, make_grid
 from ._pulser_model import LinearModel, PolyModel
-import warnings
 
 # functions
 

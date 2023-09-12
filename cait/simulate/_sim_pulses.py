@@ -1,11 +1,11 @@
-import h5py
 import numpy as np
+import h5py
+from scipy.stats import uniform
+
 from ..fit._templates import pulse_template
 from ._sim_bl import simulate_baselines
-from scipy.stats import uniform
 from ..fit._saturation import scaled_logistic_curve, scale_factor
 from ._generate_pm_par import generate_ps_par
-
 
 def simulate_events(path_h5,
                     type,
