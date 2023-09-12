@@ -19,6 +19,7 @@
    :maxdepth: 1
 
    tutorials/abouttutorials
+   tutorials/00datahandler_baseFeatures
    tutorials/01conversion
    tutorials/02features
    tutorials/03simulation
@@ -33,6 +34,7 @@
    tutorials/12cryoaug
    tutorials/13universaltrainingset
    tutorials/14pileupseparation
+   tutorial/15versatile_beta
 
 .. toctree::
    :caption: Templates
