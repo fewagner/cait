@@ -39,6 +39,7 @@ You can now import the library in Python, e.g.
     import cait as ai
 
 **Important Note for JupyterHub on computing clusters:**
+
 In the past, many users experienced issues with our interactive plotting tools which are based on plotly and ipywidgets. These problems were due to version mismatches between the plotly/ipywidgets packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
 
 To not run into such issues in the first place, we recommend one of the following approaches:

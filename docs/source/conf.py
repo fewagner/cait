@@ -70,7 +70,7 @@ html_theme_options = {
     'display_version': False,
 }
 
-jupyter_execute_notebooks = "cache"
+jupyter_execute_notebooks = "off"
 
 myst_enable_extensions = [
     "amsmath",
