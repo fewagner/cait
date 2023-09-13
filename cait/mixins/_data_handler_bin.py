@@ -13,7 +13,7 @@ from ..trigger._bin import get_record_window_vdaq, trigger_bin, read_header
 
 class BinMixin(object):
     """
-    A Mixin Class to the DataHandler Class with methods for the triggering of *.bin files.
+    A Mixin Class to the DataHandler Class with methods for the triggering of `*.bin` files.
     """
 
     def include_vtrigger_stamps(self,
@@ -23,7 +23,7 @@ class BinMixin(object):
                                 file_start: float = None,  # in seconds
                                 ):
         """
-        Include trigger time stamps corresponding to a *.bin file. This function does not do the triggering itself,
+        Include trigger time stamps corresponding to a `*.bin` file. This function does not do the triggering itself,
         has to be done previously, with third-party software, e.g. https://github.com/fewagner/trigger.
 
         :param triggers: A list of the triggers, corresponding to all channels, in seconds from start of file.
@@ -99,14 +99,14 @@ class BinMixin(object):
                              read_triggerstamps: bool = False,
                              ):
         """
-        Trigger the *.bin file of a detector module and include them in the HDF5 set.
+        Trigger the `*.bin` file of a detector module and include them in the HDF5 set.
 
         The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
         same module.
 
         :param path: The full path for the BIN file.
         :type path: str
-        :param dtype: The data type with which we read the *.bin file.
+        :param dtype: The data type with which we read the `*.bin` file.
         :type dtype: numpy data type
         :param key: The key of the dtype, corresponding to the channel that we want to read.
         :type key: str
@@ -257,9 +257,9 @@ class BinMixin(object):
         It is recommended to exclude the testpulses. This means, we exclude them from the events group and put them
         separately in the testpulses and control pulses groups.
 
-        :param path: The full path to the *.bin file.
+        :param path: The full path to the `*.bin` file.
         :type path: str
-        :param dtype: The data type with which we read the *.bin file.
+        :param dtype: The data type with which we read the `*.bin` file.
         :type dtype: numpy data type
         :param keys: The keys of the dtype, corresponding to the ADC channels that we want to include.
         :type keys: str
@@ -503,14 +503,14 @@ class BinMixin(object):
                              overlap: float = None,
                              ):
         """
-        Trigger the DAC channels of a *.bin file of a detector module and include them in the HDF5 set.
+        Trigger the DAC channels of a `*.bin` file of a detector module and include them in the HDF5 set.
 
         The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
         same module.
 
         :param path: The full paths for the bin file.
         :type path: str
-        :param dtype: The data type with which we read the *.bin file.
+        :param dtype: The data type with which we read the `*.bin` file.
         :type dtype: numpy data type
         :param keys: The keys of the dtype, corresponding to the channels that we want to read.
         :type keys: list of str
@@ -594,7 +594,7 @@ class BinMixin(object):
                                  file_start: float = None,  # in seconds
                                  ):
         """
-        Include the time stamps and TPA from the test pulses on the *.bin file's DAC channels.
+        Include the time stamps and TPA from the test pulses on the `*.bin` file's DAC channels.
 
         :param triggers: A list of the triggers, corresponding to all channels, in seconds from start of file.
         :type triggers: list of nmbr_channels 1D numpy arrays
@@ -665,11 +665,11 @@ class BinMixin(object):
                                   down=1,
                                   ):
         """
-        Include the events corresponding to chosen noise triggers from the *.bin file.
+        Include the events corresponding to chosen noise triggers from the `*.bin` file.
 
-        :param path: The full path to the *.bin file.
+        :param path: The full path to the `*.bin` file.
         :type path: str
-        :param dtype: The data type with which we read the *.bin file.
+        :param dtype: The data type with which we read the `*.bin` file.
         :type dtype: numpy data type
         :param keys: The keys of the dtype, corresponding to the ADC channels that we want to include.
         :type keys: str

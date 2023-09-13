@@ -69,7 +69,7 @@ New features:
     A folder to store pre-trained models. Two pre-trained models are delivered with the packe.
 
 - VDAQ functionalities
-    Methods to include events from VDAQ2-written *.bin files. A trigger method is not included,
+    Methods to include events from VDAQ2-written `*.bin` files. A trigger method is not included,
     for this we recommend the use of external repositories, to write the time stamps.
 
 New methods to calculate properties of events:
@@ -129,8 +129,8 @@ This is the first stable, full release of Cait. In this original version, the fo
 - Data access:
     - Conversion of raw data file formats to structured HDF5 files.
     - Conversion of Root files to HDF5 files.
-    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from *.xy files
-    - Import of trigger time stamps from *.trip files
+    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from `*.xy` files
+    - Import of trigger time stamps from `*.trip` files
 - Calculation of features:
     - Main parameters
     - Standard events
@@ -140,7 +140,7 @@ This is the first stable, full release of Cait. In this original version, the fo
     - Principal components
     - Baseline fits
 - Processing of continuously recorded raw data:
-    - Stream (*.csmpl) triggering with or without optimum filtering.
+    - Stream (`*.csmpl`) triggering with or without optimum filtering.
     - Synchronisation with hardware triggered data.
     - Simulation of random triggers on the continuous data stream.
 - Raw data analysis tools:

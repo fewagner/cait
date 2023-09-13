@@ -8,7 +8,6 @@
    installing
    about
    contributing
-   ../../CONTRIBUTING.rst
    tips
    magic
    changelog

@@ -45,14 +45,14 @@ class DataHandler(SimulateMixin,
     A class for the processing of raw data events.
 
     The DataHandler class is one of the core parts of the cait Package. An instance of the class is bound to a HDF5 file
-    and stores all data from the recorded binary files (*.rdt, ...), as well as the calculated features
+    and stores all data from the recorded binary files (`*.rdt`, ...), as well as the calculated features
     (main parameters, standard events, ...) in the file.
 
     :param record_length: The number of samples in one record window. To ensure performance of all features, this should be a power of 2.
     :type record_length: int
     :param sample_frequency: The sampling frequency of the recording.
     :type sample_frequency: int
-    :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
+    :param channels: The channels in the `*.rdt` file that belong to the detector module. Attention - the channel number written in the `*.par` file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
     :type channels: list of integers or None
     :param nmbr_channels: The total number of channels.
     :type nmbr_channel: int or None
@@ -65,7 +65,7 @@ class DataHandler(SimulateMixin,
         DataHandlers at once, to stay organized.
     :type module: string or None
 
-    Example for the generation of an HDF5 for events from an test *.rdt file:
+    Example for the generation of an HDF5 for events from an test `*.rdt` file:
 
     >>> import cait as ai
     >>> test_data = ai.data.TestData(filepath='test_001')
@@ -183,10 +183,10 @@ class DataHandler(SimulateMixin,
                      appendix: bool = True,
                      channels: list = None):
         """
-        Set the path to the *.h5 file for further processing.
+        Set the path to the `*.h5` file for further processing.
 
         This function is usually called right after the initialization of a new object. If the instance has already done
-        the conversion from *.rdt to *.h5, the path is already set automatically and the call is obsolete.
+        the conversion from `*.rdt` to `*.h5`, the path is already set automatically and the call is obsolete.
 
         :param path_h5: The path to the directory that contains the H5 file, e.g. "data/" --> file name "data/bck_001-P_Ch01-L_Ch02.csv".
         :type path_h5: string
@@ -194,7 +194,7 @@ class DataHandler(SimulateMixin,
         :type fname: string
         :param appendix: If true, an appendix like "-P_ChX-[...]" is automatically appended to the path_h5 string.
         :type appendix: bool
-        :param channels: The channels in the *.rdt file that belong to the detector module. Attention - the channel number written in the *.par file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
+        :param channels: The channels in the `*.rdt` file that belong to the detector module. Attention - the channel number written in the `*.par` file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
         :type channels: list of integers or None
 
         >>> dh.set_filepath(path_h5='./', fname='test_001')
@@ -257,7 +257,7 @@ class DataHandler(SimulateMixin,
         :param absolute: If true, the absolute path is returned instead.
         :type absolute: bool
 
-        :return: Name of the HDF5 file (without *.h5 extension).
+        :return: Name of the HDF5 file (without `*.h5` extension).
         :rtype: str
         """
         return os.path.splitext(os.path.basename(self.get_filepath()))[0]
@@ -304,7 +304,6 @@ class DataHandler(SimulateMixin,
         ...    print(np.max(ev))
 
         >>> # Usage as context manager (HDF5 file is kept open)
-
         >>> with dh.get_event_iterator("events", 0) as ev_it:
         ...     for ev in ev_it:
         ...         print(np.max(ev))
@@ -373,7 +372,7 @@ class DataHandler(SimulateMixin,
                       type: str = 'events',
                       path_h5=None):
         """
-        Include the *.csv file with the labels into the HDF5 File.
+        Include the `*.csv` file with the labels into the HDF5 File.
 
         :param path_labels: Path to the folder that contains the csv file.
             E.g. "data/" looks for labels in "data/labels_bck_0XX_<type>".
@@ -459,7 +458,7 @@ class DataHandler(SimulateMixin,
                            only_channel: int = None,
                            path_h5: str = None):
         """
-        Include the *.csv file with the predictions from a machine learning model into the HDF5 File.
+        Include the `*.csv` file with the predictions from a machine learning model into the HDF5 File.
 
         :param model: The naming for the type of model, e.g. Random Forest --> "RF".
         :type model: string
@@ -840,7 +839,7 @@ class DataHandler(SimulateMixin,
         E.g. set("events", pulse_heights=data) creates a dataset "pulse_heights" in the group "events". The shape of the dataset matches data's shape.
         Alternatively, one-dimensional data can be written to a multi-dimensional array (as is often necessary for multiple channels).
         This is achieved by specifying the number of desired channels (n_channels) and the channel index (channel) to write to.
-        E.g. set("events", n_channels=2, channel=0, pulse_heights=data) creates a "pulse_heights" dataset in the "events" group of shape (2, *data.shape), and `data` is written into the 0-th channel.
+        E.g. set("events", n_channels=2, channel=0, pulse_heights=data) creates a "pulse_heights" dataset in the "events" group of shape `(2, *data.shape)`, and `data` is written into the 0-th channel.
         Notice that in most cases you probably want `data` to be of shape (n, ). Otherwise it will probably lead to unexpectedly high-dimensional datasets.
 
         :param group: The name of the group in the HDF5 file. If it doesn't exist yet, it will be created.
@@ -857,11 +856,8 @@ class DataHandler(SimulateMixin,
         :type write_to_virtual: bool, Default: None
         :param dtype: The desired dtype of the dataset in the HDF5 file. If none is specified, "bool" and "float32" are used for boolean and numeric arrays, respectively.
         :type dtype: string
-        :param kwargs: datasets to include (see below)
+        :param kwargs: datasets to include. Pass a keyword argument of the form dataset_name=dataset_data for every dataset that you want to include in the HDF5 file.
         :type kwargs: List[Union[float, bool]]
-
-        :Keyword Arguments:
-        Pass a keyword argument of the form dataset_name=dataset_data for every dataset that you want to include in the HDF5 file.
 
         >>> # Include 'data1' and 'data2' as datasets 'new_ds1' and 'new_ds2' in group 'noise' 
         >>> # ('new_ds1' and 'new_ds2' do not yet exist)
@@ -951,19 +947,16 @@ class DataHandler(SimulateMixin,
         """
         Rename groups or datasets in the HDF5 file. Names to change are passed as keyword arguments.
 
-        By default, `group` is set to None. In this case, **kwargs are interpreted as HDF5 group names to change. 
+        By default, `group` is set to None. In this case, `**kwargs` are interpreted as HDF5 group names to change. 
         
-        If `group` is set (e.g. to 'events' or 'noise'), **kwargs are interpreted as HDF5 dataset names within that group.
+        If `group` is set (e.g. to 'events' or 'noise'), `**kwargs` are interpreted as HDF5 dataset names within that group.
 
         Notice that we forbid to rename virtual datasets or groups that contain virtual datasets as this could lead to confusion (it is best practice to keep the dataset names between the 'master file' and the source files consistent)
 
         :param group: The group within which we want to rename datasets. If set to None, groups themselves will be renamed.
         :type group: str, Default: None
-        :param kwargs: groups/datasets to be renamed
+        :param kwargs: groups/datasets to be renamed. Pass a keyword argument of the form old_name=new_name for every dataset/group that you want to rename in the HDF5 file.
         :type kwargs: str
-
-        :Keyword Arguments:
-        Pass a keyword argument of the form old_name=new_name for every dataset/group that you want to rename in the HDF5 file.
 
         >>> # Rename groups 'old_group1' and 'old_group2' to 'new_group1' and 'new_group2'
         >>> dh.rename(old_group1='new_group1', old_group2='new_group2')

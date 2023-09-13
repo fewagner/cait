@@ -445,8 +445,7 @@ class FeaturesMixin(object):
         :param onset_to_dominant_channel: The difference in the onset value to the dominant channel. If e.g. the second
             channel has a typical max_pos value of 4000, but the first of 4100, then the onset for this would be -100.
         :type onset_to_dominant_channel: list of ints
-        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this
-        amount of samples.
+        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this amount of samples.
         :type flexibility: int
         """
 
