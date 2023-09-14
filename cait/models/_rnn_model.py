@@ -1,14 +1,16 @@
-# ------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.data
-from pytorch_lightning.core import LightningModule
 import numpy as np
 
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.utils.data
+    from pytorch_lightning.core import LightningModule
+except ImportError:
+    F = None
+    torch = None
+    LightningModule = object
+    nn = None
 
 # ------------------------------------------------------
 # MODEL
@@ -54,6 +56,11 @@ class RNNModule(LightningModule):
     def __init__(self, input_size, hidden_size, num_layers, seq_steps, nmbr_out, label_keys,
                  feature_keys, lr, device_name='cpu', is_classifier=True, down=1, down_keys=None,
                  norm_vals=None, offset_keys=None, weight_decay=1e-5):
+        
+        # CHECK IF TORCH IS INSTALLED
+        if LightningModule is object: raise RuntimeError("Install 'pytorch-lightning==1.9.4' to use this feature.")
+        if any([x is None for x in [F, torch, nn]]): raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+        
         super().__init__()
         self.save_hyperparameters()
 

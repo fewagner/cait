@@ -1,10 +1,7 @@
-# ------------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------------
-
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats as sci
+
 from ..fit._bl_fit import fit_quadratic_baseline
 from ..filter._ma import box_car_smoothing
 from ..filter._of import filter_event

@@ -25,7 +25,7 @@ copyright = '2021, Felix Wagner'
 author = 'Felix Wagner'
 
 # The full version, including alpha/beta/rc tags
-release = '1.1.3'
+release = '1.2.0'
 
 # -- General configuration ---------------------------------------------------
 
@@ -70,7 +70,7 @@ html_theme_options = {
     'display_version': False,
 }
 
-jupyter_execute_notebooks = "cache"
+jupyter_execute_notebooks = "off"
 
 myst_enable_extensions = [
     "amsmath",

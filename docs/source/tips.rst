@@ -7,13 +7,9 @@ Here we put together some tipps for usage and development of Cait, that we found
 Singularity Containers
 ========================
 
-If you work on a server without sudo rights, you might not be able to install packages properly. In this case we often use
-Singularity containers, which are faster than virtual environments, and run our software inside. To do so, you typically create the container
-on our local linux system and copy it then ("scp ...") to the server. We suggest to copy the container is a compressed file format, e.g. *.tar,
-we experienced problems with scp command and uncompressed containers in the past.
+If you work on a server without sudo rights, you might not be able to install packages properly. In this case we often use Singularity containers, which are faster than virtual environments, and run our software inside. To do so, you typically create the container on our local linux system and copy it then ("scp ...") to the server. We suggest to copy the container is a compressed file format, e.g. `*.tar`, we experienced problems with scp command and uncompressed containers in the past.
 
-First you need a singularity installation on your machine, you can find instructions on their
-documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
+First you need a singularity installation on your machine, you can find instructions on their documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
 
 Second, you need a container configuration file. One that worked for us is given here, you can put it into a file ´container2010.cfg´.
 
@@ -87,7 +83,7 @@ Virtual Terminal
 =========================
 
 In case you are working on a server and experience troubles due to an instable internet connection, or need to run scripts and shutdown
-your machine while they are running, you can use a virtual terminal multiplexer. We like to use ´screen´ (https://linuxize.com/post/how-to-use-linux-screen/).
+your machine while they are running, you can use a virtual terminal multiplexer. We like to use `screen` (https://linuxize.com/post/how-to-use-linux-screen/).
 You can start screen on the server, before executing your scripty or starting up your Jupyter kernel. The screen session keeps running,
 even if you disconnect the ssh connection to the server. At any later point, you can reattach to the screen session and continue working or watch outputs of your scripts.
 
@@ -101,8 +97,7 @@ Remote Visualization
 =========================
 
 Many server clusters provide a remote visualization service for Jupyter Notebooks, eg. the MPCDF (https://rvs.mpcdf.mpg.de/)
-and the CLIP (https://jupyterhub.vbc.ac.at/hub/home, VPN needed). We like to use these services for all interactive work
- (creation of SEV, Filter, ...) and scripts for long-lasting jobs (triggering, fit and feature pipelines, ...).
+and the CLIP (https://jupyterhub.vbc.ac.at/hub/home, VPN needed). We like to use these services for all interactive work (creation of SEV, Filter, ...) and scripts for long-lasting jobs (triggering, fit and feature pipelines, ...).
 
 Debugging
 =============

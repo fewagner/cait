@@ -1,10 +1,8 @@
-# imports
-
 import numpy as np
+from tqdm.auto import tqdm
+
 from ..data._raw import convert_to_V
 from ._csmpl import time_to_sample, get_max_index, sample_to_time
-from tqdm.auto import tqdm
-import pdb
 
 # functions
 
@@ -20,16 +18,16 @@ def get_record_window_vdaq(path,
                            vswing=39.3216,
                            ):
     """
-    Get a record window from a stream *.bin file.
+    Get a record window from a stream `*.bin` file.
 
-    :param path: The full path of the *.bin file.
+    :param path: The full path of the `*.bin` file.
     :type path: str
     :param start_time: The start time in seconds, from where we want to read the record window, starting with 0 at
         the beginning of the file.
     :type start_time: float
     :param record_length: The record length to read from the bin file.
     :type record_length: int
-    :param dtype: The data type with which we read the *.bin file.
+    :param dtype: The data type with which we read the `*.bin` file.
     :type dtype: numpy data type
     :param key: The key of the dtype, corresponding to the channel that we want to read.
     :type key: str
@@ -43,7 +41,7 @@ def get_record_window_vdaq(path,
     :type bits: int
     :param vswing: The total volt region covered by the ADC.
     :type vswing: float
-    :return: List of two 1D numpy arrays: The event read from the *.bin file, and the corresponding time grid.
+    :return: List of two 1D numpy arrays: The event read from the `*.bin` file, and the corresponding time grid.
     :rtype: list
     """
 
@@ -89,9 +87,9 @@ def bin(s, nmbr_bits=None):
 
 def read_header(path_bin):
     """
-    Function that reads the header of a *.bin file.
+    Function that reads the header of a `*.bin` file.
 
-    :param f: The path to the *.bin file.
+    :param f: The path to the `*.bin` file.
     :type f: string
     :return: list (dictionary with infos from header,
                     list of keys that are written in each sample,
@@ -207,7 +205,7 @@ def trigger_bin(paths,
     :param paths: The paths to all BIN files. It is not recommended to put more than one path, because this will set
         the time gap in between the files to zero.
     :type paths: list of strings
-    :param dtype: The data type with which we read the *.bin file.
+    :param dtype: The data type with which we read the `*.bin` file.
     :type dtype: numpy data type
     :param key: The key of the dtype, corresponding to the channel that we want to read.
     :type key: str

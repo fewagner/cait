@@ -1,13 +1,10 @@
-# imports
-
 import numpy as np
 from scipy.special import erf
 from scipy.optimize import minimize, curve_fit
 from scipy.stats import norm, expon
 import matplotlib.pyplot as plt
-from ..styles import use_cait_style, make_grid
-import numba as nb
 
+from ..styles import use_cait_style, make_grid
 
 # ------------------------------------------
 # functions for binned least squares gaussian fit

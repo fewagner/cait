@@ -1,11 +1,7 @@
-# ------------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------------
-
 import numpy as np
+
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
-
 
 # ------------------------------------------------------------
 # FUNCTION

@@ -1,11 +1,9 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import h5py
-import numpy as np
-import matplotlib.pyplot as plt
 import math
+
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+
 from .evaluation._color import console_colors
 from .features._fem import get_elements, plot_S1
 from .filter._of import filter_event

@@ -1,17 +1,14 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import numpy as np
-import struct
-from ..data._gen_h5 import gen_dataset_from_rdt
-from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
-import h5py
-from ..data._raw import read_rdt_file, get_metainfo
 import warnings
 import time
 import tracemalloc
+import struct
 
+import numpy as np
+import h5py
+
+from ..data._gen_h5 import gen_dataset_from_rdt
+from ..data._gen_h5_memsafe import gen_dataset_from_rdt_memsafe
+from ..data._raw import read_rdt_file, get_metainfo
 
 # -----------------------------------------------------------
 # CLASS
@@ -118,9 +115,9 @@ class RdtMixin(object):
     # checkout con file
     def checkout_con(self, path_con, read_events=100, ints_in_header=7):
         """
-        Print the content of a *.con file.
+        Print the content of a `*.con` file.
 
-        :param path_con: Path to the con file e.g. "data/bcks/".
+        :param path_con: Path to the con file e.g. `data/bcks/`.
         :type path_con: string
         :param read_events: The number of events to print from the file.
         :type read_events: int
@@ -167,9 +164,9 @@ class RdtMixin(object):
     # checkout dig file
     def checkout_dig(self, path_dig, read_events=100):
         """
-        Print the content of a *.dig_stamps file.
+        Print the content of a `*.dig_stamps` file.
 
-        :param path_dig: Path to the dig file e.g. "data/bcks/*.dig_stamps".
+        :param path_dig: Path to the dig file e.g. `data/bcks/*.dig_stamps`.
         :type path_dig: string
         :param read_events: Number of events to read from file, if -1 read all events.
         :type read_events: int
@@ -192,9 +189,9 @@ class RdtMixin(object):
     # checkout test stamps file
     def checkout_test(self, path_test, read_events=100):
         """
-        Print the content of a *.test_stamps file.
+        Print the content of a `*.test_stamps` file.
 
-        :param path_test: Full path to the test file e.g. "data/bcks/*.test_stamps".
+        :param path_test: Full path to the test file e.g. `data/bcks/*.test_stamps`.
         :type path_test: string
         :param read_events: Number of events to read from file, if -1 read all events.
         :type read_events: int
@@ -217,9 +214,9 @@ class RdtMixin(object):
 
     def checkout_mon(self, path_mon, read_events=5):
         """
-        Print the content of a *.mon file.
+        Print the content of a `*.mon` file.
 
-        :param path_mon: Path to the mon file e.g. "data/bcks/*.mon".
+        :param path_mon: Path to the mon file e.g. `data/bcks/*.mon`.
         :type path_mon: string
         :param read_events: Number of events to read from file, if -1 read all events.
         :type read_events: int
@@ -394,7 +391,7 @@ class RdtMixin(object):
         """
         Read the content of an rdt file an add to HDF5.
 
-        :param path_data: Path to the rdt file e.g. "data/bcks/*.rdt".
+        :param path_data: Path to the rdt file e.g. `data/bcks/*.rdt`.
         :type path_data: string
         :param fname: Name of the file e.g. "bck_001".
         :type fname: string
@@ -578,7 +575,7 @@ class RdtMixin(object):
         :param clock_frequency: The frequency of the clock that records the time stamps. This you either know or you
             can read it out from the rdt file, by using with the function read_clock_frequency.
         :type clock_frequency: int
-        :param path_con_file: Path to the con file e.g. "data/bcks/*.con".
+        :param path_con_file: Path to the con file e.g. `data/bcks/*.con`.
         :type path_con_file: string
         :param ints_in_header: The number of ints in the header of the events in the RDF file. This should be either
             7 or 6!
@@ -639,7 +636,7 @@ class RdtMixin(object):
 
         These files contain the paramters of the cryostat with time stamps.
 
-        :param path_mon: Path to the mon file e.g. "data/bcks/*.mon".
+        :param path_mon: Path to the mon file e.g. `data/bcks/*.mon`.
         :type path_mon: string
         """
 
@@ -697,7 +694,7 @@ class RdtMixin(object):
 
         These files contain the hits of the muon veto.
 
-        :param path_qdc: Path to the mon file e.g. "data/bcks/*.qdc".
+        :param path_qdc: Path to the mon file e.g. `data/bcks/*.qdc`.
         :type path_qdc: string
         :param clock: The clock frequency of the recording.
         :type clock: int

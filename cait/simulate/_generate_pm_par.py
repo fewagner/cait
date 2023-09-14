@@ -1,7 +1,7 @@
-
-import scipy.stats as sci
-import numpy as np
 import warnings
+
+import numpy as np
+import scipy.stats as sci
 
 def norm(x, mu, sigma):
     return (x - mu) / sigma

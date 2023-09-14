@@ -1,11 +1,10 @@
-# import cait as ai
-import matplotlib.pyplot as plt
 import numpy as np
 from scipy import signal
+import matplotlib.pyplot as plt
 from tqdm.auto import trange
+
 from ..fit import baseline_template_cubic, pulse_template, scaled_logistic_curve, A_zero
 from ..data import get_cc_noise
-
 
 # ------------------------------------------
 # Convenience Functions

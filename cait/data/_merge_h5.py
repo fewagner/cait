@@ -1,14 +1,8 @@
-# imports
-
-import h5py
-import numpy as np
 import os
-import itertools
-import tracemalloc
 import time
+import tracemalloc
 
-
-# function
+import numpy as np
 import h5py
 
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,

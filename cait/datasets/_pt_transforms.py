@@ -1,8 +1,11 @@
-# imports
-
-import torch
 import numpy as np
-import torch.nn.functional as F
+
+try:
+    import torch
+    import torch.nn.functional as F
+except ImportError:
+    torch = None
+    F = None
 
 # classes
 
@@ -100,6 +103,9 @@ class ToTensor(object):
     """
     Convert numpy arrays in sample to Tensors.
     """
+    def __init__(self):
+        # CHECK IF TORCH IS INSTALLED
+        if torch is None: raise RuntimeError("Install 'torch>=1.8' to use this feature.")
 
     def __call__(self, sample):
         """
@@ -126,6 +132,9 @@ class OneHotEncode(object):
     """
 
     def __init__(self, keys, nmbr_classes):
+        # CHECK IF TORCH IS INSTALLED
+        if F is None: raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+
         self.keys = keys
         self.nmbr_classes = nmbr_classes
 
