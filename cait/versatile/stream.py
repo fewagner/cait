@@ -247,11 +247,14 @@ class Stream_VDAQ2(_StreamBaseClass):
     """
     def __init__(self, file: str):
         # Get relevant info about file from its header
-        header, self._keys, self._adc_bits, self._dac_bits, dt_tcp = ai.trigger.read_header(file)
+        header, keys, self._adc_bits, self._dac_bits, dt_tcp = ai.trigger.read_header(file)
         # Start timestamp of the file in us (header['timestamp'] is in ns)
         self._start = int(header['timestamp']/1000)
         # Temporal step size in us (= inverse sampling frequency)
         self._dt = header['downsamplingFactor']
+
+        # VDAQ2 format could contain keys 'Settings' and 'Time' which we do not want to have as available data channels
+        self._keys = list(set(keys) - set(['Time', 'Settings']))
 
         # Create memory map to binary file
         self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
