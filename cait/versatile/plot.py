@@ -46,16 +46,16 @@ class Viewer():
     :type data: dict, optional
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
     :type backend: str, optional
-    :param show_controls: Set to True if plot controls should be shown. For the Viewer alone, this is just an "Exit" button which closes the plot, but inherited objects can add more buttons with arbitrary functionality. Defaults to False
-    :type show_controls: bool, optional
 
     `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
-    :param template: Valid backend theme. E.g. for `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
 
     Convention for `data` Dictionary:
     ```
@@ -81,21 +81,13 @@ class Viewer():
       }
     ```
     """
-    def __init__(self, data=None, backend="plotly", show_controls=False, **kwargs):
+    def __init__(self, data=None, backend="plotly", **kwargs):
         if backend=="plotly":
             self.fig_widget = BaseClassPlotly(**kwargs)
         elif backend=="mpl":
             self.fig_widget = BaseClassMPL(**kwargs)
         else:
             raise NotImplementedError('Only backend "plotly" and "mpl" are supported.')
-        
-        self.show_controls = show_controls
-
-        self.buttons = list()
-
-        self._button_exit = widgets.Button(description="Exit", tooltip="Close plot widget.")
-        self._button_exit.on_click(self.close)   
-        self.buttons.append(self._button_exit)   
 
         self.visible = False
 
@@ -103,11 +95,8 @@ class Viewer():
             self.plot(data)  
             self.show()
 
-    def _init_UI(self):
-        if self.show_controls:
-            self.UI = widgets.VBox([widgets.HBox(self.buttons), self.fig_widget.fig])
-        else:
-            self.UI = self.fig_widget.fig
+    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1):
+        self.fig_widget._add_button(text, callback, tooltip, where)
 
     def show_legend(self, show: bool = True):
         """
@@ -218,7 +207,7 @@ class Viewer():
         """
         Returns the figure object of the plot. Can be used to further manipulate the plot.
         """
-        return self.fig_widget.fig
+        return self.fig_widget._get_figure()
 
     def plot(self, data: dict):
         """
@@ -232,25 +221,25 @@ class Viewer():
                 for line_name, line_data in value.items():
                     assert 2==len(line_data), "Line data has to be a tuple/list of length 2 containing x/y data respectively"
                     if line_name in self.fig_widget.line_names:
-                        self.fig_widget._update_line(name=line_name, x=line_data[0], y=line_data[1])
+                        self.update_line(name=line_name, x=line_data[0], y=line_data[1])
                     else:
-                        self.fig_widget._add_line(x=line_data[0], y=line_data[1], name=line_name)
+                        self.add_line(x=line_data[0], y=line_data[1], name=line_name)
 
             if key == "scatter":
                 for scatter_name, scatter_data in value.items():
                     assert 2==len(scatter_data), "Scatter data has to be a tuple/list of length 2 containing x/y data respectively"
                     if scatter_name in self.fig_widget.scatter_names:
-                        self.fig_widget._update_scatter(name=scatter_name, x=scatter_data[0], y=scatter_data[1])
+                        self.update_scatter(name=scatter_name, x=scatter_data[0], y=scatter_data[1])
                     else:
-                        self.fig_widget._add_scatter(x=scatter_data[0], y=scatter_data[1], name=scatter_name)
+                        self.add_scatter(x=scatter_data[0], y=scatter_data[1], name=scatter_name)
 
             if key == "histogram":
                 for histogram_name, histogram_data in value.items():
                     assert 2==len(histogram_data), "Histogram data has to be a tuple/list of length 2 containing x(bins)/y data respectively"
                     if histogram_name in self.fig_widget.histogram_names:
-                        self.fig_widget._update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
+                        self.update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
                     else:
-                        self.fig_widget._add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
+                        self.add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
 
             if key == "axes":
                 self.fig_widget._set_axes(value)
@@ -259,8 +248,7 @@ class Viewer():
         """
         Show the plot in Jupyter.
         """
-        self._init_UI()
-        display(self.UI)
+        self.fig_widget._show()
         self.visible = True
     
     def close(self, b=None):
@@ -268,7 +256,7 @@ class Viewer():
         Hide the plot in Jupyter.
         """
         if self.visible: 
-            self.UI.close()
+            self.fig_widget._close()
             self.visible = False
 
 class Line(Viewer):
@@ -290,15 +278,17 @@ class Line(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
 
@@ -336,15 +326,17 @@ class Scatter(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
 
@@ -382,15 +374,17 @@ class Histogram(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, data: Union[List[float], dict], bins: Union[tuple, int] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
 
@@ -425,35 +419,22 @@ class StreamViewer(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
     """
     def __init__(self, hardware: str, file: str, n_points: int = 10000, downsample_factor: int = 100, **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
         # Adding buttons for navigating back and forth in the stream
-        self._button_move_left = widgets.Button(description="←", tooltip="Move backwards in time.")
-        self._button_move_right = widgets.Button(description="→", tooltip="Move forward in time.")
-        self._info_button = widgets.Button(description="Data Info", tooltip="Display mean/std/min/max/diff for all (visible) data on screen. If you want the std of a single trace for example, zoom in such that only the data you want to consider is cropped and hit this button.")
-
-        self._button_move_left.on_click(self._move_left)
-        self._button_move_right.on_click(self._move_right)
-        self._info_button.on_click(self._get_info)
-
-        self.buttons.append(self._button_move_left)
-        self.buttons.append(self._button_move_right) 
-        self.buttons.append(self._info_button) 
-
-        # Output for printing data info
-        self._output = widgets.Output()
-        self.buttons.append(self._output)
+        self._add_button("←", self._move_left, "Move backwards in time.")
+        self._add_button("→", self._move_right, "Move forward in time.")
 
         # Linking the stream-file (note that the file extension is handled by the StreamFile object as
         # it could be different for different hardware)
@@ -495,37 +476,6 @@ class StreamViewer(Viewer):
     def _move_left(self, b):
         self.current_start = max(0, self.current_start - int(self.n_points*self.downsample_factor/2))
         self.update()
-
-    def _get_info(self, b):
-        xmin, xmax = self.get_figure().layout.xaxis.range
-        if type(xmin) is str: # then we assume it to be datetime
-            xmin = np.datetime64(xmin)
-            xmax = np.datetime64(xmax)
-
-        ymin, ymax = self.get_figure().layout.yaxis.range
-
-        y_vals = list()
-        for trace in self.get_figure().select_traces():
-            if trace.visible is True:
-                x = trace.x
-                y = trace.y
-                x_mask = np.logical_and(x > xmin, x < xmax)
-                y_mask = np.logical_and(y > ymin, y < ymax)
-                y_vals.append(y[np.logical_and(x_mask, y_mask)])
-
-        y_vals = np.concatenate(y_vals, axis=0)
-
-        if len(y_vals) == 0:
-            out_str = f"mean_y:  None, min_y: None, delta_y: None\nsigma_y: None, max_y: None"
-        else:
-            dat_min, dat_max = np.min(y_vals), np.max(y_vals)
-            dat_diff = dat_max - dat_min
-            dat_mean, dat_std = np.mean(y_vals), np.std(y_vals)
-            out_str = f"mean_y: {dat_mean:6.3f}, min_y: {dat_min:6.3f}, delta_y: {dat_diff:5.3f}\nsigma_y: {dat_std:5.3f}, max_y: {dat_max:6.3f}"
-        
-        with self._output:
-            self._output.clear_output()
-            print(out_str)
             
 # Has no test case (yet)
 class Preview(Viewer):
@@ -540,27 +490,25 @@ class Preview(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`Viewer` and class:`InspectBaseClass` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
     """
     def __init__(self, events: Iterable, f: Callable = None, **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
         #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
         super().__init__(data=None, show_controls=True, **kwargs)
 
+        self._add_button("Next", self._update_plot, "Show next event.")
+
         self.f = f if f is not None else PreviewEvent()
         self.events = iter(events)
-
-        self._button_next = widgets.Button(description="Next", tooltip="Show next event.")
-        self._button_next.on_click(self._update_plot)
-        self.buttons.append(self._button_next)
         
         self.start()
     
@@ -602,15 +550,17 @@ class Heatmap(Viewer): # not yet finished (TODO)
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, xdata: List[float], ydata: List[float], xbins: Union[tuple, int] = None, ybins: Union[tuple, int] = None, xlabel: str = None, ylabel: str = None, zscale: str = 'linear', **kwargs):
 
