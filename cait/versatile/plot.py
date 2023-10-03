@@ -1,44 +1,10 @@
-import numpy as np
-from ipywidgets import widgets
 from typing import List, Union, Callable, Iterable
 
-from IPython.display import display
-
 from .stream import Stream
-from ._baseClasses import BaseClassPlotly, BaseClassMPL, FncBaseClass
+from .iterators import IteratorBaseClass
+from .plot_backends import BaseClassPlotly, BaseClassMPL
+from .functions import PreviewEvent
 
-##### HELPER FUNCTIONS AND CLASSES #####
-class PreviewEvent(FncBaseClass):
-    """
-    Helper class to use :class:`Preview` also to display iterables of events.
-
-    >>> # Multiple channels
-    >>> it = dh.get_event_iterator("events")
-    >>> Preview(it)
-
-    >>> # Single channel
-    >>> it = dh.get_event_iterator("events", channel=0)
-    >>> Preview(it)
-
-    >>> # Using batches; this works (and shows events in batches
-    >>> # as different channels) but should be avoided
-    >>> it = dh.get_event_iterator("events", channel=0, batch_size=10)
-    >>> Preview(it)
-    """
-    def __call__(self, event):
-        return None
-    def preview(self, event):
-        if event.ndim > 1:
-            lines = {f'channel {k}': [None, ev] for k, ev in enumerate(event)}
-        else:
-            lines = {'channel 0': [None, event]}
-
-        return dict(line=lines, 
-                    axes={"xaxis": {"label": "data index"},
-                          "yaxis": {"label": "data (V)"}
-                         })
-
-##### PLOT ROUTINES #####
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
 
@@ -50,9 +16,9 @@ class Viewer():
     `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
     :type show_controls: bool
@@ -283,9 +249,9 @@ class Line(Viewer):
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
     :type show_controls: bool
@@ -331,9 +297,9 @@ class Scatter(Viewer):
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
     :type show_controls: bool
@@ -379,9 +345,9 @@ class Histogram(Viewer):
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
     :type show_controls: bool
@@ -424,12 +390,17 @@ class StreamViewer(Viewer):
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     """
-    def __init__(self, hardware: str, file: str, n_points: int = 10000, downsample_factor: int = 100, **kwargs):
+    def __init__(self, hardware: str, 
+                 file: str, 
+                 n_points: int = 10000, 
+                 downsample_factor: int = 100,
+                #  mark_timestamps: Union[List[int], dict] = None, 
+                 **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
         # Adding buttons for navigating back and forth in the stream
@@ -447,6 +418,16 @@ class StreamViewer(Viewer):
         # Adding labels
         self.set_xlabel("time")
         self.set_ylabel("trace (V)")
+
+        # # Adding timestamp markers
+        # if mark_timestamps is not None:
+        #     if type(mark_timestamps) is not dict:
+        #         mark_timestamps = dict(timestamps=np.array(mark_timestamps))
+
+        #     for name in mark_timestamps.keys():
+        #         self.add_line(x=None, y=None, name=name)
+
+        # self._mark_timestamps = mark_timestamps
 
         # Initializing plot
         self.n_points = n_points
@@ -467,6 +448,25 @@ class StreamViewer(Viewer):
         
         for name in self.stream.keys:
             self.update_line(name=name, x=t_datetime, y=self.stream[name, where, "as_voltage"])
+
+        # if self._mark_timestamps is not None:
+        #     tmin, tmax = t[0], t[-1]
+        #     for name in self._mark_timestamps.keys():
+        #         mask = np.logical_and(np.array(self._mark_timestamps[name]) > tmin,
+        #                               np.array(self._mark_timestamps[name]) < tmax)
+        #         ts = self._mark_timestamps[name][mask]
+        #         ts_datetime = self.stream.time.timestamp_to_datetime(ts)
+        #         # duplicate values, insert nan between pairs and flatten in column-major
+        #         # order. This gives us the x-values for the vertical lines
+        #         x = np.array([ts_datetime,
+        #                        ts_datetime, 
+        #                        np.full(ts_datetime.shape, np.datetime64("NaT"))]
+        #                     ).flatten(order="F")
+
+        #         y = np.zeros_like(x)
+        #         y[::3] = 10
+                
+        #         self.update_line(name=name, x=x, y=y)
 
     def _move_right(self, b):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
@@ -495,15 +495,18 @@ class Preview(Viewer):
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     """
     def __init__(self, events: Iterable, f: Callable = None, **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
         #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
         super().__init__(data=None, show_controls=True, **kwargs)
+
+        if isinstance(events, IteratorBaseClass) and events.uses_batches:
+            raise NotImplementedError("Iterators that return batches are not supported by Preview.")
 
         self._add_button("Next", self._update_plot, "Show next event.")
 
@@ -555,9 +558,9 @@ class Heatmap(Viewer): # not yet finished (TODO)
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500 for `backend=plotly` and 4 for `backend=mpl`
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
     :type height: int, optional
-    :param width: Figure width, defaults to 700 for `backend=plotly` and 8 for `backend=mpl`
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
     :type show_controls: bool

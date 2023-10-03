@@ -1,13 +1,24 @@
 import os
-from typing import List, Union
+from typing import List, Union, Callable
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 
 import numpy as np
 import h5py
 
 from .file import get_dataset_properties
 
-class _IteratorBaseClass(ABC):
+class BatchResolver:
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, batch):
+        return [self.f(ev) for ev in batch]
+
+class IteratorBaseClass(ABC):
+    def __init__(self):
+        self.fncs = list()
+
     @abstractmethod
     def __len__(self):
         ...
@@ -27,6 +38,30 @@ class _IteratorBaseClass(ABC):
     @abstractmethod
     def __next__(self):
         ...
+
+    def add_processing(self, *args: Callable):
+        """
+        Add functions to be applied to each event before returning it. Batches are supported, i.e. if the iterator returns events in batches, the specified functions are applied to all events in a batch separately. However, the user is responsible for handling multiple channels correctly: Events are passed to the functions directly, even if it includes multiple channels.
+
+        :param args: Function(s) to be applied. Function signature: f(event: np.ndarray) -> np.ndarray
+        :type args: Callable
+
+        >>> it = EventIterator("path_to_file.h5", "events", "event")
+        >>> it.add_processing(f1, f2, f3)
+        """
+        if self.uses_batches:
+            self.fncs += [BatchResolver(f) for f in args]
+        else:
+            self.fncs += args
+
+        # return instance such that it is chainable and can be used in one-liners
+        return self
+
+    def _apply_processing(self, out):
+        for fnc in self.fncs:
+            out = fnc(out)
+        
+        return out
         
     @property
     @abstractmethod
@@ -43,7 +78,7 @@ class _IteratorBaseClass(ABC):
     def n_channels(self):
         ...
 
-class EventIterator(_IteratorBaseClass):
+class EventIterator(IteratorBaseClass):
     """
     Iterator object for HDF5 datasets that iterates along the "event-dimension" (first dimension for 1-dimensional data, or second dimension for 2- and 3-dimensional data) of a dataset. Most important use-case is iterating over event voltage traces in an analysis routine.
     If the Iterator is used as a context manager, the HDF5 file is not closed during iteration which improves file access speed.
@@ -78,6 +113,8 @@ class EventIterator(_IteratorBaseClass):
     """
 
     def __init__(self, path_h5: str, group: str, dataset: str, inds: List[int] = None, channels: Union[int, List[int]] = None, batch_size: int = None):
+        super().__init__()
+
         self.path = path_h5
         self.group = group
         self.dataset = dataset
@@ -145,28 +182,21 @@ class EventIterator(_IteratorBaseClass):
             # the event dimension in second place (and therefore have to transpose)
             should_be_transposed = self._uses_batches and self._n_channels > 1 and self.events_dim > 0 
 
-            if self.file_open:
+            # Open HDF5 file if not yet open, else use already open file
+            with h5py.File(self.path, 'r') if not self.file_open else nullcontext(self.f) as f:
                 if self.events_dim > 0:
                     if should_be_transposed:
                         # transpose data such that first dimension is ALWAYS the event dimension
-                        return np.transpose(self.f[self.group][self.dataset][self.channels, event_inds_in_batch], 
-                                            axes=[1,0,2])
+                        return np.transpose(f[self.group][self.dataset][self.channels,  
+                        event_inds_in_batch], axes=[1,0,2])
                     else:
-                        return self.f[self.group][self.dataset][self.channels, event_inds_in_batch]
+                        return self._apply_processing(
+                                f[self.group][self.dataset][self.channels, event_inds_in_batch]
+                        )
                 else:
-                    return self.f[self.group][self.dataset][event_inds_in_batch]
-                    
-            else:
-                with h5py.File(self.path, 'r') as f:
-                    if self.events_dim > 0:
-                        if should_be_transposed:
-                            # transpose data such that first dimension is ALWAYS the event dimension
-                            return np.transpose(f[self.group][self.dataset][self.channels, event_inds_in_batch], 
-                                                axes=[1,0,2])
-                        else:
-                            return f[self.group][self.dataset][self.channels, event_inds_in_batch]
-                    else:
-                        return f[self.group][self.dataset][event_inds_in_batch]
+                    return self._apply_processing(
+                            f[self.group][self.dataset][event_inds_in_batch]
+                    )
         else:
             raise StopIteration
         
@@ -183,7 +213,7 @@ class EventIterator(_IteratorBaseClass):
         return self._n_channels
         
 # TODO: add test case
-class StreamIterator(_IteratorBaseClass):
+class StreamIterator(IteratorBaseClass):
     """
     Iterator object that returns voltage traces for given trigger indices of a stream file. 
 
@@ -203,6 +233,8 @@ class StreamIterator(_IteratorBaseClass):
     """
 
     def __init__(self, stream, keys: Union[str, List[str]], inds: Union[int, List[int]], record_length: int, alignment: float = 1/4):
+        super().__init__()
+
         if 0 > alignment or 1 < alignment:
             raise ValueError("'alignment' has to be in the interval [0,1]")
         
@@ -235,7 +267,9 @@ class StreamIterator(_IteratorBaseClass):
 
             self._current_ind += 1
 
-            return np.array([self._stream[k, s, 'as_voltage'] for k in self._keys])
+            return self._apply_processing(
+                np.array([self._stream[k, s, 'as_voltage'] for k in self._keys])
+            )
             
         else:
             raise StopIteration

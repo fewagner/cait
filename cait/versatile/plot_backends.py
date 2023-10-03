@@ -11,8 +11,6 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import numpy as np
 
-import cait
-
 #########################
 ##### Helper Classes ####
 #########################
@@ -22,41 +20,6 @@ class EmptyRep:
     def __repr__(self):
         return ""
 
-#########################
-# Function Base Classes #
-#########################
-
-class FncBaseClass(ABC):
-    def __init__(self, **kwargs):
-        # Use kwargs as variables in __call__ function. This way, the inputs are also documented in the function class (via the __init__ method) and __call__ does not need to specify the inputs again
-        self.kw = kwargs
-        # all variables that can be cached are stored here
-        self.cache = dict() 
-        # all variables which could be relevant for plotting are stored here
-        self.data = dict() 
-        
-    @abstractmethod
-    def __call__(self, event):
-        ...
-        
-    def update_kwargs(self, **kwargs):
-        for k,v in kwargs.items():
-            self.kw[k] = v
-        
-    def preview(self, event):
-        raise NotImplementedError(f"{self.__class__.__name__} does not support preview.")
-        
-class FitFncBaseClass(FncBaseClass):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-    
-    def model(self, x, *pars):
-        # TODO: check for number of arguments (signature alone is insufficient because of possible *par)
-        return self._model_fnc(x, *pars)
-        
-    def _model_fnc(self, x, *pars):
-        raise NotImplementedError(f"No model function defined for {self.__class__.__name__}.")
-    
 #####################
 # Plot Base Classes #
 #####################
@@ -467,7 +430,8 @@ class BaseClassMPL(BackendBaseClass):
     def _add_line(self, x, y, name=None):
         # Plotly supports x=None, matplotlib has to handle it. We set it
         # here to get consistent results between the two backends
-        if x is None: x = np.arange(len(y))
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
 
         if name is not None: self.line_names.append(name)
 
@@ -479,7 +443,8 @@ class BaseClassMPL(BackendBaseClass):
     def _add_scatter(self, x, y, name=None):
         # Plotly supports x=None, matplotlib has to handle it. We set it
         # here to get consistent results between the two backends
-        if x is None: x = np.arange(len(y))
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
 
         if name is not None: self.scatter_names.append(name)
 
@@ -512,7 +477,8 @@ class BaseClassMPL(BackendBaseClass):
     def _update_line(self, name: str, x: List[float], y: List[float]):
         # Plotly supports x=None, matplotlib has to handle it. We set it
         # here to get consistent results between the two backends
-        if x is None: x = np.arange(len(y))
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
 
         ind = [l.get_label() for l in self.fig.axes[0].lines].index(name)
 
@@ -525,7 +491,8 @@ class BaseClassMPL(BackendBaseClass):
     def _update_scatter(self, name: str, x: List[float], y: List[float]):
         # Plotly supports x=None, matplotlib has to handle it. We set it
         # here to get consistent results between the two backends
-        if x is None: x = np.arange(len(y))
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
 
         ind = [l.get_label() for l in self.fig.axes[0].lines].index(name)
 

@@ -93,5 +93,21 @@ class TestEventIterator(unittest.TestCase):
 
         self.assertTrue(np.all(lens_are == lens_should_be))
 
+    def test_add_processing(self):
+        it1 = EventIterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
+        it2 = EventIterator(self.dh.get_filepath(), "events", "event", batch_size=11)
+        it3 = EventIterator(self.dh.get_filepath(), "events", "event", channels=1)
+        it4 = EventIterator(self.dh.get_filepath(), "events", "event")
+
+        it1.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
+        it2.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
+        it3.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
+        it4.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
+
+        next(iter(it1))
+        next(iter(it2))
+        next(iter(it3))
+        next(iter(it4))
+
 if __name__ == '__main__':
     unittest.main()

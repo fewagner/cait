@@ -3,12 +3,7 @@ from multiprocessing import Pool
 import numpy as np
 from tqdm.auto import tqdm
 
-class _BatchResolver:
-    def __init__(self, f):
-        self.f = f
-
-    def __call__(self, batch):
-        return [self.f(ev) for ev in batch]
+from .iterators import BatchResolver
 
 def apply(f, ev_iter, n_processes=1, unpack=False):
     """
@@ -35,7 +30,7 @@ def apply(f, ev_iter, n_processes=1, unpack=False):
     
     >>> out1, out2 = apply(func, it, unpack=True)
     """
-    if ev_iter.uses_batches: f = _BatchResolver(f)
+    if ev_iter.uses_batches: f = BatchResolver(f)
 
     with ev_iter as ev_it:
         if n_processes > 1:

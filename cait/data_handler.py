@@ -18,7 +18,7 @@ from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
 from .versatile.file import ds_source_available
-from .versatile.iterators import EventIterator, _IteratorBaseClass
+from .versatile.iterators import EventIterator, IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
@@ -308,14 +308,17 @@ class DataHandler(SimulateMixin,
         ...     for ev in ev_it:
         ...         print(np.max(ev))
         """
-        # Use the first channel and the first datapoint of a voltage trace to get the total number of events
-        inds = np.arange(self.get(group, "event", 0, None, 0).size)
+        # Reading number of events is much faster if we open the HDF5 file directly
+        with h5py.File(self.get_filepath(), 'r') as f:
+            n_events = f[group]["event"].shape[1]
+            
+        inds = np.arange(n_events)
 
         if flag is not None: inds = inds[flag]
 
         return EventIterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
     
-    def include_iterator(self, group: str, dataset: str, it: Type[_IteratorBaseClass], event_axis: int = 1):
+    def include_iterator(self, group: str, dataset: str, it: Type[IteratorBaseClass], event_axis: int = 1):
         """
         Includes the events returned by an iterator into a specified group/dataset. 
         Note that this method does not support iterators that return events in batches.
