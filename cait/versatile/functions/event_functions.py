@@ -98,6 +98,7 @@ class RemoveBaseline(FncBaseClass):
                             'shifted event': [self._xdata, self._shifted_event]})
 
 class BoxCarSmoothing(FncBaseClass):
+    # TODO: implement for multiple channels
     def __init__(self, length: int = 50):
         self._length = length
 
@@ -114,27 +115,47 @@ class BoxCarSmoothing(FncBaseClass):
                             'smooth event': [None, self._smooth_event]})
    
 class TukeyFiltering(FncBaseClass):
+    # works for multiple channels
     def __init__(self, alpha: float = 0.25):
         self._alpha = alpha
 
     def __call__(self, event):
-        self._new_event = event*tukey(len(event), alpha=self._alpha)
+        self._new_event = event*tukey(event.shape[-1], alpha=self._alpha)
         return self._new_event
     
     def preview(self, event) -> dict:
         self(event)
-        return dict(line = {'event': [None, event],
-                            'after applying window': [None, self._new_event]})
+        if np.ndim(event) > 1:
+            d = dict()
+            for i in range(np.ndim(event)):
+                d[f'channel {i}'] = [None, event[i]]
+                d[f'after window channel {i}'] = [None, self._new_event[i]]
+        else:
+            d = {'event': [None, event],
+                 'after window': [None, self._new_event]}
+        return dict(line = d)
 
 class OptimumFiltering(FncBaseClass):
-    def __init__(self, of: np.ndarray):
+    # works for multiple channels
+    def __init__(self, of):
         self._of = of
 
     def __call__(self, event):
+        if np.ndim(event) != np.ndim(self._of):
+            raise ValueError(f"Number of dimensions of OF ({np.ndim(self._of)}) and event ({np.ndim(event)}) are incompatible.")
+        
+        # Note that this works for multiple channels simultaneously
         self._filtered_event = np.fft.irfft(np.fft.rfft(event)*self._of)
         return self._filtered_event
     
     def preview(self, event) -> dict:
         self(event)
-        return dict(line = {'event': [None, event],
-                            'filtered event': [None, self._filtered_event]})
+        if np.ndim(event) > 1:
+            d = dict()
+            for i in range(np.ndim(event)):
+                d[f'channel {i}'] = [None, event[i]]
+                d[f'filtered channel {i}'] = [None, self._filtered_event[i]]
+        else:
+            d = {'event': [None, event],
+                 'filtered event': [None, self._filtered_event]}
+        return dict(line = d)

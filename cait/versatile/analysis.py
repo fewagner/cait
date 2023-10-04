@@ -1,11 +1,14 @@
+from typing import Type, Callable
 from multiprocessing import Pool
+from inspect import signature
+import itertools
 
 import numpy as np
 from tqdm.auto import tqdm
 
-from .iterators import BatchResolver
+from .iterators import BatchResolver, IteratorBaseClass
 
-def apply(f, ev_iter, n_processes=1, unpack=False):
+def apply(f: Callable, ev_iter: Type[IteratorBaseClass], n_processes: int = 1):
     """
     Apply a function to events provided by an EventIterator. 
 
@@ -19,17 +22,29 @@ def apply(f, ev_iter, n_processes=1, unpack=False):
     :type ev_iter: `~class:cait.versatile.file.EventIterator`
     :param n_processes: Number of processes to use for multiprocessing.
     :type n_processes: int
-    :param unpack: Set to True if you want the result to be unpacked into separate arrays. If False, a single array will be returned (containing all values). Defaults to False.
-    :type unpack: bool
 
-    :return: Results of `f` for all events in `ev_iter`
-    :rtype: `~class:numpy.ndarray`
+    :return: Results of `f` for all events in `ev_iter`. Has same structure as output of `f` (just with an additional event dimension).
+    :rtype: Any
 
+    >>> # Example when func has one output
     >>> it = dh.get_event_iterator("events", batch_size=42)
-    >>> arr = apply(func, it)
-    
-    >>> out1, out2 = apply(func, it, unpack=True)
+    >>> out = apply(func, it)
+    >>> # Example when func has two outputs
+    >>> it = dh.get_event_iterator("events", batch_size=42)
+    >>> out1, out2 = apply(func, it)
     """
+    # Check if 'ev_iter' is a cait.versatile iterator object
+    if not isinstance(ev_iter, IteratorBaseClass):
+        raise TypeError(f"Input argument 'ev_iter' must be an instance of {IteratorBaseClass} not '{type(ev_iter)}'.")
+    
+    # Check if 'f' is indeed a function
+    if not callable(f):
+        raise TypeError(f"Input argument 'f' must be callable.")
+    
+    # Check if 'f' takes exactly one argument (the event)
+    if len(signature(f).parameters) != 1:
+        raise TypeError(f"Input function {f} has too many arguments ({len(signature(f).parameters)}). Only functions which take one argument (the event) are supported.")
+    
     if ev_iter.uses_batches: f = BatchResolver(f)
 
     with ev_iter as ev_it:
@@ -39,8 +54,15 @@ def apply(f, ev_iter, n_processes=1, unpack=False):
         else:
             out = [f(ev) for ev in tqdm(ev_it, total=ev_iter.n_batches)]
     
-    # Convert to numpy array and concatenate along the first dimension (event dimension)
-    # in case batches were used
-    array = np.concatenate(out, axis=0) if ev_iter.uses_batches else np.array(out)
-        
-    return (*array.T,) if unpack else array
+    # Chain batches such that the list is indistinguishable from a list using no batches
+    # (If uses_batches, 'out' is a list of lists)
+    if ev_iter.uses_batches: out = list(itertools.chain.from_iterable(out))
+
+    # If elements in 'out' are tuples, this means that the function had multiple outputs.
+    # In this case, we transpose the list so that we have a tuple of outputs where each element in the tuple is also converted to a numpy.array of len(ev_iter)
+    if isinstance(out[0], tuple): 
+        out = tuple(np.array(x) for x in zip(*out))
+    else:
+        out = np.array(out)
+
+    return out

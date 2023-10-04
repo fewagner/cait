@@ -28,6 +28,9 @@ def func3_multi(ev):
 def func4_multi(ev):
     return ([np.min(ev[0]), np.max(ev[0]), np.mean(ev[0])], [np.min(ev[1]), np.max(ev[1]), np.mean(ev[1])])
 
+def func_events(ev):
+    return ev
+
 class TestApply(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -48,68 +51,83 @@ class TestApply(unittest.TestCase):
     def test_scalar_out_single_ch(self):
         it1 = self.dh.get_event_iterator("events", 0)
         it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        arr1 = vai.analysis.apply(func1, it1)
-        arr2 = vai.analysis.apply(func1, it2)
+        out1 = vai.analysis.apply(func1, it1)
+        out2 = vai.analysis.apply(func1, it2)
 
-        self.assertTrue(arr1.shape == arr2.shape)
-        self.assertTrue(arr1.shape == (100,))
+        self.assertTrue(out1.shape == out2.shape)
+        self.assertTrue(out1.shape == (100,))
 
     def test_vector_out_single_ch(self):
         it1 = self.dh.get_event_iterator("events", 0)
         it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        arr1 = vai.analysis.apply(func2, it1)
-        arr2 = vai.analysis.apply(func2, it2)
+        out11, out12, out13 = vai.analysis.apply(func2, it1)
+        out21, out22, out23 = vai.analysis.apply(func2, it2)
 
-        self.assertTrue(arr1.shape == arr2.shape)
-        self.assertTrue(arr1.shape == (100, 3))
+        self.assertTrue(out11.shape == out21.shape)
+        self.assertTrue(out12.shape == out22.shape)
+        self.assertTrue(out13.shape == out23.shape)
+        self.assertTrue(out11.shape == (100,))
+        self.assertTrue(out12.shape == (100,))
+        self.assertTrue(out13.shape == (100,))
 
     def test_scalar_out_multi_ch(self):
-        it1 = self.dh.get_event_iterator("events", 0)
-        it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        arr1 = vai.analysis.apply(func1_multi, it1)
-        arr2 = vai.analysis.apply(func1_multi, it2)
+        it1 = self.dh.get_event_iterator("events")
+        it2 = self.dh.get_event_iterator("events", batch_size=11)
+        out1 = vai.analysis.apply(func1_multi, it1)
+        out2 = vai.analysis.apply(func1_multi, it2)
 
-        self.assertTrue(arr1.shape == arr2.shape)
-        self.assertTrue(arr1.shape == (100,))
+        self.assertTrue(out1.shape == out2.shape)
+        self.assertTrue(out1.shape == (100, ))
 
     def test_vector2_out_multi_ch(self):
-        it1 = self.dh.get_event_iterator("events", 0)
-        it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        arr1 = vai.analysis.apply(func2_multi, it1)
-        arr2 = vai.analysis.apply(func2_multi, it2)
+        it1 = self.dh.get_event_iterator("events")
+        it2 = self.dh.get_event_iterator("events", batch_size=11)
+        out11, out12 = vai.analysis.apply(func2_multi, it1)
+        out21, out22 = vai.analysis.apply(func2_multi, it2)
 
-        self.assertTrue(arr1.shape == arr2.shape)
-        self.assertTrue(arr1.shape == (100, 2))
+        self.assertTrue(out11.shape == out21.shape)
+        self.assertTrue(out12.shape == out22.shape)
+        self.assertTrue(out11.shape == (100,))
+        self.assertTrue(out12.shape == (100,))
 
     def test_vector3_out_multi_ch(self):
-        it1 = self.dh.get_event_iterator("events", 0)
-        it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        arr1 = vai.analysis.apply(func3_multi, it1)
-        arr2 = vai.analysis.apply(func3_multi, it2)
+        it1 = self.dh.get_event_iterator("events")
+        it2 = self.dh.get_event_iterator("events", batch_size=11)
+        out11, out12, out13 = vai.analysis.apply(func3_multi, it1)
+        out21, out22, out23 = vai.analysis.apply(func3_multi, it2)
 
-        self.assertTrue(arr1.shape == arr2.shape)
-        self.assertTrue(arr1.shape == (100, 3))
+        self.assertTrue(out11.shape == out21.shape)
+        self.assertTrue(out12.shape == out22.shape)
+        self.assertTrue(out13.shape == out23.shape)
+        self.assertTrue(out11.shape == (100,))
+        self.assertTrue(out12.shape == (100,))
+        self.assertTrue(out13.shape == (100,))
 
     def test_tensor_out_multi_ch(self):
-        it1 = self.dh.get_event_iterator("events", 0)
-        it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        arr1 = vai.analysis.apply(func4_multi, it1)
-        arr2 = vai.analysis.apply(func4_multi, it2)
+        it1 = self.dh.get_event_iterator("events")
+        it2 = self.dh.get_event_iterator("events", batch_size=11)
+        out11, out12 = vai.analysis.apply(func4_multi, it1)
+        out21, out22 = vai.analysis.apply(func4_multi, it2)
 
-        self.assertTrue(arr1.shape == arr2.shape)
-        self.assertTrue(arr1.shape == (100, 2, 3))
+        self.assertTrue(out11.shape == out21.shape)
+        self.assertTrue(out12.shape == out22.shape)
+        self.assertTrue(out11.shape == (100, 3))
+        self.assertTrue(out12.shape == (100, 3))
 
-    def test_unpack(self):
-        it1 = self.dh.get_event_iterator("events", 0)
-        it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
+    def test_event_size_output(self):
+        it1 = self.dh.get_event_iterator("events")
+        it2 = self.dh.get_event_iterator("events", batch_size=11)
+        it3 = self.dh.get_event_iterator("events", 0)
+        it4 = self.dh.get_event_iterator("events", 0, batch_size=11)
+        out1 = vai.analysis.apply(func_events, it1)
+        out2 = vai.analysis.apply(func_events, it2)
+        out3 = vai.analysis.apply(func_events, it3)
+        out4 = vai.analysis.apply(func_events, it4)
 
-        out1, out2 = vai.analysis.apply(func2_multi, it1, unpack=True)
-        out3, out4 = vai.analysis.apply(func2_multi, it2, unpack=True)
-
-        self.assertTrue(out1.shape == (100,))
-        self.assertTrue(out2.shape == (100,))
-        self.assertTrue(out3.shape == (100,))
-        self.assertTrue(out4.shape == (100,))
+        self.assertTrue(out1.shape == out2.shape)
+        self.assertTrue(out3.shape == out4.shape)
+        self.assertTrue(out1.shape == (100, 2, RECORD_LENGTH))
+        self.assertTrue(out3.shape == (100, RECORD_LENGTH))
 
 if __name__ == '__main__':
     unittest.main()

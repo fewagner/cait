@@ -1,4 +1,5 @@
 from .file import combine, merge
+from .arrays_with_benefits import SEV, NPS, OF
 from .analysis import apply
 from .plot import Viewer, Line, Scatter, Histogram, StreamViewer, Preview
 from .utils import timestamps_to_hours, timestamp_coincidence
@@ -18,5 +19,8 @@ __all__ = [
     'timestamps_to_hours',
     'timestamp_coincidence',
     'Stream',
-    'trigger'
+    'trigger',
+    'SEV',
+    'NPS',
+    'OF'
 ]
