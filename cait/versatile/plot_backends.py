@@ -1,6 +1,6 @@
 from itertools import cycle
 from abc import ABC, abstractmethod
-from typing import List, Union, Callable
+from typing import List, Union, Callable, Tuple
 import io
 import base64
 
@@ -47,6 +47,10 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
+    def _add_vmarker(marker_pos: List[float], y_int: Tuple[float], name: str = None):
+        ...
+
+    @abstractmethod
     def _update_line(name: str, x: List[float], y: List[float]):
         ...
 
@@ -56,6 +60,10 @@ class BackendBaseClass(ABC):
 
     @abstractmethod
     def _update_histogram(name: str, bins: Union[int, tuple], data: List[float]):
+        ...
+
+    @abstractmethod
+    def _update_vmarker(name: str, marker_pos: List[float], y_int: Tuple[float]):
         ...
 
     @abstractmethod
@@ -235,6 +243,28 @@ class BaseClassPlotly(BackendBaseClass):
         if len([k for k in self.fig.select_traces(selector="histogram")]) > 1:
             self.fig.update_traces(selector="histogram", patch=dict(opacity=0.8))
 
+    def _add_vmarker(self, marker_pos, y_int, name=None):
+        if marker_pos is None or y_int is None: 
+            x, y = None, None
+        else:
+            # Stack three of those arrays on top of each other and flatten in column-major order
+            # This results in an array where each ts_datetime point comes three times in a row
+            x = np.array([marker_pos, marker_pos, marker_pos]).flatten(order="F")
+
+            # y-values will jump between y_min and y_max and are separated by a None
+            y = [np.min(y_int), np.max(y_int), None]*np.array(marker_pos).shape[-1]
+
+        self.fig.add_trace(go.Scatter(x=x,
+                                      y=y,
+                                      name=name,
+                                      mode="lines",
+                                      line={'color': next(self.colors),
+                                            'width': 1.5,
+                                            'dash': 'dash'},
+                                      showlegend= True if name is not None else False) 
+                                      )
+        if name is not None: self.line_names.append(name)
+
     def _update_line(self, name, x, y):
         self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
 
@@ -255,6 +285,19 @@ class BaseClassPlotly(BackendBaseClass):
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
         self.fig.update_traces(dict(x=data, opacity=opacity, **arg), selector=dict(name=name))
+
+    def _update_vmarker(self, name, marker_pos, y_int):
+        if marker_pos is None or y_int is None: 
+            x, y = None, None
+        else:
+            # Stack three of those arrays on top of each other and flatten in column-major order
+            # This results in an array where each ts_datetime point comes three times in a row
+            x = np.array([marker_pos, marker_pos, marker_pos]).flatten(order="F")
+
+            # y-values will jump between y_min and y_max and are separated by a None
+            y = [np.min(y_int), np.max(y_int), None]*np.array(marker_pos).shape[-1]
+
+        self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
     
     def _set_axes(self, data):
         if "xaxis" in data.keys():
@@ -315,23 +358,6 @@ class BaseClassPlotly(BackendBaseClass):
     def _get_figure(self):
         return self.fig
 
-    # def _add_xmarker(self, x_marker_names):
-    #     for n in x_marker_names: 
-    #         self.fig.add_vline(x=0, name=n, line_dash='dash', line_color="Black", line_width=2)
-    #     self.x_marker_names = x_marker_names
-
-    # def _add_ymarker(self, y_marker_names):
-    #     for n in y_marker_names: 
-    #         self.fig.add_hline(y=0, name=n, line_dash='dash', line_color="Black", line_width=2)
-    #     self.y_marker_names = y_marker_names
-
-    # def __add_linemarker(self):
-    #     ...
-
-    # def _add_annotation(self):
-    #     ...
-
-##### EXPERIMENTAL START ######  
 class BaseClassMPL(BackendBaseClass):
     """
     Base Class for plots using the `matplotlib` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
@@ -474,6 +500,24 @@ class BaseClassMPL(BackendBaseClass):
         #if len([k for k in self.fig.select_traces(selector="histogram")]) > 1:
         #    self.fig.update_traces(selector="histogram", patch=dict(opacity=0.8))
 
+    def _add_vmarker(self, marker_pos, y_int, name=None):
+        if marker_pos is None or y_int is None: 
+            x, y = np.nan, np.nan
+        else:
+            # Stack three of those arrays on top of each other and flatten in column-major order
+            # This results in an array where each ts_datetime point comes three times in a row
+            x = np.array([marker_pos, marker_pos, marker_pos]).flatten(order="F")
+
+            # y-values will jump between y_min and y_max and are separated by a None
+            y = [np.min(y_int), np.max(y_int), None]*np.array(marker_pos).shape[-1]
+
+        if name is not None: self.line_names.append(name)
+
+        with plt.style.context(self.template):
+            self.fig.axes[0].plot(x, y, marker='none', linestyle='--', label=name)
+
+        self._draw()
+
     def _update_line(self, name: str, x: List[float], y: List[float]):
         # Plotly supports x=None, matplotlib has to handle it. We set it
         # here to get consistent results between the two backends
@@ -504,6 +548,25 @@ class BaseClassMPL(BackendBaseClass):
 
     def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
         ...
+
+    def _update_vmarker(self, name, marker_pos, y_int):
+        if marker_pos is None or y_int is None: 
+            x, y = np.nan, np.nan
+        else:
+            # Stack three of those arrays on top of each other and flatten in column-major order
+            # This results in an array where each ts_datetime point comes three times in a row
+            x = np.array([marker_pos, marker_pos, marker_pos]).flatten(order="F")
+
+            # y-values will jump between y_min and y_max and are separated by a None
+            y = [np.min(y_int), np.max(y_int), None]*np.array(marker_pos).shape[-1]
+
+        ind = [l.get_label() for l in self.fig.axes[0].lines].index(name)
+
+        with plt.style.context(self.template):
+            self.fig.axes[0].lines[ind].set_xdata(x)
+            self.fig.axes[0].lines[ind].set_ydata(y)
+
+        self._draw()
 
     def _set_axes(self, data: dict):
         with plt.style.context(self.template):

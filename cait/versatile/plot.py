@@ -1,4 +1,6 @@
-from typing import List, Union, Callable, Iterable
+from typing import List, Union, Callable, Iterable, Tuple
+
+import numpy as np
 
 from .stream import Stream
 from .iterators import IteratorBaseClass
@@ -148,6 +150,12 @@ class Viewer():
         """
         self.fig_widget._add_histogram(bins, data, name)
 
+    def add_vmarker(self, marker_pos: Union[float, List[float]], y_int: Tuple[float], name: str = None):
+        """
+        
+        """
+        self.fig_widget._add_vmarker(marker_pos, y_int, name)
+
     def update_line(self, name: str, x: List[float], y: List[float]):
         """
         Update the line called `name` with data `x` and `y`.
@@ -168,6 +176,12 @@ class Viewer():
         See `func:add_histogram` for an explanation of the arguments.
         """
         self.fig_widget._update_histogram(name, bins, data)
+
+    def update_vmarker(self, name: str, marker_pos: Union[float, List[float]], y_int: Tuple[float]):
+        """
+        
+        """
+        self.fig_widget._update_vmarker(name, marker_pos, y_int)
 
     def get_figure(self):
         """
@@ -376,8 +390,10 @@ class StreamViewer(Viewer):
 
     :param hardware: The hardware that was used to record the file. Valid options are ['vdaq2']
     :type hardware: str
-    :param fname: Stream file (full path including file extension)
-    :type fname: str
+    :param file: Stream file (full path including file extension)
+    :type file: str
+    :param keys: The keys of the stream to display. If none are specified, all available keys are plotted. Defaults to None.
+    :type keys: Union[str, List[str]]
     :param n_points: The number of data points that should be simultaneously displayed in the stream viewer. A large number can impact performance. Note that the number of points that are displayed are irrelevant of the downsampling factor (see below), i.e. the viewer will always display n_points points.
     :type n_points: int, optional
     :param downsample_factor: This many samples are skipped in the data when plotting it. A higher number increases performance but lowers the level of detail in the data.
@@ -397,9 +413,10 @@ class StreamViewer(Viewer):
     """
     def __init__(self, hardware: str, 
                  file: str, 
+                 keys: Union[str, List[str]] = None,
                  n_points: int = 10000, 
                  downsample_factor: int = 100,
-                #  mark_timestamps: Union[List[int], dict] = None, 
+                 mark_timestamps: Union[List[int], dict] = None, 
                  **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
@@ -411,23 +428,36 @@ class StreamViewer(Viewer):
         # it could be different for different hardware)
         self.stream = Stream(src=file, hardware=hardware)
 
-        # Adding lines for all the channels present in the hardware file
-        for name in self.stream.keys:
+        if keys is not None:
+            if type(keys) is str: 
+                keys = [keys]
+            if not all([k in self.stream.keys for k in keys]):
+                raise KeyError("One or more keys are not present in the stream.")
+            self._keys = keys
+        else:
+            self._keys = self.stream.keys
+
+        # Adding lines
+        for name in self._keys:
             self.add_line(x=None, y=None, name=name)
 
         # Adding labels
         self.set_xlabel("time")
         self.set_ylabel("trace (V)")
 
-        # # Adding timestamp markers
-        # if mark_timestamps is not None:
-        #     if type(mark_timestamps) is not dict:
-        #         mark_timestamps = dict(timestamps=np.array(mark_timestamps))
+        # Adding timestamp markers
+        if mark_timestamps is not None:
+            if type(mark_timestamps) is not dict:
+                mark_timestamps = dict(timestamps=np.array(mark_timestamps))
+            self._marked_timestamps = mark_timestamps
 
-        #     for name in mark_timestamps.keys():
-        #         self.add_line(x=None, y=None, name=name)
-
-        # self._mark_timestamps = mark_timestamps
+            for name in mark_timestamps.keys():
+                if mark_timestamps[name] == []:
+                    raise Exception("Received empty list of timestamps")
+                self.add_vmarker(marker_pos=None, y_int=[None,None], name=name)
+            self._marks_timestamps = True
+        else:
+            self._marks_timestamps = False
 
         # Initializing plot
         self.n_points = n_points
@@ -445,28 +475,33 @@ class StreamViewer(Viewer):
         t = self.stream.time[where]
         # Convert to datetime
         t_datetime = self.stream.time.timestamp_to_datetime(t)
+
+        val_min = []
+        val_max = []
         
-        for name in self.stream.keys:
-            self.update_line(name=name, x=t_datetime, y=self.stream[name, where, "as_voltage"])
+        for name in self._keys:
+            y = self.stream[name, where, "as_voltage"]
+            self.update_line(name=name, x=t_datetime, y=y)
 
-        # if self._mark_timestamps is not None:
-        #     tmin, tmax = t[0], t[-1]
-        #     for name in self._mark_timestamps.keys():
-        #         mask = np.logical_and(np.array(self._mark_timestamps[name]) > tmin,
-        #                               np.array(self._mark_timestamps[name]) < tmax)
-        #         ts = self._mark_timestamps[name][mask]
-        #         ts_datetime = self.stream.time.timestamp_to_datetime(ts)
-        #         # duplicate values, insert nan between pairs and flatten in column-major
-        #         # order. This gives us the x-values for the vertical lines
-        #         x = np.array([ts_datetime,
-        #                        ts_datetime, 
-        #                        np.full(ts_datetime.shape, np.datetime64("NaT"))]
-        #                     ).flatten(order="F")
+            if self._marks_timestamps:
+                val_min.append(np.min(y))
+                val_max.append(np.max(y))
 
-        #         y = np.zeros_like(x)
-        #         y[::3] = 10
+        if self._marks_timestamps: 
+            y_min, y_max = np.min(val_min), np.max(val_max)
+            t_min, t_max = t[0], t[-1]
+
+            for name in self._marked_timestamps.keys():
+                mask = np.logical_and(np.array(self._marked_timestamps[name]) > t_min,
+                                      np.array(self._marked_timestamps[name]) < t_max)
+                ts = self._marked_timestamps[name][mask]
                 
-        #         self.update_line(name=name, x=x, y=y)
+                if len(ts) > 0:
+                    ts_datetime = self.stream.time.timestamp_to_datetime(ts)
+                else:
+                    ts_datetime = None
+                
+                self.update_vmarker(name=name, marker_pos=ts_datetime, y_int=(y_min, y_max))
 
     def _move_right(self, b):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)

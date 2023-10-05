@@ -60,7 +60,7 @@ class RemoveBaseline(FncBaseClass):
     :param fit_baseline: Dictionary of keyword arguments that are passed on to :class:`FitBaseline`. See below.
     :type fit_baseline: dict
 
-    :return: Event without baseline
+    :return: Event with baseline removed
     :rtype: numpy.ndarray
 
     Parameters for :class:`FitBaseline`:

@@ -1,28 +1,90 @@
 from abc import ABC, abstractmethod
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Callable
 
 import cait as ai
 import numpy as np
 from tqdm.auto import tqdm
 
 from .iterators import StreamIterator
+from .functions import RemoveBaseline
 
 ####################################################
 ### FUNCTIONS IN THIS FILE HAVE NO TESTCASES YET ###
 ####################################################
 
-##### TEMPORARY
-def get_max(trace):
-    ind = np.argmax(trace)
-    baseline_offset = np.mean(trace[:100])
-    return ind, trace[ind]-baseline_offset
+def trigger(stream, 
+            key: str, 
+            threshold: float,
+            record_length: int,
+            overlap_fraction: float = 1/8,
+            trigger_block: int = None,
+            n_triggers: int = None,
+            fit_baseline: dict = {'model': 0, 'where': 8},
+            preprocessing: Union[Callable, List[Callable]] = None):
+    """
+    Trigger a single channel of a stream object with options for adding preprocessing like optimum filtering, applying window functions, or inverting the stream.
 
-# TODO: implement filter, proper get_max, f and blocking
-def trigger(stream, key, threshold, record_length, overlap_fraction=1/8, filter=None, use_window=True, f=None, n_triggers=None):
+    :param stream: The stream object with the channel to trigger.
+    :type stream: StreamBaseClass
+    :param key: The name of the channel in `stream` to trigger.
+    :type key: str
+    :param threshold: The threshold above which events should be triggered.
+    :type threshold: float
+    :param record_length: The length of the record window to use for triggering. Typically, this is a power of 2, e.g. 16384.
+    :type record_length: int
+    :param overlap_fraction: The fraction of the record window that should overlap between subsequent maximum searches. Number in the interval [0, 1/4], defaults to 1/8.
+    :type overlap_fraction: float
+    :param trigger_block: The number of samples for which the trigger should be blocked after a successful trigger. Has to be larger than `record_length`. If `None`, `record_length` is used. Defaults to None.
+    :type trigger_block: int
+    :param n_triggers: The maximum number of events to trigger. E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
+    :type n_triggers: int
+    :param fit_baseline: Parameters passed on to :class:`FitBaseline`. Here, it is used to remove the offset of a voltage trace. Defaults to `{'model': 0, 'where': 8}`, i.e. a constant baseline is assumed and the first 1/8-th of the record window is used for its calculation. For more description see below.
+    :type fit_baseline: dict
+    :param preprocessing: Functions to apply to the voltage trace before determining the maxima. E.g. optimum filtering. Note that the removal of the offset is ALWAYS part of preprocessing, hence it does not have to be and should not be added in `preprocessing`. 
+    :type preprocessing: Union[Callable, List[Callable]]
+
+    :return: Tuple of trigger indices and trigger heights.
+    :rtype: Tuple[List[int], List[float]]
+
+    Parameters for :class:`FitBaseline`:
+    :param model: Order of the polynomial or 'exponential', defaults to 0.
+    :type model: Union[int, str]
+    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or an integer. If an integer `where` is passed, the first `int(1/where)*record_length` samples are used (e.g. if `where=8`, the first 1/8 of the record window is used). Defaults to `slice(None, None, None).  
+    :type where: Union[List[bool], slice, int]
+    """
     
+    if not isinstance(stream, StreamBaseClass):
+        raise TypeError(f"Input argument 'stream' has to be of type 'StreamBaseClass', not {type(stream)}.")
+    if key not in stream.keys:
+        raise KeyError(f"Stream has no key '{key}'.")
+    if overlap_fraction < 0 or overlap_fraction > 0.25:
+        raise ValueError("Input argument 'overlap_fraction' is out of range [0, 0.25].")
+    if trigger_block is not None and trigger_block < record_length:
+        raise ValueError("Input argument 'trigger_block' has to be larger than 'record_length'.")
+    if 'xdata' in fit_baseline.keys():
+        raise KeyError("Setting 'xdata' for 'FitBaseline' is not supported in this context.")
+    if preprocessing is not None:
+        if type(preprocessing) in [list, tuple]:
+            if not all([callable(f) for f in preprocessing]):
+                raise TypeError("All entries of list 'preprocessing' must be callable.")
+        elif callable(preprocessing):
+            preprocessing = [preprocessing]
+        else:
+            raise TypeError(f"Unsupported type '{type(preprocessing)}' for input argument 'preprocessing'.")
+    else:
+        preprocessing = []
+    if any([isinstance(f, RemoveBaseline) for f in preprocessing]):
+        raise TypeError("You cannot add 'RemoveBaseline' to 'preprocessing' as it is already performed as the very first step anyways.")
+    
+    # Removing the baseline is ALWAYS part of the preprocessing and done first
+    preprocessing.insert(0, RemoveBaseline(fit_baseline))
+
+    # Block trigger for one record window if not specified otherwise
+    if trigger_block is None: trigger_block = record_length
+
     current_ind = int(0)
     max_ind = int(len(stream)-record_length)
-    overlap = int(np.ceil(record_length*overlap_fraction))
+    overlap = int(np.floor(record_length*overlap_fraction))
     
     trigger_inds = []
     trigger_vals = []
@@ -30,33 +92,49 @@ def trigger(stream, key, threshold, record_length, overlap_fraction=1/8, filter=
     
     with tqdm(total=max_ind) as progress:
         while current_ind < max_ind:
-            s = slice(current_ind + overlap, current_ind + record_length - overlap)
+            # Slice to read from stream
+            s = slice(current_ind, current_ind + record_length)
+            # Slice to use for maximum search
+            s_search = slice(overlap, -overlap)
 
-            trigger_ind, trigger_val = get_max(stream[key, s, 'as_voltage'])
+            # Read voltage trace from stream and apply preprocessing
+            trace = stream[key, s, 'as_voltage']
+            for p in preprocessing: trace = p(trace)
 
+            # Read maximum index and value
+            trigger_ind = np.argmax(trace[s_search])
+            trigger_val = trace[s_search][trigger_ind]
+
+            # Only executed when trigger candidate was found in previous iteration
             if resampled:
                 trigger_inds.append(current_ind + overlap + trigger_ind)
                 trigger_vals.append(trigger_val)
                 resampled = False
 
+                # We found a trigger: The absolute index of the trigger is (current_ind + overlap + trigger_ind). 
+                # The next possible sample to trigger is (current_ind + overlap + trigger_ind + trigger_block).
+                # By moving current_ind to (current_ind + overlap + trigger_ind + trigger_block - overlap), i.e. to (current_ind + trigger_ind + trigger_block) we implement the trigger block.
+                current_ind += trigger_ind + trigger_block
+                progress.update(trigger_ind + trigger_block)
+
+                if (n_triggers is not None) and (len(trigger_inds) >= n_triggers):
+                    break
+
+            # Standard case. Finds trigger candidates
             elif trigger_val > threshold:
-                current_ind += trigger_ind - overlap - 1 # choose the maximal window which still includes the triggered sample
+                # Move search window such that triggered sample is first sample to be searched
+                current_ind += trigger_ind - overlap - 1
                 progress.update(trigger_ind - overlap - 1)
+                # Search for larger values to the right of the trigger by re-running the step
                 resampled = True
-                continue
 
-            current_ind += record_length - 2*overlap # twice the overlap because otherwise we'd miss samples
-            progress.update(record_length - 2*overlap)
-
-            if (n_triggers is not None) and (len(trigger_inds) == n_triggers):
-                break
+            # If not trigger candidate was found, we just move the record window to the right
+            else:
+                # Move window forward by record length and compensate overlap
+                current_ind += record_length - 2*overlap 
+                progress.update(record_length - 2*overlap)
             
     return trigger_inds, trigger_vals
-
-def trigger_correlated(stream, keys, thresholds, record_length, coincidence_interval, filters=[None, None], overlap=[None, None], use_window=[True, True], n_triggers=None):
-    # Returns combined trigger indices for both streams in `streams`
-    # Triggers are considered the same event if the second stream's trigger is within `coincidence_interval` around the first stream's trigger
-    ...
 
 class StreamTime:
     """
@@ -137,7 +215,7 @@ class StreamTime:
         
         return out
 
-class _StreamBaseClass(ABC):
+class StreamBaseClass(ABC):
     @abstractmethod
     def __len__(self):
         ...
@@ -240,7 +318,7 @@ class _StreamBaseClass(ABC):
 
         return StreamIterator(self, keys, inds, record_length, alignment)
 
-class Stream_VDAQ2(_StreamBaseClass):
+class Stream_VDAQ2(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'vdaq2'.
     VDAQ2 data is stored in .bin files. Its header contains instructions on how to read the data and all recorded channels are stored in the same file.
@@ -287,7 +365,7 @@ class Stream_VDAQ2(_StreamBaseClass):
     def keys(self):
         return self._keys
     
-class Stream_VDAQ3(_StreamBaseClass):
+class Stream_VDAQ3(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'vdaq3'.
     VDAQ3 data is stored in .bin files. Its header contains instructions on how to read the data and all recorded channels are stored in the separate file.
@@ -371,7 +449,7 @@ class Stream_VDAQ3(_StreamBaseClass):
     def keys(self):
         return list(self._data.keys())
 
-class Stream:
+class Stream(StreamBaseClass):
     """
     Factory class for providing a common access point to stream data.
     Currently, only vdaq2 and vdaq3 files are supported but an extension can be straight forwardly implemented by sub-classing :class:`StreamBaseClass` and adding it in the constructor.
@@ -409,52 +487,31 @@ class Stream:
     def __init__(self, src: Union[str, List[str]], hardware: str):
         if hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src)
-        if hardware.lower() == "vdaq3":
+        elif hardware.lower() == "vdaq3":
             self._stream = Stream_VDAQ3(src)
         else:
             raise NotImplementedError('Only vdaq2 and vdaq3 files are supported at the moment.')
-        
-    def __len__(self):
-        return len(self._stream)
-    
+
     def __repr__(self):
         return repr(self._stream)
     
-    def __getitem__(self, val):
-        return self._stream[val]
-    
+    def __len__(self):
+        return len(self._stream)
+        
+    def get_channel(self, name: str):
+        return self._stream.get_channel(name)
+        
+    def get_voltage_trace(self, name: str, where: slice):
+        return self._stream.get_voltage_trace(name, where)
+
     @property
     def keys(self):
         return self._stream.keys
-    
+
     @property
     def start_us(self):
         return self._stream.start_us
-    
+
     @property
     def dt_us(self):
         return self._stream.dt_us
-    
-    @property
-    def time(self):
-        return self._stream.time
-    
-    def get_event_iterator(self, keys: Union[str, List[str]], record_length: int, inds: Union[int, List[int]] = None, timestamps: Union[int, List[int]] = None, alignment: float = 1/4):
-        """
-        Returns an iterator object over voltage traces for given trigger indices or timestamps of a stream file. 
-
-        :param keys: The keys (channel names) of the stream object to be iterated over. 
-        :type keys: Union[str, List[str]]
-        :param record_length: The number of samples to be returned for each index. Usually, those are powers of 2, e.g. 16384
-        :type record_length: int
-        :param inds: The stream indices for which we want to read the voltage traces. How this index is aligned in the returned record window is dictated by the `alignment` argument. Either `inds` or `timestamps` has to be set.
-        :type inds: Union[int, List[int]]
-        :param timestamps: The stream timestamps for which we want to read the voltage traces. How this timestamp is aligned in the returned record window is dictated by the `alignment` argument. Either `inds` or `timestamps` has to be set.
-        :type timestamps: Union[int, List[int]]
-        :param alignment: A number in the interval [0,1] which determines the alignment of the record window (of length `record_length`) relative to the specified index. E.g. if `alignment=1/2`, the record window is centered around the index. Defaults to 1/4.
-        :type alignment: float
-
-        :return: Iterable object
-        :rtype: StreamIterator
-        """
-        return self._stream.get_event_iterator(keys=keys, record_length=record_length, inds=inds, timestamps=timestamps, alignment=alignment)
