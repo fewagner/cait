@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from inspect import signature
 
 class FncBaseClass(ABC):   
     """
@@ -7,6 +8,12 @@ class FncBaseClass(ABC):
     This class defines two necessary methods: `__call__` which takes one argument (the event voltage trace; can be multiple channels, depending on the function implementation) and returns the result. Multiple results are returned as tuples (e.g. `return result1, result2`) and if one result is a list/vector, it is encouraged to return a `numpy.ndarray`.
     The `preview` method is called when the function is used in combination with the :class:`Preview` class and (if implemented) is expected to return a dictionary of the form specified in :class:`Preview`. 
     """
+    def __repr__(self):
+        params = signature(self.__init__).parameters.keys()
+        p = ", ".join([f"{k}={getattr(self, '_'+k)}" 
+                       for k in params if hasattr(self, '_'+k)])
+        return f"{self.__class__.__name__}({p})"
+    
     @abstractmethod
     def __call__(self, event):
         ...

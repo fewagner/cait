@@ -2,7 +2,7 @@ from .file import combine, merge
 from .arrays_with_benefits import SEV, NPS, OF
 from .analysis import apply
 from .plot import Viewer, Line, Scatter, Histogram, StreamViewer, Preview
-from .utils import timestamps_to_hours, timestamp_coincidence
+from .utils import timestamps_to_hours, timestamp_coincidence, sample_noise
 from .stream import Stream, trigger
 from .functions import *
 
@@ -18,6 +18,7 @@ __all__ = [
     'Preview',
     'timestamps_to_hours',
     'timestamp_coincidence',
+    'sample_noise',
     'Stream',
     'trigger',
     'SEV',

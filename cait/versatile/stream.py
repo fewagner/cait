@@ -19,10 +19,10 @@ def trigger(stream,
             overlap_fraction: float = 1/8,
             trigger_block: int = None,
             n_triggers: int = None,
-            fit_baseline: dict = {'model': 0, 'where': 8},
             preprocessing: Union[Callable, List[Callable]] = None):
     """
     Trigger a single channel of a stream object with options for adding preprocessing like optimum filtering, applying window functions, or inverting the stream.
+    If no preprocessing is specified, only the baseline of the voltage trace is removed (using a constant baseline model and the first `int(overlap_fraction/2)` samples of the record window). If a function, e.g. `lambda x: -x` is given, it is added *after* the removal of the baseline. Only if `RemoveBaseline` is explicitly given, the user can choose when it is applied, e.g. `[lambda, x: x**2, RemoveBaseline()]` first squares the voltage trace and removes the baseline afterwards. 
 
     :param stream: The stream object with the channel to trigger.
     :type stream: StreamBaseClass
@@ -38,19 +38,11 @@ def trigger(stream,
     :type trigger_block: int
     :param n_triggers: The maximum number of events to trigger. E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
     :type n_triggers: int
-    :param fit_baseline: Parameters passed on to :class:`FitBaseline`. Here, it is used to remove the offset of a voltage trace. Defaults to `{'model': 0, 'where': 8}`, i.e. a constant baseline is assumed and the first 1/8-th of the record window is used for its calculation. For more description see below.
-    :type fit_baseline: dict
-    :param preprocessing: Functions to apply to the voltage trace before determining the maxima. E.g. optimum filtering. Note that the removal of the offset is ALWAYS part of preprocessing, hence it does not have to be and should not be added in `preprocessing`. 
+    :param preprocessing: Functions to apply to the voltage trace before determining the maxima. E.g. optimum filtering. Note that if `preprocessing` does not include `RemoveBaseline`, it is added as a first function in the preprocessing chain since baseline removal is mandatory. If the user wants to remove the baseline at another point in this chain, it has to be included in the `preprocessing` list. 
     :type preprocessing: Union[Callable, List[Callable]]
 
     :return: Tuple of trigger indices and trigger heights.
     :rtype: Tuple[List[int], List[float]]
-
-    Parameters for :class:`FitBaseline`:
-    :param model: Order of the polynomial or 'exponential', defaults to 0.
-    :type model: Union[int, str]
-    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or an integer. If an integer `where` is passed, the first `int(1/where)*record_length` samples are used (e.g. if `where=8`, the first 1/8 of the record window is used). Defaults to `slice(None, None, None).  
-    :type where: Union[List[bool], slice, int]
     """
     
     if not isinstance(stream, StreamBaseClass):
@@ -61,8 +53,7 @@ def trigger(stream,
         raise ValueError("Input argument 'overlap_fraction' is out of range [0, 0.25].")
     if trigger_block is not None and trigger_block < record_length:
         raise ValueError("Input argument 'trigger_block' has to be larger than 'record_length'.")
-    if 'xdata' in fit_baseline.keys():
-        raise KeyError("Setting 'xdata' for 'FitBaseline' is not supported in this context.")
+    
     if preprocessing is not None:
         if type(preprocessing) in [list, tuple]:
             if not all([callable(f) for f in preprocessing]):
@@ -73,11 +64,14 @@ def trigger(stream,
             raise TypeError(f"Unsupported type '{type(preprocessing)}' for input argument 'preprocessing'.")
     else:
         preprocessing = []
-    if any([isinstance(f, RemoveBaseline) for f in preprocessing]):
-        raise TypeError("You cannot add 'RemoveBaseline' to 'preprocessing' as it is already performed as the very first step anyways.")
-    
-    # Removing the baseline is ALWAYS part of the preprocessing and done first
-    preprocessing.insert(0, RemoveBaseline(fit_baseline))
+
+    # If RemoveBaseline is not part of 'preprocessing', it is added (because removal of baseline is mandatory)
+    # It is added to the front by default, i.e. baseline removal happens first.
+    # If user wants RemoveBaseline at specific point in preprocessing chain, they just have to include it in the 'preprocessing' list
+    if not any([isinstance(f, RemoveBaseline) for f in preprocessing]):
+        preprocessing.insert(0, 
+                             RemoveBaseline({"model":0,
+                                             "where": int(1/(2*overlap_fraction))}))
 
     # Block trigger for one record window if not specified otherwise
     if trigger_block is None: trigger_block = record_length
@@ -89,6 +83,9 @@ def trigger(stream,
     trigger_inds = []
     trigger_vals = []
     resampled = False
+
+    print(f"Start triggering '{key}' of {stream} with threshold {threshold}, record length {record_length} and preprocessing:")
+    print('\n'.join(['- '+str(i) for i in preprocessing]))
     
     with tqdm(total=max_ind) as progress:
         while current_ind < max_ind:
@@ -134,6 +131,8 @@ def trigger(stream,
                 current_ind += record_length - 2*overlap 
                 progress.update(record_length - 2*overlap)
             
+    print(f"Found {len(trigger_inds)} triggers.")
+    
     return trigger_inds, trigger_vals
 
 class StreamTime:

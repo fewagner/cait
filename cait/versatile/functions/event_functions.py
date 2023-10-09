@@ -1,6 +1,7 @@
 # FUNCTIONS THAT ARE MEANT TO BE APPLIED TO SINGLE EVENTS AND ALSO RETURN SINGLE EVENTS
 
 import numpy as np
+import scipy as sp
 from scipy.signal.windows import tukey
 
 from .abstract_functions import FncBaseClass
@@ -36,10 +37,31 @@ class PreviewEvent(FncBaseClass):
                     axes={"xaxis": {"label": "data index"},
                           "yaxis": {"label": "data (V)"}
                          })
+    
+class Lags(FncBaseClass):
+    def __init__(self, ref_event: np.ndarray):
+        if np.array(ref_event).ndim > 1:
+            raise Exception("Only one-dimensional events are supported.")
+        self._ref_event = np.array(ref_event)
+
+    def __call__(self, event):
+        corr = sp.signal.correlate(self._ref_event, event, mode="full", method="fft")
+        lags = sp.signal.correlation_lags(self._ref_event.size, event.size, mode="full")
+        self._lag = lags[np.argmax(corr)]
+        return self._lag
 
 ############ EVENT FUNCTIONS ############
 class Downsample(FncBaseClass):
-    def __init__(self, down: int = 8):
+    """
+    Downsample an event by a given factor (which has to be a factor of the event's length).
+
+    :param down: The factor by which to downsample the voltage trace.
+    :type down: int
+ 
+    :return: Downsampled event.
+    :rtype: np.ndarray
+    """
+    def __init__(self, down: int = 3):
         self._down = down
 
     def __call__(self, event):
@@ -72,7 +94,7 @@ class RemoveBaseline(FncBaseClass):
     :type xdata: List[float]
     """
     def __init__(self, fit_baseline: dict = {'model': 0, 'where': 8, 'xdata': None}):
-        self._FitBaseline = FitBaseline(**fit_baseline)
+        self._fit_baseline = FitBaseline(**fit_baseline)
 
         if 'xdata' in fit_baseline.keys():
             self._xdata = fit_baseline['xdata']
@@ -80,14 +102,14 @@ class RemoveBaseline(FncBaseClass):
             self._xdata = None
 
     def __call__(self, event):
-        par, *_ = self._FitBaseline(event)
-        if self._FitBaseline._model == 0:
+        par, *_ = self._fit_baseline(event)
+        if self._fit_baseline._model == 0:
             self._shifted_event = event - par
         else:
             # ATTENTION: This is set only once! (we have to set it here because 
             # previously we didn't know the length of 'event')
             if self._xdata is None: self._xdata = np.arange(len(event))
-            self._shifted_event = event - self._FitBaseline.model(self._xdata, par)
+            self._shifted_event = event - self._fit_baseline.model(self._xdata, par)
 
         return self._shifted_event
         
@@ -99,6 +121,15 @@ class RemoveBaseline(FncBaseClass):
 
 class BoxCarSmoothing(FncBaseClass):
     # TODO: implement for multiple channels
+    """
+    Apply box-car-smoothing (moving average) to a voltage trace.
+
+    :param length: Length (in samples) of the moving average. Defaults to 50.
+    :type length: int
+ 
+    :return: Smoothed event.
+    :rtype: np.ndarray
+    """
     def __init__(self, length: int = 50):
         self._length = length
 
@@ -115,7 +146,15 @@ class BoxCarSmoothing(FncBaseClass):
                             'smooth event': [None, self._smooth_event]})
    
 class TukeyFiltering(FncBaseClass):
-    # works for multiple channels
+    """
+    Apply the Tukey window function to a voltage trace. Works for multiple channels simultaneously.
+
+    :param alpha: The parameter of the Tukey window function. Defaults to 0.25.
+    :type alpha: float
+ 
+    :return: Event with applied window function.
+    :rtype: np.ndarray
+    """
     def __init__(self, alpha: float = 0.25):
         self._alpha = alpha
 
@@ -136,7 +175,20 @@ class TukeyFiltering(FncBaseClass):
         return dict(line = d)
 
 class OptimumFiltering(FncBaseClass):
-    # works for multiple channels
+    """
+    Apply an optimum filter to a voltage trace. Works for multiple channels simultaneously if optimum filter is also given for multiple channels.
+
+    :param of: The optimum filter to use.
+    :type of: np.ndarray
+ 
+    :return: Filtered event.
+    :rtype: np.ndarray
+
+    >>> ev_it = dh.get_event_iterator("events")
+    >>> of = vai.OF().from_dh(dh)
+    >>> f = vai.OptimumFiltering(of)
+    >>> filtered_events = vai.apply(f, ev_it)
+    """
     def __init__(self, of):
         self._of = of
 
@@ -159,3 +211,33 @@ class OptimumFiltering(FncBaseClass):
             d = {'event': [None, event],
                  'filtered event': [None, self._filtered_event]}
         return dict(line = d)
+        
+class Align(FncBaseClass):
+    """
+    Align a voltage trace relative to a reference trace by shifting its indices.
+    This function calculates the lags (shift between two signals) using cross-correlations and shifts it afterwards. Note that the output has the same size as the input, i.e. samples are just periodically shifted.
+
+    :param ref_event: The reference voltage trace.
+    :type ref_event: np.ndarray
+ 
+    :return: Shifted event.
+    :rtype: np.ndarray
+
+    >>> ev_it = dh.get_event_iterator("events")
+    >>> sev = vai.SEV().from_dh(dh)
+    >>> f = vai.Align(sev)
+    >>> aligned_events = vai.apply(f, ev_it)
+    """
+    def __init__(self, ref_event: np.array):
+        self._ref_event = ref_event
+        self._lags = Lags(ref_event)
+
+    def __call__(self, event):
+        self._shifted_event = np.roll(event, self._lags(event))
+        return self._shifted_event
+    
+    def preview(self, event):
+        self(event)
+        return dict(line = {'event': [None, event],
+                            'reference event': [None, self._ref_event],
+                            'shifted event': [None, self._shifted_event]})
