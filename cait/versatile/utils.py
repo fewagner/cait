@@ -106,7 +106,6 @@ def timestamp_coincidence(a: List[int], b: List[int], interval: Tuple[int]):
 
     return (inds[~mask_even], inds_a, inds[mask_even])
 
-# HAS NO TEST CASE YET
 def sample_noise(trigger_inds: List[int], record_length: int, alignment: float = 1/4, n_samples: int = None):
     """
     Get stream indices of noise traces. Record windows of length `record_length` are aligned around `trigger_inds` (using `alignment`) and noise indices are only sampled from large enough intervals *outside* these windows (i.e. only if at least one noise window of length `record_length` fits within such gaps). Note that the selected noise traces can still contain pulses and artifacts.
@@ -132,16 +131,17 @@ def sample_noise(trigger_inds: List[int], record_length: int, alignment: float =
     onset = int(alignment*record_length)
 
     noise_inds = []
+    all_inds = trigger_inds.copy()
 
     # In case n_samples is not set, the loop runs until all intervals are exhausted, i.e. until no more vacancies are found.
     while len(noise_inds) < n_samples:
         # It will be easier below if we sort trigger_inds
-        trigger_inds.sort()
+        all_inds.sort()
 
         # Intervals around triggers (each column corresponds to one interval)
         # By interval we mean interval[0] is the first and interval[1] the last index of the record window
-        intervals = np.array([np.array(trigger_inds)-onset, 
-                              np.array(trigger_inds)+record_length-onset-1])
+        intervals = np.array([np.array(all_inds)-onset, 
+                              np.array(all_inds)+record_length-onset-1])
         
         # Find large enough gaps. Those gaps start by interval_i[1]+1 and end at interval_(i+1)[0]-1. The number of elements in these gaps is then one larger than the difference of the boundaries.
         gap_sizes = (intervals[0,1:]-1) - (intervals[1,:-1]+1) + 1
@@ -162,7 +162,7 @@ def sample_noise(trigger_inds: List[int], record_length: int, alignment: float =
         draws = np.random.randint(low=vacant_intervals[0], high=vacant_intervals[1]+1)
 
         noise_inds.extend(list(draws))
-        trigger_inds.extend(list(draws))
+        all_inds.extend(list(draws))
 
     # Since we draw all random numbers at once, it can happen that we end up with more samples than required. Nevertheless, it's easier to draw them all at once.
     # To remain unbiased, the required n samples are drawn randomly (because `noise_inds` is currently sorted in ascending order)

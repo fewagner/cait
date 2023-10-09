@@ -32,8 +32,21 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(np.array_equal(b[outside], np.array([11,35,42,45])))
         self.assertTrue(np.array_equal(a[coincidence_ind], np.array([10,10])))
 
-    def test_sample_noise(self): # TODO: implement
-        ...
+    def test_sample_noise(self):
+        record_length = 10
+        onset = int(record_length/4)
+
+        trigger_inds = [100, 110, 200, 250, 500, 1000, 1150]
+        noise_inds = vai.sample_noise(trigger_inds=trigger_inds, 
+                                      record_length=record_length)
+
+        # Check if nothing overlaps
+        x = trigger_inds + noise_inds
+        x.sort()
+        intervals = np.array([np.array(x)-onset, 
+                              np.array(x)+record_length-onset-1]).flatten(order="F")
+        
+        self.assertTrue(np.any(np.diff(intervals) < record_length))
 
 if __name__ == '__main__':
     unittest.main()

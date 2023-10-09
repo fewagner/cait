@@ -2,10 +2,11 @@ from typing import List, Union, Callable, Iterable, Tuple
 
 import numpy as np
 
-from .stream import Stream
-from .iterators import IteratorBaseClass
 from .plot_backends import BaseClassPlotly, BaseClassMPL
-from .functions import PreviewEvent
+
+from ..stream import Stream
+from ..iterators import IteratorBaseClass
+from ..functions import PreviewEvent
 
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).

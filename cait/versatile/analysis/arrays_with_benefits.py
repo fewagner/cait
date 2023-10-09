@@ -5,12 +5,11 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from .analysis import apply
-from .iterators import IteratorBaseClass
-from .functions import OptimumFiltering
-from .plot import Line
+from ..iterators import IteratorBaseClass, apply
+from ..functions import OptimumFiltering
+from ..plot import Line
 
-from ..data import write_xy_file
+from ...data import write_xy_file
 
 class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     def __repr__(self):
