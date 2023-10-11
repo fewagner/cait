@@ -335,8 +335,14 @@ class PulserModel:
         self.tp_hours = tp_hours
         self.interpolation_method = interpolation_method
 
-        unique_tpas = np.unique(tpas)
-        unique_tpas = unique_tpas[np.logical_not(np.in1d(unique_tpas, exclude_tpas))]
+        # We round the tpa values first because comparing floats is otherwise prone to numerical precision issues
+        decimals = 4
+        tpas = np.round(tpas, decimals)
+        exclude_tpas = np.round(exclude_tpas, decimals)
+        # Calculate difference of sets
+        set_difference = set(tpas) - set(exclude_tpas)
+        # Convert back to numpy array
+        unique_tpas = np.array(sorted(list(set_difference)))
         print('Unique TPAs: ', unique_tpas)
 
         if interpolation_method == 'linear':

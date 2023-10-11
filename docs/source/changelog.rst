@@ -4,6 +4,10 @@ Features and Changelog
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
+v1.2.1
+======
+- Fixed a bug where the `exclude_tpas` keyword in `PulserModel` and derived functionalities like `calc_calibration` would not correctly exclude small testpulse amplitudes.
+
 v1.2.0
 ======
 
