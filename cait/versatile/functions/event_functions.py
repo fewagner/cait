@@ -117,7 +117,7 @@ class RemoveBaseline(FncBaseClass):
         self(event)
 
         return dict(line = {'event': [self._xdata, event],
-                            'shifted event': [self._xdata, self._shifted_event]})
+                            'baseline removed': [self._xdata, self._shifted_event]})
 
 class BoxCarSmoothing(FncBaseClass):
     # TODO: implement for multiple channels

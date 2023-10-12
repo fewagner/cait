@@ -483,7 +483,7 @@ class PulserModel:
                         for s in self.all_regs[i]:
                             xl, x, xu = s.y_sigma(ev_hours[e])
                             x_data.append(x)
-                            x_sigma.append(xu - xl)
+                            x_sigma.append((xu - xl)/2)
                             self._check_valid(x_data[-1], x_sigma[-1], 'TPH_estimates', allow_zero=True)
                         y_data = self.all_linear_tpas[i]
                         kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
@@ -495,7 +495,7 @@ class PulserModel:
                         yl, y, yu = model.y_pred(evhs[e])
 
                         tpa_equivalent[e] = y
-                        tpa_equivalent_sigma[e] = yu - yl
+                        tpa_equivalent_sigma[e] = (yu - yl)/2
                         break
 
         elif self.interpolation_method == 'tree':
@@ -508,7 +508,7 @@ class PulserModel:
                     xl, x, xu = l.predict(ev_hours[e].reshape(-1, 1)), m.predict(ev_hours[e].reshape(-1, 1)), u.predict(
                         ev_hours[e].reshape(-1, 1))
                     x_data.append(x)
-                    x_sigma.append(np.maximum(xu - xl, 1e-4))  # to avoid negative uncertainties
+                    x_sigma.append(np.maximum((xu - xl)/2, 1e-4))  # to avoid negative uncertainties
                     self._check_valid(x_data[-1], x_sigma[-1], 'TPH_estimates', allow_zero=True)
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
@@ -522,7 +522,7 @@ class PulserModel:
                 yl, y, yu = model.y_pred(evhs[e])
 
                 tpa_equivalent[e] = y
-                tpa_equivalent_sigma[e] = yu - yl
+                tpa_equivalent_sigma[e] = (yu - yl)/2
 
         else:
             raise NotImplementedError('This method is not implemented.')
@@ -627,7 +627,7 @@ class PulserModel:
                     for s in self.all_regs[i]:
                         xl, x, xu = s.y_sigma(plot_timestamp)
                         x_data.append(x)
-                        x_sigma.append(xu - xl)
+                        x_sigma.append((xu - xl)/2)
                     y_data = self.all_linear_tpas[i]
                     kwargs = {'xd': x_data, 'yd': y_data, 'x_sigma': x_sigma,
                               'order': poly_order, 'force_zero': force_zero, 'kind': kind}
@@ -698,7 +698,7 @@ class PulserModel:
                         np.array([[plot_timestamp]])), u.predict(
                         np.array([[plot_timestamp]]))
                     x_data.append(x)
-                    x_sigma.append(xu - xl)
+                    x_sigma.append((xu - xl)/2)
                 x_data = np.array(x_data).reshape(-1)
                 x_sigma = np.array(x_sigma).reshape(-1)
                 y_data = self.linear_tpas
