@@ -77,6 +77,8 @@ def trigger(stream,
     current_ind = int(0)
     max_ind = int(len(stream)-record_length)
     overlap = int(np.floor(record_length*overlap_fraction))
+    # Slice to use for maximum search
+    s_search = slice(overlap, -overlap)
     
     trigger_inds = []
     trigger_vals = []
@@ -89,8 +91,6 @@ def trigger(stream,
         while current_ind < max_ind:
             # Slice to read from stream
             s = slice(current_ind, current_ind + record_length)
-            # Slice to use for maximum search
-            s_search = slice(overlap, -overlap)
 
             # Read voltage trace from stream and apply preprocessing
             trace = stream[key, s, 'as_voltage']
@@ -117,9 +117,9 @@ def trigger(stream,
 
             # Standard case. Finds trigger candidates
             elif trigger_val > threshold:
-                # Move search window such that triggered sample is first sample to be searched
-                current_ind += trigger_ind - overlap - 1
-                progress.update(trigger_ind - overlap - 1)
+                # Move search window such that triggered sample is first sample to be searched ('trigger_ind' is index *within* search window)
+                current_ind += trigger_ind
+                progress.update(trigger_ind)
                 # Search for larger values to the right of the trigger by re-running the step
                 resampled = True
 
