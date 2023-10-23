@@ -3,7 +3,7 @@ import tempfile
 import numpy as np
 
 import cait as ai
-from cait.versatile.iterators import EventIterator
+from cait.versatile.iterators import H5Iterator, apply
 
 RECORD_LENGTH = 2**15
 SAMPLE_FREQUENCY = 2e5
@@ -15,7 +15,7 @@ DATA_3D = np.random.rand(2, 100, RECORD_LENGTH)
 DATA_2D_single_CH = np.random.rand(1, 100)
 DATA_3D_single_CH = np.random.rand(1, 100, 16)
 
-class TestEventIterator(unittest.TestCase):
+class TestH5Iterator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory()
@@ -34,7 +34,7 @@ class TestEventIterator(unittest.TestCase):
         cls.dir.cleanup()
 
     def test_iterator_bs1_ch2(self):
-        it = EventIterator(self.dh.get_filepath(), "events", "event")
+        it = H5Iterator(self.dh.get_filepath(), "events", "event")
         for i in it:
             self.assertTrue(i.shape == (2, RECORD_LENGTH))
 
@@ -45,7 +45,7 @@ class TestEventIterator(unittest.TestCase):
     def test_iterator_bs10_ch2(self):
         # Note that total length is a multiple of batch size. Remaining batches smaller than the batch size are 
         # checked in a different test
-        it = EventIterator(self.dh.get_filepath(), "events", "event", batch_size=10)
+        it = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=10)
         for i in it:
             self.assertTrue(i.shape == (10, 2, RECORD_LENGTH))
 
@@ -54,7 +54,7 @@ class TestEventIterator(unittest.TestCase):
                 self.assertTrue(i.shape == (10, 2, RECORD_LENGTH))
 
     def test_iterator_bs1_ch1(self):
-        it = EventIterator(self.dh.get_filepath(), "events", "event", channels=1)
+        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
         for i in it:
             self.assertTrue(i.shape == (RECORD_LENGTH,))
 
@@ -63,7 +63,7 @@ class TestEventIterator(unittest.TestCase):
                 self.assertTrue(i.shape == (RECORD_LENGTH,))
 
     def test_iterator_bs10_ch1(self):
-        it = EventIterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=10)
+        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=10)
         for i in it:
             self.assertTrue(i.shape == (10, RECORD_LENGTH))
 
@@ -73,10 +73,10 @@ class TestEventIterator(unittest.TestCase):
 
     def test_inds(self):
         inds = [12, 18, 55, 81, 90, 99]
-        it1 = EventIterator(self.dh.get_filepath(), "events", "event", inds=inds)
-        it2 = EventIterator(self.dh.get_filepath(), "events", "event", channels=1, inds=inds)
-        it3 = EventIterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=3, inds=inds)
-        it4 = EventIterator(self.dh.get_filepath(), "events", "event", batch_size=3, inds=inds)
+        it1 = H5Iterator(self.dh.get_filepath(), "events", "event", inds=inds)
+        it2 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, inds=inds)
+        it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=3, inds=inds)
+        it4 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=3, inds=inds)
 
         for it in [it1, it2, it3, it4]: self.assertTrue(len(it) == len(inds))
 
@@ -86,7 +86,7 @@ class TestEventIterator(unittest.TestCase):
         for i in it4: self.assertTrue(i.shape == (3, 2, RECORD_LENGTH))
 
     def test_batch_remainder(self):
-        it = EventIterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
+        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
         lens_are = np.array([len(i) for i in it])
         lens_should_be = np.ones_like(lens_are, dtype=int)*11
         lens_should_be[-1] = 1 
@@ -94,20 +94,31 @@ class TestEventIterator(unittest.TestCase):
         self.assertTrue(np.all(lens_are == lens_should_be))
 
     def test_add_processing(self):
-        it1 = EventIterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
-        it2 = EventIterator(self.dh.get_filepath(), "events", "event", batch_size=11)
-        it3 = EventIterator(self.dh.get_filepath(), "events", "event", channels=1)
-        it4 = EventIterator(self.dh.get_filepath(), "events", "event")
+        it1 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
+        it2 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=11)
+        it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
+        it4 = H5Iterator(self.dh.get_filepath(), "events", "event")
 
-        it1.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
-        it2.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
-        it3.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
-        it4.add_processing(lambda ev: ev**2, lambda ev: np.sqrt(ev))
+        it1.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
+        it2.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
+        it3.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
+        it4.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
 
+        # Test iteration
         next(iter(it1))
         next(iter(it2))
         next(iter(it3))
         next(iter(it4))
+
+        # Check if outputs are equivalent (internally, batched/unbatched iterators
+        # and iterators of different numbers of channels are handled differently)
+        arr1 = apply(lambda x: x, it1) # Just uses apply method to resolve batches
+        arr2 = apply(lambda x: x, it2)
+        arr3 = apply(lambda x: x, it3)
+        arr4 = apply(lambda x: x, it4)
+
+        self.assertTrue(np.array_equal(arr1, arr3))
+        self.assertTrue(np.array_equal(arr2, arr4))
 
 if __name__ == '__main__':
     unittest.main()

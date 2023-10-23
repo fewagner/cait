@@ -51,8 +51,8 @@ class TestApply(unittest.TestCase):
     def test_scalar_out_single_ch(self):
         it1 = self.dh.get_event_iterator("events", 0)
         it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        out1 = vai.analysis.apply(func1, it1)
-        out2 = vai.analysis.apply(func1, it2)
+        out1 = vai.apply(func1, it1)
+        out2 = vai.apply(func1, it2)
 
         self.assertTrue(out1.shape == out2.shape)
         self.assertTrue(out1.shape == (100,))
@@ -60,8 +60,8 @@ class TestApply(unittest.TestCase):
     def test_vector_out_single_ch(self):
         it1 = self.dh.get_event_iterator("events", 0)
         it2 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        out11, out12, out13 = vai.analysis.apply(func2, it1)
-        out21, out22, out23 = vai.analysis.apply(func2, it2)
+        out11, out12, out13 = vai.apply(func2, it1)
+        out21, out22, out23 = vai.apply(func2, it2)
 
         self.assertTrue(out11.shape == out21.shape)
         self.assertTrue(out12.shape == out22.shape)
@@ -73,8 +73,8 @@ class TestApply(unittest.TestCase):
     def test_scalar_out_multi_ch(self):
         it1 = self.dh.get_event_iterator("events")
         it2 = self.dh.get_event_iterator("events", batch_size=11)
-        out1 = vai.analysis.apply(func1_multi, it1)
-        out2 = vai.analysis.apply(func1_multi, it2)
+        out1 = vai.apply(func1_multi, it1)
+        out2 = vai.apply(func1_multi, it2)
 
         self.assertTrue(out1.shape == out2.shape)
         self.assertTrue(out1.shape == (100, ))
@@ -82,8 +82,8 @@ class TestApply(unittest.TestCase):
     def test_vector2_out_multi_ch(self):
         it1 = self.dh.get_event_iterator("events")
         it2 = self.dh.get_event_iterator("events", batch_size=11)
-        out11, out12 = vai.analysis.apply(func2_multi, it1)
-        out21, out22 = vai.analysis.apply(func2_multi, it2)
+        out11, out12 = vai.apply(func2_multi, it1)
+        out21, out22 = vai.apply(func2_multi, it2)
 
         self.assertTrue(out11.shape == out21.shape)
         self.assertTrue(out12.shape == out22.shape)
@@ -93,8 +93,8 @@ class TestApply(unittest.TestCase):
     def test_vector3_out_multi_ch(self):
         it1 = self.dh.get_event_iterator("events")
         it2 = self.dh.get_event_iterator("events", batch_size=11)
-        out11, out12, out13 = vai.analysis.apply(func3_multi, it1)
-        out21, out22, out23 = vai.analysis.apply(func3_multi, it2)
+        out11, out12, out13 = vai.apply(func3_multi, it1)
+        out21, out22, out23 = vai.apply(func3_multi, it2)
 
         self.assertTrue(out11.shape == out21.shape)
         self.assertTrue(out12.shape == out22.shape)
@@ -106,8 +106,8 @@ class TestApply(unittest.TestCase):
     def test_tensor_out_multi_ch(self):
         it1 = self.dh.get_event_iterator("events")
         it2 = self.dh.get_event_iterator("events", batch_size=11)
-        out11, out12 = vai.analysis.apply(func4_multi, it1)
-        out21, out22 = vai.analysis.apply(func4_multi, it2)
+        out11, out12 = vai.apply(func4_multi, it1)
+        out21, out22 = vai.apply(func4_multi, it2)
 
         self.assertTrue(out11.shape == out21.shape)
         self.assertTrue(out12.shape == out22.shape)
@@ -119,10 +119,10 @@ class TestApply(unittest.TestCase):
         it2 = self.dh.get_event_iterator("events", batch_size=11)
         it3 = self.dh.get_event_iterator("events", 0)
         it4 = self.dh.get_event_iterator("events", 0, batch_size=11)
-        out1 = vai.analysis.apply(func_events, it1)
-        out2 = vai.analysis.apply(func_events, it2)
-        out3 = vai.analysis.apply(func_events, it3)
-        out4 = vai.analysis.apply(func_events, it4)
+        out1 = vai.apply(func_events, it1)
+        out2 = vai.apply(func_events, it2)
+        out3 = vai.apply(func_events, it3)
+        out4 = vai.apply(func_events, it4)
 
         self.assertTrue(out1.shape == out2.shape)
         self.assertTrue(out3.shape == out4.shape)

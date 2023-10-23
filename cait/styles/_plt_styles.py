@@ -20,7 +20,7 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=No
     :param dpi: The dots per inch for the plot.
     :type dpi: int
     """
-    plt.style.use('seaborn-paper')
+    plt.style.use('seaborn-v0_8-paper')
     mpl.rcParams['xtick.labelsize'] = fontsize
     mpl.rcParams['ytick.labelsize'] = fontsize
     mpl.rcParams['font.size'] = fontsize

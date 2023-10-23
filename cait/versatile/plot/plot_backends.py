@@ -388,7 +388,7 @@ class BaseClassMPL(BackendBaseClass):
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
-    :param template: Custom style 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'science'
+    :param template: Custom style 'cait', 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'cait'
     :type template: str, optional
     :param height: Figure height, defaults to 3
     :type height: float, optional
@@ -396,7 +396,7 @@ class BaseClassMPL(BackendBaseClass):
     :type width: float, optional
     """
     def __init__(self, 
-                 template: str = "science", 
+                 template: str = "cait", 
                  height: float = 3, 
                  width: float = 5, 
                  show_controls: bool = False):
@@ -408,8 +408,12 @@ class BaseClassMPL(BackendBaseClass):
 
         if type(template) is str and template == "science":
             template = "cait.styles.science"
-        if type(template) is list and "science" in template:
+        elif type(template) is str and template == "cait":
+            template = "cait.styles.cait_style"
+        elif type(template) is list and "science" in template:
             template[template.index("science")] = "cait.styles.science"
+        elif type(template) is list and "cait" in template:
+            template[template.index("cait")] = "cait.styles.cait_style"
 
         self.template = template
         self.show_controls = show_controls

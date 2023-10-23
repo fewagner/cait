@@ -93,7 +93,7 @@ class IteratorBaseClass(ABC):
     def n_channels(self):
         ...
 
-class EventIterator(IteratorBaseClass):
+class H5Iterator(IteratorBaseClass):
     """
     Iterator object for HDF5 datasets that iterates along the "event-dimension" (first dimension for 1-dimensional data, or second dimension for 2- and 3-dimensional data) of a dataset. Most important use-case is iterating over event voltage traces in an analysis routine.
     If the Iterator is used as a context manager, the HDF5 file is not closed during iteration which improves file access speed.
@@ -118,7 +118,7 @@ class EventIterator(IteratorBaseClass):
     :return: Iterable object
     :rtype: EventIterator
 
-    >>> it = EventIterator("path_to_file.h5", "events", "event", batch_size=100, channels=1, inds=[0,2,19,232])
+    >>> it = H5Iterator("path_to_file.h5", "events", "event", batch_size=100, channels=1, inds=[0,2,19,232])
     >>> for i in it:
     ...    print(i.shape)
     
@@ -202,8 +202,8 @@ class EventIterator(IteratorBaseClass):
                 if self.events_dim > 0:
                     if should_be_transposed:
                         # transpose data such that first dimension is ALWAYS the event dimension
-                        return np.transpose(f[self.group][self.dataset][self.channels,  
-                        event_inds_in_batch], axes=[1,0,2])
+                        return self._apply_processing(np.transpose(f[self.group][self.dataset][self.channels,  
+                        event_inds_in_batch], axes=[1,0,2]))
                     else:
                         return self._apply_processing(
                                 f[self.group][self.dataset][self.channels, event_inds_in_batch]

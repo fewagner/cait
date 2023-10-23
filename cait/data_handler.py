@@ -18,7 +18,7 @@ from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
 from .versatile.file import ds_source_available
-from .versatile.iterators import EventIterator, IteratorBaseClass
+from .versatile.iterators import H5Iterator, IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
@@ -286,7 +286,7 @@ class DataHandler(SimulateMixin,
     
     def get_event_iterator(self, group: str, channel: int = None, flag: List[bool] = None, batch_size: int = None):
         """
-        Returns EventIterator object that can be used to iterate events of a given group and channel. When used within a with statement, the corresponding HDF5 file is kept open for faster access.
+        Returns H5Iterator object that can be used to iterate events of a given group and channel. When used within a with statement, the corresponding HDF5 file is kept open for faster access.
 
         :param group: The name of the group in the HDF5 file.
         :type group: string
@@ -295,7 +295,7 @@ class DataHandler(SimulateMixin,
         :param flag: A boolean flag of events to include in the iterator
         :type flag: list of bool
 
-        :return: EventIterator
+        :return: H5Iterator
         :rtype: Context Manager / Iterator
 
         >>> # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
@@ -316,7 +316,7 @@ class DataHandler(SimulateMixin,
 
         if flag is not None: inds = inds[flag]
 
-        return EventIterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
+        return H5Iterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
     
     def include_iterator(self, group: str, dataset: str, it: Type[IteratorBaseClass], event_axis: int = 1):
         """
