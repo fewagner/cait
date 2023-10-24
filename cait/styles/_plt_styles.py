@@ -20,7 +20,17 @@ def use_cait_style(x_size=7.2, y_size=4.45, fontsize=18, autolayout=True, dpi=No
     :param dpi: The dots per inch for the plot.
     :type dpi: int
     """
-    plt.style.use('seaborn-v0_8-paper')
+    # From the old seaborn-paper mplstyle
+    mpl.rcParams['patch.linewidth'] = 0.24
+    mpl.rcParams['lines.markeredgewidth'] = 0
+    mpl.rcParams['xtick.major.width'] = 0.8
+    mpl.rcParams['ytick.major.width'] = 0.8
+    mpl.rcParams['xtick.minor.width'] = 0.4
+    mpl.rcParams['ytick.minor.width'] = 0.4
+    mpl.rcParams['xtick.major.pad'] = 5.6
+    mpl.rcParams['ytick.major.pad'] = 5.6
+
+    # Custom
     mpl.rcParams['xtick.labelsize'] = fontsize
     mpl.rcParams['ytick.labelsize'] = fontsize
     mpl.rcParams['font.size'] = fontsize

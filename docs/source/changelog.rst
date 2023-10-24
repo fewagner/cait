@@ -6,8 +6,10 @@ On this page we assemble the features of current Cait realeases and changes from
 
 v1.2.1
 ======
+- Fixed deprecation issue due to missing `seaborn-paper` style in matplotlib version 3.8.0
 - Fixed a bug where the `exclude_tpas` keyword in `PulserModel` and derived functionalities like `calc_calibration` would not correctly exclude small testpulse amplitudes.
 - Fixed a minor bug in `PulserModel`'s standard-deviation-estimation.
+- New (experimental) features in `cait.versatile`.
 
 v1.2.0
 ======
