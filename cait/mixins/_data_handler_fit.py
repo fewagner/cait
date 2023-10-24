@@ -1,6 +1,7 @@
 import warnings
 from functools import partial
 from multiprocessing import Pool
+from deprecation import deprecated
 
 import numpy as np
 import h5py
@@ -83,6 +84,7 @@ class FitMixin(object):
             h5f[type]['fitpar'][:, :, :] = fitpar_event
 
     # apply sev fit
+    @deprecated(details="This method is deprecated. Use DataHandler.apply_array_fit() instead.")
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
                       verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
@@ -91,7 +93,7 @@ class FitMixin(object):
         Calculates the SEV fit for all events of type (events or tp) and stores in HDF5 file.
         The stored parameters are (pulse_height, onset_in_ms, bl_offset, bl_linear_coeffiient, quadratic, cubic).
 
-        Attention! Since v11.1 it is recommended to use apply_array_fit instead, which provides a more stable fit implementation.
+        Attention! Since v1.1 it is recommended to use apply_array_fit instead, which provides a more stable fit implementation.
 
         This method was described in "F. Reindl, Exploring Light Dark Matter With CRESST-II Low-Threshold Detector",
         available via http://mediatum.ub.tum.de/?id=1294132 (accessed on the 9.7.2021).
