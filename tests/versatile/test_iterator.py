@@ -62,8 +62,26 @@ class TestH5Iterator(unittest.TestCase):
             for i in opened_it:
                 self.assertTrue(i.shape == (RECORD_LENGTH,))
 
+        # Same but with list instead of integer
+        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=[1])
+        for i in it:
+            self.assertTrue(i.shape == (RECORD_LENGTH,))
+
+        with it as opened_it:
+            for i in opened_it:
+                self.assertTrue(i.shape == (RECORD_LENGTH,))
+
     def test_iterator_bs10_ch1(self):
         it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=10)
+        for i in it:
+            self.assertTrue(i.shape == (10, RECORD_LENGTH))
+
+        with it as opened_it:
+            for i in opened_it:
+                self.assertTrue(i.shape == (10, RECORD_LENGTH))
+
+        # Same but with list instead of integer
+        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=[1], batch_size=10)
         for i in it:
             self.assertTrue(i.shape == (10, RECORD_LENGTH))
 
@@ -99,10 +117,10 @@ class TestH5Iterator(unittest.TestCase):
         it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
         it4 = H5Iterator(self.dh.get_filepath(), "events", "event")
 
-        it1.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
-        it2.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
-        it3.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
-        it4.add_processing(lambda ev: ev**2, lambda ev: -np.sqrt(ev))
+        it1.add_processing([lambda ev: ev**2, lambda ev: -np.sqrt(ev)])
+        it2.add_processing([lambda ev: ev**2, lambda ev: -np.sqrt(ev)])
+        it3.add_processing([lambda ev: ev**2, lambda ev: -np.sqrt(ev)])
+        it4.add_processing([lambda ev: ev**2, lambda ev: -np.sqrt(ev)])
 
         # Test iteration
         next(iter(it1))
@@ -119,6 +137,8 @@ class TestH5Iterator(unittest.TestCase):
 
         self.assertTrue(np.array_equal(arr1, arr3))
         self.assertTrue(np.array_equal(arr2, arr4))
+
+    #TODO: add testing for slicing
 
 if __name__ == '__main__':
     unittest.main()
