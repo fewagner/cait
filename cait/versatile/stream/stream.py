@@ -326,19 +326,19 @@ class Stream(StreamBaseClass):
 
     The data is accessed by means of slicing (see below). The `time` property is an object of :class:`StreamTime` and offers a convenient time interface as well (see below).
 
-    :param src: The source for the stream. Depending on how the data is taken, this can either be the path to one file or a list of paths to multiple files. This input is handled by the specific implementation of the Stream Object. See below for examples.
-    :type src: Union[str, List[str]]
     :param hardware: The hardware which was used to record the stream file. Valid options are ['vdaq2']
     :type hardware: str
+    :param src: The source for the stream. Depending on how the data is taken, this can either be the path to one file or a list of paths to multiple files. This input is handled by the specific implementation of the Stream Object. See below for examples.
+    :type src: Union[str, List[str]]
     
     :Usage for different hardware:
     VDAQ2:
     Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
-    >>> s = Stream(src=file.bin, hardware='vdaq2')
+    >>> s = Stream(hardware='vdaq2', src=file.bin)
     
     VDAQ3:
     This hardware records different channels in separate files but each such file contains all relevant informations to identify them. All files can be input as a list.
-    >>> s = Stream(src=[channel0.bin, channel1.bin], hardware='vdaq3')
+    >>> s = Stream(hardware='vdaq3', src=[channel0.bin, channel1.bin])
 
     :Usage slicing:
     Valid options for slicing streams are the following:
@@ -354,7 +354,7 @@ class Stream(StreamBaseClass):
     >>> # values instead of the ADC values
     >>> s['ADC1', 10:20, 'as_voltage']
     """
-    def __init__(self, src: Union[str, List[str]], hardware: str):
+    def __init__(self, hardware: str, src: Union[str, List[str]]):
         if hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src)
         elif hardware.lower() == "vdaq3":
