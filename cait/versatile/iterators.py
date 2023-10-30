@@ -21,6 +21,7 @@ def _ensure_array(x):
 def _ensure_not_array(x):
     if isinstance(x, np.ndarray): x = x.tolist()
     if isinstance(x, np.int64): x = int(x)
+    if isinstance(x, str): x = str(x)
     return x
 
 class BatchResolver:
@@ -333,8 +334,8 @@ class StreamIterator(IteratorBaseClass):
             raise ValueError("'alignment' has to be in the interval [0,1]")
         
         self._stream = stream
-        self._keys = [keys] if type(keys) is str else keys
-        self._inds = [inds] if type(inds) is int else [int(i) for i in inds]
+        self._keys = [keys] if isinstance(keys, str) else keys
+        self._inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
         self._record_length = record_length
 
         # Save values to reconstruct iterator:
@@ -364,9 +365,12 @@ class StreamIterator(IteratorBaseClass):
 
             self._current_ind += 1
 
-            return self._apply_processing(
-                np.array([self._stream[k, s, 'as_voltage'] for k in self._keys])
-            )
+            if len(self._keys) == 1:
+                out = self._stream[self._keys[0], s, 'as_voltage']
+            else:
+                out = [self._stream[k, s, 'as_voltage'] for k in self._keys]
+            
+            return self._apply_processing( np.array(out) )
             
         else:
             raise StopIteration
