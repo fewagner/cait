@@ -138,7 +138,64 @@ class TestH5Iterator(unittest.TestCase):
         self.assertTrue(np.array_equal(arr1, arr3))
         self.assertTrue(np.array_equal(arr2, arr4))
 
-    #TODO: add testing for slicing
+    def test_slicing(self):
+        it1 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
+        it2 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=11)
+        it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
+        it4 = H5Iterator(self.dh.get_filepath(), "events", "event")
+
+        it1.add_processing(lambda x: x**2)
+        it2.add_processing(lambda x: x**2)
+        it3.add_processing(lambda x: x**2)
+        it4.add_processing(lambda x: x**2)
+
+        flag = np.zeros(len(it1), dtype=bool)
+        flag[:20] = True
+
+        next(iter(it1[:])),
+        next(iter(it1[0]))
+        next(iter(it1[0,:10]))
+        next(iter(it1[:]))
+        next(iter(it1[:, flag]))
+        next(iter(it2[:]))
+        next(iter(it2[0]))
+        next(iter(it2[0,:10]))
+        next(iter(it2[:]))
+        next(iter(it2[:, flag]))
+        next(iter(it3[:]))
+        next(iter(it3[0]))
+        next(iter(it3[0,:10]))
+        next(iter(it3[:]))
+        next(iter(it3[:, flag]))
+        next(iter(it4[:]))
+        next(iter(it4[0]))
+        next(iter(it4[0,:10]))
+        next(iter(it4[:]))
+        next(iter(it4[:, flag]))
+        
+        self.assertTrue(it1[0].n_channels == 1)
+        self.assertTrue(it1[:].n_channels == 1)
+        self.assertTrue(it2[0].n_channels == 1)
+        self.assertTrue(it2[:].n_channels == 2)
+        self.assertTrue(it3[0].n_channels == 1)
+        self.assertTrue(it3[:].n_channels == 1)
+        self.assertTrue(it4[0].n_channels == 1)
+        self.assertTrue(it4[:].n_channels == 2)
+
+        self.assertTrue(len(it1[0]) == len(it1))
+        self.assertTrue(len(it2[0]) == len(it2))
+        self.assertTrue(len(it3[0]) == len(it3))
+        self.assertTrue(len(it4[0]) == len(it4))
+
+        self.assertTrue(len(it1[:, flag]) == 20)
+        self.assertTrue(len(it2[:, flag]) == 20)
+        self.assertTrue(len(it3[:, flag]) == 20)
+        self.assertTrue(len(it4[:, flag]) == 20)
+
+        self.assertTrue(np.array_equal(next(iter(it1)), next(iter(it1[:,flag]))))
+        self.assertTrue(np.array_equal(next(iter(it2)), next(iter(it2[:,flag]))))
+        self.assertTrue(np.array_equal(next(iter(it3)), next(iter(it3[:,flag]))))
+        self.assertTrue(np.array_equal(next(iter(it4)), next(iter(it4[:,flag]))))
 
 if __name__ == '__main__':
     unittest.main()

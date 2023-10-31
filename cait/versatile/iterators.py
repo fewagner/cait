@@ -88,8 +88,15 @@ class IteratorBaseClass(ABC):
         new_params[keys[0]] = _ensure_not_array(_ensure_array(params[keys[0]])[slice_channel])
         new_params[keys[1]] = _ensure_not_array(_ensure_array(params[keys[1]])[slice_inds])
 
-        # Return new instance of iterator
-        return self.__class__(**new_params)
+        # Create new instance of iterator
+        new_iterator = self.__class__(**new_params)
+
+        # Add processing (careful about batch resolver!)
+        fncs = self.fncs if not self.uses_batches else [br.f for br in self.fncs]
+        new_iterator.add_processing(fncs)
+
+        # Return new iterator
+        return new_iterator
     
     def __add__(self, other):
         if isinstance(self, IteratorCollection):
@@ -120,7 +127,7 @@ class IteratorBaseClass(ABC):
         if not isinstance(f, list): f = [f]
 
         if self.uses_batches:
-            self.fncs += [BatchResolver(f) for f in f]
+            self.fncs += [BatchResolver(x) for x in f]
         else:
             self.fncs += f
 
