@@ -54,6 +54,7 @@ class Lags(FncBaseClass):
 class Downsample(FncBaseClass):
     """
     Downsample an event by a given factor (which has to be a factor of the event's length).
+    Also works for multiple channels simultaneously.
 
     :param down: The factor by which to downsample the voltage trace.
     :type down: int
@@ -61,23 +62,38 @@ class Downsample(FncBaseClass):
     :return: Downsampled event.
     :rtype: np.ndarray
     """
-    def __init__(self, down: int = 3):
+    def __init__(self, down: int = 2):
         self._down = down
 
     def __call__(self, event):
-        self._downsampled = np.mean(np.reshape(event,(int(len(event)/self._down), self._down)), axis=1)
+        if event.ndim > 1:
+            shape = (event.shape[0], int(event.shape[-1]/self._down), self._down)
+        else:
+            shape = (int(event.shape[-1]/self._down), self._down)
+            
+        self._downsampled = np.mean(np.reshape(event, shape), axis=-1)
         return self._downsampled
     
     def preview(self, event):
         self(event)
-        x = np.arange(len(event))
+        x = np.arange(event.shape[-1])
         x_down = np.mean(np.reshape(x,(int(len(x)/self._down), self._down)), axis=1)
-        return dict(line = {'event': [x, event]},
-                    scatter = {'downsampled event': [x_down, self._downsampled]})
+        
+        if np.ndim(event) > 1:
+            d = dict()
+            for i in range(np.ndim(event)):
+                d[f'channel {i}'] = [x, event[i]]
+                d[f'downsampled channel {i}'] = [x_down, self._downsampled[i]]
+        else:
+            d = {'event': [x, event],
+                 'downsampled event': [x_down, self._downsampled]}
+            
+        return dict(line = d)
     
 class RemoveBaseline(FncBaseClass):
     """
     Remove baseline of given baseline model from an event voltage trace and return the new event.
+    Also works for multiple channels simultaneously.
 
     :param fit_baseline: Dictionary of keyword arguments that are passed on to :class:`FitBaseline`. See below.
     :type fit_baseline: dict
@@ -104,20 +120,33 @@ class RemoveBaseline(FncBaseClass):
     def __call__(self, event):
         par, *_ = self._fit_baseline(event)
         if self._fit_baseline._model == 0:
-            self._shifted_event = event - par
+            if np.ndim(event) > 1:
+                self._shifted_event = event - np.array(par)[:, None]
+            else:
+                self._shifted_event = event - par
         else:
             # ATTENTION: This is set only once! (we have to set it here because 
             # previously we didn't know the length of 'event')
-            if self._xdata is None: self._xdata = np.arange(len(event))
+            if self._xdata is None: self._xdata = np.arange(np.array(event).shape[-1])
             self._shifted_event = event - self._fit_baseline.model(self._xdata, par)
 
         return self._shifted_event
         
     def preview(self, event) -> dict:
         self(event)
-
-        return dict(line = {'event': [self._xdata, event],
-                            'baseline removed': [self._xdata, self._shifted_event]})
+        
+        if np.ndim(event) > 1:
+            d = dict()
+            for i in range(np.ndim(event)):
+                d[f'channel {i}'] = [self._xdata, event[i]]
+                d[f'baseline removed channel {i}'] = [self._xdata, self._shifted_event[i]]
+        else:
+            
+        
+            d = {'event': [self._xdata, event],
+                 'baseline removed': [self._xdata, self._shifted_event]}
+            
+        return dict(line = d)
 
 class BoxCarSmoothing(FncBaseClass):
     # TODO: implement for multiple channels
@@ -147,7 +176,8 @@ class BoxCarSmoothing(FncBaseClass):
    
 class TukeyFiltering(FncBaseClass):
     """
-    Apply the Tukey window function to a voltage trace. Works for multiple channels simultaneously.
+    Apply the Tukey window function to a voltage trace. 
+    Also works for multiple channels simultaneously.
 
     :param alpha: The parameter of the Tukey window function. Defaults to 0.25.
     :type alpha: float
@@ -176,7 +206,8 @@ class TukeyFiltering(FncBaseClass):
 
 class OptimumFiltering(FncBaseClass):
     """
-    Apply an optimum filter to a voltage trace. Works for multiple channels simultaneously if optimum filter is also given for multiple channels.
+    Apply an optimum filter to a voltage trace. 
+    Works for multiple channels simultaneously if optimum filter is also given for multiple channels.
 
     :param of: The optimum filter to use.
     :type of: np.ndarray

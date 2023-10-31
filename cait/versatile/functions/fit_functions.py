@@ -15,6 +15,7 @@ def exponential_decay(x, a, b, c):
 class FitBaseline(FitFncBaseClass):
     """
     Fit voltage traces with a polynomial or decaying exponential and return the fit parameters as well as the RMS.
+    Also works for multiple channels simultaneously.
 
     :param model: Order of the polynomial or 'exponential'/'exp', defaults to 0, i.e. a constant baseline.
     :type model: Union[int, str]
@@ -42,32 +43,52 @@ class FitBaseline(FitFncBaseClass):
     def __call__(self, event):
         # ATTENTION: this is set only once
         if type(self._where) is int:
-            self._where = slice(0, int(len(event)/self._where))
+            self._where = slice(0, int(np.array(event).shape[-1]/self._where))
 
         # Shortcut for constant baseline model
         if self._model == 0:
-            self._fitpar =  np.mean(event[self._where])
-            self._rms = np.std(event[self._where])
+            self._fitpar =  np.mean(event[..., self._where], axis=-1)
+            self._rms = np.std(event[..., self._where], axis=-1)
         else:
             # ATTENTION: This is only set once, i.e. data has to have same length 
             if self._xdata is None: 
-                self._xdata = np.arange(len(np.array(event)))
+                self._xdata = np.arange(np.array(event).shape[-1])
 
             # Exponential fit
             if self._model in ['exponential', 'exp']:
-                self._fitpar, *_ = curve_fit(exponential_decay, 
-                                            self._xdata[self._where], 
-                                            event[self._where],
-                                            bounds=([0,0,-np.inf],[np.inf,np.inf,np.inf]))
+                if np.array(event).ndim > 1:
+                    self._fitpar = np.array(
+                        [
+                          curve_fit(exponential_decay, 
+                                    self._xdata[self._where], 
+                                    event[k, self._where],
+                                    bounds=([0, 0, -np.inf],[np.inf,np.inf,np.inf]))[0]
+                          for k in range(np.array(event).shape[0])
+                        ]
+                    )
+                    
+                    self._rms = np.array(
+                        [
+                            np.sqrt(np.mean((event[k, self._where] - exponential_decay(self._xdata[self._where], *self._fitpar[k]))**2)) 
+                            for k in range(np.array(event).shape[0])
+                        ]
+                    ) 
+                
+                else:
+                    self._fitpar, *_ = curve_fit(exponential_decay, 
+                                                self._xdata[self._where], 
+                                                event[self._where],
+                                                bounds=([0, 0, -np.inf],[np.inf, np.inf, np.inf]))
 
-                self._rms = np.sqrt(np.mean((event[self._where] - exponential_decay(self._xdata[self._where], *self._fitpar))**2))
+                    self._rms = np.sqrt(np.mean((event[self._where] - exponential_decay(self._xdata[self._where], *self._fitpar))**2))
             
             # Polynomial fit
             else:
                 if self._A is None:
                     self._A = np.array([self._xdata[self._where]**k for k in range(self._model+1)]).T
 
-                self._fitpar, err, *_ = np.linalg.lstsq(self._A, event[self._where], rcond=None)
+                par, err, *_ = np.linalg.lstsq(self._A, event[..., self._where].T, rcond=None)
+                self._fitpar = par.T
                 self._rms = np.sqrt(err)
 
         return self._fitpar, self._rms
@@ -76,15 +97,26 @@ class FitBaseline(FitFncBaseClass):
         """
         
         """
-        if self._model in ['exponential', 'exp']:
-            if len(par) != 3:
-                raise ValueError(f"3 parameters are required to fully describe this model, {len(par)} given.")
-            return exponential_decay(x, *par)
-        else:
-            if len(par) != self._model+1:
-                raise ValueError(f"{self._model+1} parameters are required to fully describe this model.")
+        par = np.array(par)
         
-            return np.sum(np.array([par[k]*x**k for k in range(self._model+1)]), axis=0)
+        if self._model in ['exponential', 'exp']:
+            if par.shape[-1] != 3:
+                raise ValueError(f"3 parameters are required to fully describe this model, {len(par)} given.")
+                
+            if par.ndim > 1: # i.e. we have multiple channels
+                return np.array([exponential_decay(x, *par[k]) for k in range(par.shape[0])])
+            else:
+                return exponential_decay(x, *par)
+        else:
+            if par.shape[-1] != self._model+1:
+                raise ValueError(f"{self._model+1} parameter(s) are required to fully describe this model.")
+            
+            if par.ndim > 1: # i.e. we have multiple channels
+                return np.array(
+                    [np.sum(np.array([par[k][j]*x**j for j in range(self._model+1)]), axis=0) for k in range(par.shape[0])]
+                )
+            else:
+                return np.sum(np.array([par[k]*x**k for k in range(self._model+1)]), axis=0)
     
     def preview(self, event):
         # Call function (this will set all class attributes to be accessed for plotting)
@@ -93,15 +125,69 @@ class FitBaseline(FitFncBaseClass):
         # This happens for constant baseline fit (self._xdata is never needed and therefore never
         # computed)
         if self._xdata is None: 
-                self._xdata = np.arange(len(np.array(event)))
-
+                self._xdata = np.arange(np.array(event).shape[-1])
+                
         # self._fitpar is not an array for self._model = 0
-        par = [self._fitpar] if self._model == 0 else self._fitpar
-
+        par = np.array([self._fitpar]).T if self._model == 0 else self._fitpar
+            
         # Reconstruct fit function
         fit = self.model(self._xdata, par)
-
-        return dict(line={'event': [self._xdata, event],
-                          'fit': [self._xdata, fit]
-                          })
+                
+        if np.ndim(event) > 1:
+            d = dict()
+            for i in range(np.ndim(event)):
+                d[f'channel {i}'] = [self._xdata, event[i]]
+                d[f'fit channel {i}'] = [self._xdata, fit[i]]
+        else:
+            
+        
+            d = {'event': [self._xdata, event],
+                 'fit': [self._xdata, fit]}
+            
+        return dict(line = d)
     
+class ArrayFit(FitFncBaseClass):
+    """
+    
+    """
+    def __init__(self, sev: np.ndarray):
+        raise NotImplementedError
+        self._sev = np.array(sev)
+
+    def __call__(self, event):
+        self._fitted_sev = None
+        self._height = None
+        self._rms = None
+
+        return self._height, self._rms
+    
+    def model(self, x: List, par: List):
+        """
+        
+        """
+        ...
+    
+    def preview(self, event):
+        self(event)
+        return dict(line={'event': [None, event],
+                          'fitted sev': [None, self._fitted_sev]
+                          })
+
+class SEVFit(FitFncBaseClass):
+    """
+    
+    """
+    def __init__(self):
+        raise NotImplementedError
+
+    def __call__(self, event):
+        ...
+    
+    def model(self, x: List, par: List):
+        """
+        
+        """
+        ...
+    
+    def preview(self, event):
+        ...
