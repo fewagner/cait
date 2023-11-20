@@ -55,9 +55,21 @@ class IteratorBaseClass(ABC):
     def __iter__(self):
         ...
 
-    @abstractmethod
     def __next__(self):
+        return self._apply_processing(self._next_raw())
+    
+    @abstractmethod
+    def _next_raw(self):
+        # This is to be used as the __next__ method by child classes. 
+        # The purpose of having it separately is that the IteratorBaseClass 
+        # then automatically applies the preprocessing
         ...
+
+    def _apply_processing(self, out):
+        for fnc in self.fncs:
+            out = fnc(out) if not self.uses_batches else BatchResolver(fnc)(out)
+
+        return out
 
     def __repr__(self):
         out = f"{self.__class__.__name__}(n_events={len(self)}, n_channels={self.n_channels}, uses_batches={self.uses_batches}"
@@ -88,12 +100,9 @@ class IteratorBaseClass(ABC):
         new_params[keys[0]] = _ensure_not_array(_ensure_array(params[keys[0]])[slice_channel])
         new_params[keys[1]] = _ensure_not_array(_ensure_array(params[keys[1]])[slice_inds])
 
-        # Create new instance of iterator
+        # Create new instance of iterator and add processing
         new_iterator = self.__class__(**new_params)
-
-        # Add processing (careful about batch resolver!)
-        fncs = self.fncs if not self.uses_batches else [br.f for br in self.fncs]
-        new_iterator.add_processing(fncs)
+        new_iterator.add_processing(self.fncs.copy())
 
         # Return new iterator
         return new_iterator
@@ -126,19 +135,10 @@ class IteratorBaseClass(ABC):
         """
         if not isinstance(f, list): f = [f]
 
-        if self.uses_batches:
-            self.fncs += [BatchResolver(x) for x in f]
-        else:
-            self.fncs += f
+        self.fncs += f
 
         # return instance such that it is chainable and can be used in one-liners
         return self
-
-    def _apply_processing(self, out):
-        for fnc in self.fncs:
-            out = fnc(out)
-        
-        return out
         
     @property
     @abstractmethod
@@ -281,7 +281,7 @@ class H5Iterator(IteratorBaseClass):
         self.current_batch_ind = 0
         return self
 
-    def __next__(self):
+    def _next_raw(self):
         if self.current_batch_ind < self._n_batches:
             event_inds_in_batch = self.inds[self.current_batch_ind]
             self.current_batch_ind += 1
@@ -293,7 +293,7 @@ class H5Iterator(IteratorBaseClass):
                 # transpose data when using batches such that first dimension is ALWAYS the event dimension
                 if self.should_be_transposed: out = np.transpose(out, axes=[1,0,2])
                     
-                return self._apply_processing(out)
+                return out
         
         else:
             raise StopIteration
@@ -365,7 +365,7 @@ class StreamIterator(IteratorBaseClass):
         self._current_ind = 0
         return self
 
-    def __next__(self):
+    def _next_raw(self):
         if self._current_ind < len(self._inds):
             stream_ind = self._inds[self._current_ind]
             s = slice(stream_ind - self._interval[0], stream_ind + self._interval[1])
@@ -377,7 +377,7 @@ class StreamIterator(IteratorBaseClass):
             else:
                 out = [self._stream[k, s, 'as_voltage'] for k in self._keys]
             
-            return self._apply_processing( np.array(out) )
+            return np.array(out)
             
         else:
             raise StopIteration
@@ -465,11 +465,11 @@ class IteratorCollection(IteratorBaseClass):
         self._chain = itertools.chain.from_iterable(self._iterators)
         return self
 
-    def __next__(self):
+    def _next_raw(self):
         return next(self._chain)
     
     def __getitem__(self, val):
-        # overriding IteratorBaseClass behaviour
+        # overriding IteratorBaseClass behavior
         if not isinstance(val, tuple): val = (val,)
 
         if len(val) > 2:
@@ -497,7 +497,11 @@ class IteratorCollection(IteratorBaseClass):
         # Slice iterators in collection
         new_iterators = [it[channels_bool, a] for it, a in zip(self._iterators, sub_arrays)]
 
-        return IteratorCollection(new_iterators)
+        # Create new collection and add processing
+        new_collection = IteratorCollection(new_iterators)
+        new_collection.add_processing(self.fncs.copy())
+
+        return new_collection
 
     @property
     def uses_batches(self):

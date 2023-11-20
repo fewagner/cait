@@ -1,4 +1,5 @@
 from typing import List, Union, Callable, Iterable, Tuple
+import datetime
 
 import numpy as np
 
@@ -443,7 +444,7 @@ class StreamViewer(Viewer):
             self.add_line(x=None, y=None, name=name)
 
         # Adding labels
-        self.set_xlabel("time")
+        # xlabel is dynamic
         self.set_ylabel("trace (V)")
 
         # Adding timestamp markers
@@ -474,15 +475,21 @@ class StreamViewer(Viewer):
         
         # Time array is the same for all channels
         t = self.stream.time[where]
-        # Convert to datetime
-        t_datetime = self.stream.time.timestamp_to_datetime(t)
+
+        # Find start and change x-label accordingly
+        t_start = self.stream.time.timestamp_to_datetime(t[0])[None]
+        t_str = t_start.astype(datetime.datetime)[0]
+        self.set_xlabel(f"time (ms) after {t_str.strftime('%d-%b-%Y, %H:%M:%S')}, ({t[0]})")
+
+        # Convert to milliseconds after first timestamp
+        t_ms = (t-t[0])/1000
 
         val_min = []
         val_max = []
         
         for name in self._keys:
             y = self.stream[name, where, "as_voltage"]
-            self.update_line(name=name, x=t_datetime, y=y)
+            self.update_line(name=name, x=t_ms, y=y)
 
             if self._marks_timestamps:
                 val_min.append(np.min(y))
@@ -498,11 +505,11 @@ class StreamViewer(Viewer):
                 ts = self._marked_timestamps[name][mask]
                 
                 if len(ts) > 0:
-                    ts_datetime = self.stream.time.timestamp_to_datetime(ts)
+                    ts_ms = (ts-t[0])/1000
                 else:
-                    ts_datetime = None
+                    ts_ms = None
                 
-                self.update_vmarker(name=name, marker_pos=ts_datetime, y_int=(y_min, y_max))
+                self.update_vmarker(name=name, marker_pos=ts_ms, y_int=(y_min, y_max))
 
     def _move_right(self, b):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
