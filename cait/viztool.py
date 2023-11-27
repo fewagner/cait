@@ -615,10 +615,11 @@ class VizTool():
                 ev = self.dh.get(self.group, "event", None, i, None)
                 #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
                 n = len(ev)
+                pretrigger_samples = int(self.dh.record_length/8)
                 for c in range(n):
-                    self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :500])
+                    self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :pretrigger_samples])
                     if not self.f0.data[-n+c].visible: self.f0.data[-n+c].update({"visible":True})
-                    self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
+                    self.f1.data[c].y = ev[c] - np.mean(ev[c, :pretrigger_samples])
                     #if self.mp_button.value:
                     #    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
                     #    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
@@ -628,8 +629,10 @@ class VizTool():
         ev = self.dh.get(self.group, "event", None, i, None)
         #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
         n = len(ev)
+        pretrigger_samples = int(self.dh.record_length/8)
+        
         for c in range(n):
-            self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
+            self.f1.data[c].y = ev[c] - np.mean(ev[c, :pretrigger_samples])
             #if self.mp_button.value:
             #    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
             #    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
@@ -687,17 +690,18 @@ class VizTool():
             nmbr_batches = int(len(self.sel) / self.batch_size)
             self.sevs = [np.zeros(self.dh.get(self.group, "event", 0, 0).shape[0]) for c in range(self.dh.nmbr_channels)]
 
+            pretrigger_samples = int(self.dh.record_length/8)
             for b in range(nmbr_batches):
                 for c in range(self.dh.nmbr_channels):
                     start = int(b * self.batch_size)
                     stop = int((b + 1) * self.batch_size)
                     ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:stop]])
-                    ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
+                    ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                     self.sevs[c] += np.sum(ev, axis=0)
             for c in range(self.dh.nmbr_channels):
                 start = int(nmbr_batches * self.batch_size)
                 ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:]])
-                ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
+                ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                 self.sevs[c] += np.sum(ev, axis=0)
                 self.sevs[c] /= len(self.sel)
             with self.output:
