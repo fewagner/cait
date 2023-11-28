@@ -1,4 +1,3 @@
-import os
 from typing import List, Union, Callable, Type
 from abc import ABC, abstractmethod
 from contextlib import nullcontext
@@ -10,8 +9,6 @@ import numpy as np
 from tqdm.auto import tqdm
 import h5py
 
-from .file import get_dataset_properties
-
 #### HELPER FUNCTIONS AND CLASSES ####
 def _ensure_array(x):
     if isinstance(x, str): x = [x]
@@ -20,7 +17,7 @@ def _ensure_array(x):
     
 def _ensure_not_array(x):
     if isinstance(x, np.ndarray): x = x.tolist()
-    if isinstance(x, np.int64): x = int(x)
+    if isinstance(x, np.integer): x = int(x)
     if isinstance(x, str): x = str(x)
     return x
 
@@ -216,82 +213,82 @@ class H5Iterator(IteratorBaseClass):
             if ndim != 3:
                 raise ValueError(f"Only 3-dimensional datasets can be used to construct H5Iterator. Dataset '{dataset}' in group '{group}' is {ndim}-dimensional.")
 
-        self.path = path_h5
-        self.group = group
-        self.dataset = dataset
+        self._path = path_h5
+        self._group = group
+        self._dataset = dataset
 
         n_events_total = shape[1]
 
         if channels is None: channels = list(range(shape[0])) 
 
         if isinstance(channels, int):
-            self.channels = channels
+            self._channels = channels
             self._n_channels = 1
         elif isinstance(channels, list):
-            self.channels = channels if len(channels)>1 else channels[0]
+            self._channels = channels if len(channels)>1 else channels[0]
             self._n_channels = len(channels)
         else:
             raise TypeError(f"Unsupported type {type(channels)} for input argument 'channels'")
             
         if inds is None: inds = np.arange(n_events_total)
-        self.n_events = len(inds)
+        self._n_events = len(inds)
 
-        # self.inds will be a list of batches. If we just take the inds list, we have batches of size 1, if we take [inds]
+        # self._inds will be a list of batches. If we just take the inds list, we have batches of size 1, if we take [inds]
         # all inds are in one batch, otherwise it is a list of lists where each list is a batch
         if batch_size is None or batch_size == 1:
-            self.inds = inds
+            self._inds = inds
             self._uses_batches = False
         elif batch_size == -1:
-            self.inds = [inds]
+            self._inds = [inds]
             self._uses_batches = True
         else: 
-            self.inds = [inds[i:i+batch_size] for i in range(0, len(inds), batch_size)]
+            self._inds = [inds[i:i+batch_size] for i in range(0, len(inds), batch_size)]
             self._uses_batches = True
 
-        self._n_batches = len(self.inds)
+        self._n_batches = len(self._inds)
 
         # Save values to reconstruct iterator:
         self._params = {'path_h5': path_h5, 'group': group, 
-                        'dataset': dataset, 'channels': self.channels, 
+                        'dataset': dataset, 'channels': self._channels, 
                         'inds': inds, 'batch_size': batch_size}
 
         # If list specifies all channels, we replace it by a None-slice to bypass h5py's restriction on fancy indexing
         # Notice that this has to be done after saving the list in self._params
-        if self.channels == list(range(shape[0])): self.channels = slice(None)
+        if self._channels == list(range(shape[0])): self._channels = slice(None)
 
         # For multiple channels and batched data, we transpose the array as read from the HDF5 file to ensure
         # that the first dimension of the output is always the event dimension
-        self.should_be_transposed = self._uses_batches and self._n_channels > 1
+        self._should_be_transposed = self._uses_batches and self._n_channels > 1
 
-        self.file_open = False
+        self._file_open = False
     
     def __len__(self):
-        return self.n_events
+        return self._n_events
 
     def __enter__(self):
-        self.f = h5py.File(self.path, 'r')
-        self.file_open = True
+        self._f = h5py.File(self._path, 'r')
+        self._file_open = True
         return self
     
     def __exit__(self, typ, val, tb):
-        self.f.close()
-        self.file_open = False
+        self._f.close()
+        self._file_open = False
     
     def __iter__(self):
-        self.current_batch_ind = 0
+        self._current_batch_ind = 0
         return self
 
     def _next_raw(self):
-        if self.current_batch_ind < self._n_batches:
-            event_inds_in_batch = self.inds[self.current_batch_ind]
-            self.current_batch_ind += 1
+        if self._current_batch_ind < self._n_batches:
+            event_inds_in_batch = self._inds[self._current_batch_ind]
+            self._current_batch_ind += 1
 
             # Open HDF5 file if not yet open, else use already open file
-            with h5py.File(self.path, 'r') if not self.file_open else nullcontext(self.f) as f:
-                out = f[self.group][self.dataset][self.channels, event_inds_in_batch]
+            with h5py.File(self._path, 'r') if not self._file_open else nullcontext(self._f) as f:
+                out = f[self._group][self._dataset][self._channels, event_inds_in_batch]
 
                 # transpose data when using batches such that first dimension is ALWAYS the event dimension
-                if self.should_be_transposed: out = np.transpose(out, axes=[1,0,2])
+                if self._should_be_transposed: out = np.transpose(out, axes=[1,0,2])
                     
                 return out
         
@@ -392,7 +389,7 @@ class StreamIterator(IteratorBaseClass):
     def _slice_info(self):
         return (self._params, ('keys', 'inds'))
 
-# TODO: add test case
+# TODO: add test cases
 class IteratorCollection(IteratorBaseClass):
     """
     Iterator object that chains multiple iterators.
@@ -517,9 +514,84 @@ class IteratorCollection(IteratorBaseClass):
     def iterators(self):
         return self._iterators
 
-# TODO: implement
+# TODO: add test cases
 class RDTIterator(IteratorBaseClass):
-    ...
+    """
+    Iterator object that returns voltage traces for given channels and indices of an RDTChannel instance. 
+
+    :param rdt_channel: An RDTChannel instance.
+    :type rdt_channel: RDTChannel
+    :param channels: The channels that we are interested in. Has to be a subset of `rdt_channel.key`. If None, all channels given by `rdt_channel.key` are considered. Defaults to None.
+    :type channels: Union[int, List[int]]
+    :param inds: The indices of `rdt_channel` that we want to iterate over. If None, all indices are considered. Defaults to None
+    :type inds: Union[int, List[int]]
+
+    :return: Iterable object
+    :rtype: RDTIterator
+    """
+    def __init__(self, rdt_channel, channels: Union[int, List[int]] = None, inds: Union[int, List[int]] = None):
+        super().__init__()
+
+        self._rdt_channel = rdt_channel
+
+        # Helper variable to make check consistent
+        key = (self._rdt_channel.key,) if isinstance(self._rdt_channel.key, int) else self._rdt_channel.key
+        
+        if channels is None: channels = list(key)
+        self._channels = [channels] if isinstance(channels, int) else channels
+
+        if not set(self._channels).issubset(set(key)):
+            raise ValueError(f"Not all values in channels ({channels}) are present in key {self._rdt_channel.key}.")
+
+        if inds is None: inds = np.arange(len(self._rdt_channel))
+        self._inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
+
+        # Save index array for channel selection in __next__ (the values in self._channels correspond to 
+        # actual channel numbers in the RDT file. Here, we are interested in the indices of the already selected
+        # channels, i.e., e.g., 0 for the first channel of an RDTChannel instance)
+        channel_select = np.array([key.index(x) for x in self._channels])
+        self._channel_select = channel_select if channel_select.size > 1 else channel_select[0]
+
+        # Save values to reconstruct iterator:
+        self._params = {'rdt_channel': rdt_channel, 'channels': self._channels, 'inds': self._inds}
+    
+    def __len__(self):
+        return len(self._inds)
+
+    def __enter__(self):
+        return self # Just to be consistent with H5Iterator
+    
+    def __exit__(self, typ, val, tb):
+        ... # Just to be consistent with H5Iterator
+    
+    def __iter__(self):
+        self._current_ind = 0
+        return self
+
+    def _next_raw(self):
+        if self._current_ind < len(self._inds):
+            out = self._rdt_channel[self._channel_select, self._inds[self._current_ind]]
+            self._current_ind += 1
+
+            return out
+        else:
+            raise StopIteration
+        
+    @property
+    def uses_batches(self):
+        return False # Just to be consistent with H5Iterator
+    
+    @property
+    def n_batches(self):
+        return len(self)
+    
+    @property
+    def n_channels(self):
+        return len(self._channels)
+    
+    @property
+    def _slice_info(self):
+        return (self._params, ('channels', 'inds'))
 
 # TODO: implement
 class PulseSimIterator(IteratorBaseClass):
