@@ -137,6 +137,9 @@ class DataHandler(SimulateMixin,
 
         print('DataHandler Instance created.')
 
+    def __repr__(self):
+        return f'{self.__class__.__name__}(record_length={self.record_length}, sample_frequency={self.sample_frequency}, dt_us={int(1e6/self.sample_frequency)}, channels={self.channels})'
+
     def __str__(self):
         # Info on size, file, groups and possibly connected virtual datasets
         size = sizeof_fmt(os.path.getsize(self.get_filepath()))

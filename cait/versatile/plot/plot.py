@@ -7,7 +7,7 @@ from .plot_backends import BaseClassPlotly, BaseClassMPL
 
 from ..stream import Stream
 from ..iterators import IteratorBaseClass
-from ..functions import PreviewEvent
+from ..functions import Unity
 
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
@@ -523,13 +523,13 @@ class StreamViewer(Viewer):
 # Has no test case (yet)
 class Preview(Viewer):
     """
-    Class for inspecting the behavior of functions which were subclassed from :class:`._baseClasses.FncBase`.
-    Can also be used to display single events.
+    Class for inspecting the behavior of functions which were subclassed from :class:`abstract_functions.FncBaseClass`.
+    Can also be used to display single events if no function is specified.
 
     :param events: An iterable of events. Can be e.g. :class:`EventIterator`, a 2d :class:`numpy.ndarray` or a list of List[float].
     :type events: Iterable
-    :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Default None (which means that just the events of the iterable will be displayed)
-    :type f: :class:`._baseClasses.FncBaseClass`
+    :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Defaults to Unity (which means that just the events of the iterable will be displayed)
+    :type f: :class:`abstract_functions.FncBaseClass`
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
@@ -543,7 +543,7 @@ class Preview(Viewer):
     :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     """
-    def __init__(self, events: Iterable, f: Callable = None, **kwargs):
+    def __init__(self, events: Iterable, f: Callable = Unity(), **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
         #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
         super().__init__(data=None, show_controls=True, **kwargs)
@@ -553,7 +553,7 @@ class Preview(Viewer):
 
         self._add_button("Next", self._update_plot, "Show next event.")
 
-        self.f = f if f is not None else PreviewEvent()
+        self.f = f
         self.events = iter(events)
         
         self.start()

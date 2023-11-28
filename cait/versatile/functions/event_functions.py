@@ -8,25 +8,13 @@ from .abstract_functions import FncBaseClass
 from .fit_functions import FitBaseline
 
 ########### HELPER FUNCTIONS ###########
-class PreviewEvent(FncBaseClass):
+class Unity(FncBaseClass):
     """
-    Helper class to use :class:`Preview` also to display iterables of events.
-
-    >>> # Multiple channels
-    >>> it = dh.get_event_iterator("events")
-    >>> Preview(it)
-
-    >>> # Single channel
-    >>> it = dh.get_event_iterator("events", channel=0)
-    >>> Preview(it)
-
-    >>> # Using batches; this works (and shows events in batches
-    >>> # as different channels) but should be avoided
-    >>> it = dh.get_event_iterator("events", channel=0, batch_size=10)
-    >>> Preview(it)
+    Class that returns events unaltered. This is mostly used as a helper class to preview raw voltage traces.
     """
     def __call__(self, event):
-        return None
+        return event
+    
     def preview(self, event):
         if event.ndim > 1:
             lines = {f'channel {k}': [None, ev] for k, ev in enumerate(event)}
