@@ -19,7 +19,7 @@ class FitBaseline(FitFncBaseClass):
 
     :param model: Order of the polynomial or 'exponential'/'exp', defaults to 0, i.e. a constant baseline.
     :type model: Union[int, str]
-    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or an integer. If an integer `where` is passed, the first `int(1/where)*record_length` samples are used (e.g. if `where=8`, the first 1/8 of the record window is used). Defaults to `slice(None, None, None).  
+    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where)*record_length` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None).  
     :type where: Union[List[bool], slice, int]
     :param xdata: x-data to use for the fit (has no effect for `order=0`). Specifying x-data is not necessary in general but if you want your fit parameters to have physical units (e.g. time constants) instead of just samples, you may use this option. Defaults to `None`.
     :type xdata: List[float]
@@ -27,7 +27,7 @@ class FitBaseline(FitFncBaseClass):
     :return: Fit parameter(s) and RMS as a tuple.
     :rtype: Tuple[Union[float, numpy.ndarray], float]
     """
-    def __init__(self, model: Union[int, str] = 0, where: Union[List[bool], slice, int] = slice(None, None, None), xdata: List[float] = None):
+    def __init__(self, model: Union[int, str] = 0, where: Union[List[bool], slice, float] = slice(None, None, None), xdata: List[float] = None):
         if type(model) not in [str, int]:
             raise NotImplementedError(f"Unsupported type '{type(model)}' for input 'order'.")
         elif type(model) is str and model not in ['exponential', 'exp']:
@@ -42,8 +42,8 @@ class FitBaseline(FitFncBaseClass):
 
     def __call__(self, event):
         # ATTENTION: this is set only once
-        if type(self._where) is int:
-            self._where = slice(0, int(np.array(event).shape[-1]/self._where))
+        if isinstance(self._where, float):
+            self._where = slice(0, int(np.array(event).shape[-1]*self._where))
 
         # Shortcut for constant baseline model
         if self._model == 0:

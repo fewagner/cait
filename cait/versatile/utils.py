@@ -106,29 +106,25 @@ def timestamp_coincidence(a: List[int], b: List[int], interval: Tuple[int]):
 
     return (inds[~mask_even], inds_a, inds[mask_even])
 
-def sample_noise(trigger_inds: List[int], record_length: int, alignment: float = 1/4, n_samples: int = None):
+def sample_noise(trigger_inds: List[int], record_length: int, n_samples: int = None):
     """
-    Get stream indices of noise traces. Record windows of length `record_length` are aligned around `trigger_inds` (using `alignment`) and noise indices are only sampled from large enough intervals *outside* these windows (i.e. only if at least one noise window of length `record_length` fits within such gaps). Note that the selected noise traces can still contain pulses and artifacts.
+    Get stream indices of noise traces. Record windows of length `record_length` are aligned around `trigger_inds` (at 1/4th of the record length) and noise indices are only sampled from large enough intervals *outside* these windows (i.e. only if at least one noise window of length `record_length` fits within such gaps). Note that the selected noise traces can still contain pulses and artifacts.
 
     :param trigger_inds: The indices (*not* timestamps) of the triggered events. To get as clean noise traces as possible, this should include *all* triggers, i.e. also testpulses for example.
     :type trigger_inds: List[int]
     :param record_length: The length of the record window in samples. This has to match the record length which was used for obtaining `trigger_inds` for meaningful results.
     :type record_length: int
-    :param alignment: A number in the interval [0,1] which determines the alignment of the record window (of length `record_length`) relative to the specified index. E.g. if `alignment=1/2`, the record window is centered around the index. Defaults to 1/4.
-    :type alignment: float, optional
     :param n_samples: If specified, a total number of at most `n_samples` are returned. The actual number of returned noise traces can be lower depending on the available 'empty space' between actual triggers.
     :type n_samples: int, optional
 
-    :return: List of indices for noise traces. The record windows can be recovered using `record_length` and `alignment`.
+    :return: List of indices for noise traces. The record windows can be recovered by aligning them at `int(record_length/4)` around `indices`.
     :rtype: List[int]
     """
-    if 0 > alignment or 1 < alignment:
-            raise ValueError("'alignment' has to be in the interval [0,1]")
 
     if n_samples is None: n_samples = np.inf
 
     # Index of trigger relative to beginning of record window
-    onset = int(alignment*record_length)
+    onset = int(record_length/4)
 
     noise_inds = []
     all_inds = trigger_inds.copy()

@@ -351,7 +351,6 @@ class BaseClassPlotly(BackendBaseClass):
         else:
             self._display.update(self.UI)
         
-
     def _close(self, b=None):
         self._display.update(EmptyRep())
 

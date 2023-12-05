@@ -88,24 +88,49 @@ class AIClassifyProb(FncBaseClass):
 
 #### NOT YET FINISHED ####
 class CalcMP(FncBaseClass):
-    def __init__(self, 
-                 peak_bounds: tuple = None,
+    def __init__(self,
+                 dT: int = None, 
+                 peak_bounds: tuple = (0, 1),
+                 edge_size: float = 1/8,
                  box_car_smoothing: dict = {'length': 50}, 
-                 fit_baseline: dict = {'model': 0, 'where': 8, 'xdata': None}):
+                 fit_baseline: dict = {'model': 0, 'where': 1/8, 'xdata': None},
+                 ):
         
-        if peak_bounds is None:
-            self._peak_bounds = slice(None, None, None)
-        elif type(peak_bounds) is tuple and len(peak_bounds) == 2:
-            self._peak_bounds = slice(peak_bounds[0], peak_bounds[1])
-        else:
+        if not (isinstance(peak_bounds, tuple) and len(peak_bounds) == 2):
             raise ValueError(f"'{peak_bounds}' is not a valid interval.")
+        if peak_bounds[0] > peak_bounds[1] or any([peak_bounds[0]<0, peak_bounds[1]<0, peak_bounds[0]>1, peak_bounds[1]>1]):
+            raise ValueError("'peak_bounds' must be a tuple of increasing values between 0 and 1")
         
+        self._dT = dT
+        self._peak_bounds = peak_bounds
+        self._edge_size = edge_size
         self._box_car_smoothing = BoxCarSmoothing(**box_car_smoothing)
-        self._remove_baseline = RemoveBaseline(**fit_baseline)
-        self._get_offset = FitBaseline(model=0, where=8)
+        self._remove_baseline = RemoveBaseline(fit_baseline)
     
     def __call__(self, event):
-        self._offset_MP = self._get_offset(event)
+        length = event.shape[-1]
+        sl = slice(int(self._peak_bounds[0]*length), int(self._peak_bounds[1]*length))
+        self._smooth_event = self._box_car_smoothing(event)
+
+        self._lin_drift = (np.mean(self._smooth_event[-int(self._edge_size*length):]) - np.mean(self._smooth_event[:int(self._edge_size*length)])) / length
+
+        self._offset = np.mean(event[:int(self._edge_size*length)])
+
+        self._bl_removed_event = self._remove_baseline(self._smooth_event)
+        self._t_max = int(np.argmax(self._bl_removed_event[sl], axis=-1) + sl.start)
+        self._ph = self._bl_removed_event[self._t_max]
+        
+        self._t0 = np.where(self._bl_removed_event[:self._t_max] < 0.2*self._ph)[0][-1]
+        self._t_rise = self._t0 + np.where(self._bl_removed_event[self._t0:self._t_max] > 0.8*self._ph)[0][0]
+        self._t_decaystart = self._t_max + np.where(self._bl_removed_event[self._t_max:] < 0.9*self._ph)[0][0]
+        self._t_half = self._t_decaystart + np.where(self._bl_removed_event[self._t_decaystart:] < 0.736*self._ph)[0][0]
+        self._t_end = self._t_half + np.where(self._bl_removed_event[self._t_half:] < 0.368*self._ph)[0][0]
+        
+        return self._ph, self._t0, self._t_rise, self._t_max, self._t_decaystart, self._t_half, self._t_end, self._offset, self._lin_drift
+    
+    def preview(self, event) -> dict:
+        mp = self(event)
+        return dict(line = {'event': [None, event], 'MP': [list(mp[1:7]), event[list(mp[1:7])]]})
     
 #### NOT YET FINISHED ####
 class CalcAddMP(FncBaseClass):
