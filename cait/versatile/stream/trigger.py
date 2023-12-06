@@ -30,7 +30,7 @@ def trigger(stream,
     :type threshold: float
     :param record_length: The length of the record window to use for triggering. Typically, this is a power of 2, e.g. 16384.
     :type record_length: int
-    :param overlap_fraction: The fraction of the record window that should overlap between subsequent maximum searches. Number in the interval [0, 1/4], defaults to 1/8.
+    :param overlap_fraction: The fraction of the record window that should overlap between subsequent maximum searches. Number in the interval (0, 1/4], defaults to 1/8.
     :type overlap_fraction: float
     :param trigger_block: The number of samples for which the trigger should be blocked after a successful trigger. Has to be larger than `record_length`. If `None`, `record_length` is used. Defaults to None.
     :type trigger_block: int
@@ -47,8 +47,10 @@ def trigger(stream,
         raise TypeError(f"Input argument 'stream' has to be of type 'StreamBaseClass', not {type(stream)}.")
     if key not in stream.keys:
         raise KeyError(f"Stream has no key '{key}'.")
-    if overlap_fraction < 0 or overlap_fraction > 0.25:
-        raise ValueError("Input argument 'overlap_fraction' is out of range [0, 0.25].")
+    if overlap_fraction <= 0 or overlap_fraction > 0.25:
+        raise ValueError("Input argument 'overlap_fraction' is out of range (0, 0.25].")
+    if int(record_length*overlap_fraction/2)<1:
+        raise ValueError("An overlap of at least 1 sample is required for baseline subtraction. The value you provided for 'overlap_fraction' resulted in an overlap of 0.")
     if trigger_block is not None and trigger_block < record_length:
         raise ValueError("Input argument 'trigger_block' has to be larger than 'record_length'.")
     
@@ -69,7 +71,7 @@ def trigger(stream,
     if not any([isinstance(f, RemoveBaseline) for f in preprocessing]):
         preprocessing.insert(0, 
                              RemoveBaseline({"model":0,
-                                             "where": int(1/(2*overlap_fraction))}))
+                                             "where": overlap_fraction/2}))
 
     # Block trigger for one record window if not specified otherwise
     if trigger_block is None: trigger_block = record_length
