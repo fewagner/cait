@@ -1,12 +1,12 @@
 import os
 import itertools
-from typing import Union, Type, Any
+from typing import Union, Any
 from abc import ABC, abstractmethod
 
 import numpy as np
 
 from ..iterators import IteratorBaseClass, apply
-from ..functions import OptimumFiltering
+from ..functions import OptimumFiltering, RemoveBaseline
 from ..plot import Line
 
 from ...data import write_xy_file
@@ -40,10 +40,13 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
         
         return out
     
-    def __getitem__(self, val):
+    def __getitem__(self, key):
         out = self.__class__()
-        out._array = self._array.__getitem__(val)
+        out._array = self._array.__getitem__(key)
         return out
+    
+    def __setitem__(self, key, val):
+        self._array[key] = val
     
     @property
     def shape(self):
@@ -70,17 +73,19 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
 
 class SEV(ArrayWithBenefits):
     """
-    Object representing a Standard Event (SEV). It can either be created by averaging events from an EventIterator, from an `np.ndarray` or read from a DataHandler or xy-file.
+    Object representing a Standard Event (SEV). It can either be created by averaging events from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file.
+
+    If created from an `EventIterator`, the (constant) baseline is removed automatically.
 
     :param data: The data to use for the SEV. If None, an empty SEV is created. If `np.ndarray`, each row in the array is interpreted as a SEV for separate channels. If iterator (possibly from multiple channels) a SEV is calculated by averaging the events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
     """
-    def __init__(self, data: Union[np.array, Type[IteratorBaseClass]] = None):
+    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None):
         if data is None:
             self._sev = np.empty(0)
             self._n_ch = 0
         elif isinstance(data, IteratorBaseClass):
-            mean_pulse = np.mean(apply(lambda x: x, data), axis=0)
+            mean_pulse = np.mean(apply(RemoveBaseline(), data), axis=0)
             # Normalize
             maxima = np.max(mean_pulse, axis=-1)
             # Cast maxima into a column vector such that vectorization works
@@ -99,6 +104,8 @@ class SEV(ArrayWithBenefits):
                 if self._n_ch == 1: self._sev = self._sev.flatten()
             else:
                 self._n_ch = 1
+        else:
+            raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
     def from_dh(self, dh, group: str = "stdevent", dataset: str = "event"):
         """
@@ -246,16 +253,19 @@ class SEV(ArrayWithBenefits):
 
 class NPS(ArrayWithBenefits):
     """
-    Object representing a Noise Power Spectrum (NPS). It can either be created by averaging the Fourier transformed events from an EventIterator, from an `np.ndarray` or read from a DataHandler or xy-file.
+    Object representing a Noise Power Spectrum (NPS). It can either be created by averaging the Fourier transformed events from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file.
+
+    If created from an `EventIterator`, the (constant) baseline is removed automatically.
 
     :param data: The data to use for the NPS. If None, an empty NPS is created. If `np.ndarray`, each row in the array is interpreted as an NPS for separate channels. If iterator (possibly from multiple channels) an NPS is calculated by averaging the Fourier transformed events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
     """
-    def __init__(self, data: Union[np.array, Type[IteratorBaseClass]] = None):
+    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None):
         if data is None:
             self._nps = np.empty(0)
             self._n_ch = 0
         elif isinstance(data, IteratorBaseClass):
+            data = data.with_processing(RemoveBaseline())
             self._nps = np.mean(apply(lambda x: np.abs(np.fft.rfft(x))**2, data), axis=0)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]

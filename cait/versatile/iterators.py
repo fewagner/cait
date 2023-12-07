@@ -128,7 +128,7 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         >>> it = EventIterator("path_to_file.h5", "events", "event")
-        >>> it.add_processing(f1, f2, f3)
+        >>> it.add_processing([f1, f2, f3])
         """
         if not isinstance(f, list): f = [f]
 
@@ -136,6 +136,19 @@ class IteratorBaseClass(ABC):
 
         # return instance such that it is chainable and can be used in one-liners
         return self
+    
+    def with_processing(self, f: Union[Callable, List[Callable]]):
+        """
+        Same as `add_processing` but it returns a new iterator instead of modifying the original one.
+
+        :param f: Function(s) to be applied. Function signature: f(event: np.ndarray) -> np.ndarray
+        :type f: Union[Callable, List[Callable]]
+
+        >>> it = EventIterator("path_to_file.h5", "events", "event")
+        >>> new_it = it.with_processing([f1, f2, f3])
+        """
+
+        return self[:,:].add_processing(f)
         
     @property
     @abstractmethod
