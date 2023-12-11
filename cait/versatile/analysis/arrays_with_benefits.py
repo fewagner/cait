@@ -216,16 +216,20 @@ class SEV(ArrayWithBenefits):
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
-        if dt is not None:
-            if 'x' in kwargs.keys():
-                print("Setting data for the x-axis overrides input 'dt'.")
-            else:
-                # TODO: convert to proper time
-                kwargs['x'] = None
-
         if self._n_channels == 0:
             raise Exception("Nothing to plot.")
         
+        if dt is not None:
+            if 'x' not in kwargs.keys():
+                n = self.shape[-1]
+                kwargs['x'] = dt/1000*(np.arange(n) - int(n/4))
+            
+        if 'xlabel' not in kwargs.keys():
+            if dt is not None: 
+                kwargs['xlabel'] = "Time (ms)"
+            else:
+                kwargs['xlabel'] = "Data Index"
+
         if self._n_channels > 1:
             y = dict()
             for i, channel in enumerate(self._array):
@@ -391,19 +395,22 @@ class NPS(ArrayWithBenefits):
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
+        if self._n_channels == 0:
+            raise Exception("Nothing to plot.")
+        
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
         if dt is not None:
-            if 'x' in kwargs.keys():
-                print("Setting data for the x-axis overrides input 'dt'.")
-            else:
-                raise NotImplementedError("Frequency axis not yet implemented.")
-                # TODO: convert to proper frequencies
-                kwargs['x'] = None
+            if 'x' not in kwargs.keys():
+                n = 2*(self.shape[-1]-1)
+                kwargs['x'] = np.fft.rfftfreq(n, dt/1e6)
 
-        if self._n_channels == 0:
-            raise Exception("Nothing to plot.")
+        if 'xlabel' not in kwargs.keys():
+            if dt is not None: 
+                kwargs['xlabel'] = "Frequency (Hz)"
+            else:
+                kwargs['xlabel'] = "Data Index"   
         
         if self._n_channels > 1:
             y = dict()
@@ -442,15 +449,15 @@ class OF(ArrayWithBenefits):
     >>> of = vai.OF(sev, nps)
     """
     def __init__(self, *args: Any):
-        if isinstance(args, np.ndarray):
-            self._of = args
+        if len(args) == 1 and isinstance(args[0], np.ndarray):
+            self._of = args[0]
             if self._of.ndim > 1:
                 self._n_ch = self._of.shape[0]
                 if self._n_ch == 1: self._of = self._of.flatten()
             else:
                 self._n_ch = 1
 
-        elif type(args) is tuple and len(args) == 2:
+        elif len(args) == 2:
             bool_sev = [isinstance(k, SEV) for k in args]
             bool_nps = [isinstance(k, NPS) for k in args]
 
@@ -479,7 +486,23 @@ class OF(ArrayWithBenefits):
             # frequency to angular frequency
             omega = 2*np.pi*np.fft.rfftfreq(sev.shape[-1])
 
-            H = np.fft.rfft(sev).conjugate()*np.exp(-1j*t_m*omega)/nps
+            # The cait function calc_nps has an argument `force_zero` which sets
+            # the first entry of the NPS to 0. If the user uses such an NPS to 
+            # create an OF, we set its first entry to zero to stay in line with
+            # the standard cait routines.
+            if self._n_ch == 1:
+                if nps[0] == 0: 
+                    s1, s2 = slice(1, None), slice(1, None)
+                else: 
+                    s1, s2 = slice(None, None), slice(None, None)
+            else:
+                if np.any(nps[:,0] == 0): 
+                    s1, s2 = (slice(None, None), slice(1, None)), slice(1, None)
+                else: 
+                    s1, s2 = (slice(None, None), slice(None, None)), slice(None, None)
+            
+            H = np.zeros(nps.shape, dtype=complex)
+            H[s1] = np.fft.rfft(sev[s1]).conjugate()*np.exp(-1j*t_m*omega[s2])/nps[s1]
 
             # Normalize to height of SEV
             maxima = np.max(OptimumFiltering(H)(sev), axis=-1)
@@ -488,7 +511,7 @@ class OF(ArrayWithBenefits):
             
             self._of = H/maxima
 
-        elif type(args) is tuple and len(args) == 0:
+        elif len(args) == 0:
             self._of = np.empty(0)
             self._n_ch = 0
         else:
@@ -611,24 +634,27 @@ class OF(ArrayWithBenefits):
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
+        if self._n_channels == 0:
+            raise Exception("Nothing to plot.")
+        
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
         if dt is not None:
-            if 'x' in kwargs.keys():
-                print("Setting data for the x-axis overrides input 'dt'.")
-            else:
-                raise NotImplementedError("Frequency axis not yet implemented.")
-                # TODO: convert to proper frequencies
-                kwargs['x'] = None
+            if 'x' not in kwargs.keys():
+                n = 2*(self.shape[-1]-1)
+                kwargs['x'] = np.fft.rfftfreq(n, dt/1e6)
 
-        if self._n_channels == 0:
-            raise Exception("Nothing to plot.")
-        
+        if 'xlabel' not in kwargs.keys():
+            if dt is not None: 
+                kwargs['xlabel'] = "Frequency (Hz)"
+            else:
+                kwargs['xlabel'] = "Data Index"
+
         if self._n_channels > 1:
             y = dict()
             for i, channel in enumerate(self._array):
-                y[f'abs(channel {i})'] = np.abs(channel)
+                y[f'|channel {i}|'] = np.abs(channel)
         else:
             y = np.abs(self._array)
 

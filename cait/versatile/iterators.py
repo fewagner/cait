@@ -13,6 +13,7 @@ import h5py
 def _ensure_array(x):
     if isinstance(x, str): x = [x]
     elif isinstance(x, int): x = [x]
+    elif isinstance(x, np.integer): x = [int(x)]
     return np.array(x)
     
 def _ensure_not_array(x):

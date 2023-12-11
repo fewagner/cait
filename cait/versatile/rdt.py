@@ -310,7 +310,7 @@ class RDTFile:
     
     @property
     def timestamps(self):
-        """The timestamps of the events in this RDTFile's default channel(s)."""
+        """The microsecond timestamps of the events in this RDTFile's default channel(s)."""
         # Create an RDTChannel instance for the default channels and return its timestamps
         return self[self._default_channels].timestamps
     
@@ -401,8 +401,11 @@ class RDTChannel:
     
     @property
     def timestamps(self):
-        """The timestamps of the events in this RDTChannel."""
-        return self._rdt_file._file["abs_time_s"][self._inds[0]]*1e6 + self._rdt_file._file["abs_time_mus"][self._inds[0]]
+        """The microsecond timestamps of the events in this RDTChannel."""
+        secs = np.array(self._rdt_file._file["abs_time_s"][self._inds[0]], dtype=np.int64)
+        msecs = np.array(self._rdt_file._file["abs_time_mus"][self._inds[0]], dtype=np.int64)
+
+        return secs*int(1e6) + msecs
     
     @property
     def tpas(self):

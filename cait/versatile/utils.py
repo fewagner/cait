@@ -2,50 +2,56 @@ import numpy as np
 from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 
-# has no test-case (yet)
-# Better implementation: timestamps_us only also possible
-def timestamps_to_hours(timestamp_s: List[int], 
-                        microseconds: List[int] = None, 
-                        start_timestamp_s: int = None, 
-                        start_microseconds: int = None):
+# Has no testcase yet
+# also implement a timestamp_offset of some sorts
+def timestamps_to_timedict(timestamps_us: np.ndarray,
+                           hours_offset: float = 0):
     """
-    Converts timestamps and microseconds to an hours array which starts at start_timestamp. If no start_timestamp is specified, the earliest timestamp_s is used. 
+    Convert microsecond timestamps (as obtained, e.g., from a steam or an .rdt file) to `hours`, `time_s` and `time_mus` (as used by all `cait` routines).
+     
+    :param timestamps_us: Array of timestamps in seconds
+    :type timestamps_us: np.ndarray
+    :param hours_offset: Possible offset of the 'hours' data. If set to 0, the first timestamp in `timestamps_us` marks 0 hours. Defaults to 0.
+    :type hours_offset: float, optional
+    
+    :return: Dictionary with keys `hours`, `time_s` and `time_mus`.
+    :rtype: dict
 
-    :param timestamp_s: Array of timestamps in seconds
-    :type timestamp_s: List[int]
-    :param microseconds: Possible microsecond corrections to the second timestamps (i.e. actual timestamps in microseconds would be timestamp_s*1e6 + microseconds)
-    :type microseconds: List[int], Default: None (no microsecond corrections are used)
-    :param start_timestamp: The seconds timestamp that is used as start of the array. If None is specified, the earliest timestamp_s is used. 
-    :type start_timestamp: int
-    :param start_microseconds: The microseconds correction that is used as start of the array. If None is specified, the microseconds correction corresponding to the earliest timestamp_s is used. 
-    :type start_microseconds: int
+    >>> # If we have 'timestamps' for some events, we can include the corresponding
+    >>> # 'hours', 'time_s' and 'time_mus' datasets in a DataHandler instance 'dh' as:
+    >>> time_data = timestamps_to_timedict(timestamps)
+    >>> dh.set(group="events", **time_data)
+    """
+    hours = (timestamps_us - np.min(timestamps_us))/1e6/3600 + hours_offset
+    time_s = np.array(timestamps_us/1e6, dtype=np.int32)
+    time_mus = np.array(timestamps_us - time_s*int(1e6), dtype=np.int32)
+
+    return dict(hours=hours, time_s=time_s, time_mus=time_mus)
+
+# has no test-case (yet)
+# also implement a timestamp_offset of some sorts
+def timestamps_to_hours(timestamps_us: np.ndarray, 
+                        timestamps_s: np.ndarray = None, 
+                        hours_offset: float = 0):
+    """
+    Converts a microseconds timestamps array to an hours array which starts at `hours_offset`. If microsecond timestamps (`timestamps_us`) AND seconds timestamps (`timestamps_s`) are provided, the microsecond timestamps are interpreted as starting from the respective seconds timestamps, i.e. `timestamps_to_hours(ts_us, ts_s)` is equivalent to `timestamps_to_hours(int(1e6)*ts_s+ts_us)`.
+
+    :param timestamps_us: Array of timestamps in microseconds
+    :type timestamps_us: np.ndarray
+    :param timestamps_s: Array of timestamps in seconds. If provided, the microsecond timestamps are interpreted as starting from the respective seconds timestamps. Defaults to None.
+    :type timestamps_s: np.ndarray, optional
+    :param hours_offset: Possible offset of the hours data. If set to 0, the first timestamp marks 0 hours. Defaults to 0.
+    :type hours_offset: float, optional
 
     :return: Array of hours
-    :rtype: `~class:numpy.ndarray`
+    :rtype: np.ndarray
     """
-
-    if np.logical_xor(start_timestamp_s==None, start_microseconds==None):
-            print("You have to specify 'start_timestamp_s' and 'start_microseconds_s' together")
-            return
+    if isinstance(timestamps_us, list): timestamps_us = np.array(timestamps_us)
+    if isinstance(timestamps_s, list): timestamps_s = np.array(timestamps_s)
+    if timestamps_s is not None:
+        timestamps_us = int(1e6)*np.array(timestamps_s, dtype=np.int64) + np.array(timestamps_us, dtype=np.int64)
     
-    if isinstance(timestamp_s, list): timestamp_s = np.array(timestamp_s)
-    
-    if microseconds is None:  
-        microseconds = np.zeros_like(timestamp_s, dtype='int32')
-    elif isinstance(microseconds, list): 
-        microseconds = np.array(microseconds, dtype='int32')
-
-    if start_timestamp_s is None:
-        earliest_ind = np.argmin(timestamp_s)
-        start_timestamp_s = timestamp_s[earliest_ind]
-        start_microseconds = microseconds[earliest_ind]    
-
-    datetimes = [datetime.fromtimestamp(s, tz=timezone.utc) + timedelta(microseconds=int(mus)) 
-                 for s, mus in zip(timestamp_s, microseconds)]
-    datetime_start = datetime.fromtimestamp(start_timestamp_s, tz=timezone.utc) + timedelta(microseconds=int(start_microseconds))
-    durations = [dt - datetime_start for dt in datetimes]
-
-    return np.array([dur.total_seconds() for dur in durations])/3600
+    return (timestamps_us - np.min(timestamps_us))/1e6/3600 + hours_offset
 
 def timestamp_coincidence(a: List[int], b: List[int], interval: Tuple[int]):
     """
