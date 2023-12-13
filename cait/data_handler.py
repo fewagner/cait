@@ -325,7 +325,6 @@ class DataHandler(SimulateMixin,
     def include_event_iterator(self, group: str, it: IteratorBaseClass):
         """
         Includes the events returned by an iterator into dataset 'event' of a specified group. 
-        Note that this method does not support iterators that return events in batches.
 
         :param group: The target group in the HDF5 file.
         :type group: str

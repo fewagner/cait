@@ -3,7 +3,8 @@ import tempfile
 import numpy as np
 
 import cait as ai
-from cait.versatile.iterators import H5Iterator, apply
+from cait.versatile.iterators import H5Iterator, RDTIterator, apply
+from cait.versatile import RDTFile
 
 RECORD_LENGTH = 2**15
 SAMPLE_FREQUENCY = 2e5
@@ -14,6 +15,76 @@ DATA_3D = np.random.rand(2, 100, RECORD_LENGTH)
 
 DATA_2D_single_CH = np.random.rand(1, 100)
 DATA_3D_single_CH = np.random.rand(1, 100, 16)
+
+RDT_LENGTH = 100
+
+# Used repeatedly for all iterators
+def basic_checks(self, it):
+    # Copy to not alter the original iterator
+    it = it[:,:]
+    # Test adding of processing
+    it_new = it.with_processing(lambda x: x**2)
+    it.add_processing(lambda x: x**2)
+
+    # Test application of function
+    arr1 = apply(lambda x: -x, it)
+    arr2 = apply(lambda x: x, it)
+    self.assertTrue(np.array_equal(arr1[:,...,0], -arr2[:,...,0]))
+
+    # Test context manager
+    S = 0
+    with it as i:
+        for k in i:
+            S += np.max(k)
+    
+    with it[0] as i:
+        for k in i:
+            S += np.max(k)
+
+    # Test flag slicing, int slicing and list slicing
+    flag = np.zeros(len(it), dtype=bool)
+    flag[:20] = True
+
+    next(iter(it[:])),
+    next(iter(it[0]))
+    next(iter(it[0, :10]))
+    next(iter(it[:]))
+    next(iter(it[:, flag]))
+    next(iter(it[0, 0]))
+    next(iter(it[0, [0,1,4]]))
+    
+    # Test if slicing gives expected number of channels
+    self.assertTrue(it[0].n_channels == 1)
+    self.assertTrue(it[:].n_channels == it.n_channels)
+
+    # Test if number of events is preserved when only indexing channels
+    self.assertTrue(len(it[0]) == len(it))
+    self.assertTrue(len(it[:]) == len(it))
+
+    # Test if number returned by flag sliced iterator is correct
+    self.assertTrue(len(it[:, flag]) == 20)
+    self.assertTrue(len(it[0, flag]) == 20)
+
+    # Check if events returned by sliced and unsliced iterator are identical
+    self.assertTrue(np.array_equal(next(iter(it)), next(iter(it[:,flag]))))
+    self.assertTrue(np.array_equal(next(iter(it)), next(iter(it_new))))
+
+    # Add iterators and check if first and last event are as expected
+    it_combined = it + it_new + it_new
+    self.assertTrue(len(it_combined) == len(it)+2*len(it_new))
+    self.assertTrue(np.array_equal(next(iter(it_combined)), next(iter(it))))
+    self.assertTrue(np.array_equal(next(iter(it_combined[:,-1])), 
+                                   next(iter(it_new[:,-1]))))
+    flag = np.zeros(len(it_combined), dtype=bool)
+    flag[:20] = True
+
+    next(iter(it_combined[:]))
+    next(iter(it_combined[0]))
+    next(iter(it_combined[0, :10:3]))
+    next(iter(it_combined[:]))
+    next(iter(it_combined[:, flag]))
+    next(iter(it_combined[0, 0]))
+    next(iter(it_combined[0, [0,1,4]]))
 
 class TestH5Iterator(unittest.TestCase):
     @classmethod
@@ -138,64 +209,103 @@ class TestH5Iterator(unittest.TestCase):
         self.assertTrue(np.array_equal(arr1, arr3))
         self.assertTrue(np.array_equal(arr2, arr4))
 
-    def test_slicing(self):
+    def test_basic(self):
         it1 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
         it2 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=11)
         it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
         it4 = H5Iterator(self.dh.get_filepath(), "events", "event")
+  
+        basic_checks(self, it1)
+        basic_checks(self, it2)
+        basic_checks(self, it3)
+        basic_checks(self, it4)
 
-        it1.add_processing(lambda x: x**2)
-        it2.add_processing(lambda x: x**2)
-        it3.add_processing(lambda x: x**2)
-        it4.add_processing(lambda x: x**2)
+# TODO
+class TestStreamIterator(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dir = tempfile.TemporaryDirectory()
+        formats = {"vdaq2": None}
+    
+        cls.files = []
+        for f, dtype in formats.items():
+            cls.files.append(None)
 
-        flag = np.zeros(len(it1), dtype=bool)
-        flag[:20] = True
+    @classmethod
+    def tearDownClass(cls):			
+        cls.dir.cleanup()
 
-        next(iter(it1[:])),
-        next(iter(it1[0]))
-        next(iter(it1[0,:10]))
-        next(iter(it1[:]))
-        next(iter(it1[:, flag]))
-        next(iter(it2[:]))
-        next(iter(it2[0]))
-        next(iter(it2[0,:10]))
-        next(iter(it2[:]))
-        next(iter(it2[:, flag]))
-        next(iter(it3[:]))
-        next(iter(it3[0]))
-        next(iter(it3[0,:10]))
-        next(iter(it3[:]))
-        next(iter(it3[:, flag]))
-        next(iter(it4[:]))
-        next(iter(it4[0]))
-        next(iter(it4[0,:10]))
-        next(iter(it4[:]))
-        next(iter(it4[:, flag]))
+    def test_add_processing(self):
+        ...
+
+    def test_slicing(self):
+        ...
+
+class TestRDTIterator(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dir = tempfile.TemporaryDirectory()
+        test_data = ai.data.TestData(filepath=cls.dir.name+'/test_data', duration=RDT_LENGTH)
+        test_data.generate()
+
+        cls.f = RDTFile(cls.dir.name+'/test_data.rdt')
+
+    @classmethod
+    def tearDownClass(cls):			
+        cls.dir.cleanup()
+
+    def test_basic(self):
+        basic_checks(self, 
+                     RDTIterator(rdt_channel=self.f[0]))
+        basic_checks(self, 
+                     RDTIterator(rdt_channel=self.f[0], channels=0))
+        basic_checks(self, 
+                     RDTIterator(rdt_channel=self.f[(0,1)]))
+        basic_checks(self, 
+                     RDTIterator(rdt_channel=self.f[(0,1)], channels=(0,1)))
+        basic_checks(self, 
+                     RDTIterator(rdt_channel=self.f[1]))
+        basic_checks(self, 
+                     RDTIterator(rdt_channel=self.f[1], channels=1))
         
-        self.assertTrue(it1[0].n_channels == 1)
-        self.assertTrue(it1[:].n_channels == 1)
-        self.assertTrue(it2[0].n_channels == 1)
-        self.assertTrue(it2[:].n_channels == 2)
-        self.assertTrue(it3[0].n_channels == 1)
-        self.assertTrue(it3[:].n_channels == 1)
-        self.assertTrue(it4[0].n_channels == 1)
-        self.assertTrue(it4[:].n_channels == 2)
+class TestIteratorCollection(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dir = tempfile.TemporaryDirectory()
+        cls.dh = ai.DataHandler(record_length=RECORD_LENGTH, 
+			   					 sample_frequency=SAMPLE_FREQUENCY,
+								 nmbr_channels=2)
+		
+        cls.dh.set_filepath(path_h5=cls.dir.name, fname="H5test", appendix=False)
+        cls.dh.init_empty()
 
-        self.assertTrue(len(it1[0]) == len(it1))
-        self.assertTrue(len(it2[0]) == len(it2))
-        self.assertTrue(len(it3[0]) == len(it3))
-        self.assertTrue(len(it4[0]) == len(it4))
+        cls.dh.set("events", event=DATA_3D)
+        
+        test_data = ai.data.TestData(filepath=cls.dir.name+'/test_data', 
+                                     duration=RDT_LENGTH,
+                                     record_length=RECORD_LENGTH)
+        test_data.generate()
 
-        self.assertTrue(len(it1[:, flag]) == 20)
-        self.assertTrue(len(it2[:, flag]) == 20)
-        self.assertTrue(len(it3[:, flag]) == 20)
-        self.assertTrue(len(it4[:, flag]) == 20)
+        cls.f = RDTFile(cls.dir.name+'/test_data.rdt')
 
-        self.assertTrue(np.array_equal(next(iter(it1)), next(iter(it1[:,flag]))))
-        self.assertTrue(np.array_equal(next(iter(it2)), next(iter(it2[:,flag]))))
-        self.assertTrue(np.array_equal(next(iter(it3)), next(iter(it3[:,flag]))))
-        self.assertTrue(np.array_equal(next(iter(it4)), next(iter(it4[:,flag]))))
+    @classmethod
+    def tearDownClass(cls):			
+        cls.dir.cleanup()
+
+    def test_basic(self):
+        it1 = self.dh.get_event_iterator("events")
+        it2 = self.f[(0,1)].get_event_iterator()
+        it3 = self.dh.get_event_iterator("events", batch_size=13)
+
+        basic_checks(self, it1 + it2)
+        basic_checks(self, it1[0] + it2[0])
+        basic_checks(self, it1[0] + it2[0] + it1[0])
+
+        with self.assertRaises(ValueError):
+            it1 + it2[0]
+        
+        with self.assertRaises(ValueError):
+            it1 + it3
 
 if __name__ == '__main__':
     unittest.main()

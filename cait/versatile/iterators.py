@@ -107,13 +107,13 @@ class IteratorBaseClass(ABC):
     
     def __add__(self, other):
         if isinstance(self, IteratorCollection):
-            l = self.iterators
+            l = [i.with_processing(self.fncs) for i in self.iterators]
         else:
             l = [self]
         
         if isinstance(other, IteratorBaseClass):
             if isinstance(other, IteratorCollection):
-                l += other.iterators
+                l += [i.with_processing(other.fncs) for i in other.iterators]
             else:
                 l += [other]
         else:
@@ -245,6 +245,7 @@ class H5Iterator(IteratorBaseClass):
             raise TypeError(f"Unsupported type {type(channels)} for input argument 'channels'")
             
         if inds is None: inds = np.arange(n_events_total)
+        inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
         self._n_events = len(inds)
 
         # self._inds will be a list of batches. If we just take the inds list, we have batches of size 1, if we take [inds]
@@ -403,7 +404,6 @@ class StreamIterator(IteratorBaseClass):
     def _slice_info(self):
         return (self._params, ('keys', 'inds'))
 
-# TODO: add test cases
 class IteratorCollection(IteratorBaseClass):
     """
     Iterator object that chains multiple iterators.
@@ -528,7 +528,6 @@ class IteratorCollection(IteratorBaseClass):
     def iterators(self):
         return self._iterators
 
-# TODO: add test cases
 class RDTIterator(IteratorBaseClass):
     """
     Iterator object that returns voltage traces for given channels and indices of an RDTChannel instance. 
