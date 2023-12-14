@@ -163,7 +163,10 @@ class RDTFile:
         # Notice that this might fail (when not all are correlated). 
         # In the case that, e.g., only two channels are present and correlated, this provides a shortcut
         # when accessing the important stuff
-        self._default_channels = tuple(self._available_channels)
+        if len(self._available_channels) > 1:
+            self._default_channels = tuple(self._available_channels)
+        else:
+            self._default_channels = int(self._available_channels[0])
 
         self._inds = dict()
         # DETERMINE INDICES FOR SINGLE CHANNELS:
@@ -265,8 +268,8 @@ class RDTFile:
         return self._par.time_base_us
     
     @property
-    def record_frequency(self):
-        """The record frequency in Hz of the events in the corresponding `*.rdt` file."""
+    def sample_frequency(self):
+        """The sample frequency in Hz of the events in the corresponding `*.rdt` file."""
         return int(np.round(1e6/self._par.time_base_us))
     
     @property
