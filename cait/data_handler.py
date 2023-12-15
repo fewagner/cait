@@ -322,7 +322,7 @@ class DataHandler(SimulateMixin,
 
         return H5Iterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
     
-    def include_event_iterator(self, group: str, it: IteratorBaseClass):
+    def include_event_iterator(self, group: str, it: IteratorBaseClass, dtype: str = 'float32'):
         """
         Includes the events returned by an iterator into dataset 'event' of a specified group. 
 
@@ -330,13 +330,21 @@ class DataHandler(SimulateMixin,
         :type group: str
         :param it: The iterator whose events we want to include.
         :type it: IteratorBaseClass
+        :param dtype: The datatype which the events should be stored as. Either 'float32' or 'float64'. Some `cait` methods expect 'float32' event datasets. Defaults to 'float32'
+        :type dtype: str, optional
         """
         # Check if dataset exists (this function does not support overwriting)
         with self.get_filehandle(mode="r+") as f:
             hdf5group = f.require_group(group)
             if 'event' in hdf5group.keys():
                 raise Exception(f"Dataset 'event' already exists in group '{group}'. If you want to overwrite it, delete it first using dh.drop('{group}', 'event')")
-            
+        
+        if dtype not in ['float32', 'float64']:
+            raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64']")
+        
+        # Cast to correct datatype:
+        it = it.with_processing(lambda x: x.astype(dtype))    
+
         # Assess size of dataset:
         # get first event returned by iterator
         # (if batched, get first event in batch)
@@ -351,7 +359,6 @@ class DataHandler(SimulateMixin,
         # build final shape. len(it) gives number of events in iterator
         target_shape.insert(1, len(it))  # event axis is 1st dim                  
         target_shape = (*target_shape, )
-        n_dims = len(target_shape)
 
         # Write iterator contents
         with self.get_filehandle(mode="r+") as f:
@@ -362,7 +369,7 @@ class DataHandler(SimulateMixin,
             with it as events:
                 for ev in tqdm(events, total=it.n_batches):
                     if it.uses_batches:
-                        step = ev.shape[0]
+                        step = len(ev)
                         sl = slice(ind, ind+step)
 
                         if it.n_channels > 1:
