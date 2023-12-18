@@ -1,10 +1,36 @@
+import os
+
 from abc import ABC, abstractmethod
 from typing import Union, List, Tuple
 
 import cait as ai
+import cait.versatile as vai
 import numpy as np
 
 from ..iterators import StreamIterator
+from ..rdt import PARFile
+from ..functions import RemoveBaseline
+
+# Helper Function to get testpulse information from VDAQ2 files
+def vdaq2_dac_channel_trigger(stream, threshold, record_length):
+    channels = [x for x in stream.keys if x.lower().startswith('dac')]
+
+    if not channels:
+        raise KeyError("No DAC channels present in this stream file.")
+
+    out_timestamps = dict()
+    out_tpas = dict()
+
+    for c in channels:
+        inds, vals = vai.trigger(stream, 
+                             key=c, 
+                             threshold=threshold, 
+                             record_length=record_length,
+                             preprocessing=[lambda x: x**2, RemoveBaseline()])
+        out_timestamps[c] = stream.time[inds]
+        out_tpas[c] = np.sqrt(vals) 
+
+    return out_timestamps, out_tpas
 
 class StreamTime:
     """
@@ -91,26 +117,72 @@ class StreamBaseClass(ABC):
         ...
         
     @abstractmethod
-    def get_channel(self, name: str):
+    def get_channel(self, key: str):
         ...
         
     @abstractmethod
-    def get_voltage_trace(self, name: str, where: slice):
+    def get_voltage_trace(self, key: str, where: slice):
+        """
+        Get the voltage trace for a given channel 'key' and slice 'where'.
+        
+        :return: Voltage trace.
+        :rtype: np.ndarray
+        """
         ...
 
     @property
     @abstractmethod
     def keys(self):
+        """
+        Available keys (channel names) in the stream.
+        
+        :return: List of keys.
+        :rtype: list
+        """
         ...
 
     @property
     @abstractmethod
     def start_us(self):
+        """
+        The microsecond timestamp at which the stream starts.
+        
+        :return: Microsecond timestamp
+        :rtype: int
+        """
         ...
 
     @property
     @abstractmethod
     def dt_us(self):
+        """
+        The length of a sample in the stream in microseconds.
+        
+        :return: Microsecond time-delta
+        :rtype: int
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def tpas(self):
+        """
+        Dictionary of testpulse amplitudes in the stream. For hardware 'cresst' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
+        
+        :return: Testpulse amplitudes
+        :rtype: dict of `np.ndarray`
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def tp_timestamps(self):
+        """
+        Dictionary of testpulse timestamps (microseconds) in the stream. For hardware 'cresst' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
+        
+        :return: Testpulse microsecond timestamps.
+        :rtype: dict of `np.ndarray`
+        """
         ...
 
     def __repr__(self):
@@ -151,7 +223,7 @@ class StreamBaseClass(ABC):
                         raise ValueError(f'Unrecognized string "{val[2]}". Did you mean "as_voltage"?')
                     
                     where = slice(val[1], val[1]+1) if type(val[1]) is int else val[1]
-                    return self.get_voltage_trace(name=val[0], where=where)
+                    return self.get_voltage_trace(key=val[0], where=where)
                 else:
                     raise TypeError('When slicing with three arguments, the first, second and third one have to be of type string, int/slice and string, respectively.')
             else:  
@@ -159,6 +231,12 @@ class StreamBaseClass(ABC):
     
     @property
     def time(self):
+        """
+        Instance of `StreamTime`, which can be sliced to convert stream indices into microsecond timestamps and implements utility functions for the conversion to datetime for example.
+        
+        :return: StreamTime instance
+        :rtype: `StreamTime`
+        """
         if not hasattr(self, "_t"):
             self._t = StreamTime(self.start_us, self.dt_us, len(self))
         return self._t
@@ -186,10 +264,95 @@ class StreamBaseClass(ABC):
 
         return StreamIterator(self, keys, inds, record_length)
 
+class Stream_CRESST(StreamBaseClass):
+    """
+    Implementation of StreamBaseClass for hardware 'cresst'.
+    CRESST data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
+    """
+    def __init__(self, files: List[str]):
+        if not any([x.endswith('.par') for x in files]):
+            raise ValueError("You have to provide a '.par' file to construct this class.")
+        if not any([x.endswith('.csmpl') for x in files]):
+            raise ValueError("You have to provide at least one '.csmpl' file to construct this class.")
+        if any([os.path.splitext(x)[-1] not in [".csmpl", ".par", ".test_stamps", ".dig_stamps"] for x in files]):
+            raise ValueError("Only file extensions ['.csmpl', '.par'] are supported.")
+        
+        par_path = [x for x in files if x.endswith('.par')][0]
+        csmpl_paths = [x for x in files if x.endswith('.csmpl')]
+        test_path = [x for x in files if x.endswith('.test_stamps')]
+        dig_path = [x for x in files if x.endswith('.dig_stamps')]
+
+        # Offset from the dig_stamps file (assuming a 10 MHz clock)
+        offset = 0 if not dig_path else int(ai.trigger._csmpl.get_offset(dig_path[0])/10)
+
+        self._par_file = PARFile(par_path)
+        self._start = int(1e6*self._par_file.start_s + self._par_file.start_us - offset)
+        self._dt = self._par_file.time_base_us
+
+        self._data = dict()
+
+        for f in csmpl_paths:
+            name = os.path.splitext(os.path.basename(f))[0]
+            self._data[name] = ai.trigger._csmpl.readcs(f)
+
+        if test_path:
+            if not dig_path:
+                raise Exception("When including testpulse information using a '.test_stamps' file, you also have to provide the corresponding '.dig_stamps' file.")
+            test_path = test_path[0]
+            dtype = np.dtype([('stamp', np.uint64),
+                                ('tpa', np.float32),
+                                ('tpch', np.uint32)])
+            stamps = np.fromfile(test_path, dtype=dtype)
+
+            self._tpas = dict()
+            self._tp_timestamps = dict()
+
+            for k in list(set(stamps['tpch'])):
+                mask = stamps['tpch'] == k
+                self._tpas[str(k)] = stamps['tpa'][mask]
+                # assuming 10 MHz clock
+                self._tp_timestamps[str(k)] = self.start_us + stamps['stamp'][mask]/10 + offset
+
+        self._keys = list(self._data.keys())
+
+    def __len__(self):
+        return len(self._data[self.keys[0]])
+    
+    def get_channel(self, key: str):
+        return self._data[key]
+    
+    def get_voltage_trace(self, key: str, where: slice):
+       return ai.data.convert_to_V(self._data[key][where], bits=16, min=-10, max=10)
+    
+    @property
+    def start_us(self):
+        return self._start
+    
+    @property
+    def dt_us(self):
+        return self._dt
+    
+    @property
+    def keys(self):
+        return self._keys
+    
+    @property
+    def tpas(self):
+        if not hasattr(self, '_tpas'):
+            raise KeyError("Testpulse amplitudes not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
+        return self._tpas
+
+    @property
+    def tp_timestamps(self):
+        if not hasattr(self, '_tp_timestamps'):
+            raise KeyError("Testpulse timestamps not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
+        return self._tp_timestamps
+
+# TODO: test cases
 class Stream_VDAQ2(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'vdaq2'.
-    VDAQ2 data is stored in .bin files. Its header contains instructions on how to read the data and all recorded channels are stored in the same file.
+    VDAQ2 data is stored in `*.bin` files. Its header contains instructions on how to read the data and all recorded channels are stored in the same file.
     """
     def __init__(self, file: str):
         # Get relevant info about file from its header
@@ -204,22 +367,26 @@ class Stream_VDAQ2(StreamBaseClass):
 
         # Create memory map to binary file
         self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
+
+        # Create placeholders for testpulses
+        self._tp_timestamps = None
+        self._tpas = None
         
     def __len__(self):
         return len(self._data)
     
-    def get_channel(self, name: str):
-        return self._data[name]
+    def get_channel(self, key: str):
+        return self._data[key]
     
-    def get_voltage_trace(self, name: str, where: slice):
-        if name.lower().startswith('adc'): 
+    def get_voltage_trace(self, key: str, where: slice):
+        if key.lower().startswith('adc'): 
             bits = self._adc_bits
-        elif name.lower().startswith('dac'):
+        elif key.lower().startswith('dac'):
             bits = self._dac_bits
         else:
-            raise ValueError(f'Unable to assign the correct itemsize to name "{name}" as it does not start with "ADC" or "DAC".')
+            raise ValueError(f'Unable to assign the correct itemsize to name "{key}" as it does not start with "ADC" or "DAC".')
             
-        return ai.data.convert_to_V(self._data[name][where], bits=bits, min=-20, max=20)
+        return ai.data.convert_to_V(self._data[key][where], bits=bits, min=-20, max=20)
     
     @property
     def start_us(self):
@@ -233,6 +400,29 @@ class Stream_VDAQ2(StreamBaseClass):
     def keys(self):
         return self._keys
     
+    @property
+    def tpas(self):
+        if self._tpas is None:
+            # Trigger with generic threshold 0.001 V and record length 1 sec
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 0.001, int(1e6/self.dt_us))
+
+            self._tpas = tpas
+            self._tp_timestamps = timestamps
+
+        return self._tpas
+
+    @property
+    def tp_timestamps(self):
+        if self._tp_timestamps is None:
+            # Trigger with generic threshold 0.001 V and record length 1 sec
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 0.001, int(1e6/self.dt_us))
+
+            self._tpas = tpas
+            self._tp_timestamps = timestamps
+
+        return self._tp_timestamps
+
+# TODO: finally implement and test cases    
 class Stream_VDAQ3(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'vdaq3'.
@@ -292,15 +482,15 @@ class Stream_VDAQ3(StreamBaseClass):
     def __len__(self):
         return self._len
     
-    def get_channel(self, name: str):
-        return self._data[name]
+    def get_channel(self, key: str):
+        return self._data[key]
     
-    def get_voltage_trace(self, name: str, where: slice):
+    def get_voltage_trace(self, key: str, where: slice):
         # VDAQ3 writes 24bit values, here, we convert them to 32 bits such that numpy can handle them
-        adc_32bit = np.vstack([self._data[name]["byte1"][where], 
-                               self._data[name]["byte2"][where], 
-                               self._data[name]["f3"][where],
-                               np.zeros_like(self._data[name]["byte1"][where]),
+        adc_32bit = np.vstack([self._data[key]["byte1"][where], 
+                               self._data[key]["byte2"][where], 
+                               self._data[key]["f3"][where],
+                               np.zeros_like(self._data[key]["byte1"][where]),
                                ]).flatten("F").view("<u4")
  
         return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20)
@@ -316,6 +506,14 @@ class Stream_VDAQ3(StreamBaseClass):
     @property
     def keys(self):
         return list(self._data.keys())
+    
+    @property
+    def tpas(self):
+        raise NotImplementedError("Not yet implemented")
+
+    @property
+    def tp_timestamps(self):
+        raise NotImplementedError("Not yet implemented")
 
 class Stream(StreamBaseClass):
     """
@@ -324,19 +522,19 @@ class Stream(StreamBaseClass):
 
     The data is accessed by means of slicing (see below). The `time` property is an object of :class:`StreamTime` and offers a convenient time interface as well (see below).
 
-    :param hardware: The hardware which was used to record the stream file. Valid options are ['vdaq2']
+    :param hardware: The hardware which was used to record the stream file. Valid options are ['cresst', 'vdaq2']
     :type hardware: str
     :param src: The source for the stream. Depending on how the data is taken, this can either be the path to one file or a list of paths to multiple files. This input is handled by the specific implementation of the Stream Object. See below for examples.
     :type src: Union[str, List[str]]
     
     :Usage for different hardware:
+    CRESST:
+    Files are .csmpl files which contain one channel each. Additionally, we need a .par file to read the start timestamp of the stream data from.
+    >>> s = Stream(hardware='cresst', src=['par_file.par', 'stream_Ch0.csmpl', 'stream_Ch1.csmpl'])
+
     VDAQ2:
     Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
-    >>> s = Stream(hardware='vdaq2', src=file.bin)
-    
-    VDAQ3:
-    This hardware records different channels in separate files but each such file contains all relevant informations to identify them. All files can be input as a list.
-    >>> s = Stream(hardware='vdaq3', src=[channel0.bin, channel1.bin])
+    >>> s = Stream(hardware='vdaq2', src='file.bin')
 
     :Usage slicing:
     Valid options for slicing streams are the following:
@@ -353,12 +551,14 @@ class Stream(StreamBaseClass):
     >>> s['ADC1', 10:20, 'as_voltage']
     """
     def __init__(self, hardware: str, src: Union[str, List[str]]):
-        if hardware.lower() == "vdaq2":
+        if hardware.lower() == "cresst":
+            self._stream = Stream_CRESST(src)
+        elif hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src)
-        elif hardware.lower() == "vdaq3":
-            self._stream = Stream_VDAQ3(src)
+        #elif hardware.lower() == "vdaq3":
+        #    self._stream = Stream_VDAQ3(src)
         else:
-            raise NotImplementedError('Only vdaq2 and vdaq3 files are supported at the moment.')
+            raise NotImplementedError('Only cresst and vdaq2 files are supported at the moment.')
 
     def __repr__(self):
         return repr(self._stream)
@@ -366,11 +566,11 @@ class Stream(StreamBaseClass):
     def __len__(self):
         return len(self._stream)
         
-    def get_channel(self, name: str):
-        return self._stream.get_channel(name)
+    def get_channel(self, key: str):
+        return self._stream.get_channel(key)
         
-    def get_voltage_trace(self, name: str, where: slice):
-        return self._stream.get_voltage_trace(name, where)
+    def get_voltage_trace(self, key: str, where: slice):
+        return self._stream.get_voltage_trace(key, where)
 
     @property
     def keys(self):
@@ -383,3 +583,11 @@ class Stream(StreamBaseClass):
     @property
     def dt_us(self):
         return self._stream.dt_us
+    
+    @property
+    def tpas(self):
+        return self._stream.tpas
+
+    @property
+    def tp_timestamps(self):
+        return self._stream.tp_timestamps

@@ -3,7 +3,8 @@ import tempfile
 import numpy as np
 
 import cait as ai
-from cait.versatile.iterators import H5Iterator, RDTIterator, apply
+from cait.versatile.stream import Stream
+from cait.versatile.iterators import H5Iterator, RDTIterator, StreamIterator, apply
 from cait.versatile import RDTFile
 
 RECORD_LENGTH = 2**15
@@ -220,26 +221,46 @@ class TestH5Iterator(unittest.TestCase):
         basic_checks(self, it3)
         basic_checks(self, it4)
 
-# TODO
 class TestStreamIterator(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.dir = tempfile.TemporaryDirectory()
-        formats = {"vdaq2": None}
-    
-        cls.files = []
-        for f, dtype in formats.items():
-            cls.files.append(None)
+        data = ai.data.TestData(filepath=cls.dir.name+'/mock_001', 
+                                 duration=RDT_LENGTH,
+                                 channels=[0, 1],
+                                 sample_frequency=25000,
+                                 start_s=13)
+
+        data.generate()
+
+        cls.stream = Stream('cresst', [cls.dir.name+'/mock_001_Ch0.csmpl',
+                                        cls.dir.name+'/mock_001_Ch1.csmpl',
+                                        cls.dir.name+'/mock_001.test_stamps',
+                                        cls.dir.name+'/mock_001.dig_stamps',
+                                        cls.dir.name+'/mock_001.par'])
 
     @classmethod
     def tearDownClass(cls):			
         cls.dir.cleanup()
 
-    def test_add_processing(self):
-        ...
+    def test_basic(self):
+        inds = self.stream.time.timestamp_to_ind(self.stream.tp_timestamps["0"])
 
-    def test_slicing(self):
-        ...
+        basic_checks(self, 
+                     StreamIterator(stream=self.stream,
+                                    keys="mock_001_Ch0",
+                                    inds=inds[:25],
+                                    record_length=2**13))
+        basic_checks(self, 
+                     StreamIterator(stream=self.stream,
+                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    inds=inds,
+                                    record_length=2**14))
+        basic_checks(self, 
+                     StreamIterator(stream=self.stream,
+                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    inds=inds,
+                                    record_length=2**15))
 
 class TestRDTIterator(unittest.TestCase):
     @classmethod

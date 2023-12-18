@@ -326,7 +326,6 @@ class H5Iterator(IteratorBaseClass):
     def _slice_info(self):
         return (self._params, ('channels', 'inds'))
         
-# TODO: add test case
 class StreamIterator(IteratorBaseClass):
     """
     Iterator object that returns voltage traces for given trigger indices of a stream file. 

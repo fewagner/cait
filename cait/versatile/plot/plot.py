@@ -6,6 +6,7 @@ import numpy as np
 from .plot_backends import BaseClassPlotly, BaseClassMPL
 
 from ..stream import Stream
+from ..stream.stream import StreamBaseClass
 from ..iterators import IteratorBaseClass
 from ..functions import Unity
 
@@ -390,10 +391,8 @@ class StreamViewer(Viewer):
     """
     Class to view stream data, i.e. for example the contents of a binary file as produced by vdaq2.
 
-    :param hardware: The hardware that was used to record the file. Valid options are ['vdaq2']
-    :type hardware: str
-    :param file: Stream file (full path including file extension)
-    :type file: str
+    :param args: Either an existing Stream instance or both 'hardware' (str) and file(s) (str or list of str).
+    :type args: Union[StreamBaseClass, str, list]
     :param keys: The keys of the stream to display. If none are specified, all available keys are plotted. Defaults to None.
     :type keys: Union[str, List[str]]
     :param n_points: The number of data points that should be simultaneously displayed in the stream viewer. A large number can impact performance. Note that the number of points that are displayed are irrelevant of the downsampling factor (see below), i.e. the viewer will always display n_points points.
@@ -402,6 +401,11 @@ class StreamViewer(Viewer):
     :type downsample_factor: int, optional
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
+
+    >>> s = Stream(hardware="vdaq2", src="path/to/file.bin")
+    >>> StreamViewer(s)
+
+    >>> StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
 
     `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
@@ -413,8 +417,8 @@ class StreamViewer(Viewer):
     :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
     :type width: int, optional
     """
-    def __init__(self, hardware: str, 
-                 file: str, 
+    def __init__(self, 
+                 *args: Union[StreamBaseClass, str, list],
                  keys: Union[str, List[str]] = None,
                  n_points: int = 10000, 
                  downsample_factor: int = 100,
@@ -426,9 +430,12 @@ class StreamViewer(Viewer):
         self._add_button("←", self._move_left, "Move backwards in time.")
         self._add_button("→", self._move_right, "Move forward in time.")
 
-        # Linking the stream-file (note that the file extension is handled by the StreamFile object as
-        # it could be different for different hardware)
-        self.stream = Stream(src=file, hardware=hardware)
+        if len(args) == 1 and isinstance(args[0], StreamBaseClass):
+            self.stream = args[0]
+        elif len(args) == 2:
+            self.stream = Stream(hardware=args[0], src=args[1])
+        else:
+            raise ValueError(f"Invalid positional arguments '{args}'. Has to be either a StreamBaseClass instance or 'hardware' and 'files'.")
 
         if keys is not None:
             if type(keys) is str: 
