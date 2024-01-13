@@ -144,7 +144,8 @@ class SEV(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
-        dh.set(group, **{dataset: self._sev}, **kwargs)
+        data = self._sev[None,:] if self._n_channels == 1 else self._sev
+        dh.set(group, **{dataset: data}, **kwargs)
         
     def from_file(self, fname: str, src_dir: str = ''):
         """
@@ -323,7 +324,8 @@ class NPS(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
-        dh.set(group, **{dataset: self._nps}, **kwargs)
+        data = self._nps[None,:] if self._n_channels == 1 else self._nps
+        dh.set(group, **{dataset: data}, **kwargs)
         
     def from_file(self, fname: str, src_dir: str = ''):
         """
@@ -517,7 +519,7 @@ class OF(ArrayWithBenefits):
         else:
             raise TypeError(f"Unsupported input arguments {args}")
     
-    def from_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter"):
+    def from_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter*"):
         """
         Read OF from DataHandler. 
 
@@ -525,13 +527,16 @@ class OF(ArrayWithBenefits):
         :type dh: DataHandler
         :param group: The HDF5 group where the OF is stored.
         :type group: str
-        :param dataset: The HDF5 dataset where the OF is stored *without* suffixes '_real' and '_imag'.
+        :param dataset: The HDF5 dataset where the OF is stored. The star `*` denotes the position of the suffixes '_real' and '_imag'.
         :type dataset: str
 
         :return: Instance of OF.
         :rtype: OF
         """
-        self._of = dh.get(group, dataset+'_real') + 1j*dh.get(group, dataset+'_imag')
+        if "*" not in dataset: dataset += "*"
+        ds_prefix, ds_suffix = dataset.split("*")
+
+        self._of = dh.get(group, ds_prefix+'_real'+ds_suffix) + 1j*dh.get(group, ds_prefix+'_imag'+ds_suffix)
         
         if self._of.ndim > 1:
             self._n_ch = self._of.shape[0]
@@ -541,7 +546,7 @@ class OF(ArrayWithBenefits):
             
         return self
         
-    def to_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter", **kwargs):
+    def to_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter*", **kwargs):
         """
         Save OF to DataHandler. 
 
@@ -549,13 +554,18 @@ class OF(ArrayWithBenefits):
         :type dh: DataHandler
         :param group: The HDF5 group where the OF should be stored.
         :type group: str
-        :param dataset: The HDF5 dataset where the OF should be stored *without* suffixes '_real' and '_imag'.
+        :param dataset: The HDF5 dataset where the OF should be stored. The star `*` denotes the position of the suffixes '_real' and '_imag'.
         :type dataset: str
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
-        dh.set(group, **{dataset+"_real": np.real(self._of), 
-                         dataset+"_imag": np.imag(self._of)}, 
+        if "*" not in dataset: dataset += "*"
+        ds_prefix, ds_suffix = dataset.split("*")
+
+        data = self._of[None,:] if self._n_channels == 1 else self._of
+
+        dh.set(group, **{ds_prefix+"_real"+ds_suffix: np.real(data), 
+                         ds_prefix+"_imag"+ds_suffix: np.imag(data)}, 
                          **kwargs)
         
     def from_file(self, fname: str, src_dir: str = ''):
