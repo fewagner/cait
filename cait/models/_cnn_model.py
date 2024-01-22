@@ -182,7 +182,7 @@ class CNNModule(LightningModule):
         if self.down_keys is not None:
             for key in self.down_keys:
                 sample[key] = torch.mean(sample[key].
-                                      reshape(len(sample[key]), int(len(sample[key][1]) / self.down), self.down),
+                                      reshape(sample[key].shape[0], int(sample[key].shape[1] / self.down), self.down),
                                       dim=2)
 
         # put features together

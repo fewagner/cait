@@ -375,10 +375,10 @@ class FeaturesMixin(object):
             mean_nps = np.array([h5f['noise']['nps'][i] for i in range(self.nmbr_channels)])
 
             if down > 1:
-                stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(len(stdevent_pulse[1]) / down), down), axis=2)
+                stdevent_pulse = np.mean(stdevent_pulse.reshape(-1, int(stdevent_pulse.shape[1] / down), down), axis=2)
                 first_nps_val = mean_nps[:, 0]
                 mean_nps = mean_nps[:, 1:]
-                mean_nps = np.mean(mean_nps.reshape(-1, int(len(mean_nps[1]) / down), down), axis=2)
+                mean_nps = np.mean(mean_nps.reshape(-1, int(mean_nps.shape[1] / down), down), axis=2)
                 mean_nps = np.concatenate((first_nps_val.reshape(-1, 1), mean_nps), axis=1)
 
             print('CREATE OPTIMUM FILTER.')
@@ -445,8 +445,7 @@ class FeaturesMixin(object):
         :param onset_to_dominant_channel: The difference in the onset value to the dominant channel. If e.g. the second
             channel has a typical max_pos value of 4000, but the first of 4100, then the onset for this would be -100.
         :type onset_to_dominant_channel: list of ints
-        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this
-        amount of samples.
+        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this amount of samples.
         :type flexibility: int
         """
 

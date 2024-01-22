@@ -11,7 +11,7 @@ from ..fit._templates import pulse_template
 
 class TestData():
     """
-    A class for the generation of *.rdt, *.par, *.con, *.csmpl, *.db, *.dig_stamps and *.test_stamps files for
+    A class for the generation of `*.rdt`, `*.par`, `*.con`, `*.csmpl`, `*.db`, `*.dig_stamps` and `*.test_stamps` files for
     the testing of all data processing routines.
 
     :param filepath: The path to the location of the generated data, including file name without appendix,

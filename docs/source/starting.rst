@@ -8,7 +8,7 @@ The quickest way to install Cait is via the Python package index:
 
     $ pip install cait
 
-For your first steps, you can create a standard event of data from a given *.rdt file with a few lines
+For your first steps, you can create a standard event of data from a given `*.rdt` file with a few lines
 of code. In this example, we create a mock data set to demonstrate the calculation of main parameters and the
 creation of the standard event.
 

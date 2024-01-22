@@ -5,7 +5,7 @@ with open("README.rst", "r") as fh:
 
 setup(
     name='cait',
-    version='1.2.0',
+    version='1.2.1',
     author='Philipp Schreiner, '
            'Felix Wagner',
     author_email="felix.wagner@oeaw.ac.at",
@@ -26,7 +26,8 @@ setup(
         'matplotlib>=3.4',
         'numba>=0.54',
         'tqdm>=4.62',
-        'scikit-learn>=0.24'
+        'scikit-learn>=0.24',
+        'deprecation'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest==4.4.1'],
