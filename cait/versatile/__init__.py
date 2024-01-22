@@ -1,6 +1,7 @@
 from .file import combine, merge
 from .iterators import apply
 from .utils import timestamp_coincidence, sample_noise
+# from .utils import timestamps_to_timedict
 from .analysis import *
 from .stream import *
 from .plot import *
@@ -13,5 +14,6 @@ __all__ = [
     'merge',
     'RDTFile',
     'sample_noise',
-    'timestamp_coincidence'
+    'timestamp_coincidence',
+#    'timestamps_to_timedict'
 ]

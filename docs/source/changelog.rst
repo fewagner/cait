@@ -11,6 +11,7 @@ v1.2.1
 - Fixed a bug where the `exclude_tpas` keyword in `PulserModel` and derived functionalities like `calc_calibration` would not correctly exclude small testpulse amplitudes.
 - Fixed a minor bug in `PulserModel`'s standard-deviation-estimation.
 - Fixed a bug where the voltage trace view in `vizTool` would incorrectly subtract baselines for very short record lengths.
+- Fixed a bug where creating an optimum filter with downsampling factor larger than 1 did not work for single-channel-data.
 - New (experimental) features in `cait.versatile`.
 
 v1.2.0

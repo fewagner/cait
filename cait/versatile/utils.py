@@ -1,5 +1,4 @@
 import numpy as np
-from datetime import datetime, timedelta, timezone
 from typing import List, Tuple
 
 # Has no testcase yet
@@ -22,9 +21,9 @@ def timestamps_to_timedict(timestamps_us: np.ndarray,
     >>> time_data = timestamps_to_timedict(timestamps)
     >>> dh.set(group="events", **time_data)
     """
-    hours = (timestamps_us - np.min(timestamps_us))/1e6/3600 + hours_offset
-    time_s = np.array(timestamps_us/1e6, dtype=np.int32)
-    time_mus = np.array(timestamps_us - time_s*int(1e6), dtype=np.int32)
+    hours = (timestamps_us - np.min(timestamps_us))/1e6/3600 + hours_offset # should be float64
+    time_s = np.array(timestamps_us/1e6, dtype=np.int32) # should be int64
+    time_mus = np.array(timestamps_us - time_s*int(1e6), dtype=np.int32) # should be int64
 
     return dict(hours=hours, time_s=time_s, time_mus=time_mus)
 
@@ -85,9 +84,9 @@ def timestamp_coincidence(a: List[int], b: List[int], interval: Tuple[int]):
     >>> b = np.array([1, 11, 35, 42, 45])
     >>> inside, coincidence_inds, outside = vai.utils.timestamp_coincidence(a,b,(-1,3))
 
-    >>> ind_in # array([1, 3])
-    >>> ind_out # array([0, 2, 4])
-    >>> ind_coin # array([0, 3])
+    >>> inside # array([1, 3])
+    >>> outside # array([0, 2, 4])
+    >>> coincidence_inds # array([0, 3])
     >>> b[inside] # array([11, 42]) = corresponding timestamps
     >>> b[outside] # array([ 1, 35, 45]) = corresponding timestamps
     >>> a[coincidence_ind] # array([10, 40])
