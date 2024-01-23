@@ -67,9 +67,28 @@ def exponential_bl(t, c0, c1):
     """
     return c0 + np.exp(t * c1)
 
+@nb.njit
+def pulse_template(t, *par):
+    """
+    Wrapper method for `pulse_template_2` and `pulse_template_n`. Depending on the number of parameters `par`, either of them is chosen: If `len(par)==6`, the meaning of the parameters is assumed to be `[t0, An, At, tau_n, tau_in, tau_t]` and `pulse_template_2` is called with those parameters. If `len(par)==2k+2` with `k=3,4,...`, the method `pulse_template_k` is called and the parameters are assumed to be of the following order: `[t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n]`.
+
+    *Important*: Since the functions are pre-compiled, it is important to match the function signatures. In particular, all the parameters *have to be floats*. If you pass an integer, make sure to append a dot, e.g. 1 -> 1. or 1.0
+
+    :param t: Time array to evaluate the pulse shape model on.
+    :type t: np.ndarray
+    :param par: Parameters of the pulse shape model. Either in order `t0, An, At, tau_n, tau_in, tau_t` for the regular 2-component pulse shape model or `t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n` for the extended pulse shape model. 
+    :type par: float
+
+    :return: The pulse shape model evaluated on the time grid.
+    :rtype: np.ndarray
+    """
+    if len(par) == 6:
+        return pulse_template_2(t, *par)
+    else:
+        return pulse_template_k(t, *par)
 
 @nb.njit
-def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
+def pulse_template_2(t, t0, An, At, tau_n, tau_in, tau_t):
     """
     Parametric model for the pulse shape, 6 parameters.
 
@@ -102,6 +121,53 @@ def pulse_template(t, t0, An, At, tau_n, tau_in, tau_t):
                    At * (np.exp(-(t[cond] - t0) / tau_t) - np.exp(-(t[cond] - t0) / tau_n)))
     return pulse
 
+@nb.njit()
+def pulse_template_k(t, *par):
+    """
+    Parametric model for the k-component pulse shape model which has 2(k+1) parameters, k=3,4,..., as developed in 'Unveiling the Nature of Dark Matter with Direct Detection Experiments', Vanessa Zema, 2020.
+
+    *Important*: Since this function is pre-compiled, it is important to match the function signature. In particular, all the parameters *have to be floats*. If you pass an integer, make sure to append a dot, e.g. 1 -> 1. or 1.0
+
+    :param t: Time array of shape (record_length,) to evaluate the pulse shape model on.
+    :type t: np.ndarray
+    :param par: Parameters of the pulse shape model in the order `t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n`. 
+    :type par: float
+
+    :return: The pulse shape model evaluated on the time grid.
+    :rtype: np.ndarray
+    """
+
+    if len(par) % 2 != 0:
+        raise ValueError("Unsupported number of parameters provided. For the k-component pulse shape model 2(k+1) parameters are required.")
+    
+    k = len(par)//2 - 1
+    if k < 3: 
+        raise ValueError("To use the k-component pulse shape model, k has to be at least 3.")
+    
+    # The following has to be so cumbersome due to numba-jit restrictions 
+    t0       = par[0]                        # scalar
+    cond     = t > t0
+
+    tc       = np.zeros((np.sum(cond),1))    # column vector
+    A        = np.zeros((1,k))               # row vector
+    tau      = np.zeros((1,k))               # row vector
+    tau_n    = par[-1]                       # scalar
+
+    tc[:,0]  = t[cond]
+    
+    # No casting from list to array with numba, hence loop
+    for i in range(k):
+        A[0,i]   = par[1+i]
+        tau[0,i] = par[k+1+i]
+
+    # The first component is considered negative to be consistent with the interpretation 
+    # of tau_in being the intrinsic response time of the TES. See eq. (6.24) in 'Unveiling the Nature of Dark Matter with Direct Detection Experiments', Vanessa Zema, 2020
+    A[0,0] = -A[0,0]
+
+    pulse = np.zeros_like(t)
+    pulse[cond] = np.sum( A*( np.exp(-(tc-t0)/tau) - np.exp(-(tc-t0)/tau_n) ), axis=-1)
+    
+    return pulse
 
 # Define gauss function
 @nb.njit

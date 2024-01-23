@@ -1,7 +1,8 @@
 import os
 import subprocess
 import warnings
-from typing import List, Union, Type
+from typing import List, Union
+import fnmatch
 
 import numpy as np
 import h5py
@@ -18,7 +19,7 @@ from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
 from .versatile.file import ds_source_available
-from .versatile.iterators import EventIterator, _IteratorBaseClass
+from .versatile.iterators import H5Iterator, IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
@@ -135,6 +136,9 @@ class DataHandler(SimulateMixin,
                     self.colors.append('red')
 
         print('DataHandler Instance created.')
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(record_length={self.record_length}, sample_frequency={self.sample_frequency}, dt_us={int(1e6/self.sample_frequency)}, channels={self.channels})'
 
     def __str__(self):
         # Info on size, file, groups and possibly connected virtual datasets
@@ -286,7 +290,7 @@ class DataHandler(SimulateMixin,
     
     def get_event_iterator(self, group: str, channel: int = None, flag: List[bool] = None, batch_size: int = None):
         """
-        Returns EventIterator object that can be used to iterate events of a given group and channel. When used within a with statement, the corresponding HDF5 file is kept open for faster access.
+        Returns H5Iterator object that can be used to iterate events in a dataset called 'event' of a given group and channel. When used within a with statement, the corresponding HDF5 file is kept open for faster access.
 
         :param group: The name of the group in the HDF5 file.
         :type group: string
@@ -295,7 +299,7 @@ class DataHandler(SimulateMixin,
         :param flag: A boolean flag of events to include in the iterator
         :type flag: list of bool
 
-        :return: EventIterator
+        :return: H5Iterator
         :rtype: Context Manager / Iterator
 
         >>> # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
@@ -308,64 +312,73 @@ class DataHandler(SimulateMixin,
         ...     for ev in ev_it:
         ...         print(np.max(ev))
         """
-        # Use the first channel and the first datapoint of a voltage trace to get the total number of events
-        inds = np.arange(self.get(group, "event", 0, None, 0).size)
+        # Reading number of events is much faster if we open the HDF5 file directly
+        with h5py.File(self.get_filepath(), 'r') as f:
+            n_events = f[group]["event"].shape[1]
+            
+        inds = np.arange(n_events)
 
         if flag is not None: inds = inds[flag]
 
-        return EventIterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
+        return H5Iterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
     
-    def include_iterator(self, group: str, dataset: str, it: Type[_IteratorBaseClass], event_axis: int = 1):
+    def include_event_iterator(self, group: str, it: IteratorBaseClass, dtype: str = 'float32'):
         """
-        Includes the events returned by an iterator into a specified group/dataset. 
-        Note that this method does not support iterators that return events in batches.
+        Includes the events returned by an iterator into dataset 'event' of a specified group. 
 
         :param group: The target group in the HDF5 file.
         :type group: str
-        :param dataset: The target dataset in the HDF5 file.
-        :type dataset: str
         :param it: The iterator whose events we want to include.
-        :type it: Type[IteratorBaseClass]
-        :param event_axis: The axis along which you want to stack the events. If you include event voltage traces, you most likely want the final dataset to have shape (n_channels, n_events, record_length). In this case, the event_axis is 1. An event_axis of 0 would result in a dataset of shape (n_events, n_channels, record_length). Defaults to 1.
-        :type event_axis: int
+        :type it: IteratorBaseClass
+        :param dtype: The datatype which the events should be stored as. Either 'float32' or 'float64'. Some `cait` methods expect 'float32' event datasets. Defaults to 'float32'
+        :type dtype: str, optional
         """
-        # Check for unsupported inputs
-        if it.uses_batches: raise NotImplementedError("Iterators that use batches are not supported.")
-
         # Check if dataset exists (this function does not support overwriting)
         with self.get_filehandle(mode="r+") as f:
             hdf5group = f.require_group(group)
-            if dataset in hdf5group.keys():
-                raise Exception(f"Dataset '{dataset}' already exists in group '{group}'. If you want to overwrite it, delete it first using dh.drop('{group}', '{dataset}')")
-            
+            if 'event' in hdf5group.keys():
+                raise Exception(f"Dataset 'event' already exists in group '{group}'. If you want to overwrite it, delete it first using dh.drop('{group}', 'event')")
+        
+        if dtype not in ['float32', 'float64']:
+            raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64']")
+        
+        # Cast to correct datatype:
+        it = it.with_processing(lambda x: x.astype(dtype))    
+
         # Assess size of dataset:
         # get first event returned by iterator
-        out = next(iter(it)) 
+        # (if batched, get first event in batch)
+        out = next(iter(it))
+        if it.uses_batches: out = out[0]
         
-        # Check if event_axis is reasonable: (add extra dimension for single channel
-        # iterators to stay consistent with cait's conventions)
+        # add extra dimension for single channel
+        # iterators to stay consistent with cait's conventions
         target_shape = list(np.array(out).shape)
         if it.n_channels == 1: target_shape = [1] + target_shape
 
-        if event_axis > len(target_shape): raise ValueError(f"'event_axis' is too large for {len(target_shape)+1}-dimensional output.")
-
         # build final shape. len(it) gives number of events in iterator
-        target_shape.insert(event_axis, len(it))                  
+        target_shape.insert(1, len(it))  # event axis is 1st dim                  
         target_shape = (*target_shape, )
-        n_dims = len(target_shape)
 
         # Write iterator contents
         with self.get_filehandle(mode="r+") as f:
             hdf5group = f.require_group(group)
-            hdf5ds = hdf5group.require_dataset(name=dataset, shape=target_shape, dtype=np.array(out).dtype)
+            hdf5ds = hdf5group.require_dataset(name='event', shape=target_shape, dtype=np.array(out).dtype)
 
+            ind = 0
             with it as events:
-                for j, ev in tqdm(enumerate(events)):
-                    # Create slicing tuple. Basically this is equivalent to 
-                    # [:, j, :] or [j, :] or [:, j], depending on the target shape
-                    sl = [slice(None,None,None)]*(n_dims)
-                    sl[event_axis] = j
-                    hdf5ds[(*sl,)] = ev
+                for ev in tqdm(events, total=it.n_batches):
+                    if it.uses_batches:
+                        step = len(ev)
+                        sl = slice(ind, ind+step)
+
+                        if it.n_channels > 1:
+                            ev = np.transpose(ev, axes=[1,0,2])
+                    else:
+                        step, sl = 1, ind
+
+                    hdf5ds[:, sl, :] = ev
+                    ind += step
     
     def import_labels(self,
                       path_labels: str,
@@ -997,7 +1010,8 @@ class DataHandler(SimulateMixin,
 
     def content(self, group: str = None, print_info: bool = False):
         """
-        Print the whole content of the HDF5 and all derived properties. The shape of the datasets as well as their datatypes are also given.
+        Print the whole content of the HDF5 file and all derived properties. The shape of the datasets as well as their datatypes are also given.
+        Optionally select a single group to only print its contents. Wildcards for group names are supported, too.
 
         :param group: The name of a group in the HDF5 file of which we print the content. If None, all groups are printed.
         :type group: string or None
@@ -1011,9 +1025,12 @@ class DataHandler(SimulateMixin,
         with self.get_filehandle(mode="r") as f:
             if group is None:
                 groups = f.keys()
+                if len(groups) == 0:
+                    print(f"No groups in HDF5 to display.")
             else:
-                # would be nice to have regex support at some point
-                groups = [group]
+                groups = fnmatch.filter(list(f.keys()), group)
+                if len(groups) == 0:
+                    print(f"No group names in HDF5 file matched {group}.")
 
             for group in groups:
                 print(fmt_gr(group))
