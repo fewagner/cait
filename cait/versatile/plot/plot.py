@@ -1,44 +1,15 @@
+from typing import List, Union, Callable, Iterable, Tuple
+import datetime
+
 import numpy as np
-from ipywidgets import widgets
-from typing import List, Union, Callable, Iterable
 
-from IPython.display import display
+from .plot_backends import BaseClassPlotly, BaseClassMPL
 
-from .stream import Stream
-from ._baseClasses import BaseClassPlotly, BaseClassMPL, FncBaseClass
+from ..stream import Stream
+from ..stream.stream import StreamBaseClass
+from ..iterators import IteratorBaseClass
+from ..functions import Unity
 
-##### HELPER FUNCTIONS AND CLASSES #####
-class PreviewEvent(FncBaseClass):
-    """
-    Helper class to use :class:`Preview` also to display iterables of events.
-
-    >>> # Multiple channels
-    >>> it = dh.get_event_iterator("events")
-    >>> Preview(it)
-
-    >>> # Single channel
-    >>> it = dh.get_event_iterator("events", channel=0)
-    >>> Preview(it)
-
-    >>> # Using batches; this works (and shows events in batches
-    >>> # as different channels) but should be avoided
-    >>> it = dh.get_event_iterator("events", channel=0, batch_size=10)
-    >>> Preview(it)
-    """
-    def __call__(self, event):
-        return None
-    def preview(self, event):
-        if event.ndim > 1:
-            lines = {f'channel {k}': [None, ev] for k, ev in enumerate(event)}
-        else:
-            lines = {'channel 0': [None, event]}
-
-        return dict(line=lines, 
-                    axes={"xaxis": {"label": "data index"},
-                          "yaxis": {"label": "data (V)"}
-                         })
-
-##### PLOT ROUTINES #####
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
 
@@ -46,16 +17,16 @@ class Viewer():
     :type data: dict, optional
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
     :type backend: str, optional
-    :param show_controls: Set to True if plot controls should be shown. For the Viewer alone, this is just an "Exit" button which closes the plot, but inherited objects can add more buttons with arbitrary functionality. Defaults to False
-    :type show_controls: bool, optional
 
     `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
-    :param template: Valid backend theme. E.g. for `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
 
     Convention for `data` Dictionary:
     ```
@@ -81,21 +52,13 @@ class Viewer():
       }
     ```
     """
-    def __init__(self, data=None, backend="plotly", show_controls=False, **kwargs):
+    def __init__(self, data=None, backend="plotly", **kwargs):
         if backend=="plotly":
             self.fig_widget = BaseClassPlotly(**kwargs)
         elif backend=="mpl":
             self.fig_widget = BaseClassMPL(**kwargs)
         else:
             raise NotImplementedError('Only backend "plotly" and "mpl" are supported.')
-        
-        self.show_controls = show_controls
-
-        self.buttons = list()
-
-        self._button_exit = widgets.Button(description="Exit", tooltip="Close plot widget.")
-        self._button_exit.on_click(self.close)   
-        self.buttons.append(self._button_exit)   
 
         self.visible = False
 
@@ -103,11 +66,8 @@ class Viewer():
             self.plot(data)  
             self.show()
 
-    def _init_UI(self):
-        if self.show_controls:
-            self.UI = widgets.VBox([widgets.HBox(self.buttons), self.fig_widget.fig])
-        else:
-            self.UI = self.fig_widget.fig
+    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1):
+        self.fig_widget._add_button(text, callback, tooltip, where)
 
     def show_legend(self, show: bool = True):
         """
@@ -193,6 +153,12 @@ class Viewer():
         """
         self.fig_widget._add_histogram(bins, data, name)
 
+    def add_vmarker(self, marker_pos: Union[float, List[float]], y_int: Tuple[float], name: str = None):
+        """
+        
+        """
+        self.fig_widget._add_vmarker(marker_pos, y_int, name)
+
     def update_line(self, name: str, x: List[float], y: List[float]):
         """
         Update the line called `name` with data `x` and `y`.
@@ -214,11 +180,17 @@ class Viewer():
         """
         self.fig_widget._update_histogram(name, bins, data)
 
+    def update_vmarker(self, name: str, marker_pos: Union[float, List[float]], y_int: Tuple[float]):
+        """
+        
+        """
+        self.fig_widget._update_vmarker(name, marker_pos, y_int)
+
     def get_figure(self):
         """
         Returns the figure object of the plot. Can be used to further manipulate the plot.
         """
-        return self.fig_widget.fig
+        return self.fig_widget._get_figure()
 
     def plot(self, data: dict):
         """
@@ -232,25 +204,25 @@ class Viewer():
                 for line_name, line_data in value.items():
                     assert 2==len(line_data), "Line data has to be a tuple/list of length 2 containing x/y data respectively"
                     if line_name in self.fig_widget.line_names:
-                        self.fig_widget._update_line(name=line_name, x=line_data[0], y=line_data[1])
+                        self.update_line(name=line_name, x=line_data[0], y=line_data[1])
                     else:
-                        self.fig_widget._add_line(x=line_data[0], y=line_data[1], name=line_name)
+                        self.add_line(x=line_data[0], y=line_data[1], name=line_name)
 
             if key == "scatter":
                 for scatter_name, scatter_data in value.items():
                     assert 2==len(scatter_data), "Scatter data has to be a tuple/list of length 2 containing x/y data respectively"
                     if scatter_name in self.fig_widget.scatter_names:
-                        self.fig_widget._update_scatter(name=scatter_name, x=scatter_data[0], y=scatter_data[1])
+                        self.update_scatter(name=scatter_name, x=scatter_data[0], y=scatter_data[1])
                     else:
-                        self.fig_widget._add_scatter(x=scatter_data[0], y=scatter_data[1], name=scatter_name)
+                        self.add_scatter(x=scatter_data[0], y=scatter_data[1], name=scatter_name)
 
             if key == "histogram":
                 for histogram_name, histogram_data in value.items():
                     assert 2==len(histogram_data), "Histogram data has to be a tuple/list of length 2 containing x(bins)/y data respectively"
                     if histogram_name in self.fig_widget.histogram_names:
-                        self.fig_widget._update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
+                        self.update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
                     else:
-                        self.fig_widget._add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
+                        self.add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
 
             if key == "axes":
                 self.fig_widget._set_axes(value)
@@ -259,8 +231,7 @@ class Viewer():
         """
         Show the plot in Jupyter.
         """
-        self._init_UI()
-        display(self.UI)
+        self.fig_widget._show()
         self.visible = True
     
     def close(self, b=None):
@@ -268,7 +239,7 @@ class Viewer():
         Hide the plot in Jupyter.
         """
         if self.visible: 
-            self.UI.close()
+            self.fig_widget._close()
             self.visible = False
 
 class Line(Viewer):
@@ -290,15 +261,17 @@ class Line(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
 
@@ -336,15 +309,17 @@ class Scatter(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
 
@@ -382,15 +357,17 @@ class Histogram(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, data: Union[List[float], dict], bins: Union[tuple, int] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
 
@@ -414,10 +391,10 @@ class StreamViewer(Viewer):
     """
     Class to view stream data, i.e. for example the contents of a binary file as produced by vdaq2.
 
-    :param hardware: The hardware that was used to record the file. Valid options are ['vdaq2']
-    :type hardware: str
-    :param fname: Stream file (full path including file extension)
-    :type fname: str
+    :param args: Either an existing Stream instance or both 'hardware' (str) and file(s) (str or list of str).
+    :type args: Union[StreamBaseClass, str, list]
+    :param keys: The keys of the stream to display. If none are specified, all available keys are plotted. Defaults to None.
+    :type keys: Union[str, List[str]]
     :param n_points: The number of data points that should be simultaneously displayed in the stream viewer. A large number can impact performance. Note that the number of points that are displayed are irrelevant of the downsampling factor (see below), i.e. the viewer will always display n_points points.
     :type n_points: int, optional
     :param downsample_factor: This many samples are skipped in the data when plotting it. A higher number increases performance but lowers the level of detail in the data.
@@ -425,47 +402,71 @@ class StreamViewer(Viewer):
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    >>> s = Stream(hardware="vdaq2", src="path/to/file.bin")
+    >>> StreamViewer(s)
+
+    >>> StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
+
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
     """
-    def __init__(self, hardware: str, file: str, n_points: int = 10000, downsample_factor: int = 100, **kwargs):
+    def __init__(self, 
+                 *args: Union[StreamBaseClass, str, list],
+                 keys: Union[str, List[str]] = None,
+                 n_points: int = 10000, 
+                 downsample_factor: int = 100,
+                 mark_timestamps: Union[List[int], dict] = None, 
+                 **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
         # Adding buttons for navigating back and forth in the stream
-        self._button_move_left = widgets.Button(description="←", tooltip="Move backwards in time.")
-        self._button_move_right = widgets.Button(description="→", tooltip="Move forward in time.")
-        self._info_button = widgets.Button(description="Data Info", tooltip="Display mean/std/min/max/diff for all (visible) data on screen. If you want the std of a single trace for example, zoom in such that only the data you want to consider is cropped and hit this button.")
+        self._add_button("←", self._move_left, "Move backwards in time.")
+        self._add_button("→", self._move_right, "Move forward in time.")
 
-        self._button_move_left.on_click(self._move_left)
-        self._button_move_right.on_click(self._move_right)
-        self._info_button.on_click(self._get_info)
+        if len(args) == 1 and isinstance(args[0], StreamBaseClass):
+            self.stream = args[0]
+        elif len(args) == 2:
+            self.stream = Stream(hardware=args[0], src=args[1])
+        else:
+            raise ValueError(f"Invalid positional arguments '{args}'. Has to be either a StreamBaseClass instance or 'hardware' and 'files'.")
 
-        self.buttons.append(self._button_move_left)
-        self.buttons.append(self._button_move_right) 
-        self.buttons.append(self._info_button) 
+        if keys is not None:
+            if type(keys) is str: 
+                keys = [keys]
+            if not all([k in self.stream.keys for k in keys]):
+                raise KeyError("One or more keys are not present in the stream.")
+            self._keys = keys
+        else:
+            self._keys = self.stream.keys
 
-        # Output for printing data info
-        self._output = widgets.Output()
-        self.buttons.append(self._output)
-
-        # Linking the stream-file (note that the file extension is handled by the StreamFile object as
-        # it could be different for different hardware)
-        self.stream = Stream(src=file, hardware=hardware)
-
-        # Adding lines for all the channels present in the hardware file
-        for name in self.stream.keys:
+        # Adding lines
+        for name in self._keys:
             self.add_line(x=None, y=None, name=name)
 
         # Adding labels
-        self.set_xlabel("time")
+        # xlabel is dynamic
         self.set_ylabel("trace (V)")
+
+        # Adding timestamp markers
+        if mark_timestamps is not None:
+            if type(mark_timestamps) is not dict:
+                mark_timestamps = dict(timestamps=np.array(mark_timestamps))
+            self._marked_timestamps = mark_timestamps
+
+            for name in mark_timestamps.keys():
+                if mark_timestamps[name] == []:
+                    raise Exception("Received empty list of timestamps")
+                self.add_vmarker(marker_pos=None, y_int=[None,None], name=name)
+            self._marks_timestamps = True
+        else:
+            self._marks_timestamps = False
 
         # Initializing plot
         self.n_points = n_points
@@ -481,11 +482,41 @@ class StreamViewer(Viewer):
         
         # Time array is the same for all channels
         t = self.stream.time[where]
-        # Convert to datetime
-        t_datetime = self.stream.time.timestamp_to_datetime(t)
+
+        # Find start and change x-label accordingly
+        t_start = self.stream.time.timestamp_to_datetime(t[0])[None]
+        t_str = t_start.astype(datetime.datetime)[0]
+        self.set_xlabel(f"time (ms) after {t_str.strftime('%d-%b-%Y, %H:%M:%S')}, ({t[0]})")
+
+        # Convert to milliseconds after first timestamp
+        t_ms = (t-t[0])/1000
+
+        val_min = []
+        val_max = []
         
-        for name in self.stream.keys:
-            self.update_line(name=name, x=t_datetime, y=self.stream[name, where, "as_voltage"])
+        for name in self._keys:
+            y = self.stream[name, where, "as_voltage"]
+            self.update_line(name=name, x=t_ms, y=y)
+
+            if self._marks_timestamps:
+                val_min.append(np.min(y))
+                val_max.append(np.max(y))
+
+        if self._marks_timestamps: 
+            y_min, y_max = np.min(val_min), np.max(val_max)
+            t_min, t_max = t[0], t[-1]
+
+            for name in self._marked_timestamps.keys():
+                mask = np.logical_and(np.array(self._marked_timestamps[name]) > t_min,
+                                      np.array(self._marked_timestamps[name]) < t_max)
+                ts = self._marked_timestamps[name][mask]
+                
+                if len(ts) > 0:
+                    ts_ms = (ts-t[0])/1000
+                else:
+                    ts_ms = None
+                
+                self.update_vmarker(name=name, marker_pos=ts_ms, y_int=(y_min, y_max))
 
     def _move_right(self, b):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
@@ -495,72 +526,42 @@ class StreamViewer(Viewer):
     def _move_left(self, b):
         self.current_start = max(0, self.current_start - int(self.n_points*self.downsample_factor/2))
         self.update()
-
-    def _get_info(self, b):
-        xmin, xmax = self.get_figure().layout.xaxis.range
-        if type(xmin) is str: # then we assume it to be datetime
-            xmin = np.datetime64(xmin)
-            xmax = np.datetime64(xmax)
-
-        ymin, ymax = self.get_figure().layout.yaxis.range
-
-        y_vals = list()
-        for trace in self.get_figure().select_traces():
-            if trace.visible is True:
-                x = trace.x
-                y = trace.y
-                x_mask = np.logical_and(x > xmin, x < xmax)
-                y_mask = np.logical_and(y > ymin, y < ymax)
-                y_vals.append(y[np.logical_and(x_mask, y_mask)])
-
-        y_vals = np.concatenate(y_vals, axis=0)
-
-        if len(y_vals) == 0:
-            out_str = f"mean_y:  None, min_y: None, delta_y: None\nsigma_y: None, max_y: None"
-        else:
-            dat_min, dat_max = np.min(y_vals), np.max(y_vals)
-            dat_diff = dat_max - dat_min
-            dat_mean, dat_std = np.mean(y_vals), np.std(y_vals)
-            out_str = f"mean_y: {dat_mean:6.3f}, min_y: {dat_min:6.3f}, delta_y: {dat_diff:5.3f}\nsigma_y: {dat_std:5.3f}, max_y: {dat_max:6.3f}"
-        
-        with self._output:
-            self._output.clear_output()
-            print(out_str)
             
 # Has no test case (yet)
 class Preview(Viewer):
     """
-    Class for inspecting the behavior of functions which were subclassed from :class:`._baseClasses.FncBase`.
-    Can also be used to display single events.
+    Class for inspecting the behavior of functions which were subclassed from :class:`abstract_functions.FncBaseClass`.
+    Can also be used to display single events if no function is specified.
 
     :param events: An iterable of events. Can be e.g. :class:`EventIterator`, a 2d :class:`numpy.ndarray` or a list of List[float].
     :type events: Iterable
-    :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Default None (which means that just the events of the iterable will be displayed)
-    :type f: :class:`._baseClasses.FncBaseClass`
+    :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Defaults to Unity (which means that just the events of the iterable will be displayed)
+    :type f: :class:`abstract_functions.FncBaseClass`
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`Viewer` and class:`InspectBaseClass` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
     """
-    def __init__(self, events: Iterable, f: Callable = None, **kwargs):
+    def __init__(self, events: Iterable, f: Callable = Unity(), **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
         #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
         super().__init__(data=None, show_controls=True, **kwargs)
 
-        self.f = f if f is not None else PreviewEvent()
-        self.events = iter(events)
+        if isinstance(events, IteratorBaseClass) and events.uses_batches:
+            raise NotImplementedError("Iterators that return batches are not supported by Preview.")
 
-        self._button_next = widgets.Button(description="Next", tooltip="Show next event.")
-        self._button_next.on_click(self._update_plot)
-        self.buttons.append(self._button_next)
+        self._add_button("Next", self._update_plot, "Show next event.")
+
+        self.f = f
+        self.events = iter(events)
         
         self.start()
     
@@ -602,15 +603,17 @@ class Heatmap(Viewer): # not yet finished (TODO)
     :param kwargs: Keyword arguments (see below)
     :type kwargs: Any
 
-    `Keyword Arguments` are passed to class:`InspectBaseClass` and can be either of the following:
+    `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl'], i.e. plotly or matplotlib, defaults to 'plotly'.
     :type backend: str, optional
-    :param template: Valid backend theme. E.g. for `plotly` backend either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`
     :type template: str, optional
-    :param height: Figure height, defaults to 500
-    :type height: float, optional
-    :param width: Figure width, defaults to 700
-    :type width: float, optional
+    :param height: Figure height, defaults to 500 for `backend=plotly` and 3 for `backend=mpl`
+    :type height: int, optional
+    :param width: Figure width, defaults to 700 for `backend=plotly` and 5 for `backend=mpl`
+    :type width: int, optional
+    :param show_controls: Show button controls to interact with the figure. The available buttons depend on the plotting backend. Defaults to False
+    :type show_controls: bool
     """
     def __init__(self, xdata: List[float], ydata: List[float], xbins: Union[tuple, int] = None, ybins: Union[tuple, int] = None, xlabel: str = None, ylabel: str = None, zscale: str = 'linear', **kwargs):
 

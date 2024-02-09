@@ -54,8 +54,7 @@ def optimal_transfer_function(stdevent, nps, window=True):
     if window:
         stdevent *= signal.windows.tukey(len(stdevent), alpha=0.25)
 
-    tau_m = (np.argmax(stdevent)) / (1304 * len(
-        stdevent) / 8192)  # index of maximal value, the number 1304 is experimentally evaluated on an event of length 8192
+    tau_m = 2*np.pi * np.argmax(stdevent)/len(stdevent)
     stdevent_fft = rfft(stdevent)  # do fft of stdevent
     H = np.zeros([len(stdevent_fft)], dtype=complex)  # init transfer func
 

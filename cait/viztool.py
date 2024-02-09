@@ -113,7 +113,7 @@ class VizTool():
                     if isinstance(datasets[k],np.ndarray):
                         if datasets[k].ndim == 1:
                             try:
-                                self.data[k] = np.asarray(datasets[k], dtype='float64')
+                                self.data[k] = np.asarray(datasets[k], dtype='float32')
                             except:
                                 print(f'Failed to include {k} because it could not be converted to float64.')
                         else:
@@ -122,15 +122,14 @@ class VizTool():
                     if isinstance(datasets[k],list):
                         if datasets[k][1] is not None:  # not a single channel flag
                             if datasets[k][2] is not None:
-                                self.data[k] = self.dh.get(group, datasets[k][0])[datasets[k][1], :,
-                                               datasets[k][2]]  # the indices
+                                self.data[k] = np.asarray(self.dh.get(group, datasets[k][0])[datasets[k][1], :, datasets[k][2]], dtype="float32")  # the indices
                             else:
-                                self.data[k] = self.dh.get(group, datasets[k][0])[datasets[k][1]]
+                                self.data[k] = np.asarray(self.dh.get(group, datasets[k][0])[datasets[k][1]], dtype='float32')
                         else:  # single channel flag
                             if datasets[k][2] is not None:
-                                self.data[k] = self.dh.get(group, datasets[k][0])[:, datasets[k][2]]  # the indices
+                                self.data[k] = np.asarray(self.dh.get(group, datasets[k][0])[:, datasets[k][2]], dtype='float32')  # the indices
                             else:
-                                self.data[k] = self.dh.get(group, datasets[k][0])[:]
+                                self.data[k] = np.asarray(self.dh.get(group, datasets[k][0])[:], dtype='float32')
                         self.names.append(k)
                 except:
                     print(f'Could not include dataset {k}.')
@@ -279,7 +278,7 @@ class VizTool():
         # Initializing dropdown values
         self.xaxis, self.yaxis, self.which, self.color, self.scale = None, None, None, 'None', 'linear'
         # Creating dropdown menus
-        names = self.data.select_dtypes('float64').columns
+        names = self.data.select_dtypes('float32').columns
         controls = widgets.interactive(self._update_axes, 
                     x=widgets.Dropdown(options=names,
                                        value=names[0],
@@ -580,10 +579,10 @@ class VizTool():
         # self.t.data[0].cells.values = [self.data.loc[self.remaining_idx[points.point_inds]][col] for col in
         #                                self.table_names]
         if self.f0.data[0].visible:
-            # USING THE FOLLOWING LINES, THE HISTOGRAMS WOULD BE RESAMPLED WITH THE
-            # SELECTED DATAPOINTS
-            #self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
-            #self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
+            # Resample histograms
+            self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx[points.point_inds]]
+            self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx[points.point_inds]]
+
             self.sel = points.point_inds
             self.slider.options = self.remaining_idx[self.sel]
 
@@ -597,10 +596,10 @@ class VizTool():
 
     def _deselection_scatter_fn(self, trace, points):
         if self.f0.data[0].visible:
-            # USING THE FOLLOWING LINES, THE HISTOGRAMS WOULD BE RESAMPLED WITH THE
-            # SELECTED DATAPOINTS
-            #self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx]
-            #self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx]
+            # Resample histograms
+            self.f0.data[2].y = self.data[self.yaxis][self.remaining_idx]
+            self.f0.data[3].x = self.data[self.xaxis][self.remaining_idx]
+
             self.sel = np.arange(len(self.remaining_idx)) # vizTool will treat all events as selected
             self.slider.options = self.remaining_idx
 
@@ -616,10 +615,11 @@ class VizTool():
                 ev = self.dh.get(self.group, "event", None, i, None)
                 #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
                 n = len(ev)
+                pretrigger_samples = int(self.dh.record_length/8)
                 for c in range(n):
-                    self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :500])
+                    self.f0.data[-n+c].y = ev[c] - np.mean(ev[c, :pretrigger_samples])
                     if not self.f0.data[-n+c].visible: self.f0.data[-n+c].update({"visible":True})
-                    self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
+                    self.f1.data[c].y = ev[c] - np.mean(ev[c, :pretrigger_samples])
                     #if self.mp_button.value:
                     #    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
                     #    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
@@ -629,8 +629,10 @@ class VizTool():
         ev = self.dh.get(self.group, "event", None, i, None)
         #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
         n = len(ev)
+        pretrigger_samples = int(self.dh.record_length/8)
+        
         for c in range(n):
-            self.f1.data[c].y = ev[c] - np.mean(ev[c, :500])
+            self.f1.data[c].y = ev[c] - np.mean(ev[c, :pretrigger_samples])
             #if self.mp_button.value:
             #    self.f1.data[n+c].x = self.f1.data[c].x[mp[c]]
             #    self.f1.data[n+c].y = self.f1.data[c].y[mp[c]]
@@ -688,17 +690,18 @@ class VizTool():
             nmbr_batches = int(len(self.sel) / self.batch_size)
             self.sevs = [np.zeros(self.dh.get(self.group, "event", 0, 0).shape[0]) for c in range(self.dh.nmbr_channels)]
 
+            pretrigger_samples = int(self.dh.record_length/8)
             for b in range(nmbr_batches):
                 for c in range(self.dh.nmbr_channels):
                     start = int(b * self.batch_size)
                     stop = int((b + 1) * self.batch_size)
                     ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:stop]])
-                    ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
+                    ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                     self.sevs[c] += np.sum(ev, axis=0)
             for c in range(self.dh.nmbr_channels):
                 start = int(nmbr_batches * self.batch_size)
                 ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:]])
-                ev -= np.mean(ev[:, :500], axis=1, keepdims=True)
+                ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                 self.sevs[c] += np.sum(ev, axis=0)
                 self.sevs[c] /= len(self.sel)
             with self.output:
