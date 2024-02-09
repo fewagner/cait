@@ -1,14 +1,12 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import h5py
-import numpy as np
 from collections import Counter
+
+import numpy as np
 from scipy.stats import norm
+import h5py
+from tqdm.auto import tqdm
+
 from ..cuts import rate_cut, testpulse_stability, controlpulse_stability
 from ..calibration import light_yield_correction
-from tqdm.auto import tqdm
 from ..calibration import PulserModel
 
 
@@ -618,7 +616,7 @@ class AnalysisMixin(object):
             as measurement time.
         :type max_dist: float
         :param tp_exclusion_interval: The time in seconds that has to be excluded for every test pulse. Typically this
-            is 1.5*length of record window, i.e. ~ a second for a window of length 16384 samples and 25 kHz sample frequency.
+            is 1.5`*`length of record window, i.e. ~ a second for a window of length 16384 samples and 25 kHz sample frequency.
         :type tp_exclusion_interval: float
         :param return_values: If this is set to True, a tuple of (exposure, live_time) is returned.
         :type return_values: bool

@@ -1,22 +1,20 @@
-# -----------------------------------------------------------
-# IMPORTS
-# -----------------------------------------------------------
-
-import h5py
-import numpy as np
 from multiprocessing import Pool
+from warnings import warn
+from deprecation import deprecated
+
+import numpy as np
+import h5py
+from tqdm.auto import trange
+
 from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..features._ph_corr import calc_correlated_ph
 from ..filter._of import optimal_transfer_function
 from ..fit._sev import generate_standard_event
 from ..filter._of import get_amplitudes
-from warnings import warn
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
 from ..filter._ma import rem_off
 from ..trigger._peakdet import get_triggers
-from tqdm.auto import trange
-
 from ..data._baselines import calculate_mean_nps
 
 
@@ -447,8 +445,7 @@ class FeaturesMixin(object):
         :param onset_to_dominant_channel: The difference in the onset value to the dominant channel. If e.g. the second
             channel has a typical max_pos value of 4000, but the first of 4100, then the onset for this would be -100.
         :type onset_to_dominant_channel: list of ints
-        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this
-        amount of samples.
+        :param flexibility: In case a peak position is provided, the maximum search can still deviate by this amount of samples.
         :type flexibility: int
         """
 
@@ -868,6 +865,7 @@ class FeaturesMixin(object):
 
         print('Applied logical cut.')
 
+    @deprecated(details="This method is deprecated. Use DataHandler.set() instead.")
     def include_values(self,
                        values: list,
                        naming: str,

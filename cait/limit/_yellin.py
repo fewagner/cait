@@ -1,13 +1,13 @@
-# imports
+from math import erf
+from typing import Union, Iterable
 
 import numpy as np
 import numba as nb
 import matplotlib.pyplot as plt
 from scipy.optimize import brenth
 from scipy.integrate import quad
-from typing import Union, Iterable
 from tqdm.auto import tqdm
-from math import erf
+
 from ..styles import use_cait_style, make_grid
 
 # functions

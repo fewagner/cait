@@ -4,6 +4,50 @@ Features and Changelog
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
+v1.2.0
+======
+
+This release aims to make cait slightly more light-weight by dropping some deprecated/unnecessary dependencies. Most importantly, the torch and torch_lightning packages are not automatically installed anymore (if you use a function that requires those packages, you will be prompted to install them). The reason being that few users need those functionalities yet their installation size is comparatively large.
+Furthermore, we do not fix versions for visualization packages (plotly/ipywidgets) anymore because we figured out the reason for version mismatch issues (see README).
+
+A number of improvements were implemented for the DataHandler and vizTool classes:
+
+**DataHandler**
+
+- print(dh) now prints useful information about the DataHandler
+- dh.content() has been reformatted to be easier to read and with additional informations like dtype and whether the datasets are virtual or not (see below)
+- dh.content() got an optional argument “group” in case you only want the contents of a specific group
+- methods get_filepath, get_filedirectory and get_filename added to reduce ambiguity and improve maintainability
+- dh.drop() can now drop entire groups
+- dh.get() now supports indices for all datasets (not just 3d ones)
+- dh.include_values() has been deprecated and replaced by dh.set() which is a more powerful and versatile way to include datasets and groups into the hdf5 file
+- dh.rename() was added which can rename hdf5 groups and datasets
+- dh.repackage() was added to repackage hdf5 file after it was changed to optimize file size (also arguments for appropriate functions were added)
+- DataHandler now supports virtual datasets (see merging hdf5 files below)
+
+**vizTool**
+
+- The vizTool has been reworked and comes in a more concise layout. 
+- When constructing the vizTool, you can directly hand it a DataHandler objects (you don't need to specify the hdf5 path anymore)
+- the datasets argument can also include numpy arrays for quick inspection
+- Heatmap functionality has been added (choose between scatter and density). Note that data selection is not possible in this mode due to a plotly limitation.
+- a third dropdown menu was included which lets you choose a color scale for the scatter plot (essentially, this replaces color_flag)
+- Histograms are now included in the main plot
+- preview for event shape was included upon click
+- the number of selected datapoints is displayed
+- you can choose the plotly template for the vizTool now (e.g. light, dark, seaborn, …)
+
+Additionally, this version introduces a new module called cait.versatile which as of now is still in its early development stages but will eventually provide a set of tools that let you individualize your workflow. Currently, the following functionality can be used (with caution as they might change in an upcoming release):
+
+- use cait.versatile.file.combine to analyze multiple hdf5 files at once. This method makes use of virtual hdf5 datasets to create a file of links, i.e. no data is copied. From the point of view of the DataHandler, the hdf5 file looks as if it was a single file, though.
+- cait.versatile.iterators can be used to iterate events in an hdf5 file or triggered events in a cait.versatile.stream file. Using cait.versatile.analysis.apply, you can apply any function to the events returned by the iterator.
+- cait.versatile.plot contains classes for plotting data. The most exciting one is cait.versatile.plot.StreamViewer which can be used to inspect stream data (currently only VDAQ2 data)
+
+**Bug Fixes**
+
+- fixed a bug (that was likely to never occur) where specifying the moving average window when calculating main parameters would have no effect
+- fixed a bug which occurred when triggering VDAQ2 data without timestamps
+
 v1.1.0
 ======
 
@@ -25,7 +69,7 @@ New features:
     A folder to store pre-trained models. Two pre-trained models are delivered with the packe.
 
 - VDAQ functionalities
-    Methods to include events from VDAQ2-written *.bin files. A trigger method is not included,
+    Methods to include events from VDAQ2-written `*.bin` files. A trigger method is not included,
     for this we recommend the use of external repositories, to write the time stamps.
 
 New methods to calculate properties of events:
@@ -85,8 +129,8 @@ This is the first stable, full release of Cait. In this original version, the fo
 - Data access:
     - Conversion of raw data file formats to structured HDF5 files.
     - Conversion of Root files to HDF5 files.
-    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from *.xy files
-    - Import of trigger time stamps from *.trip files
+    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from `*.xy` files
+    - Import of trigger time stamps from `*.trip` files
 - Calculation of features:
     - Main parameters
     - Standard events
@@ -96,7 +140,7 @@ This is the first stable, full release of Cait. In this original version, the fo
     - Principal components
     - Baseline fits
 - Processing of continuously recorded raw data:
-    - Stream (*.csmpl) triggering with or without optimum filtering.
+    - Stream (`*.csmpl`) triggering with or without optimum filtering.
     - Synchronisation with hardware triggered data.
     - Simulation of random triggers on the continuous data stream.
 - Raw data analysis tools:

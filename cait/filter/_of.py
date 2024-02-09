@@ -1,11 +1,7 @@
-# ---------------------------------------------------------------
-# IMPORTS
-# ---------------------------------------------------------------
-
 import numpy as np
 from numpy.fft import rfft, irfft
 from scipy import signal
-import numba as nb
+
 from ..filter import rem_off
 
 """

@@ -1,15 +1,12 @@
-# ------------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------------
-
 import os
-import h5py
-import numpy as np
-from ..data._raw import convert_to_V
-from tqdm.auto import tqdm, trange
 import time
 import tracemalloc
 
+import numpy as np
+import h5py
+from tqdm.auto import tqdm
+
+from ..data._raw import convert_to_V
 
 # ------------------------------------------------------------
 # FUNCTION

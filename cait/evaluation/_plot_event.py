@@ -1,19 +1,14 @@
-# ------------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------------
-
 import sys
 import os
-
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append('..')
+import argparse
 
 import h5py
 import matplotlib.pyplot as plt
 
 from ..features._mp import calc_main_parameters
 
-import argparse
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append('..')
 
 parser = argparse.ArgumentParser(description='Process some integers.')
 parser.add_argument('pl_channel', metavar='0', type=int, nargs='+',

@@ -1,9 +1,6 @@
 import numpy as np
 from scipy.optimize import minimize
-from scipy.stats import linregress
 import numba as nb
-from ._saturation import scaled_logistic_curve
-
 
 @nb.njit
 def shift(event, shift_ms=0, timebase_ms=0.04, max_shift=20):

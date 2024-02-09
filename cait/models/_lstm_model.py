@@ -1,14 +1,16 @@
-# ------------------------------------------------------
-# IMPORTS
-# ------------------------------------------------------
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.utils.data
-from pytorch_lightning.core import LightningModule
 import numpy as np
 
+try:
+    import torch
+    import torch.nn as nn
+    import torch.nn.functional as F
+    import torch.utils.data
+    from pytorch_lightning.core import LightningModule
+except ImportError:
+    F = None
+    torch = None
+    LightningModule = object
+    nn = None
 
 # ------------------------------------------------------
 # MODEL
@@ -65,6 +67,10 @@ class LSTMModule(LightningModule):
                  norm_vals=None, offset_keys=None, weight_decay=1e-5, bidirectional=False,
                  norm_type='minmax', lr_scheduler=True, indiv_norm=False, attention=False):
 
+        # CHECK IF TORCH IS INSTALLED
+        if LightningModule is object: raise RuntimeError("Install 'pytorch-lightning==1.9.4' to use this feature.")
+        if any([x is None for x in [F, torch, nn]]): raise RuntimeError("Install 'torch>=1.8' to use this feature.")
+        
         super().__init__()
         self.save_hyperparameters()
 

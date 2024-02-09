@@ -1,18 +1,17 @@
-# imports
+import os
+import datetime
+import sqlite3
 
 import numpy as np
+
 from ._raw import convert_to_int
 from ..fit._templates import pulse_template
-import sqlite3
-import datetime
-import os
-
 
 # class
 
 class TestData():
     """
-    A class for the generation of *.rdt, *.par, *.con, *.csmpl, *.db, *.dig_stamps and *.test_stamps files for
+    A class for the generation of `*.rdt`, `*.par`, `*.con`, `*.csmpl`, `*.db`, `*.dig_stamps` and `*.test_stamps` files for
     the testing of all data processing routines.
 
     :param filepath: The path to the location of the generated data, including file name without appendix,

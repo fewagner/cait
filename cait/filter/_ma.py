@@ -2,6 +2,7 @@ import numpy as np
 from numpy.linalg import lstsq
 import numba as nb
 from scipy.optimize import curve_fit
+
 from ..fit._templates import exponential_bl
 
 
@@ -9,16 +10,16 @@ def box_car_smoothing(event, length=50):
     """
     Calculates a moving average on an event array and returns the smoothed event
 
-    :param event: 1D array, the event to calcualte the MA
+    :param event: 1D array, the event to calculate the MA
     :param length: the length of the moving average
     :return: 1D array the smoothed array
     """
     event = np.pad(event, length, 'edge')
-    event = 0.02 * np.convolve(event, np.array([1]).repeat(50), 'same')
+    event = 1/length * np.convolve(event, np.array([1]).repeat(length), 'same')
     return event[length:-length]
 
 
-@nb.jit
+@nb.jit(nopython=True)
 def linregfit(XX, yy):
     """"
     Fit a large set of points to a linear regression.

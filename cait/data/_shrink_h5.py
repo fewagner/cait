@@ -1,6 +1,5 @@
-
-import h5py
 import numpy as np
+import h5py
 
 def shrink_h5(path_original, path_new,
               cutflag, type='events',):

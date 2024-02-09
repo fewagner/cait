@@ -1,6 +1,8 @@
 import numpy as np
-from torch.utils.data.sampler import SubsetRandomSampler
 
+try: from torch.utils.data.sampler import SubsetRandomSampler
+except ImportError: SubsetRandomSampler = None
+    
 def get_random_samplers(test_size, val_size, dataset_size=None, only_idx=None, shuffle_dataset=True, random_seed=None):
     """
     Chooses the indices for the Split datasets.
@@ -13,6 +15,9 @@ def get_random_samplers(test_size, val_size, dataset_size=None, only_idx=None, s
     :param random_seed: set of some value to get the same datasets always for comparability
     :return: indices for training, validation and test set
     """
+
+    # CHECK IF TORCH IS INSTALLED
+    if SubsetRandomSampler is None: raise RuntimeError("Install 'torch>=1.8' to use this feature.")
 
     if dataset_size is None and only_idx is None:
         raise KeyError('At least one of dataset_size and only_idx must be set!')

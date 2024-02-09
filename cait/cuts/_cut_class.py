@@ -1,7 +1,4 @@
-# imports
-
 import numpy as np
-
 
 # the class
 

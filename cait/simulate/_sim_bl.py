@@ -1,11 +1,10 @@
-# imports
-import h5py
 import numpy as np
+import h5py
+from tqdm.auto import trange
 from scipy.stats import gaussian_kde
+
 from ..fit._templates import baseline_template_cubic
 from ..data._baselines import get_nps, get_cc_noise
-from tqdm.auto import trange
-
 
 # Simulate Baselines
 def simulate_baselines(path_h5,
