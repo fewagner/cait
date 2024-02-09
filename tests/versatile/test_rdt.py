@@ -62,8 +62,9 @@ class TestRDT(unittest.TestCase):
         self.assertTrue([float(str(x)) for x in self.f2[1].unique_tpas] == tpas)
 
     def test_methods_rdt(self):
-        self.assertTrue(self.f1.default_channels == (0,1))
-        self.assertTrue(self.f2.default_channels == 1)
+        # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT
+        # self.assertTrue(self.f1.default_channels == (0,1))
+        # self.assertTrue(self.f2.default_channels == 1)
 
         self.f1.time_base_us
         self.f1.measuring_time_h

@@ -3,4 +3,5 @@ Accessing data
 ***************************************
 
 .. automodule:: cait.versatile
-   :members: RDTFile, Stream, StreamBaseClass, StreamTime
+   :members: RDTFile, RDTChannel, Stream, StreamBaseClass, StreamTime
+   :show-inheritance:

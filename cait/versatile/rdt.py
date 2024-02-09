@@ -97,7 +97,7 @@ class PARFile:
     
 class RDTFile:
     """
-    Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object. In a second step, testpulse amplitudes, timestamps, and event iterators can be constructed from a selected channel.
+    Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object with channel indices/names or tuples thereof, the result of the indexing is a :class:`RDTChannel` object which provides testpulse amplitudes, timestamps, and event iterators for (the) selected channel(s) (see documentation for :class:`RDTChannel`).
 
     :param path: The full path (including the file extension `.rdt`) to the file of interest.
     :type path: str
@@ -112,16 +112,14 @@ class RDTFile:
     >>> # Check available channels
     >>> print(f.keys)
     >>> # Choose channel(s) to iterate over, get testpulse amplitudes, ...,  by slicing RDTFile
-    >>> channels = f[(0,1)]
+    >>> channels = f[(0,1)] # if interested in only one channel: channel0 = f[0]
     >>> it = channels.get_event_iterator()
     >>> # You can now further slice this iterator (like any other iterator in cait.versatile):
     >>> it_testpulses = it[:, channels.tpas > 0]
     >>> it_events = it[:, channels.tpas == 0]
     >>> it_noise = it[:, channels.tpas == -1]
-    >>> # Remove baselines:
-    >>> it_testpulses.add_processing(vai.RemoveBaseline())
-    >>> # Have a look:
-    >>> vai.Preview(it_testpulses)
+    >>> # Have a look (after removing the baseline):
+    >>> vai.Preview(it_testpulses.with_processing(vai.RemoveBaseline()))
     """
     def __init__(self, path: str, path_par: str = None):
         if not path.endswith(".rdt"):
@@ -158,15 +156,16 @@ class RDTFile:
 
         self._available_channels = list(set(self._raw_file["detector_nmbr"]))
 
+        # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT 
         # If no channels are requested by the user (through __getitem__), the default behavior is such
         # that all quantities (iterators, timestamps, tpas) are returned for all channels.
         # Notice that this might fail (when not all are correlated). 
         # In the case that, e.g., only two channels are present and correlated, this provides a shortcut
         # when accessing the important stuff
-        if len(self._available_channels) > 1:
-            self._default_channels = tuple(self._available_channels)
-        else:
-            self._default_channels = int(self._available_channels[0])
+        # if len(self._available_channels) > 1:
+        #     self._default_channels = tuple(self._available_channels)
+        # else:
+        #     self._default_channels = int(self._available_channels[0])
 
         self._inds = dict()
         # DETERMINE INDICES FOR SINGLE CHANNELS:
@@ -291,14 +290,6 @@ class RDTFile:
         else:
             return list(self._inds.keys())
         
-    @property
-    def default_channels(self):
-        """
-        This RDTFile's default channel(s). 
-        Those are used if `tpas`, `unique_tpas`, `timestamps` and `get_event_iterator` are called on this RDTFile instance.
-        """
-        return self._default_channels
-        
     def get_voltage_trace(self, inds: Union[int, list]):
         """
         Return the voltage traces of events in this RDTFile for given indices.
@@ -310,52 +301,61 @@ class RDTFile:
         :rtype: numpy.array
         """
         return ai.data.convert_to_V(self._file["samples"][inds], bits=16, min=-10, max=10)
-    
-    @property
-    def timestamps(self):
-        """The microsecond timestamps of the events in this RDTFile's default channel(s)."""
-        # Create an RDTChannel instance for the default channels and return its timestamps
-        return self[self._default_channels].timestamps
-    
-    @property
-    def tpas(self):
-        """The testpulse amplitudes of the events in this RDTFile's default channel(s)."""
-        # Create an RDTChannel instance for the default channels and return its tpas
-        return self[self._default_channels].tpas
-    
-    @property
-    def unique_tpas(self):
-        """The unique testpulse amplitudes of the events in this RDTFile's default channel(s)."""
-        # Create an RDTChannel instance for the default channels and return its unique_tpas
-        return self[self._default_channels].unique_tpas
-    
-    def get_event_iterator(self):
-        """
-        Get an iterator over the events of this RDTFile's default channel(s). 
-        Note that this is merely a shortcut to first choosing the channel of interest and then constructing the iterator, and that the recommended way is to NOT use this shortcut unless you are certain that you want to use the default channel.
 
-        :return: Iterable object
-        :rtype: RDTIterator
+    # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT     
+    # @property
+    # def default_channels(self):
+    #     """
+    #     This RDTFile's default channel(s). 
+    #     Those are used if `tpas`, `unique_tpas`, `timestamps` and `get_event_iterator` are called on this RDTFile instance.
+    #     """
+    #     return self._default_channels
+    
+    # @property
+    # def timestamps(self):
+    #     """The microsecond timestamps of the events in this RDTFile's default channel(s)."""
+    #     # Create an RDTChannel instance for the default channels and return its timestamps
+    #     return self[self._default_channels].timestamps
+    
+    # @property
+    # def tpas(self):
+    #     """The testpulse amplitudes of the events in this RDTFile's default channel(s)."""
+    #     # Create an RDTChannel instance for the default channels and return its tpas
+    #     return self[self._default_channels].tpas
+    
+    # @property
+    # def unique_tpas(self):
+    #     """The unique testpulse amplitudes of the events in this RDTFile's default channel(s)."""
+    #     # Create an RDTChannel instance for the default channels and return its unique_tpas
+    #     return self[self._default_channels].unique_tpas
+    
+    # def get_event_iterator(self):
+    #     """
+    #     Get an iterator over the events of this RDTFile's default channel(s). 
+    #     Note that this is merely a shortcut to first choosing the channel of interest and then constructing the iterator, and that the recommended way is to NOT use this shortcut unless you are certain that you want to use the default channel.
 
-        >>> import cait.versatile as vai
-        >>> f = vai.RDTFile('path/to/file.rdt')
-        >>> # Check what default channel is:
-        >>> print(f.default_channel)
-        >>> # If you're happy with the default channel, use f.get_event_iterator()
-        >>> # If you'd rather choose another channel, you can do so by slicing, 
-        >>> # e.g., f[0] for the channel number 0
-        >>> it = f.get_event_iterator()
-        >>> # You can now further slice this iterator (like any other iterator in cait.versatile):
-        >>> it_testpulses = it[:, f.tpas > 0]
-        >>> it_events = it[:, f.tpas == 0]
-        >>> it_noise = it[:, f.tpas == -1]
-        >>> # Remove baselines:
-        >>> it_testpulses.add_processing(vai.RemoveBaseline())
-        >>> # Have a look:
-        >>> vai.Preview(it_testpulses)
-        """
-        # Create an RDTChannel instance for the default channels and return its event_iterator
-        return self[self._default_channels].get_event_iterator()
+    #     :return: Iterable object
+    #     :rtype: RDTIterator
+
+    #     >>> import cait.versatile as vai
+    #     >>> f = vai.RDTFile('path/to/file.rdt')
+    #     >>> # Check what default channel is:
+    #     >>> print(f.default_channel)
+    #     >>> # If you're happy with the default channel, use f.get_event_iterator()
+    #     >>> # If you'd rather choose another channel, you can do so by slicing, 
+    #     >>> # e.g., f[0] for the channel number 0
+    #     >>> it = f.get_event_iterator()
+    #     >>> # You can now further slice this iterator (like any other iterator in cait.versatile):
+    #     >>> it_testpulses = it[:, f.tpas > 0]
+    #     >>> it_events = it[:, f.tpas == 0]
+    #     >>> it_noise = it[:, f.tpas == -1]
+    #     >>> # Remove baselines:
+    #     >>> it_testpulses.add_processing(vai.RemoveBaseline())
+    #     >>> # Have a look:
+    #     >>> vai.Preview(it_testpulses)
+    #     """
+    #     # Create an RDTChannel instance for the default channels and return its event_iterator
+    #     return self[self._default_channels].get_event_iterator()
         
 class RDTChannel:
     """
