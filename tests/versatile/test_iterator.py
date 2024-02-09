@@ -261,6 +261,12 @@ class TestStreamIterator(unittest.TestCase):
                                     keys=["mock_001_Ch0","mock_001_Ch1"],
                                     inds=inds,
                                     record_length=2**15))
+        basic_checks(self, 
+                     StreamIterator(stream=self.stream,
+                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    inds=inds,
+                                    record_length=2**15,
+                                    alignment=1/2))
 
 class TestRDTIterator(unittest.TestCase):
     @classmethod

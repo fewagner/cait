@@ -338,12 +338,18 @@ class StreamIterator(IteratorBaseClass):
     :type inds: Union[int, List[int]]
     :param record_length: The number of samples to be returned for each index. Usually, those are powers of 2, e.g. 16384
     :type record_length: int
+    :param alignment: A number in the interval [0,1] which determines the alignment of the record window (of length `record_length`) relative to the specified index. E.g. if `alignment=1/2`, the record window is centered around the index. Defaults to 1/4.
+    :type alignment: float
+
 
     :return: Iterable object
     :rtype: StreamIterator
     """
 
-    def __init__(self, stream, keys: Union[str, List[str]], inds: Union[int, List[int]], record_length: int):
+    def __init__(self, stream, keys: Union[str, List[str]], inds: Union[int, List[int]], record_length: int, alignment: float = 1/4):
+        if 0 > alignment or 1 < alignment:
+            raise ValueError("'alignment' has to be in the interval [0,1]")
+        
         super().__init__()
         
         self._stream = stream
@@ -353,9 +359,10 @@ class StreamIterator(IteratorBaseClass):
 
         # Save values to reconstruct iterator:
         self._params = {'stream': stream, 'keys': self._keys, 
-                        'inds': self._inds, 'record_length': record_length}
+                        'inds': self._inds, 'record_length': record_length,
+                        'alignment': alignment}
 
-        self._interval = (int(1/4*record_length), record_length - int(1/4*record_length))
+        self._interval = (int(alignment*record_length), record_length - int(alignment*record_length))
     
     def __len__(self):
         return len(self._inds)
