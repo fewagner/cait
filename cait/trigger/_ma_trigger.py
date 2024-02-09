@@ -63,7 +63,7 @@ class MovingAverageTrigger():
         """
         Give a new timestep of the time series to the algo and trigger.
         Calculates moving average m1 on short time scale and moving average m2 and moving std sigma on long time scale,
-        when m1 exceed m2 + tresh*sigma or goes below m2 - tresh*sigma, trigger.
+        when m1 exceed m2 + tresh`*`sigma or goes below m2 - tresh`*`sigma, trigger.
 
         :param x: The next value of the time series.
         :type x: float

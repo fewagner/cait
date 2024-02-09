@@ -16,7 +16,7 @@ from ..fit._templates import pulse_template
 
 class CsmplMixin(object):
     """
-    A Mixin Class to the DataHandler Class with methods for the triggering of *.csmpl files.
+    A Mixin Class to the DataHandler Class with methods for the triggering of `*.csmpl` files.
     """
 
     def include_ctrigger_stamps(self,
@@ -36,7 +36,7 @@ class CsmplMixin(object):
         The data format and method was described in "(2018) N. Ferreiro Iachellini, Increasing the sensitivity to
         low mass dark matter in cresst-iii witha new daq and signal processing", doi 10.5282/edoc.23762.
 
-        :param paths: The paths to the *.csmpl.trig files that contain the time stamps from the CAT CTrigger.
+        :param paths: The paths to the `*.csmpl.trig` files that contain the time stamps from the CAT CTrigger.
         :type paths: tuple of strings
         :param name_appendix: A string that is appended to the HDF5 data sets trigger_hours, trigger_time_mus,
             trigger_time_s.
@@ -142,7 +142,7 @@ class CsmplMixin(object):
                                read_triggerstamps: bool = False,
                                ):
         """
-        Trigger *.csmpl files of a detector module and include them in the HDF5 set.
+        Trigger `*.csmpl` files of a detector module and include them in the HDF5 set.
 
         The trigger time stamps of all channels get aligned, by applying a trigger block to channels that belong to the
         same module. For determining the absolute time stamp of the triggers, we also need the SQL file that belongs to
@@ -715,7 +715,7 @@ class CsmplMixin(object):
         :type path_dig_stamps: string
         :param path_sql: The path to the SQL database that contains the start of file timestamp.
         :type path_sql: string
-        ::param csmpl_channels: The CDAQ channels that we are triggering. The channels numbers are usually appended to
+        :param csmpl_channels: The CDAQ channels that we are triggering. The channels numbers are usually appended to
             the file name of the CSMPL files and written in the SQL database.
         :type csmpl_channels: list of ints
         :param sql_file_label: In the SQL database, we need to access the start time of file with the corresponding
@@ -806,7 +806,7 @@ class CsmplMixin(object):
         :param nmbr: The number of noise triggers we want to include.
         :type nmbr: int
         :param min_distance: The minimal distance in seconds of the start and end of a noise trigger window from a
-            test pulse. If you choose record_length * 0.8 or higher, you avoid pile up.
+            test pulse. If you choose record_length `*` 0.8 or higher, you avoid pile up.
         :type min_distance: float
         :param max_distance: The maximal distance of two test pulses in seconds, such that the interval in between still
             counts as measurement time.
@@ -935,7 +935,7 @@ class CsmplMixin(object):
         """
         Include the events corresponding to chosen noise triggers.
 
-        :param csmpl_paths: The paths to the *.csmpl files of all channels, should be nmbr_channels long.
+        :param csmpl_paths: The paths to the `*.csmpl` files of all channels, should be nmbr_channels long.
         :type csmpl_paths: list of strings
         :param datatype: The datatype of the events that we want to store. Typically float32 is a good choice, float16
             would lead to significantly reduced precision.

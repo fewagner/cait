@@ -4,6 +4,16 @@ Features and Changelog
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
+v1.2.1
+======
+- SEV fit parameters of extended pulse shape models are now supported by `cait` analysis routines like `show_sev` and `simulate_pulses`. If the dataset `fitpar` in the `stdevent` group has length `6`, it is assumed to be of the form `(t0, An, At, tau_n, tau_in, tau_t)` and the regular `2`-component pulse shape model is used. If it is of length `2(k+1)` for `k=3,4,...`, an extended `k`-component model is used and the parameters are assumed to be in order `(t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n)`. Notice, however, that there is currently no function which does the corresponding fit for you due to yet unresolved restrictions in the `cait` source code. Therefore, you have to perform the fit yourself, e.g. by using the model function `cait.fit._templates.pulse_template` (which supports extended models) and any fit routine of your choice. Afterwards, you can include the results in the HDF5 file using `DataHandler.set()`.
+- Fixed deprecation issue due to missing `seaborn-paper` style in matplotlib version 3.8.0
+- Fixed a bug where the `exclude_tpas` keyword in `PulserModel` and derived functionalities like `calc_calibration` would not correctly exclude small testpulse amplitudes.
+- Fixed a minor bug in `PulserModel`'s standard-deviation-estimation.
+- Fixed a bug where the voltage trace view in `vizTool` would incorrectly subtract baselines for very short record lengths.
+- Fixed a bug where creating an optimum filter with downsampling factor larger than 1 did not work for single-channel-data.
+- New (experimental) features in `cait.versatile`.
+
 v1.2.0
 ======
 
@@ -69,7 +79,7 @@ New features:
     A folder to store pre-trained models. Two pre-trained models are delivered with the packe.
 
 - VDAQ functionalities
-    Methods to include events from VDAQ2-written *.bin files. A trigger method is not included,
+    Methods to include events from VDAQ2-written `*.bin` files. A trigger method is not included,
     for this we recommend the use of external repositories, to write the time stamps.
 
 New methods to calculate properties of events:
@@ -129,8 +139,8 @@ This is the first stable, full release of Cait. In this original version, the fo
 - Data access:
     - Conversion of raw data file formats to structured HDF5 files.
     - Conversion of Root files to HDF5 files.
-    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from *.xy files
-    - Import of trigger time stamps from *.trip files
+    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from `*.xy` files
+    - Import of trigger time stamps from `*.trip` files
 - Calculation of features:
     - Main parameters
     - Standard events
@@ -140,7 +150,7 @@ This is the first stable, full release of Cait. In this original version, the fo
     - Principal components
     - Baseline fits
 - Processing of continuously recorded raw data:
-    - Stream (*.csmpl) triggering with or without optimum filtering.
+    - Stream (`*.csmpl`) triggering with or without optimum filtering.
     - Synchronisation with hardware triggered data.
     - Simulation of random triggers on the continuous data stream.
 - Raw data analysis tools:

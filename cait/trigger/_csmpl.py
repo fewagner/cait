@@ -307,9 +307,9 @@ def get_record_window(path,
                       bytes_per_sample=2,  # short integer values
                       ):
     """
-    Get a record window from a stream *.csmpl file.
+    Get a record window from a stream `*.csmpl` file.
 
-    :param path: The path to the *.csmpl file.
+    :param path: The path to the `*.csmpl` file.
     :type path: string
     :param start_time: The start time of the record window from beginning of the file, in seconds.
     :type start_time: float
@@ -366,7 +366,7 @@ def plot_csmpl(path,
     """
     Plot a part of the stream together with provided trigger time stamps.
 
-    :param path: The path to the *.csmpl file.
+    :param path: The path to the `*.csmpl` file.
     :type path: string
     :param start_time: The start time of the record window from beginning of the file, in seconds.
     :type start_time: float
@@ -387,11 +387,11 @@ def plot_csmpl(path,
     :type plot_stamps_second: float
     :param dpi: The dots per inch of the plots.
     :type dpi: int
-    :param teststamp_path: A path to a *.test_stamp file, these stamps are then plottet instead of the plot_stamps.
+    :param teststamp_path: A path to a `*.test_stamp` file, these stamps are then plottet instead of the plot_stamps.
     :type teststamp_path: string
     :param clock: The Frequency of the time clock, in Hz. Standard for CRESST is 10MHz.
     :type clock: int
-    :param sec_offset: This factor is substracted from the time stamps that are read from the *.test_stamps file.
+    :param sec_offset: This factor is substracted from the time stamps that are read from the `*.test_stamps` file.
     :type sec_offset: float
     :param save_path: Save the figure at this path location.
     :type save_path: string
@@ -591,9 +591,9 @@ def get_test_stamps(path,
                     clock=10000000,
                     min_cpa=10.1):
     """
-    Load the test pulse time stamps from a *.test_stamps file.
+    Load the test pulse time stamps from a `*.test_stamps` file.
 
-    :param path: The path to the *.test_stamps file.
+    :param path: The path to the `*.test_stamps` file.
     :type path: string
     :param channels: The test pulse channels we want to read out.
     :type channels: list
@@ -640,17 +640,17 @@ def get_test_stamps(path,
 
 def get_starttime(path_sql, csmpl_channel, sql_file_label):
     """
-    Read the start time of a *.csmpl file from the SQL database.
+    Read the start time of a `*.csmpl` file from the SQL database.
 
     Attention, the start time is only in seconds. This produces an error of the absolute time stamp of up to one
     second.
 
     :param path_sql: The path of the SQL file.
     :type path_sql: string
-    :param csmpl_channel: The channel number of the *.csmpl file. This is either contained in the file name of the
+    :param csmpl_channel: The channel number of the `*.csmpl` file. This is either contained in the file name of the
         csmpl file or can be looked up in the SQL database.
     :type csmpl_channel: string
-    :param sql_file_label: The file label of the *.csmpl file within SQL database, e.g. bck_001.
+    :param sql_file_label: The file label of the `*.csmpl` file within SQL database, e.g. bck_001.
     :type sql_file_label: string
     :return: Time of file creation in seconds.
     :rtype: float
@@ -671,7 +671,7 @@ def get_offset(path_dig_stamps):
     """
     Get the offset between start of the continuous DAQ and start of the CCS time recording.
 
-    :param path_dig_stamps: The full path to the *.dig file.
+    :param path_dig_stamps: The full path to the `*.dig` file.
     :type path_dig_stamps: str
     :return: The offset that needs to be subtracted from all CCS time stamps, to get the time stamps w.r.t. the start
         of the CSMPL file.
