@@ -334,7 +334,7 @@ class StreamIterator(IteratorBaseClass):
     :type stream: StreamBaseClass
     :param keys: The keys (channel names) of the stream object to be iterated over. 
     :type keys: Union[str, List[str]]
-    :param inds: The stream indices for which we want to read the voltage traces. This index is aligned at 1/4th of the record window.
+    :param inds: The stream indices for which we want to read the voltage traces. This index is aligned according to 'alignment' (default: at 1/4th of the record window).
     :type inds: Union[int, List[int]]
     :param record_length: The number of samples to be returned for each index. Usually, those are powers of 2, e.g. 16384
     :type record_length: int
