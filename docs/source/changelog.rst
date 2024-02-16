@@ -4,6 +4,10 @@ Features and Changelog
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
+develop version
+======
+- Added possibility to automatically calculate RMS when applying the optimum filter. The option can be toggled using the `calc_rms` keyword on the `dh.apply_of` method.
+
 v1.2.1
 ======
 - SEV fit parameters of extended pulse shape models are now supported by `cait` analysis routines like `show_sev` and `simulate_pulses`. If the dataset `fitpar` in the `stdevent` group has length `6`, it is assumed to be of the form `(t0, An, At, tau_n, tau_in, tau_t)` and the regular `2`-component pulse shape model is used. If it is of length `2(k+1)` for `k=3,4,...`, an extended `k`-component model is used and the parameters are assumed to be in order `(t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n)`. Notice, however, that there is currently no function which does the corresponding fit for you due to yet unresolved restrictions in the `cait` source code. Therefore, you have to perform the fit yourself, e.g. by using the model function `cait.fit._templates.pulse_template` (which supports extended models) and any fit routine of your choice. Afterwards, you can include the results in the HDF5 file using `DataHandler.set()`.
