@@ -2,7 +2,7 @@ from typing import List, Union, Callable, Type
 from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from multiprocessing import Pool
-from inspect import signature
+from inspect import signature, _empty
 import itertools
 
 import numpy as np
@@ -649,9 +649,10 @@ def apply(f: Callable, ev_iter: Type[IteratorBaseClass], n_processes: int = 1):
     if not callable(f):
         raise TypeError(f"Input argument 'f' must be callable.")
     
-    # Check if 'f' takes exactly one argument (the event)
-    if len(signature(f).parameters) != 1:
-        raise TypeError(f"Input function {f} has too many arguments ({len(signature(f).parameters)}). Only functions which take one argument (the event) are supported.")
+    # Check if 'f' takes exactly one required argument (the event)
+    n_req_args = np.sum([x.default == _empty for x in signature(f).parameters.values()])
+    if n_req_args != 1:
+        raise TypeError(f"Input function {f} has too many required arguments ({n_req_args}). Only functions which take one (non-default) argument (the event) are supported.")
     
     if ev_iter.uses_batches: f = BatchResolver(f)
 
