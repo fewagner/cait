@@ -115,7 +115,7 @@ class RemoveBaseline(FncBaseClass):
         else:
             # ATTENTION: This is set only once! (we have to set it here because 
             # previously we didn't know the length of 'event')
-            if self._xdata is None: self._xdata = np.arange(np.array(event).shape[-1])
+            if self._xdata is None: self._xdata = np.linspace(0, 1, np.array(event).shape[-1])
             self._shifted_event = event - self._fit_baseline.model(self._xdata, par)
 
         return self._shifted_event
