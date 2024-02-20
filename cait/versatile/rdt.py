@@ -209,7 +209,7 @@ class RDTFile:
                 self._inds[tup] = idx_start[tup_inds]
         
     def __repr__(self):
-        return f'{self.__class__.__name__}(keys={self.keys}, record_length={self.record_length}, dt_us={self.time_base_us}, measuring_time_h={self.measuring_time_h}, default_channel={self[self._default_channels]})'
+        return f'{self.__class__.__name__}(keys={self.keys}, record_length={self.record_length}, dt_us={self.time_base_us}, measuring_time_h={self.measuring_time_h:.2f})'
 
     def __getitem__(self, channels: Union[int, str, tuple]):
         """
