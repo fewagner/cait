@@ -17,6 +17,9 @@ DATA_3D = np.random.rand(2, 100, RECORD_LENGTH)
 DATA_2D_single_CH = np.random.rand(1, 100)
 DATA_3D_single_CH = np.random.rand(1, 100, 16)
 
+DATA_s = np.random.randint(0, 1000000, size=100, dtype=np.int32)
+DATA_mus = np.random.randint(0, 1000000, size=100, dtype=np.int32)
+
 RDT_LENGTH = 100
 
 # Used repeatedly for all iterators
@@ -31,6 +34,9 @@ def basic_checks(self, it):
     arr1 = apply(lambda x: -x, it)
     arr2 = apply(lambda x: x, it)
     self.assertTrue(np.array_equal(arr1[:,...,0], -arr2[:,...,0]))
+
+    # Test timestamps
+    ts = it.timestamps
 
     # Test context manager
     S = 0
@@ -100,13 +106,14 @@ class TestH5Iterator(unittest.TestCase):
 
         cls.dh.set("events", event=DATA_3D, event_single_Ch=DATA_3D_single_CH, 
                              hours=DATA_1D, pulse_height=DATA_2D, pulse_height_single_Ch=DATA_2D_single_CH)
+        cls.dh.set("events", time_s=DATA_s, time_mus=DATA_mus, dtype=np.int32)
 
     @classmethod
     def tearDownClass(cls):			
         cls.dir.cleanup()
 
     def test_iterator_bs1_ch2(self):
-        it = H5Iterator(self.dh.get_filepath(), "events", "event")
+        it = H5Iterator(self.dh.get_filepath(), "events")
         for i in it:
             self.assertTrue(i.shape == (2, RECORD_LENGTH))
 
@@ -117,7 +124,7 @@ class TestH5Iterator(unittest.TestCase):
     def test_iterator_bs10_ch2(self):
         # Note that total length is a multiple of batch size. Remaining batches smaller than the batch size are 
         # checked in a different test
-        it = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=10)
+        it = H5Iterator(self.dh.get_filepath(), "events", batch_size=10)
         for i in it:
             self.assertTrue(i.shape == (10, 2, RECORD_LENGTH))
 
@@ -126,7 +133,7 @@ class TestH5Iterator(unittest.TestCase):
                 self.assertTrue(i.shape == (10, 2, RECORD_LENGTH))
 
     def test_iterator_bs1_ch1(self):
-        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
+        it = H5Iterator(self.dh.get_filepath(), "events", channels=1)
         for i in it:
             self.assertTrue(i.shape == (RECORD_LENGTH,))
 
@@ -135,7 +142,7 @@ class TestH5Iterator(unittest.TestCase):
                 self.assertTrue(i.shape == (RECORD_LENGTH,))
 
         # Same but with list instead of integer
-        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=[1])
+        it = H5Iterator(self.dh.get_filepath(), "events", channels=[1])
         for i in it:
             self.assertTrue(i.shape == (RECORD_LENGTH,))
 
@@ -144,7 +151,7 @@ class TestH5Iterator(unittest.TestCase):
                 self.assertTrue(i.shape == (RECORD_LENGTH,))
 
     def test_iterator_bs10_ch1(self):
-        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=10)
+        it = H5Iterator(self.dh.get_filepath(), "events", channels=1, batch_size=10)
         for i in it:
             self.assertTrue(i.shape == (10, RECORD_LENGTH))
 
@@ -153,7 +160,7 @@ class TestH5Iterator(unittest.TestCase):
                 self.assertTrue(i.shape == (10, RECORD_LENGTH))
 
         # Same but with list instead of integer
-        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=[1], batch_size=10)
+        it = H5Iterator(self.dh.get_filepath(), "events", channels=[1], batch_size=10)
         for i in it:
             self.assertTrue(i.shape == (10, RECORD_LENGTH))
 
@@ -163,10 +170,10 @@ class TestH5Iterator(unittest.TestCase):
 
     def test_inds(self):
         inds = [12, 18, 55, 81, 90, 99]
-        it1 = H5Iterator(self.dh.get_filepath(), "events", "event", inds=inds)
-        it2 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, inds=inds)
-        it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=3, inds=inds)
-        it4 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=3, inds=inds)
+        it1 = H5Iterator(self.dh.get_filepath(), "events", inds=inds)
+        it2 = H5Iterator(self.dh.get_filepath(), "events", channels=1, inds=inds)
+        it3 = H5Iterator(self.dh.get_filepath(), "events", channels=1, batch_size=3, inds=inds)
+        it4 = H5Iterator(self.dh.get_filepath(), "events", batch_size=3, inds=inds)
 
         for it in [it1, it2, it3, it4]: self.assertTrue(len(it) == len(inds))
 
@@ -176,7 +183,7 @@ class TestH5Iterator(unittest.TestCase):
         for i in it4: self.assertTrue(i.shape == (3, 2, RECORD_LENGTH))
 
     def test_batch_remainder(self):
-        it = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
+        it = H5Iterator(self.dh.get_filepath(), "events", channels=1, batch_size=11)
         lens_are = np.array([len(i) for i in it])
         lens_should_be = np.ones_like(lens_are, dtype=int)*11
         lens_should_be[-1] = 1 
@@ -184,10 +191,10 @@ class TestH5Iterator(unittest.TestCase):
         self.assertTrue(np.all(lens_are == lens_should_be))
 
     def test_add_processing(self):
-        it1 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
-        it2 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=11)
-        it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
-        it4 = H5Iterator(self.dh.get_filepath(), "events", "event")
+        it1 = H5Iterator(self.dh.get_filepath(), "events", channels=1, batch_size=11)
+        it2 = H5Iterator(self.dh.get_filepath(), "events", batch_size=11)
+        it3 = H5Iterator(self.dh.get_filepath(), "events", channels=1)
+        it4 = H5Iterator(self.dh.get_filepath(), "events")
 
         it1.add_processing([lambda ev: ev**2, lambda ev: -np.sqrt(ev)])
         it2.add_processing([lambda ev: ev**2, lambda ev: -np.sqrt(ev)])
@@ -211,10 +218,10 @@ class TestH5Iterator(unittest.TestCase):
         self.assertTrue(np.array_equal(arr2, arr4))
 
     def test_basic(self):
-        it1 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1, batch_size=11)
-        it2 = H5Iterator(self.dh.get_filepath(), "events", "event", batch_size=11)
-        it3 = H5Iterator(self.dh.get_filepath(), "events", "event", channels=1)
-        it4 = H5Iterator(self.dh.get_filepath(), "events", "event")
+        it1 = H5Iterator(self.dh.get_filepath(), "events", channels=1, batch_size=11)
+        it2 = H5Iterator(self.dh.get_filepath(), "events", batch_size=11)
+        it3 = H5Iterator(self.dh.get_filepath(), "events", channels=1)
+        it4 = H5Iterator(self.dh.get_filepath(), "events")
   
         basic_checks(self, it1)
         basic_checks(self, it2)
@@ -307,6 +314,7 @@ class TestIteratorCollection(unittest.TestCase):
         cls.dh.init_empty()
 
         cls.dh.set("events", event=DATA_3D)
+        cls.dh.set("events", time_s=DATA_s, time_mus=DATA_mus, dtype=np.int32)
         
         test_data = ai.data.TestData(filepath=cls.dir.name+'/test_data', 
                                      duration=RDT_LENGTH,

@@ -11,6 +11,9 @@ DATA_1D = np.random.rand(100)
 DATA_2D = np.random.rand(2, 100)
 DATA_3D = np.random.rand(2, 100, RECORD_LENGTH)
 
+DATA_s = np.random.randint(0, 1000000, size=100, dtype=np.int32)
+DATA_mus = np.random.randint(0, 1000000, size=100, dtype=np.int32)
+
 class TestDataHandler(unittest.TestCase):
 	# tests all methods directly defined in DataHandler (not within mixins) except:
 	# import_labels, import_predictions, drop_raw_data
@@ -200,6 +203,10 @@ class TestDataHandler(unittest.TestCase):
 
 	def test_event_iterator(self): # The correct functioning of EventIterator is tested in the respective test file
 		self.dh.set("iterator_testing", event=DATA_3D)
+		self.dh.set(group="iterator_testing",
+			  		time_s=DATA_s,
+                    time_mus=DATA_mus,
+					dtype=np.int32)
 
 		it1 = self.dh.get_event_iterator("iterator_testing")
 		it2 = self.dh.get_event_iterator("iterator_testing", batch_size=13)

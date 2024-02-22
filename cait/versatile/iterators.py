@@ -150,20 +150,37 @@ class IteratorBaseClass(ABC):
         """
 
         return self[:,:].add_processing(f)
-        
+    
+    @property
+    @abstractmethod
+    def timestamps(self):
+        """
+        Returns microsecond timestamps corresponding to the trigger times of the events in the iterator.
+        """
+        ...
+
     @property
     @abstractmethod
     def uses_batches(self):
+        """
+        Returns True if the iterator returns batches.
+        """
         ...
     
     @property
     @abstractmethod
     def n_batches(self):
+        """
+        Returns the number of batches in the iterator.
+        """
         ...
 
     @property
     @abstractmethod
     def n_channels(self):
+        """
+        Returns the number of channels in the iterator.
+        """
         ...
 
     @property
@@ -192,8 +209,8 @@ class H5Iterator(IteratorBaseClass):
     For a batch size of 1, the iterator in this case returns shapes `(n_channels, n_data)`. 
     For a batch size > 1, the iterator in this case returns shapes `(batch_size, n_channels, n_data)`. Notice that the first dimension always has the events (batch_size).
 
-    :param path_h5: Path to the HDF5 file.
-    :type path_h5: str
+    :param path: Path to the HDF5 file.
+    :type path: str
     :param group: Group in the HDF5 file to read events from.
     :type group: str
     :param dataset: Dataset in the HDF5 file to read events from.
@@ -217,19 +234,18 @@ class H5Iterator(IteratorBaseClass):
     ...         print(i.shape)
     """
 
-    def __init__(self, path_h5: str, group: str, dataset: str, channels: Union[int, List[int]] = None, inds: List[int] = None, batch_size: int = None):
+    def __init__(self, path: str, group: str, channels: Union[int, List[int]] = None, inds: List[int] = None, batch_size: int = None):
         super().__init__()
 
         # Check if dataset has correct shape:
-        with h5py.File(path_h5, 'r') as f:
-            ndim = f[group][dataset].ndim
-            shape = f[group][dataset].shape
+        with h5py.File(path, 'r') as f:
+            ndim = f[group]['event'].ndim
+            shape = f[group]['event'].shape
             if ndim != 3:
-                raise ValueError(f"Only 3-dimensional datasets can be used to construct H5Iterator. Dataset '{dataset}' in group '{group}' is {ndim}-dimensional.")
+                raise ValueError(f"Only 3-dimensional datasets can be used to construct H5Iterator. Dataset 'event' in group '{group}' is {ndim}-dimensional.")
 
-        self._path = path_h5
+        self._path = path
         self._group = group
-        self._dataset = dataset
 
         n_events_total = shape[1]
 
@@ -263,8 +279,8 @@ class H5Iterator(IteratorBaseClass):
         self._n_batches = len(self._inds)
 
         # Save values to reconstruct iterator:
-        self._params = {'path_h5': path_h5, 'group': group, 
-                        'dataset': dataset, 'channels': self._channels, 
+        self._params = {'path': path, 'group': group, 
+                        'channels': self._channels, 
                         'inds': inds, 'batch_size': batch_size}
 
         # If list specifies all channels, we replace it by a None-slice to bypass h5py's restriction on fancy indexing
@@ -300,7 +316,7 @@ class H5Iterator(IteratorBaseClass):
 
             # Open HDF5 file if not yet open, else use already open file
             with h5py.File(self._path, 'r') if not self._file_open else nullcontext(self._f) as f:
-                out = f[self._group][self._dataset][self._channels, event_inds_in_batch]
+                out = f[self._group]["event"][self._channels, event_inds_in_batch]
 
                 # transpose data when using batches such that first dimension is ALWAYS the event dimension
                 if self._should_be_transposed: out = np.transpose(out, axes=[1,0,2])
@@ -310,6 +326,14 @@ class H5Iterator(IteratorBaseClass):
         else:
             raise StopIteration
         
+    @property
+    def timestamps(self):
+        with h5py.File(self._path, 'r') as f:
+            sec = np.array(f[self._group]["time_s"][self._params["inds"]], dtype=np.int64)
+            mus = np.array(f[self._group]["time_mus"][self._params["inds"]], dtype=np.int64)
+
+        return sec*int(1e6) + mus
+    
     @property
     def uses_batches(self):
         return self._uses_batches
@@ -393,7 +417,11 @@ class StreamIterator(IteratorBaseClass):
             
         else:
             raise StopIteration
-        
+    
+    @property
+    def timestamps(self):
+        return self._stream.time[self._inds]
+
     @property
     def uses_batches(self):
         return False # Just to be consistent with EventIterator
@@ -515,6 +543,10 @@ class IteratorCollection(IteratorBaseClass):
         return new_collection
 
     @property
+    def timestamps(self):
+        return np.concatenate([it.timestamps for it in self._iterators])
+
+    @property
     def uses_batches(self):
         return self._uses_batches
     
@@ -596,6 +628,10 @@ class RDTIterator(IteratorBaseClass):
         else:
             raise StopIteration
         
+    @property
+    def timestamps(self):
+        return self._rdt_channel.timestamps[self._params["inds"]]
+
     @property
     def uses_batches(self):
         return False # Just to be consistent with H5Iterator
