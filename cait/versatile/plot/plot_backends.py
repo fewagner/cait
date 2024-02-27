@@ -17,6 +17,21 @@ except ImportError:
     uniplot = None
 
 #########################
+#### Helper Functions ###
+#########################
+## https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook ###
+def auto_backend():
+    # If uniplot is not installed, use plotly (will result in a dictionary output)
+    if uniplot is None: return "plotly"
+    
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config: return "uniplot"
+    except ImportError: return "uniplot"
+    except AttributeError: return "uniplot"
+    return "plotly"
+
+#########################
 ##### Helper Classes ####
 #########################
 
@@ -427,7 +442,7 @@ class BaseClassMPL(BackendBaseClass):
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
-    :param template: Custom style 'cait', 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'cait'
+    :param template: Custom style 'cait', 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'seaborn'
     :type template: str, optional
     :param height: Figure height, defaults to 3
     :type height: float, optional
@@ -435,7 +450,7 @@ class BaseClassMPL(BackendBaseClass):
     :type width: float, optional
     """
     def __init__(self, 
-                 template: str = "cait", 
+                 template: str = "seaborn", 
                  height: float = 3, 
                  width: float = 5, 
                  show_controls: bool = False):
