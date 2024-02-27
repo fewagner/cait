@@ -35,6 +35,11 @@ class TestViewer(unittest.TestCase):
         vai.plot.Viewer(data=DATA, backend="mpl")
         vai.plot.Viewer(data=DATA, backend="mpl", template="seaborn")
 
+    def test_uniplot(self):
+        vai.plot.Viewer(backend="uniplot")
+        vai.plot.Viewer(data=DATA, backend="uniplot", show_controls=False)
+        vai.plot.Viewer(data=DATA, backend="uniplot", template="seaborn", show_controls=False)
+
     def test_not_implemented(self):
         with self.assertRaises(NotImplementedError):
             vai.plot.Viewer(backend="other_backend")
@@ -63,6 +68,18 @@ class TestViewer(unittest.TestCase):
         v.update_histogram(name="histogram1", data=DATA["scatter"]["scatter2"][1], bins=10)
         v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
 
+    def test_add_update_uniplot(self):
+        v = vai.plot.Viewer(backend="uniplot")
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.add_scatter(x=DATA["scatter"]["scatter1"][0], y=DATA["scatter"]["scatter1"][1], name="scatter")
+        v.add_histogram(data=DATA["scatter"]["scatter1"][1], bins=10, name="histogram1")
+        v.add_histogram(data=DATA["scatter"]["scatter2"][1], bins=(0,1,10), name="histogram2")
+
+        v.update_line(name="line", x=DATA["line"]["line2"][0], y=DATA["line"]["line2"][1])
+        v.update_scatter(name="scatter", x=DATA["scatter"]["scatter2"][0], y=DATA["scatter"]["scatter2"][1])
+        v.update_histogram(name="histogram1", data=DATA["scatter"]["scatter2"][1], bins=10)
+        v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
+
     def test_getter_setter_plotly(self):
         v = vai.plot.Viewer(backend="plotly")
         v.get_figure()
@@ -77,6 +94,18 @@ class TestViewer(unittest.TestCase):
 
     def test_getter_setter_mpl(self):
         v = vai.plot.Viewer(backend="mpl")
+        v.get_figure()
+
+        v.set_xlabel("x")
+        v.set_ylabel("y")
+
+        v.set_xscale("linear")
+        v.set_xscale("log")
+        v.set_yscale("linear")
+        v.set_yscale("log")
+
+    def test_getter_setter_uniplot(self):
+        v = vai.plot.Viewer(backend="uniplot")
         v.get_figure()
 
         v.set_xlabel("x")
