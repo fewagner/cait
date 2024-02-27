@@ -33,8 +33,8 @@ def basic_checks(self, obj, k):
         obj[0] = 0
 
     # Methods
-    obj.show()
-    obj.show(dt=5)
+    obj.show(backend="plotly")
+    obj.show(dt=5, backend="plotly")
     appendix = f"_{obj.__class__.__name__}_{k}"
     obj.to_file(fname="test"+appendix, out_dir=self.dir.name)
     obj.__class__().from_file(fname="test"+appendix, src_dir=self.dir.name)

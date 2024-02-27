@@ -376,6 +376,7 @@ class BaseClassPlotly(BackendBaseClass):
             self._display.update(self.UI)
 
     def _update(self):
+        # Plotly automatically draws changes
         ...
 
     def _close(self, b=None):
@@ -774,6 +775,9 @@ class BaseClassUniplot(BackendBaseClass):
             width=self.width,
             height=self.height
             )
+        
+        # Uniplot does not support x- and y-labels. Therefore we have to do a workaround
+        self.axis_labels = {"x": None, "y": None}
 
         self._add_button("exit", self._close, "exit", None, "x")
 
@@ -849,12 +853,26 @@ class BaseClassUniplot(BackendBaseClass):
 
     def _set_axes(self, data: dict):
         if "xaxis" in data.keys():
+            if "label" in data["xaxis"].keys() and data["xaxis"]["label"] is not None:
+                self.axis_labels["x"] = data["xaxis"]["label"]
             if "scale" in data["xaxis"].keys():
                 self.plt_opt.x_as_log = data["xaxis"]["scale"] == "log"
 
         if "yaxis" in data.keys():
+            if "label" in data["yaxis"].keys() and data["yaxis"]["label"] is not None:
+                self.axis_labels["y"] = data["yaxis"]["label"]
             if "scale" in data["yaxis"].keys():
                 self.plt_opt.y_as_log = data["yaxis"]["scale"] == "log"
+
+        title = ""
+        if self.axis_labels["x"] is not None: 
+            title += "x: " + self.axis_labels["x"]
+        if self.axis_labels["y"] is not None:
+            if self.axis_labels["x"] is not None:
+                title += ", "
+            title += "y: " + self.axis_labels["y"]
+
+        self.plt_opt.title = "\n" + title if title else None
 
     def _clear(self):
         # Delete previous plot (if existent) from command line
@@ -864,6 +882,8 @@ class BaseClassUniplot(BackendBaseClass):
                 nr_lines_to_erase += len(self.plt_opt.legend_labels)
             if self.buttons:
                 nr_lines_to_erase += 1
+            if self.plt_opt.title is not None:
+                nr_lines_to_erase += 2
             uniplot.plot_elements.erase_previous_lines(nr_lines_to_erase)
 
     def _show(self):
@@ -893,9 +913,9 @@ class BaseClassUniplot(BackendBaseClass):
                              +list(self.scatters.values())
                              +list(self.histograms.values())
                              )]
-        linestyles = [True]*len(self.lines) + [False]*len(self.scatters) + [True]*len(self.histograms)
-
+        
         self.plt_opt.legend_labels = list(self.lines.keys()) + list(self.scatters.keys()) + list(self.histograms.keys())
+        self.plt_opt.lines = [True]*len(self.lines) + [False]*len(self.scatters) + [True]*len(self.histograms)
 
         if not xs: return
 
@@ -917,16 +937,9 @@ class BaseClassUniplot(BackendBaseClass):
         while True:
             if n > 0: self._clear()
 
-            uniplot.plot(ys, 
-                         xs, 
-                         lines=linestyles,
-                         legend_labels=self.plt_opt.legend_labels,
-                         x_min=self.plt_opt.x_min,
-                         x_max=self.plt_opt.x_max,
-                         y_min=self.plt_opt.y_min,
-                         y_max=self.plt_opt.y_max,
-                         width=self.plt_opt.width,
-                         height=self.plt_opt.height)
+            kwargs = {k: getattr(self.plt_opt, k) for k in ["legend_labels", "x_min", "x_max", "y_min", "y_max", "width", "height", "x_as_log", "y_as_log", "lines", "title"] if getattr(self.plt_opt, k) is not None}
+
+            uniplot.plot(ys, xs, color=True, **kwargs)
     
             # If controls are diabled, no looping is necessary (no awaiting inputs)
             if not self.show_controls: break
@@ -947,7 +960,10 @@ class BaseClassUniplot(BackendBaseClass):
             elif key == "o":
                 self.plt_opt.zoom_out()
             elif key == "r":
-                self.plt_opt.reset_view()
+                self.plt_opt.x_min = minx - 0.01*xran
+                self.plt_opt.x_max = maxx + 0.01*xran
+                self.plt_opt.y_min = miny - 0.01*yran
+                self.plt_opt.y_max = maxy + 0.01*yran
             elif key == "s":
                 self.plt_opt.shift_view_left()
             elif key == "f":

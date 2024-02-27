@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 import cait.versatile as vai
 
-x = np.linspace(-1,1,100)
+x = np.linspace(0.1,1,100)
 
 DATA = dict(
     line = dict(
@@ -16,11 +16,11 @@ DATA = dict(
     histogram = dict(
         hist1 = [None, np.sin(x)],
         hist2 = [100, np.sin(x)],
-        hist3 = [(-1,1,20), np.sin(x)] 
+        hist3 = [(0.1,1,20), np.sin(x)] 
     ),
     axes = dict(
-        xaxis = {"label": "xlabel", "scale": "linear"},
-        yaxis = {"label": "ylabel", "scale": "log"}
+        xaxis = {"label": "xlabel", "scale": "log"},
+        yaxis = {"label": "ylabel", "scale": "linear"}
     )
 )
 
@@ -69,7 +69,7 @@ class TestViewer(unittest.TestCase):
         v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
 
     def test_add_update_uniplot(self):
-        v = vai.plot.Viewer(backend="uniplot")
+        v = vai.plot.Viewer(backend="uniplot", show_controls=False)
         v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
         v.add_scatter(x=DATA["scatter"]["scatter1"][0], y=DATA["scatter"]["scatter1"][1], name="scatter")
         v.add_histogram(data=DATA["scatter"]["scatter1"][1], bins=10, name="histogram1")
@@ -105,7 +105,7 @@ class TestViewer(unittest.TestCase):
         v.set_yscale("log")
 
     def test_getter_setter_uniplot(self):
-        v = vai.plot.Viewer(backend="uniplot")
+        v = vai.plot.Viewer(backend="uniplot", show_controls=False)
         v.get_figure()
 
         v.set_xlabel("x")
@@ -130,13 +130,17 @@ class TestViewer(unittest.TestCase):
 
 class TestLine(unittest.TestCase):
     def test_plotly(self):
-        vai.plot.Line(y=DATA["line"]["line1"][1])
+        vai.plot.Line(y=DATA["line"]["line1"][1], 
+                      backend="plotly")
         vai.plot.Line(x=DATA["line"]["line1"][0], 
-                      y=DATA["line"]["line1"][1])
-        vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()})
+                      y=DATA["line"]["line1"][1], 
+                      backend="plotly")
         vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()},
-                      xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel")
-        vai.plot.Line(y=DATA["line"]["line1"][1], template="seaborn")
+                      backend="plotly")
+        vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()},
+                      xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel",
+                      backend="plotly")
+        vai.plot.Line(y=DATA["line"]["line1"][1], template="seaborn", backend="plotly")
         
     def test_mpl(self):
         vai.plot.Line(y=DATA["line"]["line1"][1], backend="mpl")
@@ -150,15 +154,29 @@ class TestLine(unittest.TestCase):
                       backend="mpl")
         vai.plot.Line(y=DATA["line"]["line1"][1], template="seaborn", backend="mpl")
 
+    def test_uniplot(self):
+        vai.plot.Line(y=DATA["line"]["line1"][1], backend="uniplot", show_controls=False)
+        vai.plot.Line(x=DATA["line"]["line1"][0], 
+                      y=DATA["line"]["line1"][1], 
+                      backend="uniplot", show_controls=False)
+        vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()}, 
+                      backend="uniplot", show_controls=False)
+        vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()},
+                      xlabel="xlabel", ylabel="ylabel", 
+                      backend="uniplot", show_controls=False)
+        vai.plot.Line(y=DATA["line"]["line1"][1], template="seaborn", backend="uniplot", show_controls=False)
+
 class TestScatter(unittest.TestCase):
     def test_plotly(self):
-        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1])
+        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], backend="plotly")
         vai.plot.Scatter(x=DATA["scatter"]["scatter1"][0], 
-                      y=DATA["scatter"]["scatter1"][1])
-        vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()})
+                      y=DATA["scatter"]["scatter1"][1], backend="plotly")
+        vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()}, 
+                         backend="plotly")
         vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()},
-                      xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel")
-        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], template="seaborn")
+                      xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel", backend="plotly")
+        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], template="seaborn",
+                         backend="plotly")
 
     def test_mpl(self):
         vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], backend="mpl")
@@ -172,23 +190,41 @@ class TestScatter(unittest.TestCase):
                       backend="mpl")
         vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], template="seaborn", 
                          backend="mpl")
+        
+    def test_uniplot(self):
+        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], backend="uniplot", show_controls=False)
+        vai.plot.Scatter(x=DATA["scatter"]["scatter1"][0], 
+                      y=DATA["scatter"]["scatter1"][1],
+                      backend="uniplot", show_controls=False)
+        vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()},
+                         backend="uniplot", show_controls=False)
+        vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()},
+                      xlabel="xlabel", ylabel="ylabel",
+                      backend="uniplot", show_controls=False)
+        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], template="seaborn", 
+                         backend="uniplot", show_controls=False)
 
 class TestHistogram(unittest.TestCase):
     def test_plotly(self):
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1])
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10)
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], backend="plotly")
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, 
+                           backend="plotly")
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(0,1,10),
+                           backend="plotly")
         vai.plot.Histogram(data=dict(first=DATA["scatter"]["scatter1"][1],
                                      second=DATA["scatter"]["scatter2"][1]), 
-                           bins=(0,1,10))
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, template="seaborn")
+                           bins=(0,1,10), backend="plotly")
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, template="seaborn", backend="plotly")
         vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], 
-                           xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel")
+                           xscale="log", yscale="log", xlabel="xlabel", ylabel="ylabel", 
+                           backend="plotly")
         
         with self.assertRaises(TypeError):
-            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins="nonsense")
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins="nonsense", 
+                               backend="plotly")
         with self.assertRaises(TypeError):
-            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2))
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2), 
+                               backend="plotly")
 
     def test_mpl(self):
         vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], backend="mpl")
@@ -210,12 +246,36 @@ class TestHistogram(unittest.TestCase):
         with self.assertRaises(TypeError):
             vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2), 
                                backend="mpl")
+            
+    def test_uniplot(self):
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], backend="mpl")
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, backend="mpl")
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(0,1,10), 
+                           backend="uniplot", show_controls=False)
+        vai.plot.Histogram(data=dict(first=DATA["scatter"]["scatter1"][1],
+                                     second=DATA["scatter"]["scatter2"][1]), 
+                           bins=(0,1,10), backend="uniplot", show_controls=False)
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, template="seaborn",
+                           backend="uniplot", show_controls=False)
+        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], 
+                           xscale="log", xlabel="xlabel", ylabel="ylabel",
+                           backend="uniplot", show_controls=False)
+        
+        with self.assertRaises(TypeError):
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins="nonsense", 
+                               backend="uniplot", show_controls=False) 
+        with self.assertRaises(TypeError):
+            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2), 
+                               backend="uniplot", show_controls=False)
 
 class TestPreview(unittest.TestCase):
     def test_plotly(self):
         ...
         
     def test_mpl(self):
+        ...
+
+    def test_uniplot(self):
         ...
 
 if __name__ == '__main__':

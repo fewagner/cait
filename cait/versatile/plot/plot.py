@@ -10,12 +10,22 @@ from ..stream.stream import StreamBaseClass
 from ..iterators import IteratorBaseClass
 from ..functions import Unity
 
+## HELPER FUNCTION to infer whether code is executed in notebook or not ###
+## https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook ###
+def auto_backend():
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config: return "uniplot"
+    except ImportError: return "uniplot"
+    except AttributeError: return "uniplot"
+    return "plotly"
+
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
 
     :param data: Data dictionary containing line/scatter/axes information (see below), defaults to None
     :type data: dict, optional
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot'], i.e. plotly, matplotlib or unitplot (command line based), defaults to 'plotly'
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
 
     `Keyword Arguments` are passed to class:`BaseClassPlotly` or class:`BaseClassMPL`, depending on the chosen `backend` and can be either of the following:
@@ -52,7 +62,9 @@ class Viewer():
       }
     ```
     """
-    def __init__(self, data=None, backend="plotly", **kwargs):
+    def __init__(self, data=None, backend="auto", **kwargs):
+        if backend=="auto": backend = auto_backend()
+
         if backend=="plotly":
             self.fig_widget = BaseClassPlotly(**kwargs)
         elif backend=="mpl":
@@ -229,7 +241,7 @@ class Viewer():
             if key == "axes":
                 self.fig_widget._set_axes(value)
 
-        self.fig_widget._update()
+        self.update()
 
     def show(self):
         """
@@ -237,6 +249,9 @@ class Viewer():
         """
         self.fig_widget._show()
         self.visible = True
+
+    def update(self):
+        self.fig_widget._update()
     
     def close(self, b=None):
         """
@@ -266,7 +281,7 @@ class Line(Viewer):
     :type kwargs: Any
 
     `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'plotly'.
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`. 'template' has no effect for `backend=uniplot`.
     :type template: str, optional
@@ -314,7 +329,7 @@ class Scatter(Viewer):
     :type kwargs: Any
 
     `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'plotly'.
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`. 'template' has no effect for `backend=uniplot`.
     :type template: str, optional
@@ -362,7 +377,7 @@ class Histogram(Viewer):
     :type kwargs: Any
 
     `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'plotly'.
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`. 'template' has no effect for `backend=uniplot`.
     :type template: str, optional
@@ -412,7 +427,7 @@ class StreamViewer(Viewer):
     >>> StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
 
     `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'plotly'.
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`. 'template' has no effect for `backend=uniplot`.
     :type template: str, optional
@@ -477,10 +492,10 @@ class StreamViewer(Viewer):
         self.current_start = 0
         self.downsample_factor = downsample_factor
 
-        self.update()
+        self.update_frame()
         self.show()
 
-    def update(self):
+    def update_frame(self):
         # Create slice for data access
         where = slice(self.current_start, self.current_start + self.n_points*self.downsample_factor, self.downsample_factor)
         
@@ -522,14 +537,16 @@ class StreamViewer(Viewer):
                 
                 self.update_vmarker(name=name, marker_pos=ts_ms, y_int=(y_min, y_max))
 
-    def _move_right(self, b):
-        # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
-        self.current_start += int(self.n_points*self.downsample_factor/2)
         self.update()
 
-    def _move_left(self, b):
+    def _move_right(self, b=None):
+        # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
+        self.current_start += int(self.n_points*self.downsample_factor/2)
+        self.update_frame()
+
+    def _move_left(self, b=None):
         self.current_start = max(0, self.current_start - int(self.n_points*self.downsample_factor/2))
-        self.update()
+        self.update_frame()
             
 # Has no test case (yet)
 class Preview(Viewer):
@@ -545,7 +562,7 @@ class Preview(Viewer):
     :type kwargs: Any
 
     `Keyword Arguments` are passed to class:`Viewer` and can be either of the following:
-    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'plotly'.
+    :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'default' for `backend=mpl`. 'template' has no effect for `backend=uniplot`.
     :type template: str, optional
