@@ -43,8 +43,8 @@ Furthermore, they provide functions **set_xlabel**, **set_ylabel**,
 **update_histogram** to change the appareance of plots after they were
 constructed. See documentation of class **Viewer** for details.
 
-Basic Plotting Classes:
-~~~~~~~~~~~~~~~~~~~~~~~
+Basic Plotting Classes
+~~~~~~~~~~~~~~~~~~~~~~
 
 The three basic plotting classes are **Line**, **Scatter**, and
 **Histogram**. Their working principle is identical. You can either pass

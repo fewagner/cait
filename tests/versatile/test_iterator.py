@@ -4,8 +4,8 @@ import numpy as np
 
 import cait as ai
 from cait.versatile.stream import Stream
-from cait.versatile.iterators import H5Iterator, RDTIterator, StreamIterator, apply
-from cait.versatile import RDTFile
+from cait.versatile.iterators import H5Iterator, RDTIterator, StreamIterator, MockIterator, apply
+from cait.versatile import RDTFile, MockData
 
 RECORD_LENGTH = 2**15
 SAMPLE_FREQUENCY = 2e5
@@ -37,6 +37,9 @@ def basic_checks(self, it):
 
     # Test timestamps
     ts = it.timestamps
+
+    # Test record_length
+    l = it.record_length
 
     # Test context manager
     S = 0
@@ -342,5 +345,16 @@ class TestIteratorCollection(unittest.TestCase):
         with self.assertRaises(ValueError):
             it1 + it3
 
+class TestMockIterator(unittest.TestCase):
+    def test_basic(self):
+        mock = MockData()
+
+        basic_checks(self, 
+                     MockIterator(mock=mock))
+        basic_checks(self, 
+                     MockIterator(mock=mock, channels=0))
+        basic_checks(self, 
+                     MockIterator(mock=mock, channels=(0,1)))
+        
 if __name__ == '__main__':
     unittest.main()

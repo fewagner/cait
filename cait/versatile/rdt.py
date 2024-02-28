@@ -209,7 +209,7 @@ class RDTFile:
                 self._inds[tup] = idx_start[tup_inds]
         
     def __repr__(self):
-        return f'{self.__class__.__name__}(keys={self.keys}, record_length={self.record_length}, dt_us={self.time_base_us}, measuring_time_h={self.measuring_time_h:.2f})'
+        return f'{self.__class__.__name__}(keys={self.keys}, record_length={self.record_length}, dt_us={self.dt_us}, measuring_time_h={self.measuring_time_h:.2f})'
 
     def __getitem__(self, channels: Union[int, str, tuple]):
         """
@@ -262,7 +262,7 @@ class RDTFile:
         return self._par.record_length
     
     @property
-    def time_base_us(self):
+    def dt_us(self):
         """The time base in microseconds (time between two samples) of the events in the corresponding `*.rdt` file."""
         return self._par.time_base_us
     

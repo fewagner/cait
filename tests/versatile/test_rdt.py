@@ -66,12 +66,12 @@ class TestRDT(unittest.TestCase):
         # self.assertTrue(self.f1.default_channels == (0,1))
         # self.assertTrue(self.f2.default_channels == 1)
 
-        self.f1.time_base_us
+        self.f1.dt_us
         self.f1.measuring_time_h
         self.f1.keys
         self.f1.get_voltage_trace([0,1,2])
 
-        self.f2.time_base_us
+        self.f2.dt_us
         self.f2.measuring_time_h
         self.f2.keys
         self.f2.get_voltage_trace([0,1,2])
