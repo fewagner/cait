@@ -320,7 +320,7 @@ class DataHandler(SimulateMixin,
 
         if flag is not None: inds = inds[flag]
 
-        return H5Iterator(path=self.get_filepath(), group=group, channels=channel, inds=inds, batch_size=batch_size)
+        return H5Iterator(self, group=group, channels=channel, inds=inds, batch_size=batch_size)
     
     def include_event_iterator(self, group: str, it: IteratorBaseClass, dtype: str = 'float32'):
         """

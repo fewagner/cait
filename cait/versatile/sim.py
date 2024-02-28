@@ -61,12 +61,14 @@ class MockData:
         """
         return MockIterator(self)
     
-    def get_event(self, ind: int):
+    def get_event(self, ind: int, channel: slice = None):
         """
         Return a single event for a given index.
 
         :param ind: The index of the event that we want to read from the mock data.
         :type ind: int
+        :param channel: The channel of the event that we want to read from the mock data. If None, then all channels are returned.
+        :type channel: int
 
         :return: Event
         :rtype: np.ndarray
@@ -76,7 +78,9 @@ class MockData:
         rng = np.random.default_rng(self._rand_seeds[ind])
         noise = 0.1*rng.standard_normal(size=self.n_channels*self._record_length)
 
-        return off + ph*self._template + np.reshape(noise, (self.n_channels, self._record_length))
+        out =  off + ph*self._template + np.reshape(noise, (self.n_channels, self._record_length))
+
+        return np.squeeze(out[channel])
 
     @property
     def n_events(self):

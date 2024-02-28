@@ -201,11 +201,11 @@ class CalcMP(FncBaseClass):
             return np.concatenate([self._ph, self._t0, self._t_rise, self._t_max, self._t_decaystart, self._t_half, self._t_end, self._offset, self._lin_drift], axis=-1)
         
         else:
-            return (self._ph.flatten(),                                              # pulse height
-                    ((self._t0 - length/4)*self._dt_us/1000).flatten(),              # onset (ms)
-                    ((self._t_rise - self._t0)*self._dt_us/1000).flatten(),          # rise time (ms)
-                    ((self._t_end - self._t_decaystart)*self._dt_us/1000).flatten(), # decay time (ms)
-                    (self._lin_drift*length).flatten()                               # slope (V)
+            return (np.squeeze(self._ph)[()],                                              # pulse height
+                    (np.squeeze((self._t0 - length/4)*self._dt_us/1000))[()],              # onset (ms)
+                    (np.squeeze((self._t_rise - self._t0)*self._dt_us/1000))[()],          # rise time (ms)
+                    (np.squeeze((self._t_end - self._t_decaystart)*self._dt_us/1000))[()], # decay time (ms)
+                    (np.squeeze(self._lin_drift*length))[()]                               # slope (V)
                     )
     
     def preview(self, event) -> dict:

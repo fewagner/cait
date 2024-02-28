@@ -70,7 +70,7 @@ class IteratorBaseClass(ABC):
         return out
 
     def __repr__(self):
-        out = f"{self.__class__.__name__}(n_events={len(self)}, n_channels={self.n_channels}, uses_batches={self.uses_batches}"
+        out = f"{self.__class__.__name__}(n_events={len(self)}, n_channels={self.n_channels}, uses_batches={self.uses_batches}, record_length={self.record_length}, dt_us={self.dt_us}"
         if len(self.fncs) > 0:
             out += f", preprocessing: {self.fncs})"
         else:
@@ -152,11 +152,20 @@ class IteratorBaseClass(ABC):
         return self[:,:].add_processing(f)
     
     @property
+    @abstractmethod
     def record_length(self):
         """
         Returns the record length (in samples) of the events in the iterator.
         """
-        return len(list(self[0,0])[0])
+        ...
+    
+    @property
+    @abstractmethod
+    def dt_us(self):
+        """
+        Returns the time base (in microseconds) of the events in the iterator.
+        """
+        ...
 
     @property
     @abstractmethod
@@ -216,8 +225,8 @@ class H5Iterator(IteratorBaseClass):
     For a batch size of 1, the iterator in this case returns shapes `(n_channels, n_data)`. 
     For a batch size > 1, the iterator in this case returns shapes `(batch_size, n_channels, n_data)`. Notice that the first dimension always has the events (batch_size).
 
-    :param path: Path to the HDF5 file.
-    :type path: str
+    :param dh: DataHandler instance connected to the HDF5 file.
+    :type dh: DataHandler
     :param group: Group in the HDF5 file to read events from.
     :type group: str
     :param dataset: Dataset in the HDF5 file to read events from.
@@ -232,7 +241,7 @@ class H5Iterator(IteratorBaseClass):
     :return: Iterable object
     :rtype: EventIterator
 
-    >>> it = H5Iterator("path_to_file.h5", "events", "event", batch_size=100, channels=1, inds=[0,2,19,232])
+    >>> it = H5Iterator(dh, "events", batch_size=100, channels=1, inds=[0,2,19,232])
     >>> for i in it:
     ...    print(i.shape)
     
@@ -241,17 +250,18 @@ class H5Iterator(IteratorBaseClass):
     ...         print(i.shape)
     """
 
-    def __init__(self, path: str, group: str, channels: Union[int, List[int]] = None, inds: List[int] = None, batch_size: int = None):
+    def __init__(self, dh, group: str, channels: Union[int, List[int]] = None, inds: List[int] = None, batch_size: int = None):
         super().__init__()
 
         # Check if dataset has correct shape:
-        with h5py.File(path, 'r') as f:
+        with h5py.File(dh.get_filepath(), 'r') as f:
             ndim = f[group]['event'].ndim
             shape = f[group]['event'].shape
             if ndim != 3:
                 raise ValueError(f"Only 3-dimensional datasets can be used to construct H5Iterator. Dataset 'event' in group '{group}' is {ndim}-dimensional.")
 
-        self._path = path
+        self._dh = dh
+        self._path = dh.get_filepath()
         self._group = group
 
         n_events_total = shape[1]
@@ -286,7 +296,7 @@ class H5Iterator(IteratorBaseClass):
         self._n_batches = len(self._inds)
 
         # Save values to reconstruct iterator:
-        self._params = {'path': path, 'group': group, 
+        self._params = {'dh': dh, 'group': group, 
                         'channels': self._channels, 
                         'inds': inds, 'batch_size': batch_size}
 
@@ -333,6 +343,14 @@ class H5Iterator(IteratorBaseClass):
         else:
             raise StopIteration
         
+    @property
+    def record_length(self):
+        return self._dh.record_length
+    
+    @property
+    def dt_us(self):
+        return int(1e6/self._dh.sample_frequency)
+
     @property
     def timestamps(self):
         with h5py.File(self._path, 'r') as f:
@@ -426,6 +444,14 @@ class StreamIterator(IteratorBaseClass):
             raise StopIteration
     
     @property
+    def record_length(self):
+        return self._record_length
+    
+    @property
+    def dt_us(self):
+        return self._stream.dt_us
+    
+    @property
     def timestamps(self):
         return self._stream.time[self._inds]
 
@@ -455,7 +481,7 @@ class IteratorCollection(IteratorBaseClass):
     :return: Iterable object
     :rtype: IteratorCollection
 
-    >>> it = H5Iterator("path_to_file.h5", "events", "event")
+    >>> it = H5Iterator(dh, "events", "event")
     >>> it_collection = IteratorCollection([it, it])
     >>> # Or simply (output of iterator addition is IteratorCollection)
     >>> it_collection = it + it
@@ -473,23 +499,31 @@ class IteratorCollection(IteratorBaseClass):
             else:
                 raise TypeError(f"Unsupported type '{type(iterators)}' for input argument 'iterators'.")
             
-        # Check if batch usage and number of channels are consistent
+        # Check if batch usage, number of channels, record_length and dt_us are consistent
         batch_usage = [it.uses_batches for it in iterators]
         channel_usage = [it.n_channels for it in iterators]
+        rec_usage = [it.record_length for it in iterators]
+        dt_usage = [it.dt_us for it in iterators]
         if len(set(batch_usage)) != 1:
             raise ValueError(f"Either all iterators must use batches or none of them. Got {batch_usage}")
         if len(set(channel_usage)) != 1:
             raise ValueError(f"All iterators must contain the same number of channels. Got {channel_usage}")
+        if len(set(rec_usage)) != 1:
+            raise ValueError(f"All iterators must have the same record length. Got {rec_usage}")
+        if len(set(dt_usage)) != 1:
+            raise ValueError(f"All iterators must have the same time base. Got {dt_usage}")
         
         self._iterators = iterators
         self._uses_batches = batch_usage[0] # made sure that batch usage is consistent above
         self._n_channels = channel_usage[0] # made sure that number of channels is consistent above
+        self._dt_us = dt_usage[0] # made sure that time base is consistent above
+        self._record_length = rec_usage[0] # made sure that record length is consistent above
 
     def __len__(self):
         return sum([len(it) for it in self._iterators])
     
     def __repr__(self):
-        out = f"{self.__class__.__name__}(n_events={len(self)}, n_channels={self.n_channels}, uses_batches={self.uses_batches})["
+        out = f"{self.__class__.__name__}(n_events={len(self)})["
         
         for it in self._iterators:
             out += f"\n\t- {it}"
@@ -549,6 +583,14 @@ class IteratorCollection(IteratorBaseClass):
 
         return new_collection
 
+    @property
+    def record_length(self):
+        return self._record_length
+    
+    @property
+    def dt_us(self):
+        return self._dt_us
+    
     @property
     def timestamps(self):
         return np.concatenate([it.timestamps for it in self._iterators])
@@ -636,6 +678,14 @@ class RDTIterator(IteratorBaseClass):
             raise StopIteration
         
     @property
+    def record_length(self):
+        return self._rdt_channel._rdt_file.record_length
+    
+    @property
+    def dt_us(self):
+        return self._rdt_channel._rdt_file.dt_us
+    
+    @property
     def timestamps(self):
         return self._rdt_channel.timestamps[self._params["inds"]]
 
@@ -702,13 +752,21 @@ class MockIterator(IteratorBaseClass):
 
     def _next_raw(self):
         if self._current_ind < len(self._inds):
-            out = self._mock.get_event(self._current_ind)
+            out = self._mock.get_event(self._inds[self._current_ind], self._channels)
             self._current_ind += 1
 
             return out
         else:
             raise StopIteration
         
+    @property
+    def record_length(self):
+        return self._mock.record_length
+    
+    @property
+    def dt_us(self):
+        return self._mock.dt_us
+    
     @property
     def timestamps(self):
         return self._mock.timestamps[self._params["inds"]]
