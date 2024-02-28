@@ -3,5 +3,5 @@ Event functions
 ***************************************
 
 .. automodule:: cait.versatile
-   :members: FitBaseline
+   :members: FitBaseline, CalcMP
    :show-inheritance:
