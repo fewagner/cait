@@ -151,6 +151,37 @@ class IteratorBaseClass(ABC):
 
         return self[:,:].add_processing(f)
     
+    def grab(self, which: Union[int, list]):
+        """
+        Grab specified event(s) and return it/them as numpy array.
+
+        :param which: Events of interest.
+        :type which: Union[int, list]
+
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            # Get events from mock data
+            it = vai.MockData().get_event_iterator()
+
+            # Get the last event in the iterator
+            selected_event = it.grab(-1)
+
+            # Get events with indices 1, 7, 9
+            selected_events = it.grab([1,7,9])
+        """
+
+        return np.squeeze(np.array(list(self[:, which])))[()]
+
+    @property
+    def t(self):
+        """
+        Return the time axis (record window) of the events in the iterator. It is a millisecond array with 0 being at 1/4th of the window.
+        """
+
+        return (np.arange(self.record_length) - self.record_length/4)*self.dt_us/1000
+
     @property
     @abstractmethod
     def record_length(self):

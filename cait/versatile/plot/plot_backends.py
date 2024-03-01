@@ -130,28 +130,34 @@ class BaseClassPlotly(BackendBaseClass):
     Base Class for plots using the `plotly` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ```
-    { line: { line1: [x_data1, y_data1],
-               line2: [x_data2, y_data2]
-              },
-      scatter: { scatter1: [x_data1, y_data1],
-                 scatter2: [x_data2, y_data2]
-                },
-      histogram: { hist1: [bin_data1, hist_data1],
-                   hist2: [bin_data2, hist_data2]
-                },
-      heatmap: { heat1: [(xbin_data1, ybin_data1), (hist_xdata1, hist_ydata1)],
-                 heat2: [(xbin_data2, ybin_data2), (hist_xdata2, hist_ydata2)]
-                },
-      axes: { xaxis: { label: "xlabel",
-                       scale: "linear"
-                      },
-              yaxis: { label: "ylabel",
-                       scale: "log"
-                      }
-            }
-      }
-    ```
+    ::
+        data = { 
+                "line": { 
+                    "line1": [x_data1, y_data1],
+                    "line2": [x_data2, y_data2]
+                    },
+                "scatter": {
+                    "scatter1": [x_data1, y_data1],
+                    "scatter2": [x_data2, y_data2]
+                    },
+                "histogram": {
+                    "hist1": [bin_data1, hist_data1],
+                    "hist2": [bin_data2, hist_data2]
+                    },
+                "axes": {
+                    "xaxis": {
+                        "label": "xlabel",
+                        "scale": "linear",
+                        "range": (0, 10)
+                        },
+                    "yaxis": {
+                        "label": "ylabel",
+                        "scale": "log",
+                        "range": (0, 10)
+                        }
+                    }
+                }
+    
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
@@ -344,12 +350,16 @@ class BaseClassPlotly(BackendBaseClass):
                 self.fig.layout.xaxis.title = data["xaxis"]["label"]
             if "scale" in data["xaxis"].keys():
                 self.fig.layout.xaxis.type = data["xaxis"]["scale"]
+            if "range" in data["xaxis"].keys():
+                self.fig.update_xaxes(range=data["xaxis"]["range"])
 
         if "yaxis" in data.keys():
             if "label" in data["yaxis"].keys():
                 self.fig.layout.yaxis.title = data["yaxis"]["label"]
             if "scale" in data["yaxis"].keys():
                 self.fig.layout.yaxis.type = data["yaxis"]["scale"]
+            if "range" in data["yaxis"].keys():
+                self.fig.update_yaxes(range=data["yaxis"]["range"])
 
     def _get_info(self, b):
         xmin, xmax = self.fig.layout.xaxis.range
@@ -417,28 +427,34 @@ class BaseClassMPL(BackendBaseClass):
     Base Class for plots using the `matplotlib` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ```
-    { line: { line1: [x_data1, y_data1],
-               line2: [x_data2, y_data2]
-              },
-      scatter: { scatter1: [x_data1, y_data1],
-                 scatter2: [x_data2, y_data2]
-                },
-      histogram: { hist1: [bin_data1, hist_data1],
-                   hist2: [bin_data2, hist_data2]
-                },
-      heatmap: { heat1: [(xbin_data1, ybin_data1), (hist_xdata1, hist_ydata1)],
-                 heat2: [(xbin_data2, ybin_data2), (hist_xdata2, hist_ydata2)]
-                },
-      axes: { xaxis: { label: "xlabel",
-                       scale: "linear"
-                      },
-              yaxis: { label: "ylabel",
-                       scale: "log"
-                      }
-            }
-      }
-    ```
+    ::
+        data = { 
+                "line": { 
+                    "line1": [x_data1, y_data1],
+                    "line2": [x_data2, y_data2]
+                    },
+                "scatter": {
+                    "scatter1": [x_data1, y_data1],
+                    "scatter2": [x_data2, y_data2]
+                    },
+                "histogram": {
+                    "hist1": [bin_data1, hist_data1],
+                    "hist2": [bin_data2, hist_data2]
+                    },
+                "axes": {
+                    "xaxis": {
+                        "label": "xlabel",
+                        "scale": "linear",
+                        "range": (0, 10)
+                        },
+                    "yaxis": {
+                        "label": "ylabel",
+                        "scale": "log",
+                        "range": (0, 10)
+                        }
+                    }
+                }
+
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
@@ -473,6 +489,11 @@ class BaseClassMPL(BackendBaseClass):
         self.show_controls = show_controls
         self.buttons_initialized = False
         self.is_visible = False
+
+        # Used for auto scaling of axes. 
+        # If user sets xlim or ylim, they are not auto-scaled
+        self._x_lim_auto = True
+        self._y_lim_auto = True
     
         self._init_fig(height, width)
 
@@ -633,12 +654,21 @@ class BaseClassMPL(BackendBaseClass):
                     self.fig.axes[0].set_xlabel(data["xaxis"]["label"])
                 if "scale" in data["xaxis"].keys():
                     self.fig.axes[0].set_xscale(data["xaxis"]["scale"])
+                if "range" in data["xaxis"].keys():
+                    r = data["xaxis"]["range"]
+                    self.fig.axes[0].set_xlim(r)
+                    self._x_lim_auto = r is None
 
             if "yaxis" in data.keys():
                 if "label" in data["yaxis"].keys():
                     self.fig.axes[0].set_ylabel(data["yaxis"]["label"])
                 if "scale" in data["yaxis"].keys():
                     self.fig.axes[0].set_yscale(data["yaxis"]["scale"])
+                if "range" in data["yaxis"].keys():
+                    r = data["yaxis"]["range"]
+                    self.fig.axes[0].set_ylim(r)
+                    self._y_lim_auto = r is None
+
         self._draw()
 
     def _save_figure(self, fmt: str):
@@ -667,6 +697,7 @@ class BaseClassMPL(BackendBaseClass):
                     """)
         
         self._save_html.update(html)
+        self._save_html.update(EmptyRep())
 
     def _show(self):
         self.is_visible = True
@@ -703,7 +734,8 @@ class BaseClassMPL(BackendBaseClass):
     def _draw(self):
         # Rescale axis limits (plotly does this automatically)
         self.fig.axes[0].relim()
-        self.fig.axes[0].autoscale_view()
+        self.fig.axes[0].autoscale(enable=self._x_lim_auto, axis="x", tight=True)
+        self.fig.axes[0].autoscale(enable=self._y_lim_auto, axis="y")
 
         if self.is_visible:
             if not hasattr(self, "_display"): 
@@ -731,28 +763,34 @@ class BaseClassUniplot(BackendBaseClass):
     Base Class for plots using the `uniplot` library (has to be installed). Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ```
-    { line: { line1: [x_data1, y_data1],
-               line2: [x_data2, y_data2]
-              },
-      scatter: { scatter1: [x_data1, y_data1],
-                 scatter2: [x_data2, y_data2]
-                },
-      histogram: { hist1: [bin_data1, hist_data1],
-                   hist2: [bin_data2, hist_data2]
-                },
-      heatmap: { heat1: [(xbin_data1, ybin_data1), (hist_xdata1, hist_ydata1)],
-                 heat2: [(xbin_data2, ybin_data2), (hist_xdata2, hist_ydata2)]
-                },
-      axes: { xaxis: { label: "xlabel",
-                       scale: "linear"
-                      },
-              yaxis: { label: "ylabel",
-                       scale: "log"
-                      }
-            }
-      }
-    ```
+    ::
+        data = { 
+                "line": { 
+                    "line1": [x_data1, y_data1],
+                    "line2": [x_data2, y_data2]
+                    },
+                "scatter": {
+                    "scatter1": [x_data1, y_data1],
+                    "scatter2": [x_data2, y_data2]
+                    },
+                "histogram": {
+                    "hist1": [bin_data1, hist_data1],
+                    "hist2": [bin_data2, hist_data2]
+                    },
+                "axes": {
+                    "xaxis": {
+                        "label": "xlabel",
+                        "scale": "linear",
+                        "range": (0, 10)
+                        },
+                    "yaxis": {
+                        "label": "ylabel",
+                        "scale": "log",
+                        "range": (0, 10)
+                        }
+                    }
+                }
+
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
@@ -793,6 +831,10 @@ class BaseClassUniplot(BackendBaseClass):
         
         # Uniplot does not support x- and y-labels. Therefore we have to do a workaround
         self.axis_labels = {"x": None, "y": None}
+
+        # For handling fixed axis ranges
+        self._xrange = None
+        self._yrange = None
 
         self._add_button("exit", self._close, "exit", None, "x")
 
@@ -872,12 +914,16 @@ class BaseClassUniplot(BackendBaseClass):
                 self.axis_labels["x"] = data["xaxis"]["label"]
             if "scale" in data["xaxis"].keys():
                 self.plt_opt.x_as_log = data["xaxis"]["scale"] == "log"
+            if "range" in data["xaxis"].keys():
+                    self._xrange = data["xaxis"]["range"]
 
         if "yaxis" in data.keys():
             if "label" in data["yaxis"].keys() and data["yaxis"]["label"] is not None:
                 self.axis_labels["y"] = data["yaxis"]["label"]
             if "scale" in data["yaxis"].keys():
                 self.plt_opt.y_as_log = data["yaxis"]["scale"] == "log"
+            if "range" in data["yaxis"].keys():
+                    self.yrange = data["yaxis"]["range"]
 
         title = ""
         if self.axis_labels["x"] is not None: 
@@ -934,15 +980,24 @@ class BaseClassUniplot(BackendBaseClass):
 
         if not xs: return
 
-        # Calculate axis limits and save in options object (this can later be modified
+        # Calculate axis limits (if not set) 
+        # and save in options object (this can later be modified
         # interactively using keys to zoom/pan)
-        minx, maxx = np.min(np.concatenate(xs)), np.max(np.concatenate(xs))
-        miny, maxy = np.min(np.concatenate(ys)), np.max(np.concatenate(ys))
-        xran, yran = maxx-minx, maxy-miny
-        self.plt_opt.x_min = minx - 0.01*xran
-        self.plt_opt.x_max = maxx + 0.01*xran
-        self.plt_opt.y_min = miny - 0.01*yran
-        self.plt_opt.y_max = maxy + 0.01*yran
+        if self._xrange:
+            self.plt_opt.x_min, self.plt_opt.x_max = self._xrange
+        else:
+            minx, maxx = np.min(np.concatenate(xs)), np.max(np.concatenate(xs))
+            xran = maxx - minx
+            self.plt_opt.x_min = minx - 0.01*xran
+            self.plt_opt.x_max = maxx + 0.01*xran
+
+        if self._yrange:
+            self.plt_opt.y_min, self.plt_opt.y_max = self._yrange
+        else:
+            miny, maxy = np.min(np.concatenate(ys)), np.max(np.concatenate(ys))
+            yran = maxy - miny
+            self.plt_opt.y_min = miny - 0.01*yran
+            self.plt_opt.y_max = maxy + 0.01*yran
 
         n, key = 0, ''
 

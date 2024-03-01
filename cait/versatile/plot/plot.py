@@ -45,11 +45,13 @@ class Viewer():
                 "axes": {
                     "xaxis": {
                         "label": "xlabel",
-                        "scale": "linear"
+                        "scale": "linear",
+                        "range": (0, 10)
                         },
                     "yaxis": {
                         "label": "ylabel",
-                        "scale": "log"
+                        "scale": "log",
+                        "range": (0, 10)
                         }
                     }
                 }
@@ -119,6 +121,24 @@ class Viewer():
         :type yscale: str
         """
         self.fig_widget._set_axes(dict(yaxis={"scale":yscale}))
+
+    def set_xrange(self, xrange: tuple):
+        """
+        Set the x-range of the figure.
+
+        :param xrange: x-range. A tuple of (xmin, xmax)
+        :type xrange: tuple
+        """
+        self.fig_widget._set_axes(dict(xaxis={"range":xrange}))
+
+    def set_yrange(self, yrange: tuple):
+        """
+        Set the y-range of the figure.
+
+        :param yrange: y-range. A tuple of (ymin, ymax)
+        :type yrange: tuple
+        """
+        self.fig_widget._set_axes(dict(yaxis={"range":yrange}))
 
     def add_line(self, x: List[float], y: List[float], name: str = None):
         """
@@ -257,9 +277,9 @@ class Line(Viewer):
     """
     Plot a line graph. 
 
-    :param y: The y-data to plot. You can either hand a list-like object (simple plotting of one line) or a dictionary whose keys are line names and whose values are again list-like objects (for each key a line is plotted and a legend entry is created).
+    :param y: The y-data to plot. You can either hand a list-like object (simple plotting of one line, or multiple lines if multi-dimensional) or a dictionary whose keys are line names and whose values are again list-like objects (for each key a line is plotted and a legend entry is created. If the values in the dictionary are lists, the first entry is interpreted as x-values and the second as y-values).
     :type y: Union[List[float], dict]
-    :param x: The x-data to plot. If None is specified, the y-data is plotted over the data index. Defaults to None.
+    :param x: The x-data to plot (for any lines for which x-data was not explicitly specified, see above). If None is specified, the y-data is plotted over the data index. Defaults to None.
     :type x: List[float], optional
     :param xlabel: x-label for the plot.
     :type xlabel: str, optional
@@ -269,23 +289,47 @@ class Line(Viewer):
     :type xscale: str, optional
     :param yscale: y-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
     :type yscale: str, optional
+    :param xrange: x-range for the plot. A tuple of (xmin, xmax), defaults to None, i.e. auto-scaling.
+    :type xrange: tuple, optional
+    :param yrange: y-range for the plot. A tuple of (ymin, ymax), defaults to None, i.e. auto-scaling.
+    :type yrange: tuple, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        vai.Line([1,2,3])
+        vai.Line([[1,2,3], [5,6,7]])
+        vai.Line({"first line": [1,2,3], "second line with x data": [[0,1,2],[3,4,5]]})
+        vai.Line([1,2,3], x=[1,2,3], xrange=(-1, 4), backend="mpl")
     """
-    def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
+    def __init__(self, y: Union[List[float], List[List[float]], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', xrange: tuple = None, yrange: tuple = None, **kwargs):
 
         super().__init__(**kwargs)
 
         if isinstance(y, dict):
             for key, value in y.items():
-                self.add_line(x=x, y=value, name=key)
+                value = np.squeeze(np.array(value))
+                if value.ndim > 1:
+                    self.add_line(x=value[0], y=value[1], name=key)
+                else:
+                    self.add_line(x=x, y=value, name=key)
         else:
-            self.add_line(x=x, y=y)
+            lines = np.squeeze(np.array(y))
+            if lines.ndim > 1:
+                for line in lines:
+                    self.add_line(x=x, y=line)
+            else:
+                self.add_line(x=x, y=y)
 
         self.set_xlabel(xlabel)
         self.set_ylabel(ylabel)
         self.set_xscale(xscale)
         self.set_yscale(yscale)
+        self.set_xrange(xrange)
+        self.set_yrange(yrange)
 
         self.show()
 
@@ -293,9 +337,9 @@ class Scatter(Viewer):
     """
     Plot a scatter graph. 
 
-    :param y: The y-data to plot. You can either hand a list-like object (simple plotting of one line) or a dictionary whose keys are line names and whose values are again list-like objects (for each key a line is plotted and a legend entry is created).
+    :param y: The y-data to plot. You can either hand a list-like object (simple plotting of one scatter, or multiple scatters if multi-dimensional) or a dictionary whose keys are line names and whose values are again list-like objects (for each key a scatter is plotted and a legend entry is created. If the values in the dictionary are lists, the first entry is interpreted as x-values and the second as y-values).
     :type y: Union[List[float], dict]
-    :param x: The x-data to plot. If None is specified, the y-data is plotted over the data index. Defaults to None.
+    :param x: The x-data to plot (for any lines for which x-data was not explicitly specified, see above). If None is specified, the y-data is plotted over the data index. Defaults to None.
     :type x: List[float], optional
     :param xlabel: x-label for the plot.
     :type xlabel: str, optional
@@ -305,23 +349,47 @@ class Scatter(Viewer):
     :type xscale: str, optional
     :param yscale: y-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
     :type yscale: str, optional
+    :param xrange: x-range for the plot. A tuple of (xmin, xmax), defaults to None, i.e. auto-scaling.
+    :type xrange: tuple, optional
+    :param yrange: y-range for the plot. A tuple of (ymin, ymax), defaults to None, i.e. auto-scaling.
+    :type yrange: tuple, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        vai.Scatter([1,2,3])
+        vai.Scatter([[1,2,3], [5,6,7]])
+        vai.Scatter({"first scatter": [1,2,3], "second scatter with x data": [[0,1,2],[3,4,5]]})
+        vai.Scatter([1,2,3], x=[1,2,3], xrange=(-1, 4), backend="mpl")
     """
-    def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
+    def __init__(self, y: Union[List[float], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', xrange: tuple = None, yrange: tuple = None, **kwargs):
 
         super().__init__(**kwargs)
 
         if isinstance(y, dict):
             for key, value in y.items():
-                self.add_scatter(x=x, y=value, name=key)
+                value = np.squeeze(np.array(value))
+                if value.ndim > 1:
+                    self.add_scatter(x=value[0], y=value[1], name=key)
+                else:
+                    self.add_scatter(x=x, y=value, name=key)
         else:
-            self.add_scatter(x=x, y=y)
+            scatters = np.squeeze(np.array(y))
+            if scatters.ndim > 1:
+                for scatter in scatters:
+                    self.add_scatter(x=x, y=scatter)
+            else:
+                self.add_scatter(x=x, y=y)
 
         self.set_xlabel(xlabel)
         self.set_ylabel(ylabel)
         self.set_xscale(xscale)
         self.set_yscale(yscale)
+        self.set_xrange(xrange)
+        self.set_yrange(yrange)
 
         self.show()
 
@@ -329,7 +397,7 @@ class Histogram(Viewer):
     """
     Plot a Histogram. 
 
-    :param data: The data to bin and plot. You can either hand a list-like object (simple plotting of one histogram) or a dictionary whose keys are histogram names and whose values are again list-like objects (for each key a histogram is binned, plotted and a legend entry is created).
+    :param data: The data to bin and plot. You can either hand a list-like object (simple plotting of one histogram, or multiple histograms if multi-dimensional) or a dictionary whose keys are histogram names and whose values are again list-like objects (for each key a histogram is binned, plotted and a legend entry is created).
     :type data: Union[List[float], dict]
     :param bins: The binning data to use. If None, the binning is done automatically. An integer is interpreted as the desired total number of bins. You can also parse a tuple of the form `(start, end, nbins)` to bin the data between `start` and `end` into a total of `nbins` bins
     :type bins: Union[None, int, tuple], optional
@@ -341,10 +409,24 @@ class Histogram(Viewer):
     :type xscale: str, optional
     :param yscale: y-scale for the histogram. Either of ['linear', 'log'], defaults to 'linear'.
     :type yscale: str, optional
+    :param xrange: x-range for the plot. A tuple of (xmin, xmax), defaults to None, i.e. auto-scaling.
+    :type xrange: tuple, optional
+    :param yrange: y-range for the plot. A tuple of (ymin, ymax), defaults to None, i.e. auto-scaling.
+    :type yrange: tuple, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        vai.Histogram([1,2,3])
+        vai.Histogram([[1,2,3], [5,6,7]])
+        vai.Histogram({"first hist": [1,2,3], "second hist": [0,1,2]})
+        vai.Histogram([1,2,3], bins=100, backend="mpl")
+        vai.Histogram([1,2,3], bins=(0,5,100), backend="mpl")
     """
-    def __init__(self, data: Union[List[float], dict], bins: Union[tuple, int] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', **kwargs):
+    def __init__(self, data: Union[List[float], dict], bins: Union[tuple, int] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', xrange: tuple = None, yrange: tuple = None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -352,12 +434,19 @@ class Histogram(Viewer):
             for key, value in data.items():
                 self.add_histogram(bins=bins, data=value, name=key)
         else:
-            self.add_histogram(bins=bins, data=data)
+            hists = np.squeeze(np.array(data))
+            if hists.ndim > 1:
+                for hist in hists:
+                    self.add_histogram(bins=bins, data=hist)
+            else:
+                self.add_histogram(bins=bins, data=data)
 
         self.set_xlabel(xlabel)
         self.set_ylabel(ylabel)
         self.set_xscale(xscale)
         self.set_yscale(yscale)
+        self.set_xrange(xrange)
+        self.set_yrange(yrange)
 
         self.show()
 
@@ -518,13 +607,28 @@ class Preview(Viewer):
         self._add_button("Next", self._update_plot, "Show next event.", key="n")
 
         self.f = f
-        self.events = iter(events)
+        self.events = iter(enumerate(events))
         
         self.start()
     
     def _update_plot(self, b=None):
-        try: 
-            self.plot(self.f.preview(next(self.events)))
+        try:
+            ind, ev = next(self.events)
+            d =  self.f.preview(ev)
+
+            # Add event index to y-label
+            if d.get("axes") is None: d["axes"] = dict()
+            if d["axes"].get("yaxis") is None: d["axes"]["yaxis"] = dict()
+            if d["axes"]["yaxis"].get("label") is None: 
+                d["axes"]["yaxis"]["label"] = ""
+            else:
+                d["axes"]["yaxis"]["label"] += ", "
+            
+            d["axes"]["yaxis"]["label"] += f"event {ind}"
+
+            # Plot
+            self.plot(d)
+
         except StopIteration: 
             self.close()
         except:

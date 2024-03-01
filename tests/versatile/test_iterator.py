@@ -38,9 +38,10 @@ def basic_checks(self, it):
     # Test timestamps
     ts = it.timestamps
 
-    # Test record_length and time base
+    # Test record_length, record window and time base
     l = it.record_length
     tb = it.dt_us
+    t = it.t
 
     # Test context manager
     S = 0
@@ -79,6 +80,17 @@ def basic_checks(self, it):
     # Check if events returned by sliced and unsliced iterator are identical
     self.assertTrue(np.array_equal(next(iter(it)), next(iter(it[:,flag]))))
     self.assertTrue(np.array_equal(next(iter(it)), next(iter(it_new))))
+
+    # Test if grab works as intended
+    single = it.grab(0)
+    single_last = it.grab(-1)
+    selected_events = it.grab([0,2,4])
+
+    self.assertTrue(single.shape == ((it.n_channels, it.record_length) if it.n_channels > 1 else (it.record_length,)))
+    self.assertTrue(selected_events.shape == ((3, it.n_channels, it.record_length) if it.n_channels > 1 else (3, it.record_length)))
+
+    self.assertTrue(it[0].grab(0).shape == (it.record_length,))
+    self.assertTrue(it[0].grab([0,1,4]).shape == (3, it.record_length))
 
     # Add iterators and check if first and last event are as expected
     it_combined = it + it_new + it_new
