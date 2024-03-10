@@ -21,7 +21,7 @@ class FitBaseline(FitFncBaseClass):
     :type model: Union[int, str]
     :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where)*record_length` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None).  
     :type where: Union[List[bool], slice, int]
-    :param xdata: x-data to use for the fit (has no effect for `order=0`). Specifying x-data is not necessary in general but if you want your fit parameters to have physical units (e.g. time constants) instead of just samples, you may use this option. Defaults to `None`.
+    :param xdata: x-data to use for the fit (has no effect for `order=0`). Specifying xdata is not necessary in general but if you want your fit parameters to have physical units (e.g. time constants) instead of just samples, you may use this option. Defaults to `None`, in which case `xdata=np.linspace(0,1,record_length)`.
     :type xdata: List[float]
 
     :return: Fit parameter(s) and RMS as a tuple.
@@ -52,7 +52,7 @@ class FitBaseline(FitFncBaseClass):
         else:
             # ATTENTION: This is only set once, i.e. data has to have same length 
             if self._xdata is None: 
-                self._xdata = np.arange(np.array(event).shape[-1])
+                self._xdata = np.linspace(0, 1, np.array(event).shape[-1])
 
             # Exponential fit
             if self._model in ['exponential', 'exp']:

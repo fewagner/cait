@@ -7,6 +7,9 @@ On this page we assemble the features of current Cait realeases and changes from
 develop version
 ======
 - Added possibility to automatically calculate RMS when applying the optimum filter. The option can be toggled using the `calc_rms` keyword on the `dh.apply_of` method.
+- Added tests for general workflow
+- New (experimental) features in `cait.versatile`
+- Documentation for `cait.versatile` in preparation
 
 v1.2.1
 ======

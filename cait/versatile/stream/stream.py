@@ -186,7 +186,7 @@ class StreamBaseClass(ABC):
         ...
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys})'
+        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, measuring_time_h={self.__len__()*self.dt_us/1e6/3600:.2f})'
 
     def __getitem__(self, val: Union[str, Tuple[str, Union[int, slice, list, np.ndarray]], Tuple[str, Union[int, slice, list, np.ndarray], str]]):
         # Only names and tuples are supported for slicing (no int)
@@ -521,7 +521,7 @@ class Stream_VDAQ3(StreamBaseClass):
 class Stream(StreamBaseClass):
     """
     Factory class for providing a common access point to stream data.
-    Currently, only vdaq2 and vdaq3 files are supported but an extension can be straight forwardly implemented by sub-classing :class:`StreamBaseClass` and adding it in the constructor.
+    Currently, only vdaq2 and cresst stream files are supported but an extension can be straight forwardly implemented by sub-classing :class:`StreamBaseClass` and adding it for selection in the constructor of :class:`Stream`.
 
     The data is accessed by means of slicing (see below). The `time` property is an object of :class:`StreamTime` and offers a convenient time interface as well (see below).
 
@@ -538,7 +538,7 @@ class Stream(StreamBaseClass):
 
     VDAQ2:
     Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
-    
+
     >>> s = Stream(hardware='vdaq2', src='file.bin')
 
     :Usage slicing:

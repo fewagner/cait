@@ -320,11 +320,11 @@ class DataHandler(SimulateMixin,
 
         if flag is not None: inds = inds[flag]
 
-        return H5Iterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
+        return H5Iterator(self, group=group, channels=channel, inds=inds, batch_size=batch_size)
     
     def include_event_iterator(self, group: str, it: IteratorBaseClass, dtype: str = 'float32'):
         """
-        Includes the events returned by an iterator into dataset 'event' of a specified group. 
+        Includes the events returned by an iterator into dataset 'event' of a specified group. The timestamps of the iterator are saved in datasets 'time_s' and 'time_mus' of the same group, in alignment with the convention of cait.
 
         :param group: The target group in the HDF5 file.
         :type group: str
@@ -379,6 +379,11 @@ class DataHandler(SimulateMixin,
 
                     hdf5ds[:, sl, :] = ev
                     ind += step
+
+        # Include timestamps
+        sec = (it.timestamps//1e6).astype(np.int32)
+        mus = (it.timestamps%1e6).astype(np.int32)
+        self.set(group, overwrite_existing=True, time_s=sec, time_mus=mus, dtype=np.int32)
     
     def import_labels(self,
                       path_labels: str,

@@ -11,6 +11,26 @@ import plotly.express as px
 import matplotlib.pyplot as plt
 import numpy as np
 
+try:
+    import uniplot
+except ImportError:
+    uniplot = None
+
+#########################
+#### Helper Functions ###
+#########################
+## https://stackoverflow.com/questions/15411967/how-can-i-check-if-code-is-executed-in-the-ipython-notebook ###
+def auto_backend():
+    # If uniplot is not installed, use plotly (will result in a dictionary output)
+    if uniplot is None: return "plotly"
+    
+    try:
+        from IPython import get_ipython
+        if 'IPKernelApp' not in get_ipython().config: return "uniplot"
+    except ImportError: return "uniplot"
+    except AttributeError: return "uniplot"
+    return "plotly"
+
 #########################
 ##### Helper Classes ####
 #########################
@@ -71,7 +91,7 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
-    def _add_button(text: str, callback: Callable, tooltip: str = None, where: int = -1):
+    def _add_button(text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
         ...
 
     @abstractmethod
@@ -83,7 +103,26 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
+    def _update():
+        ...
+
+    @abstractmethod
     def _close(b=None):
+        ...
+
+    @property
+    @abstractmethod
+    def line_names(self):
+        ...
+
+    @property
+    @abstractmethod
+    def scatter_names(self):
+        ...
+
+    @property
+    @abstractmethod
+    def histogram_names(self):
         ...
 
 class BaseClassPlotly(BackendBaseClass):
@@ -91,28 +130,34 @@ class BaseClassPlotly(BackendBaseClass):
     Base Class for plots using the `plotly` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ```
-    { line: { line1: [x_data1, y_data1],
-               line2: [x_data2, y_data2]
-              },
-      scatter: { scatter1: [x_data1, y_data1],
-                 scatter2: [x_data2, y_data2]
-                },
-      histogram: { hist1: [bin_data1, hist_data1],
-                   hist2: [bin_data2, hist_data2]
-                },
-      heatmap: { heat1: [(xbin_data1, ybin_data1), (hist_xdata1, hist_ydata1)],
-                 heat2: [(xbin_data2, ybin_data2), (hist_xdata2, hist_ydata2)]
-                },
-      axes: { xaxis: { label: "xlabel",
-                       scale: "linear"
-                      },
-              yaxis: { label: "ylabel",
-                       scale: "log"
-                      }
-            }
-      }
-    ```
+    ::
+        data = { 
+                "line": { 
+                    "line1": [x_data1, y_data1],
+                    "line2": [x_data2, y_data2]
+                    },
+                "scatter": {
+                    "scatter1": [x_data1, y_data1],
+                    "scatter2": [x_data2, y_data2]
+                    },
+                "histogram": {
+                    "hist1": [bin_data1, hist_data1],
+                    "hist2": [bin_data2, hist_data2]
+                    },
+                "axes": {
+                    "xaxis": {
+                        "label": "xlabel",
+                        "scale": "linear",
+                        "range": (0, 10)
+                        },
+                    "yaxis": {
+                        "label": "ylabel",
+                        "scale": "log",
+                        "range": (0, 10)
+                        }
+                    }
+                }
+    
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
@@ -129,9 +174,9 @@ class BaseClassPlotly(BackendBaseClass):
                  width: int = 700, 
                  show_controls: bool = False):
      
-        self.line_names = list()
-        self.scatter_names = list()
-        self.histogram_names = list()
+        self._line_names = list()
+        self._scatter_names = list()
+        self._histogram_names = list()
         self.heatmap_names = list()
         #self.x_marker_names = list()
         #self.y_marker_names = list()
@@ -187,7 +232,7 @@ class BaseClassPlotly(BackendBaseClass):
                         #        opacity=0.5)
                     )
         
-    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1):
+    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: int = None):
         # This gives inherited classes the possibility to add buttons themselves before 
         # calling super().__init__
         if not hasattr(self, "buttons"): self.buttons = []
@@ -209,7 +254,7 @@ class BaseClassPlotly(BackendBaseClass):
                                             'width': 3},
                                       showlegend= True if name is not None else False) 
                                       )
-        if name is not None: self.line_names.append(name)
+        if name is not None: self._line_names.append(name)
 
     def _add_scatter(self, x, y, name=None):
         self.fig.add_trace(go.Scatter(x=x,
@@ -220,7 +265,7 @@ class BaseClassPlotly(BackendBaseClass):
                                             'width': 3},
                                       showlegend= True if name is not None else False) 
                                       )
-        if name is not None: self.scatter_names.append(name)
+        if name is not None: self._scatter_names.append(name)
 
     def _add_histogram(self, bins, data, name=None):
         if bins is None:
@@ -237,7 +282,7 @@ class BaseClassPlotly(BackendBaseClass):
                                         **arg,
                                         showlegend = True if name is not None else False)
                             )
-        if name is not None: self.histogram_names.append(name)
+        if name is not None: self._histogram_names.append(name)
 
         # lower opacity of histograms if more than one is plotted
         if len([k for k in self.fig.select_traces(selector="histogram")]) > 1:
@@ -263,7 +308,7 @@ class BaseClassPlotly(BackendBaseClass):
                                             'dash': 'dash'},
                                       showlegend= True if name is not None else False) 
                                       )
-        if name is not None: self.line_names.append(name)
+        if name is not None: self._line_names.append(name)
 
     def _update_line(self, name, x, y):
         self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
@@ -273,7 +318,7 @@ class BaseClassPlotly(BackendBaseClass):
 
     def _update_histogram(self, name, bins, data):
         #n_histograms = len([k for k in self.fig.select_traces(selector="histogram")])
-        opacity = 0.8 if len(self.histogram_names)>1 else 1
+        opacity = 0.8 if len(self._histogram_names)>1 else 1
 
         if bins is None:
             arg = dict()
@@ -305,12 +350,16 @@ class BaseClassPlotly(BackendBaseClass):
                 self.fig.layout.xaxis.title = data["xaxis"]["label"]
             if "scale" in data["xaxis"].keys():
                 self.fig.layout.xaxis.type = data["xaxis"]["scale"]
+            if "range" in data["xaxis"].keys():
+                self.fig.update_xaxes(range=data["xaxis"]["range"])
 
         if "yaxis" in data.keys():
             if "label" in data["yaxis"].keys():
                 self.fig.layout.yaxis.title = data["yaxis"]["label"]
             if "scale" in data["yaxis"].keys():
                 self.fig.layout.yaxis.type = data["yaxis"]["scale"]
+            if "range" in data["yaxis"].keys():
+                self.fig.update_yaxes(range=data["yaxis"]["range"])
 
     def _get_info(self, b):
         xmin, xmax = self.fig.layout.xaxis.range
@@ -350,44 +399,66 @@ class BaseClassPlotly(BackendBaseClass):
             self._display = display(self.UI, display_id=True)
         else:
             self._display.update(self.UI)
-        
+
+    def _update(self):
+        # Plotly automatically draws changes
+        ...
+
     def _close(self, b=None):
         self._display.update(EmptyRep())
 
     def _get_figure(self):
         return self.fig
+    
+    @property
+    def line_names(self):
+        return self._line_names
+
+    @property
+    def scatter_names(self):
+        return self._scatter_names
+
+    @property
+    def histogram_names(self):
+        return self._histogram_names
 
 class BaseClassMPL(BackendBaseClass):
     """
     Base Class for plots using the `matplotlib` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ```
-    { line: { line1: [x_data1, y_data1],
-               line2: [x_data2, y_data2]
-              },
-      scatter: { scatter1: [x_data1, y_data1],
-                 scatter2: [x_data2, y_data2]
-                },
-      histogram: { hist1: [bin_data1, hist_data1],
-                   hist2: [bin_data2, hist_data2]
-                },
-      heatmap: { heat1: [(xbin_data1, ybin_data1), (hist_xdata1, hist_ydata1)],
-                 heat2: [(xbin_data2, ybin_data2), (hist_xdata2, hist_ydata2)]
-                },
-      axes: { xaxis: { label: "xlabel",
-                       scale: "linear"
-                      },
-              yaxis: { label: "ylabel",
-                       scale: "log"
-                      }
-            }
-      }
-    ```
+    ::
+        data = { 
+                "line": { 
+                    "line1": [x_data1, y_data1],
+                    "line2": [x_data2, y_data2]
+                    },
+                "scatter": {
+                    "scatter1": [x_data1, y_data1],
+                    "scatter2": [x_data2, y_data2]
+                    },
+                "histogram": {
+                    "hist1": [bin_data1, hist_data1],
+                    "hist2": [bin_data2, hist_data2]
+                    },
+                "axes": {
+                    "xaxis": {
+                        "label": "xlabel",
+                        "scale": "linear",
+                        "range": (0, 10)
+                        },
+                    "yaxis": {
+                        "label": "ylabel",
+                        "scale": "log",
+                        "range": (0, 10)
+                        }
+                    }
+                }
+
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
-    :param template: Custom style 'cait', 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'cait'
+    :param template: Custom style 'cait', 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'seaborn'
     :type template: str, optional
     :param height: Figure height, defaults to 3
     :type height: float, optional
@@ -395,14 +466,14 @@ class BaseClassMPL(BackendBaseClass):
     :type width: float, optional
     """
     def __init__(self, 
-                 template: str = "cait", 
+                 template: str = "seaborn", 
                  height: float = 3, 
                  width: float = 5, 
                  show_controls: bool = False):
         
-        self.line_names = list()
-        self.scatter_names = list()
-        self.histogram_names = list()
+        self._line_names = list()
+        self._scatter_names = list()
+        self._histogram_names = list()
         self.heatmap_names = list()
 
         if type(template) is str and template == "science":
@@ -418,6 +489,11 @@ class BaseClassMPL(BackendBaseClass):
         self.show_controls = show_controls
         self.buttons_initialized = False
         self.is_visible = False
+
+        # Used for auto scaling of axes. 
+        # If user sets xlim or ylim, they are not auto-scaled
+        self._x_lim_auto = True
+        self._y_lim_auto = True
     
         self._init_fig(height, width)
 
@@ -437,7 +513,7 @@ class BaseClassMPL(BackendBaseClass):
         else:
             self.UI = None
 
-    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1):
+    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
         # This gives inherited classes the possibility to add buttons themselves before 
         # calling super().__init__
         if not hasattr(self, "buttons"): self.buttons = []
@@ -462,7 +538,7 @@ class BaseClassMPL(BackendBaseClass):
         if x is None and y is not None: x = np.arange(len(y))
         if x is None and y is None: x, y = np.nan, np.nan
 
-        if name is not None: self.line_names.append(name)
+        if name is not None: self._line_names.append(name)
 
         with plt.style.context(self.template):
             self.fig.axes[0].plot(x, y, marker='none', label=name)
@@ -475,7 +551,7 @@ class BaseClassMPL(BackendBaseClass):
         if x is None and y is not None: x = np.arange(len(y))
         if x is None and y is None: x, y = np.nan, np.nan
 
-        if name is not None: self.scatter_names.append(name)
+        if name is not None: self._scatter_names.append(name)
 
         with plt.style.context(self.template):
             self.fig.axes[0].plot(x, y, linestyle='none', marker=".", label=name)
@@ -492,7 +568,7 @@ class BaseClassMPL(BackendBaseClass):
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
-        if name is not None: self.histogram_names.append(name)
+        if name is not None: self._histogram_names.append(name)
 
         with plt.style.context(self.template):
             self.fig.axes[0].hist(x=data, **arg, label=name)
@@ -514,7 +590,7 @@ class BaseClassMPL(BackendBaseClass):
             # y-values will jump between y_min and y_max and are separated by a None
             y = [np.min(y_int), np.max(y_int), None]*np.array(marker_pos).shape[-1]
 
-        if name is not None: self.line_names.append(name)
+        if name is not None: self._line_names.append(name)
 
         with plt.style.context(self.template):
             self.fig.axes[0].plot(x, y, marker='none', linestyle='--', label=name)
@@ -533,7 +609,7 @@ class BaseClassMPL(BackendBaseClass):
             self.fig.axes[0].lines[ind].set_xdata(x)
             self.fig.axes[0].lines[ind].set_ydata(y)
 
-        self._draw()
+        #self._draw()
 
     def _update_scatter(self, name: str, x: List[float], y: List[float]):
         # Plotly supports x=None, matplotlib has to handle it. We set it
@@ -547,7 +623,7 @@ class BaseClassMPL(BackendBaseClass):
             self.fig.axes[0].lines[ind].set_xdata(x)
             self.fig.axes[0].lines[ind].set_ydata(y)
         
-        self._draw()
+        #self._draw()
 
     def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
         ...
@@ -569,7 +645,7 @@ class BaseClassMPL(BackendBaseClass):
             self.fig.axes[0].lines[ind].set_xdata(x)
             self.fig.axes[0].lines[ind].set_ydata(y)
 
-        self._draw()
+        #self._draw()
 
     def _set_axes(self, data: dict):
         with plt.style.context(self.template):
@@ -578,12 +654,21 @@ class BaseClassMPL(BackendBaseClass):
                     self.fig.axes[0].set_xlabel(data["xaxis"]["label"])
                 if "scale" in data["xaxis"].keys():
                     self.fig.axes[0].set_xscale(data["xaxis"]["scale"])
+                if "range" in data["xaxis"].keys():
+                    r = data["xaxis"]["range"]
+                    self.fig.axes[0].set_xlim(r)
+                    self._x_lim_auto = r is None
 
             if "yaxis" in data.keys():
                 if "label" in data["yaxis"].keys():
                     self.fig.axes[0].set_ylabel(data["yaxis"]["label"])
                 if "scale" in data["yaxis"].keys():
                     self.fig.axes[0].set_yscale(data["yaxis"]["scale"])
+                if "range" in data["yaxis"].keys():
+                    r = data["yaxis"]["range"]
+                    self.fig.axes[0].set_ylim(r)
+                    self._y_lim_auto = r is None
+
         self._draw()
 
     def _save_figure(self, fmt: str):
@@ -612,6 +697,7 @@ class BaseClassMPL(BackendBaseClass):
                     """)
         
         self._save_html.update(html)
+        self._save_html.update(EmptyRep())
 
     def _show(self):
         self.is_visible = True
@@ -634,6 +720,9 @@ class BaseClassMPL(BackendBaseClass):
         # Needed to suppress automatic jupyter output (leads to figure showing twice)
         plt.close()
 
+    def _update(self):
+        self._draw()
+
     def _close(self, b=None):
         self.is_visible = False
 
@@ -645,7 +734,8 @@ class BaseClassMPL(BackendBaseClass):
     def _draw(self):
         # Rescale axis limits (plotly does this automatically)
         self.fig.axes[0].relim()
-        self.fig.axes[0].autoscale_view()
+        self.fig.axes[0].autoscale(enable=self._x_lim_auto, axis="x", tight=True)
+        self.fig.axes[0].autoscale(enable=self._y_lim_auto, axis="y")
 
         if self.is_visible:
             if not hasattr(self, "_display"): 
@@ -655,3 +745,322 @@ class BaseClassMPL(BackendBaseClass):
 
     def _get_figure(self):
         return self.fig
+    
+    @property
+    def line_names(self):
+        return self._line_names
+
+    @property
+    def scatter_names(self):
+        return self._scatter_names
+
+    @property
+    def histogram_names(self):
+        return self._histogram_names
+    
+class BaseClassUniplot(BackendBaseClass):
+    """
+    Base Class for plots using the `uniplot` library (has to be installed). Not meant for standalone use but rather to be called through :class:`Viewer`. 
+
+    This class produces plots given a dictionary of instructions of the following form:
+    ::
+        data = { 
+                "line": { 
+                    "line1": [x_data1, y_data1],
+                    "line2": [x_data2, y_data2]
+                    },
+                "scatter": {
+                    "scatter1": [x_data1, y_data1],
+                    "scatter2": [x_data2, y_data2]
+                    },
+                "histogram": {
+                    "hist1": [bin_data1, hist_data1],
+                    "hist2": [bin_data2, hist_data2]
+                    },
+                "axes": {
+                    "xaxis": {
+                        "label": "xlabel",
+                        "scale": "linear",
+                        "range": (0, 10)
+                        },
+                    "yaxis": {
+                        "label": "ylabel",
+                        "scale": "log",
+                        "range": (0, 10)
+                        }
+                    }
+                }
+
+    Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
+    The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
+
+    :param height: Figure height, defaults to 17
+    :type height: int, optional
+    :param width: Figure width, defaults to 60
+    :type width: int, optional
+    """
+    def __init__(self, 
+                 template: str = None, # For consistency with other backends. Has no effect.
+                 height: int = 17, 
+                 width: int = 60, 
+                 show_controls: bool = True):
+        
+        if uniplot is None: 
+            raise RuntimeError("Install 'uniplot>=0.12.2' to use this feature.")
+
+        # Height/width in characters
+        self.height = int(height)
+        self.width = int(width)
+        
+        # Dictionaries holding x/y values to be drawn on the command line every time
+        # the plot is updated
+        self.lines = dict()
+        self.scatters = dict()
+        self.histograms = dict()
+
+        self.show_controls = show_controls
+        self.buttons = list()
+
+        self._is_visible = False
+
+        # Configurations for the plot (are passed on to plot routine)
+        self.plt_opt = uniplot.options.Options(
+            width=self.width,
+            height=self.height
+            )
+        
+        # Uniplot does not support x- and y-labels. Therefore we have to do a workaround
+        self.axis_labels = {"x": None, "y": None}
+
+        # For handling fixed axis ranges
+        self._xrange = None
+        self._yrange = None
+
+        self._add_button("exit", self._close, "exit", None, "x")
+
+    def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = None, key: str = None):
+        if key is not None:
+            self.buttons.append( 
+                {
+                    "key": key,
+                    "text": f"{key}: {text}",
+                    "callback": callback
+                })
+
+    def _show_legend(self, show: bool = True):
+        ...
+
+    def _add_line(self, x, y, name=None):
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
+
+        if name is None: name = f"line {len(self.lines)+1}"
+        self.lines[name] = [x, y]
+
+    def _add_scatter(self, x, y, name=None):
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
+
+        if name is None: name = f"scatter {len(self.scatters)+1}"
+        self.scatters[name] = [x, y]
+
+    def _add_histogram(self, bins, data, name=None):
+        if bins is None:
+            arg = dict()
+        elif isinstance(bins, int):
+            arg = dict(bins=bins)
+        elif isinstance(bins, tuple) and len(bins) == 3:
+            arg = dict(bins=np.arange(bins[0], bins[1], (bins[1]-bins[0])/bins[2]))
+        else:
+            raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
+
+        hist, bin_edges = np.histogram(data, **arg)
+
+        x = np.zeros(2*len(bin_edges))
+        y = np.zeros(2*len(bin_edges))
+        x[0] = bin_edges[0]
+        x[1::2] = bin_edges
+        x[2::2] = bin_edges[1:]
+        y[1:-1:2] = hist
+        y[2:-1:2] = hist
+        
+        if name is None: name = f"histogram {len(self.histograms)+1}"
+        self.histograms[name] = [x, y]
+        
+    def _add_vmarker(self, marker_pos, y_int, name=None):
+        raise NotImplementedError("vmarker not implemented for backend 'uniplot'")
+
+    def _update_line(self, name: str, x: List[float], y: List[float]):
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
+
+        self.lines[name] = [x, y]
+
+    def _update_scatter(self, name: str, x: List[float], y: List[float]):
+        if x is None and y is not None: x = np.arange(len(y))
+        if x is None and y is None: x, y = np.nan, np.nan
+
+        self.scatters[name] = [x, y]
+
+    def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+        ...
+
+    def _update_vmarker(self, name, marker_pos, y_int):
+        raise NotImplementedError("vmarker not implemented for backend 'uniplot'")
+
+    def _set_axes(self, data: dict):
+        if "xaxis" in data.keys():
+            if "label" in data["xaxis"].keys() and data["xaxis"]["label"] is not None:
+                self.axis_labels["x"] = data["xaxis"]["label"]
+            if "scale" in data["xaxis"].keys():
+                self.plt_opt.x_as_log = data["xaxis"]["scale"] == "log"
+            if "range" in data["xaxis"].keys():
+                    self._xrange = data["xaxis"]["range"]
+
+        if "yaxis" in data.keys():
+            if "label" in data["yaxis"].keys() and data["yaxis"]["label"] is not None:
+                self.axis_labels["y"] = data["yaxis"]["label"]
+            if "scale" in data["yaxis"].keys():
+                self.plt_opt.y_as_log = data["yaxis"]["scale"] == "log"
+            if "range" in data["yaxis"].keys():
+                    self.yrange = data["yaxis"]["range"]
+
+        title = ""
+        if self.axis_labels["x"] is not None: 
+            title += "x: " + self.axis_labels["x"]
+        if self.axis_labels["y"] is not None:
+            if self.axis_labels["x"] is not None:
+                title += ", "
+            title += "y: " + self.axis_labels["y"]
+
+        self.plt_opt.title = "\n" + title if title else None
+
+    def _clear(self):
+        # Delete previous plot (if existent) from command line
+        if self._is_visible:
+            nr_lines_to_erase = self.plt_opt.height + 4
+            if self.plt_opt.legend_labels is not None:
+                nr_lines_to_erase += len(self.plt_opt.legend_labels)
+            if self.buttons:
+                nr_lines_to_erase += 1
+            if self.plt_opt.title is not None:
+                nr_lines_to_erase += 2
+            uniplot.plot_elements.erase_previous_lines(nr_lines_to_erase)
+
+    def _show(self):
+        self._is_visible = True
+        self._draw()
+
+    def _update(self):
+        self._clear()
+        self._draw()
+
+    def _close(self, b=None):
+        self._clear()
+        self._is_visible = False
+
+    def _draw(self):
+        if not self._is_visible: return 
+
+        # All plots are drawn identically (using uniplot.plot)
+        # The distinction between line/scatter/histogram arises from the option 'lines'
+        # We collect all x- and y-data in a list as well as the corresponding 'lines' 
+        # options and legend entries
+        xs = [v[0] for v in (list(self.lines.values())
+                             +list(self.scatters.values())
+                             +list(self.histograms.values())
+                             )]
+        ys = [v[1] for v in (list(self.lines.values())
+                             +list(self.scatters.values())
+                             +list(self.histograms.values())
+                             )]
+        
+        self.plt_opt.legend_labels = list(self.lines.keys()) + list(self.scatters.keys()) + list(self.histograms.keys())
+        self.plt_opt.lines = [True]*len(self.lines) + [False]*len(self.scatters) + [True]*len(self.histograms)
+
+        if not xs: return
+
+        # Calculate axis limits (if not set) 
+        # and save in options object (this can later be modified
+        # interactively using keys to zoom/pan)
+        if self._xrange:
+            self.plt_opt.x_min, self.plt_opt.x_max = self._xrange
+        else:
+            minx, maxx = np.min(np.concatenate(xs)), np.max(np.concatenate(xs))
+            xran = maxx - minx
+            self.plt_opt.x_min = minx - 0.01*xran
+            self.plt_opt.x_max = maxx + 0.01*xran
+
+        if self._yrange:
+            self.plt_opt.y_min, self.plt_opt.y_max = self._yrange
+        else:
+            miny, maxy = np.min(np.concatenate(ys)), np.max(np.concatenate(ys))
+            yran = maxy - miny
+            self.plt_opt.y_min = miny - 0.01*yran
+            self.plt_opt.y_max = maxy + 0.01*yran
+
+        n, key = 0, ''
+
+        # Buttons that end the loop (pan/zoom buttons stay in the loop)
+        hot_keys = [b["key"].lower() for b in self.buttons]
+
+        while True:
+            if n > 0: self._clear()
+
+            kwargs = {k: getattr(self.plt_opt, k) for k in ["legend_labels", "x_min", "x_max", "y_min", "y_max", "width", "height", "x_as_log", "y_as_log", "lines", "title"] if getattr(self.plt_opt, k) is not None}
+
+            uniplot.plot(ys, xs, color=True, **kwargs)
+    
+            # If controls are diabled, no looping is necessary (no awaiting inputs)
+            if not self.show_controls: break
+
+            print("Move with S/D/F/E, zoom with I/O, R to reset. ESC/Q to quit.")
+            if self.buttons:
+                print(f"other actions: {', '.join([b['text'] for b in self.buttons])}")
+                
+            # Get key input
+            key = uniplot.getch.getch().lower()
+
+            if key in ["q", "\x1b"] + hot_keys: 
+                # Break out of loop (below, we distinguish between hot
+                # keys and q/ESC)
+                break
+            elif key == "i":
+                self.plt_opt.zoom_in()
+            elif key == "o":
+                self.plt_opt.zoom_out()
+            elif key == "r":
+                self.plt_opt.x_min = minx - 0.01*xran
+                self.plt_opt.x_max = maxx + 0.01*xran
+                self.plt_opt.y_min = miny - 0.01*yran
+                self.plt_opt.y_max = maxy + 0.01*yran
+            elif key == "s":
+                self.plt_opt.shift_view_left()
+            elif key == "f":
+                self.plt_opt.shift_view_right()
+            elif key == "e":
+                self.plt_opt.shift_view_up()
+            elif key == "d":
+                self.plt_opt.shift_view_down()
+
+            n += 1
+
+        # Once we exit the loop, we check if a hot key was responsible for exiting and
+        # call the respective callback if applicable
+        if key in hot_keys: 
+            self.buttons[hot_keys.index(key)]["callback"]()
+
+    def _get_figure(self):
+        return None
+    
+    @property
+    def line_names(self):
+        return list(self.lines.keys())
+    
+    @property
+    def scatter_names(self):
+        return list(self.scatters.keys())
+    
+    @property
+    def histogram_names(self):
+        return list(self.histograms.keys())

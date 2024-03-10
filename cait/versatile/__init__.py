@@ -7,11 +7,13 @@ from .stream import *
 from .plot import *
 from .functions import *
 from .rdt import RDTFile
+from .sim import MockData
 
 __all__ = [
     'apply',
     'combine',
     'merge',
+    'MockData',
     'RDTFile',
     'sample_noise',
     'timestamp_coincidence',

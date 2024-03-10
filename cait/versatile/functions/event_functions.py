@@ -115,7 +115,7 @@ class RemoveBaseline(FncBaseClass):
         else:
             # ATTENTION: This is set only once! (we have to set it here because 
             # previously we didn't know the length of 'event')
-            if self._xdata is None: self._xdata = np.arange(np.array(event).shape[-1])
+            if self._xdata is None: self._xdata = np.linspace(0, 1, np.array(event).shape[-1])
             self._shifted_event = event - self._fit_baseline.model(self._xdata, par)
 
         return self._shifted_event
@@ -137,9 +137,9 @@ class RemoveBaseline(FncBaseClass):
         return dict(line = d)
 
 class BoxCarSmoothing(FncBaseClass):
-    # TODO: implement for multiple channels
     """
     Apply box-car-smoothing (moving average) to a voltage trace.
+    Also works for multiple channels simultaneously.
 
     :param length: Length (in samples) of the moving average. Defaults to 50.
     :type length: int
@@ -151,16 +151,30 @@ class BoxCarSmoothing(FncBaseClass):
         self._length = length
 
     def __call__(self, event):
-        event = np.pad(event, self._length, 'edge')
-        event = 1/self._length * np.convolve(event, np.array([1]).repeat(self._length), 'same')
-        self._smooth_event =  event[self._length:-self._length]
+        n = np.array(event).ndim
+        shape = (n, self._length) if n > 1 else (self._length, )
+        pad = ((0, 0), (self._length, self._length)) if n > 1 else self._length
+
+        event = np.pad(event, pad, 'edge')
+        event = 1/self._length * sp.signal.fftconvolve(event, 
+                                    np.ones(shape), 
+                                    mode="same", 
+                                    axes=-1)
+        self._smooth_event =  event[..., self._length:-self._length]
 
         return self._smooth_event
     
     def preview(self, event):
         self(event)
-        return dict(line = {'event': [None, event],
-                            'smooth event': [None, self._smooth_event]})
+        if np.ndim(event) > 1:
+            d = dict()
+            for i in range(np.ndim(event)):
+                d[f'channel {i}'] = [None, event[i]]
+                d[f'smoothed channel {i}'] = [None, self._smooth_event[i]]
+        else:
+            d = {'event': [None, event],
+                 'after window': [None, self._smooth_event]}
+        return dict(line = d)
    
 class TukeyFiltering(FncBaseClass):
     """
