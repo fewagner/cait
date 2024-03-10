@@ -322,7 +322,7 @@ class Line(Viewer):
                 for line in lines:
                     self.add_line(x=x, y=line)
             else:
-                self.add_line(x=x, y=y)
+                self.add_line(x=x, y=lines)
 
         self.set_xlabel(xlabel)
         self.set_ylabel(ylabel)
@@ -382,7 +382,7 @@ class Scatter(Viewer):
                 for scatter in scatters:
                     self.add_scatter(x=x, y=scatter)
             else:
-                self.add_scatter(x=x, y=y)
+                self.add_scatter(x=x, y=scatters)
 
         self.set_xlabel(xlabel)
         self.set_ylabel(ylabel)
@@ -439,7 +439,7 @@ class Histogram(Viewer):
                 for hist in hists:
                     self.add_histogram(bins=bins, data=hist)
             else:
-                self.add_histogram(bins=bins, data=data)
+                self.add_histogram(bins=bins, data=hists)
 
         self.set_xlabel(xlabel)
         self.set_ylabel(ylabel)
