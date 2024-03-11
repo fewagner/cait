@@ -38,15 +38,17 @@ You can now import the library in Python, e.g.
 
     import cait as ai
 
-**Important Note for JupyterHub on computing clusters:**
+.. note::
+  **Important Note for JupyterHub on computing clusters**
 
-In the past, many users experienced issues with our interactive plotting tools which are based on plotly and ipywidgets. These problems were due to version mismatches between the plotly/ipywidgets packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
+  In the past, many users experienced issues with our interactive plotting tools which are based on plotly and ipywidgets. These problems were due to version mismatches between the plotly/ipywidgets packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
 
-To not run into such issues in the first place, we recommend one of the following approaches:
-- Install cait in the base environment of your computing cluster's JupyterLab. 
-- Install it in a virtual environment (because you want or have to) is also possible but you will have to make sure that the same plotly/ipywidgets versions (which are installed as dependencies of cait) are also present in the base environment. A good practice to ensure this is to always pip-upgrade plotly/ipywidgets to the latest version in both environments. Note that you will potentially have to match these versions every time you upgrade cait.
+  To not run into such issues in the first place, we recommend one of the following approaches:
 
-Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
+  * Install cait in the base environment of your computing cluster's JupyterLab. 
+  * Install it in a virtual environment (because you want or have to) is also possible but you will have to make sure that the same plotly/ipywidgets versions (which are installed as dependencies of cait) are also present in the base environment. A good practice to ensure this is to always pip-upgrade plotly/ipywidgets to the latest version in both environments. Note that you will potentially have to match these versions every time you upgrade cait.
+
+  Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
 
 Version History
 ===============

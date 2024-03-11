@@ -6,6 +6,8 @@ from .viztool import VizTool
 from .limit import *
 from .resources import *
 
+__version__ = "1.2.1"
+
 __all__ = ['EventInterface',
            'DataHandler',
            'ModelHandler',
