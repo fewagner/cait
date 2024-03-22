@@ -154,7 +154,7 @@ class RDTFile:
         
         self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
 
-        self._available_channels = list(set(self._raw_file["detector_nmbr"]))
+        self._available_channels = np.unique(self._raw_file["detector_nmbr"]).tolist()
 
         # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT 
         # If no channels are requested by the user (through __getitem__), the default behavior is such
