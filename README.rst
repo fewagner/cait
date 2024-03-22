@@ -50,6 +50,8 @@ You can now import the library in Python, e.g.
 
   Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
 
+  To learn how to add a virtual environment as a kernel to jupyterlab, refer to `this great reference <https://janakiev.com/blog/jupyter-virtual-envs/>`_.
+
 Version History
 ===============
 

@@ -21,6 +21,8 @@ a beta version.
 
   Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
 
+  To learn how to add a virtual environment as a kernel to jupyterlab, refer to `this great reference <https://janakiev.com/blog/jupyter-virtual-envs/>`_.
+
 Installation from PyPI (recommended)
 ====================================
 
