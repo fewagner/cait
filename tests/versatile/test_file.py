@@ -5,6 +5,7 @@ import h5py
 
 import cait as ai
 import cait.versatile as vai
+from cait.versatile.functions.file import check_file_consistency
 
 from ..fixtures import tempdir, testdata_1D_2D_3D_s_mus, RECORD_LENGTH, SAMPLE_FREQUENCY
 
@@ -86,10 +87,10 @@ def test_file_consistency(tempdir, testdata_1D_2D_3D_s_mus):
         dh.set(group="testgroup", ds=np.ones_like(d1), dtype=dtype)
 
     with pytest.raises(AssertionError):
-        vai.file.check_file_consistency(files=files, 
-                                        src_dir=tempdir.name,
-                                        groups_combine=["group1","group2"], 
-                                        groups_include=["testgroup"])
+        check_file_consistency(files=files, 
+                                src_dir=tempdir.name,
+                                groups_combine=["group1","group2"], 
+                                groups_include=["testgroup"])
 
     # test if exception is raised in case the shapes don't agree
     files = ["2combine1_shape", "2combine2_shape"]
@@ -108,10 +109,10 @@ def test_file_consistency(tempdir, testdata_1D_2D_3D_s_mus):
         dh.set(group="testgroup", ds=np.ones_like(d1))
 
     with pytest.raises(AssertionError):
-        vai.file.check_file_consistency(files=files, 
-                                        src_dir=tempdir.name,
-                                        groups_combine=["group1","group2"], 
-                                        groups_include=["testgroup"])
+        check_file_consistency(files=files, 
+                                src_dir=tempdir.name,
+                                groups_combine=["group1","group2"], 
+                                groups_include=["testgroup"])
         
     # test if exception is raised in case the group/dataset is not present
     files = ["2combine1_ds", "2combine2_ds"]
@@ -131,32 +132,32 @@ def test_file_consistency(tempdir, testdata_1D_2D_3D_s_mus):
         dh.set(group="testgroup", ds=np.ones_like(d1))
 
     with pytest.raises(AssertionError): # not all groups present in all files
-        vai.file.check_file_consistency(files=files, 
-                                        src_dir=tempdir.name,
-                                        groups_combine=["group1","group2"], 
-                                        groups_include=["testgroup"])
+        check_file_consistency(files=files, 
+                                src_dir=tempdir.name,
+                                groups_combine=["group1","group2"], 
+                                groups_include=["testgroup"])
     with pytest.raises(AssertionError): # ds2 in group2 missing from second file
-        vai.file.check_file_consistency(files=files, 
-                                        src_dir=tempdir.name,
-                                        groups_combine=["group2"], 
-                                        groups_include=["testgroup"])
+        check_file_consistency(files=files, 
+                                src_dir=tempdir.name,
+                                groups_combine=["group2"], 
+                                groups_include=["testgroup"])
     with pytest.raises(AssertionError): # include group not present in either file
-        vai.file.check_file_consistency(files=files, 
-                                        src_dir=tempdir.name,
-                                        groups_combine=[], 
-                                        groups_include=["non_existent_group"])
+        check_file_consistency(files=files, 
+                                src_dir=tempdir.name,
+                                groups_combine=[], 
+                                groups_include=["non_existent_group"])
 
 def test_combine(tempdir, testdata_1D_2D_3D_s_mus, dhs):
     d1, d2, *_ = testdata_1D_2D_3D_s_mus
 
     # combine files
     files2combine = [dh.get_filename() for dh in dhs[::2]] # every second starting from 0th
-    vai.file.combine(fname="output_combine",
-                     files=files2combine, 
-                     src_dir=tempdir.name,
-                     out_dir=tempdir.name,
-                     groups_combine=["group1","group2"],
-                     groups_include=["testgroup"])
+    vai.combine(fname="output_combine",
+                files=files2combine, 
+                src_dir=tempdir.name,
+                out_dir=tempdir.name,
+                groups_combine=["group1","group2"],
+                groups_include=["testgroup"])
     
     # validate shapes and dataset contents
     dh = validate("output_combine", tempdir, testdata_1D_2D_3D_s_mus)
@@ -199,12 +200,12 @@ def test_combine(tempdir, testdata_1D_2D_3D_s_mus, dhs):
 def test_merge(tempdir, testdata_1D_2D_3D_s_mus, dhs):
     # merge files
     files2merge = [dh.get_filename() for dh in dhs[1::2]] # every second starting from first
-    vai.file.merge(fname="output_merge",
-                        files=files2merge, # every second starting from first
-                        src_dir=tempdir.name,
-                        out_dir=tempdir.name, 
-                        groups_merge=["group1","group2"], 
-                        groups_include=["testgroup"])
+    vai.merge(fname="output_merge",
+                files=files2merge, # every second starting from first
+                src_dir=tempdir.name,
+                out_dir=tempdir.name, 
+                groups_merge=["group1","group2"], 
+                groups_include=["testgroup"])
     
     # validate shapes and dataset contents
     dh = validate("output_merge", tempdir, testdata_1D_2D_3D_s_mus)

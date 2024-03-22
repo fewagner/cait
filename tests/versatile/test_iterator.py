@@ -2,9 +2,11 @@ import pytest
 import numpy as np
 
 import cait as ai
-from cait.versatile.stream import Stream
-from cait.versatile.iterators import H5Iterator, RDTIterator, StreamIterator, MockIterator, apply
-from cait.versatile import RDTFile, MockData
+from cait.versatile import Stream, RDTFile, MockData, apply
+from cait.versatile.iterators.impl_h5 import H5Iterator
+from cait.versatile.iterators.impl_rdt import RDTIterator
+from cait.versatile.iterators.impl_stream import StreamIterator
+from cait.versatile.iterators.impl_mock import MockIterator
 
 from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus, RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY
 
