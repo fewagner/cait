@@ -26,7 +26,7 @@ DATA = dict(
 
 def test_not_implemented():
     with pytest.raises(NotImplementedError):
-        vai.plot.Viewer(backend="other_backend")
+        vai.Viewer(backend="other_backend")
 
 class TestViewerPlotly:
     BACKEND = "plotly"
@@ -34,15 +34,15 @@ class TestViewerPlotly:
     TEMPLATE = "seaborn"
 
     def test_basic(self):
-        vai.plot.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, 
+        vai.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, 
                         template=self.TEMPLATE)
-        vai.plot.Viewer(data=DATA, backend=self.BACKEND, 
+        vai.Viewer(data=DATA, backend=self.BACKEND, 
                         show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Viewer(data=DATA, backend=self.BACKEND, 
+        vai.Viewer(data=DATA, backend=self.BACKEND, 
                         show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
 
     def test_add_update(self):
-        v = vai.plot.Viewer(backend=self.BACKEND, 
+        v = vai.Viewer(backend=self.BACKEND, 
                             show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
         v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
         v.add_scatter(x=DATA["scatter"]["scatter1"][0], 
@@ -57,7 +57,7 @@ class TestViewerPlotly:
         v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
 
     def test_getter_setter(self):
-        v = vai.plot.Viewer(backend=self.BACKEND, 
+        v = vai.Viewer(backend=self.BACKEND, 
                             show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
         v.get_figure()
 
@@ -70,7 +70,7 @@ class TestViewerPlotly:
         v.set_yscale("log")
 
     def test_legend(self):
-        v = vai.plot.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
+        v = vai.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                             template=self.TEMPLATE)
         v.show_legend(True)
         v.show_legend(False)
@@ -80,7 +80,7 @@ class TestViewerMPL(TestViewerPlotly):
     TEMPLATE = "seaborn-v0_8"
 
     def test_legend(self):
-        v = vai.plot.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
+        v = vai.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                             template=self.TEMPLATE)
         v.show_legend(True)
 
@@ -101,32 +101,32 @@ class TestLinePlotly:
     TEMPLATE = "seaborn"
 
     def test_basic(self):
-        vai.plot.Line(y=DATA["line"]["line1"][1], 
+        vai.Line(y=DATA["line"]["line1"][1], 
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, 
                       template=self.TEMPLATE)
-        vai.plot.Line(x=DATA["line"]["line1"][0], 
+        vai.Line(x=DATA["line"]["line1"][0], 
                       y=DATA["line"]["line1"][1], 
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, 
                       template=self.TEMPLATE)
-        vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()},
+        vai.Line(y={name: data[1] for name, data in DATA["line"].items()},
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                       template=self.TEMPLATE)
-        vai.plot.Line(y={name: data[1] for name, data in DATA["line"].items()},
+        vai.Line(y={name: data[1] for name, data in DATA["line"].items()},
                       xscale="log" if self.ALLOW_LOG else "linear", 
                       yscale="log" if self.ALLOW_LOG else "linear", 
                       xlabel="xlabel", 
                       ylabel="ylabel",
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                       template=self.TEMPLATE)
-        vai.plot.Line(y=DATA["line"]["line1"][1], 
+        vai.Line(y=DATA["line"]["line1"][1], 
                       template=self.TEMPLATE, 
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                       xrange=(10,20),
                       yrange=(10,20))
-        vai.plot.Line([DATA["line"]["line1"][1], DATA["line"]["line1"][1]], 
+        vai.Line([DATA["line"]["line1"][1], DATA["line"]["line1"][1]], 
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                       template=self.TEMPLATE)
-        vai.plot.Line({"line": [x, DATA["line"]["line1"][1]]}, 
+        vai.Line({"line": [x, DATA["line"]["line1"][1]]}, 
                       backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                       template=self.TEMPLATE)
 
@@ -146,25 +146,25 @@ class TestScatterPlotly:
     TEMPLATE = "seaborn"
 
     def test_basic(self):
-        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Scatter(x=DATA["scatter"]["scatter1"][0],
+        vai.Scatter(y=DATA["scatter"]["scatter1"][1], backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        vai.Scatter(x=DATA["scatter"]["scatter1"][0],
                          y=DATA["scatter"]["scatter1"][1], backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()}, 
+        vai.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()}, 
                          backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()},
+        vai.Scatter(y={name: data[1] for name, data in DATA["scatter"].items()},
                          xscale="log" if self.ALLOW_LOG else "linear", 
                          yscale="log" if self.ALLOW_LOG else "linear", 
                          xlabel="xlabel", 
                          ylabel="ylabel", 
                          backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Scatter(y=DATA["scatter"]["scatter1"][1], 
+        vai.Scatter(y=DATA["scatter"]["scatter1"][1], 
                          template=self.TEMPLATE,
                          backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                          xrange=(10,20),
                          yrange=(10,20))
-        vai.plot.Scatter([DATA["line"]["line1"][1], DATA["line"]["line1"][1]],
+        vai.Scatter([DATA["line"]["line1"][1], DATA["line"]["line1"][1]],
                          backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Scatter({"line": [x, DATA["line"]["line1"][1]]},
+        vai.Scatter({"line": [x, DATA["line"]["line1"][1]]},
                          backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
 
 class TestScatterMPL(TestScatterPlotly):
@@ -183,19 +183,19 @@ class TestHistogramPlotly:
     ALLOW_LOG = True
 
     def test_basic(self):
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, 
+        vai.Histogram(data=DATA["scatter"]["scatter1"][1], backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        vai.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, 
                            backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(0,1,10),
+        vai.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(0,1,10),
                            backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Histogram(data=dict(first=DATA["scatter"]["scatter1"][1],
+        vai.Histogram(data=dict(first=DATA["scatter"]["scatter1"][1],
                                      second=DATA["scatter"]["scatter2"][1]), 
                            bins=(0,1,10), 
                            backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, 
+        vai.Histogram(data=DATA["scatter"]["scatter1"][1], bins=10, 
                            template=self.TEMPLATE, backend=self.BACKEND, 
                            show_controls=self.SHOW_CONTROLS)
-        vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], 
+        vai.Histogram(data=DATA["scatter"]["scatter1"][1], 
                            xscale="log" if self.ALLOW_LOG else "linear", 
                            yscale="log" if self.ALLOW_LOG else "linear", 
                            xlabel="xlabel", 
@@ -204,14 +204,14 @@ class TestHistogramPlotly:
                            template=self.TEMPLATE,
                            xrange=(10,20),
                            yrange=(10,20))
-        vai.plot.Histogram([DATA["line"]["line1"][1], DATA["line"]["line1"][1]], 
+        vai.Histogram([DATA["line"]["line1"][1], DATA["line"]["line1"][1]], 
                             backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
         
         with pytest.raises(TypeError):
-            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins="nonsense", 
+            vai.Histogram(data=DATA["scatter"]["scatter1"][1], bins="nonsense", 
                                backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
         with pytest.raises(TypeError):
-            vai.plot.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2), 
+            vai.Histogram(data=DATA["scatter"]["scatter1"][1], bins=(1,2), 
                                backend=self.BACKEND, show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
 
 class TestHistogramMPL(TestHistogramPlotly):

@@ -1,100 +1,14 @@
 import os
-import re
+
 from typing import Union
 
 import numpy as np
 import cait as ai
 
-from .iterators import RDTIterator
+from .par_file import PARFile
+from ..datasourcebase import DataSourceBaseClass
+from ...iterators.impl_rdt import RDTIterator
 
-# Would be cool to input parameters manually in case we don't have a PAR file. 
-# This should go directly into this class so that higher level classes don't have to handle it.
-class PARFile:
-    def __init__(self, arg: Union[str, dict]):
-        # if isinstance(arg, str):
-        if not arg.endswith(".par"):
-            raise ValueError("Unrecognized file extension. Please input a *.par file.")
-        
-        with open(arg, "r") as f:
-            s = f.read()
-
-        match = re.findall("Timeofday at start\s*\[s\].*Timeofday at start\s*\[us\].*Timeofday at stop\s*\[s\].*Timeofday at stop\s*\[us\].*Measuring time\s*\[h\].*Integers in header.*Unsigned longs in header.*Reals in header.*DVM channels.*Record length.*Time base\s*\[us\]", s, re.DOTALL)
-        if not match:
-            raise ValueError("Unable to extract data from file.")
-        
-        self.s = s
-        # elif isinstance(arg, dict):
-        #     if not all([['start_s', 
-        #                  'start_us', 
-        #                  'stop_s', 
-        #                  'stop_us', 
-        #                  'measuring_time_h', 
-        #                  'ints_in_header', 
-        #                  'uslongs_in_header',
-        #                  'reals_in_header',
-        #                  'dvm_channels',
-        #                  'record_length',
-        #                  'records_written',
-        #                  'time_base_us']])
-        # else:
-        #     raise NotImplementedError(f"Unrecognized input type '{type(arg)}'.")
-
-    @property
-    def start_s(self):
-        return int(re.findall("Timeofday at start\s*\[s\]\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def start_us(self):
-        return int(re.findall("Timeofday at start\s*\[us\]\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def stop_s(self):
-        return int(re.findall("Timeofday at stop\s*\[s\]\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def stop_us(self):
-        return int(re.findall("Timeofday at stop\s*\[us\]\s*:\s+(\d+)", self.s)[0])
-    
-    @property
-    def measuring_time_h(self):
-        return float(re.findall("Measuring time\s*\[h\]\s*:\s+([0-9]*[.]?[0-9]+)", self.s)[0])
-
-    @property
-    def ints_in_header(self):
-        return int(re.findall("Integers in header\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def uslongs_in_header(self):
-        return int(re.findall("Unsigned longs in header\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def reals_in_header(self):
-        return int(re.findall("Reals in header\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def dvm_channels(self):
-        return int(re.findall("DVM channels\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def record_length(self):
-        return int(re.findall("Record length\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def records_written(self):
-        return int(re.findall("Records written\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def time_base_us(self):
-        return int(re.findall("Time base\s*\[us\]\s*:\s+(\d+)", self.s)[0])
-
-    @property
-    def has_channel_names(self):
-        return bool(self.channel_names)
-    
-    @property
-    def channel_names(self):
-        return {int(i[0])-1: i[1] for i in re.findall("ch(\d+): (.+)", self.s)}
-    
 class RDTFile:
     """
     Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object with channel indices/names or tuples thereof, the result of the indexing is a :class:`RDTChannel` object which provides testpulse amplitudes, timestamps, and event iterators for (the) selected channel(s) (see documentation for :class:`RDTChannel`).
@@ -154,7 +68,7 @@ class RDTFile:
         
         self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
 
-        self._available_channels = list(set(self._raw_file["detector_nmbr"]))
+        self._available_channels = np.unique(self._raw_file["detector_nmbr"]).tolist()
 
         # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT 
         # If no channels are requested by the user (through __getitem__), the default behavior is such
@@ -357,7 +271,7 @@ class RDTFile:
     #     # Create an RDTChannel instance for the default channels and return its event_iterator
     #     return self[self._default_channels].get_event_iterator()
         
-class RDTChannel:
+class RDTChannel(DataSourceBaseClass):
     """
     Object representing a coherent part of an RDTFile (i.e. either a single channel or correlated channels). Usually this is not created as a standalone but the result of slicing an RDTFile.
 

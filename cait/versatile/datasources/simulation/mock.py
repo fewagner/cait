@@ -1,12 +1,10 @@
 import numpy as np
 
-from .iterators import MockIterator
-from ..fit._templates import pulse_template
+from ..datasourcebase import DataSourceBaseClass
+from ...iterators.impl_mock import MockIterator
+from ....fit._templates import pulse_template
 
-class EBPulseSim:
-    ...
-    
-class MockData:
+class MockData(DataSourceBaseClass):
     """
     Class to generate quick mock pulse traces (2 channels). 
 
