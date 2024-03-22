@@ -18,8 +18,9 @@ from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
-from .versatile.file import ds_source_available
-from .versatile.iterators import H5Iterator, IteratorBaseClass
+from .versatile.functions.file import ds_source_available
+from .versatile.iterators.impl_h5 import H5Iterator
+from .versatile.iterators.iteratorbase import IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 

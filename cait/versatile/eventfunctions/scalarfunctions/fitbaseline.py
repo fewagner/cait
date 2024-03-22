@@ -1,10 +1,10 @@
-from typing import List, Union
+from typing import Union, List
 import warnings
 
 import numpy as np
 from scipy.optimize import curve_fit
 
-from .abstract_functions import FitFncBaseClass
+from ..functionbase import FitFncBaseClass
 
 # We do not use scipy's parameter error estimation anyways so we can suppress this warning
 warnings.filterwarnings("ignore", "Covariance of the parameters could not be estimated")
@@ -145,49 +145,3 @@ class FitBaseline(FitFncBaseClass):
                  'fit': [self._xdata, fit]}
             
         return dict(line = d)
-    
-class ArrayFit(FitFncBaseClass):
-    """
-    
-    """
-    def __init__(self, sev: np.ndarray):
-        raise NotImplementedError
-        self._sev = np.array(sev)
-
-    def __call__(self, event):
-        self._fitted_sev = None
-        self._height = None
-        self._rms = None
-
-        return self._height, self._rms
-    
-    def model(self, x: List, par: List):
-        """
-        
-        """
-        ...
-    
-    def preview(self, event):
-        self(event)
-        return dict(line={'event': [None, event],
-                          'fitted sev': [None, self._fitted_sev]
-                          })
-
-class SEVFit(FitFncBaseClass):
-    """
-    
-    """
-    def __init__(self):
-        raise NotImplementedError
-
-    def __call__(self, event):
-        ...
-    
-    def model(self, x: List, par: List):
-        """
-        
-        """
-        ...
-    
-    def preview(self, event):
-        ...

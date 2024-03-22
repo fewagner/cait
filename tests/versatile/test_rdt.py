@@ -1,7 +1,9 @@
 import pytest
 
 import cait as ai
-from cait.versatile.rdt import RDTFile, PARFile
+from cait.versatile.datasources.hardwaretriggered.rdt_file import RDTFile
+from cait.versatile.datasources.hardwaretriggered.par_file import PARFile
+
 
 from ..fixtures import tempdir, RDT_LENGTH
 
