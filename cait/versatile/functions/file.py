@@ -2,7 +2,7 @@ import os
 import h5py
 from typing import List
 
-from ..styles._print_styles import sizeof_fmt
+from ...styles._print_styles import sizeof_fmt
 
 def ds_source_available(file: h5py.File, group: str, dataset: str):
     """

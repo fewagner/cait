@@ -5,7 +5,7 @@ def test_timestamp_coincidence_standard():
     a = np.array([10, 20, 30, 40])
     b = np.array([1, 11, 35, 42, 45])
 
-    inside, coincidence_ind, outside = vai.utils.timestamp_coincidence(a, b, (-1,2))
+    inside, coincidence_ind, outside = vai.timestamp_coincidence(a, b, (-1,2))
     assert np.array_equal(inside, np.array([1]))
     assert np.array_equal(outside, np.array([0,2,3,4]))
     assert np.array_equal(coincidence_ind, np.array([0]))
@@ -13,7 +13,7 @@ def test_timestamp_coincidence_standard():
     assert np.array_equal(b[outside], np.array([1,35,42,45]))
     assert np.array_equal(a[coincidence_ind], np.array([10]))
 
-    inside, coincidence_ind, outside = vai.utils.timestamp_coincidence(a, b, (-1,3))
+    inside, coincidence_ind, outside = vai.timestamp_coincidence(a, b, (-1,3))
     assert np.array_equal(inside, np.array([1,3]))
     assert np.array_equal(outside, np.array([0,2,4]))
     assert np.array_equal(coincidence_ind, np.array([0,3]))
@@ -25,7 +25,7 @@ def test_timestamp_coincidence_all_negative():
     a = np.array([10, 20, 30, 40])
     b = np.array([7, 8, 11, 35, 42, 45])
 
-    inside, coincidence_ind, outside = vai.utils.timestamp_coincidence(a, b, (-3,-1))
+    inside, coincidence_ind, outside = vai.timestamp_coincidence(a, b, (-3,-1))
     assert np.array_equal(b[inside], np.array([7,8]))
     assert np.array_equal(b[outside], np.array([11,35,42,45]))
     assert np.array_equal(a[coincidence_ind], np.array([10,10]))

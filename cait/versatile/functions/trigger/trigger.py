@@ -3,8 +3,8 @@ from typing import Union, List, Callable
 import numpy as np
 from tqdm.auto import tqdm
 
-from ..functions import RemoveBaseline
-from .stream import StreamBaseClass
+from ...eventfunctions.processing.removebaseline import RemoveBaseline
+from ...datasources.stream.streambase import StreamBaseClass
 
 ####################################################
 ### FUNCTIONS IN THIS FILE HAVE NO TESTCASES YET ###
