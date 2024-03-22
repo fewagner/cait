@@ -4,12 +4,14 @@ from typing import Union, Any
 from abc import ABC, abstractmethod
 
 import numpy as np
+# import scipy as sp
 
 from ..iterators import IteratorBaseClass, apply
 from ..functions import OptimumFiltering, RemoveBaseline
 from ..plot import Line
 
 from ...data import write_xy_file
+# from ...fit._templates import pulse_template
 
 class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     def __repr__(self):
@@ -220,10 +222,11 @@ class SEV(ArrayWithBenefits):
         if self._n_channels == 0:
             raise Exception("Nothing to plot.")
         
-        if dt is not None:
-            if 'x' not in kwargs.keys():
-                n = self.shape[-1]
-                kwargs['x'] = dt/1000*(np.arange(n) - int(n/4))
+        if 'x' not in kwargs.keys():
+            if dt is not None:
+                kwargs['x'] = dt/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
+            else:
+                kwargs['x'] = np.arange(self.shape[-1])
             
         if 'xlabel' not in kwargs.keys():
             if dt is not None: 
@@ -235,11 +238,50 @@ class SEV(ArrayWithBenefits):
             y = dict()
             for i, channel in enumerate(self._array):
                 y[f'channel {i}'] = channel
+                # if hasattr(self, "_fit_pars"):
+                #     y[f'channel {i} fit'] = self.fit_model[i](kwargs['x'])
         else:
+            # if hasattr(self, "_fit_pars"):
+            #     y = dict(event=self._array, fit=self.fit_model(kwargs['x']))
+            # else:
+            #     y = self._array
             y = self._array
 
         return Line(y, **kwargs)
 
+ # Unfinished   
+    # def fit(self, t: np.ndarray, n_comp: int = 2, **kwargs):
+    #     if "p0" not in kwargs.keys():
+    #         kwargs["p0"] = [0, 
+    #                         *[1/10**k for k in range(n_comp)], 
+    #                         *[100/10**(k+1) for k in range(n_comp+1)]
+    #                         ]
+
+    #     if self._n_channels > 1:
+    #         self._fit_pars = []
+    #         for channel in self._array:
+    #             pars, _ = sp.optimize.curve_fit(pulse_template, t, channel, **kwargs)
+    #             self._fit_pars.append(pars)
+    #     else:
+    #         self._fit_pars, _ = sp.optimize.curve_fit(pulse_template, t, self._array, **kwargs)
+
+    # @property
+    # def fit_pars(self):
+    #     if not hasattr(self, "_fit_pars"):
+    #         raise KeyError("No fit parameters are available. Make sure to fit the SEV first.")
+        
+    #     return self._fit_pars
+    
+    # @property
+    # def fit_model(self):
+    #     if self._n_channels > 1:
+    #         models = []
+    #         for fp in self.fit_pars:
+    #             models.append(lambda t: pulse_template(t, *fp))
+    #         return models
+    #     else:
+    #         return lambda t: pulse_template(t, *self.fit_pars)
+        
     @property
     def _array(self):
         return self._sev
