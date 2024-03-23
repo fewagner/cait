@@ -7,11 +7,24 @@ from .backends.helper import auto_backend
 
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
+    For convenience, the axis properties can alternatively be set as keyword arguments, too, and will override the axis properties contained in the dictionary.
 
     :param data: Data dictionary containing line/scatter/axes information (see below), defaults to None
     :type data: dict, optional
     :param backend: The backend to use for the plot. Either of ['plotly', 'mpl', 'uniplot', 'auto'], i.e. plotly, matplotlib or uniplot (command line based), defaults to 'auto' which uses 'plotly' in notebooks and 'uniplot' otherwise.
     :type backend: str, optional
+    :param xlabel: x-label for the plot.
+    :type xlabel: str, optional
+    :param ylabel: y-label for the plot.
+    :type ylabel: str, optional
+    :param xscale: x-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
+    :type xscale: str, optional
+    :param yscale: y-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
+    :type yscale: str, optional
+    :param xrange: x-range for the plot. A tuple of (xmin, xmax), defaults to None, i.e. auto-scaling.
+    :type xrange: tuple, optional
+    :param yrange: y-range for the plot. A tuple of (ymin, ymax), defaults to None, i.e. auto-scaling.
+    :type yrange: tuple, optional
 
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'seaborn' for `backend=mpl`. `template` has no effect for backend 'uniplot'.
     :type template: str, optional
@@ -51,7 +64,17 @@ class Viewer():
                     }
                 }
     """
-    def __init__(self, data=None, backend="auto", **kwargs):
+    def __init__(self, 
+                 data=None, 
+                 backend="auto", 
+                 xlabel: str = None, 
+                 ylabel: str = None, 
+                 xscale: str = None, 
+                 yscale: str = None, 
+                 xrange: tuple = None, 
+                 yrange: tuple = None, 
+                 **kwargs):
+
         if backend=="auto": backend = auto_backend()
 
         if backend=="plotly":
@@ -68,6 +91,13 @@ class Viewer():
         if data is not None: 
             self.plot(data)  
             self.show()
+
+        if xlabel: self.set_xlabel(xlabel)
+        if ylabel: self.set_ylabel(ylabel)
+        if xscale: self.set_xscale(xscale)
+        if yscale: self.set_yscale(yscale)
+        if xrange: self.set_xrange(xrange)
+        if yrange: self.set_yrange(yrange)
 
     def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
         self.fig_widget._add_button(text, callback, tooltip, where, key)

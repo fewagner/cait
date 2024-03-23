@@ -10,6 +10,16 @@ import numpy as np
 from .backendbase import BackendBaseClass
 from .helper import EmptyRep
 
+# Helper function to make seaborn style consistent also
+# in newer matplotlib versions
+def _correct_seaborn_styles(style: str):
+    if not style.startswith("seaborn"): 
+        return style
+    elif style.startswith("seaborn-v0_8"): 
+        return style
+    else:
+        return "seaborn-v0_8" + style.split("seaborn")[-1]
+
 class BaseClassMPL(BackendBaseClass):
     """
     Base Class for plots using the `matplotlib` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
@@ -64,6 +74,13 @@ class BaseClassMPL(BackendBaseClass):
         self._histogram_names = list()
         self.heatmap_names = list()
 
+        # To catch the missing seaborn styles in newer matplotlib versions
+        if type(template) is str:
+            template = _correct_seaborn_styles(template)
+        if type(template) is list:
+            template = [_correct_seaborn_styles(t) for t in template]
+            
+        # Special styles
         if type(template) is str and template == "science":
             template = "cait.styles.science"
         elif type(template) is str and template == "cait":
