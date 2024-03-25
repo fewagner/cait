@@ -3,6 +3,9 @@ import numpy as np
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_mock import MockIterator
 from ....fit._templates import pulse_template
+from ...analysisobjects.sev import SEV
+from ...analysisobjects.nps import NPS
+from ...analysisobjects.of import OF
 
 class MockData(DataSourceBaseClass):
     """
@@ -84,6 +87,19 @@ class MockData(DataSourceBaseClass):
         out =  off + ph*self._template[None,...] + np.reshape(noise, (len(inds), self.n_channels, self._record_length))
 
         return out[:, channel]
+    
+    @property
+    def sev(self):
+        return SEV(self._template)
+
+    @property
+    def nps(self):
+        rand = np.random.normal(size=(2, self.n_channels*self._record_length//2))
+        return NPS(np.abs(np.fft.rfft(rand))**2)
+    
+    @property
+    def of(self):
+        return OF(self.sev, self.nps)
 
     @property
     def n_events(self):

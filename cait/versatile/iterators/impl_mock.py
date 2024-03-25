@@ -60,7 +60,12 @@ class MockIterator(IteratorBaseClass):
 
             out = self._mock.get_event(event_inds_in_batch, self._channels)
 
-            return out if self.uses_batches else np.squeeze(out)
+            if not self.uses_batches or self.n_channels == 1:
+                out = np.squeeze(out)
+            if self.uses_batches and out.ndim == 1:
+                out = out[None,:]
+
+            return out
         else:
             raise StopIteration
         

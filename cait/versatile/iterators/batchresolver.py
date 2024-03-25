@@ -40,7 +40,12 @@ class BatchResolver:
                 # If the result is a tuple, it is repackaged so that it
                 # has the same shape as for "none". Otherwise, the 
                 # numpy array is returned directly
-                if isinstance(result, tuple): return list(zip(*result))
+                if isinstance(result, tuple):
+                    # The except case happens when there is only a single event
+                    # in the batch
+                    try: return list(zip(*result))
+                    except TypeError: return [result]
+
                 else: return result
             
             # If batch has multiple channels, we reshape the array to mimic
@@ -55,14 +60,22 @@ class BatchResolver:
             # If function returns tuple (e.g. fit result and rms),
             # we have to repackage it again
             if isinstance(result, tuple):
-                temp = [np.squeeze(
-                            np.reshape(
-                                x, (n_events, 
-                                    self._n_channels, 
+                if self._n_channels == 1:
+                    temp = [np.reshape(
+                                x, (n_events,
                                     np.array(x).size//n_events//self._n_channels
                                     )
-                            )
-                        )[()] for x in result]
+                                ) for x in result]
+                    temp = [np.reshape(x, x.shape[:-1]) for x in temp if x.shape[-1] == 1]
+                else:
+                    temp = [np.reshape(
+                                x, (n_events, 
+                                    self._n_channels, # this is different
+                                    np.array(x).size//n_events//self._n_channels
+                                    )
+                                ) for x in result]
+                    temp = [np.reshape(x, x.shape[:-1]) for x in temp if x.shape[-1] == 1]
+                
                 return list(zip(*temp))
 
             # If the result is a numpy array, we can just reshape and return it
