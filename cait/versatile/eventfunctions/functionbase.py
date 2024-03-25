@@ -17,6 +17,16 @@ class FncBaseClass(ABC):
     @abstractmethod
     def __call__(self, event):
         ...
+
+    @property
+    @abstractmethod
+    def batch_support(self):
+        """
+        Returns 'trivial' if function can process all given event traces at a time in an uncorrelated manner, i.e. different channels are treated equally.
+        Returns 'full' if batches (possibly with multiple channels, too) can be processed at once.
+        Returns 'none' if batches are not supported.
+        """
+        ...
     
     def preview(self, event) -> dict:
         raise NotImplementedError(f"{self.__class__.__name__} does not support preview.")

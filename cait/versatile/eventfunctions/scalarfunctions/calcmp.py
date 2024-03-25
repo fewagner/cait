@@ -126,6 +126,9 @@ class CalcMP(FncBaseClass):
                     (np.squeeze((self._t_end - self._t_decaystart)*self._dt_us/1000))[()], # decay time (ms)
                     (np.squeeze(self._lin_drift*length))[()]                               # slope (V)
                     )
+    @property
+    def batch_support(self):
+        return 'trivial'
     
     def preview(self, event) -> dict:
         self(event)

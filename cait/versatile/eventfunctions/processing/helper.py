@@ -16,6 +16,10 @@ class Unity(FncBaseClass):
     def __call__(self, event):
         return event
     
+    @property
+    def batch_support(self):
+        return 'trivial'
+    
     def preview(self, event):
         if event.ndim > 1:
             lines = {f'channel {k}': [self._t, ev] for k, ev in enumerate(event)}
@@ -38,3 +42,7 @@ class Lags(FncBaseClass):
         lags = sp.signal.correlation_lags(self._ref_event.size, event.size, mode="full")
         self._lag = lags[np.argmax(corr)]
         return self._lag
+    
+    @property
+    def batch_support(self):
+        return 'none'
