@@ -83,7 +83,7 @@ class MockData(DataSourceBaseClass):
 
         out =  off + ph*self._template[None,...] + np.reshape(noise, (len(inds), self.n_channels, self._record_length))
 
-        return np.squeeze(out[:, channel])[()]
+        return out[:, channel]
 
     @property
     def n_events(self):

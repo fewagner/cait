@@ -68,6 +68,4 @@ class BatchResolver:
             # If the result is a numpy array, we can just reshape and return it
             missing_dim = result.size//n_events//self._n_channels
 
-            return np.squeeze(
-                result.reshape(n_events, self._n_channels, missing_dim)
-                )[()]
+            return result.reshape(n_events, self._n_channels, missing_dim)

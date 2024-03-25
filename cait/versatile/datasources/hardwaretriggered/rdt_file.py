@@ -311,7 +311,7 @@ class RDTChannel(DataSourceBaseClass):
         else:
             requested_events = self._inds[..., val].T
 
-        return np.squeeze(self._rdt_file.get_voltage_trace(requested_events))[()]
+        return self._rdt_file.get_voltage_trace(requested_events)
     
     @property
     def key(self):
