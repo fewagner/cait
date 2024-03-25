@@ -266,6 +266,60 @@ class TestStreamIterator:
                                     inds=inds,
                                     record_length=2**15,
                                     alignment=1/2))
+        
+    def test_batches_singleCh(self, testdata):
+        stream, *_ = testdata
+
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
+        
+        basic_checks(StreamIterator(stream=stream,
+                                    keys="mock_001_Ch0",
+                                    inds=inds[:25],
+                                    record_length=2**13,
+                                    batch_size=13))
+        
+        it = StreamIterator(stream=stream,
+                            keys="mock_001_Ch0",
+                            inds=inds[:25],
+                            record_length=2**13,
+                            batch_size=13)
+        it2 = StreamIterator(stream=stream,
+                            keys="mock_001_Ch0",
+                            inds=inds[:25],
+                            record_length=2**13)
+
+        for n, i in enumerate(it):
+            if n == 0: assert i.shape == (13, 2**13)
+            elif n == 1: assert i.shape == (12, 2**13)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_batches_multiCh(self, testdata):
+        stream, *_ = testdata
+
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
+        
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    inds=inds[:25],
+                                    record_length=2**13,
+                                    batch_size=13))
+        
+        it = StreamIterator(stream=stream,
+                            keys=["mock_001_Ch0","mock_001_Ch1"],
+                            inds=inds[:25],
+                            record_length=2**13,
+                            batch_size=13)
+        it2 = StreamIterator(stream=stream,
+                            keys=["mock_001_Ch0","mock_001_Ch1"],
+                            inds=inds[:25],
+                            record_length=2**13)
+
+        for n, i in enumerate(it):
+            if n == 0: assert i.shape == (13, 2, 2**13)
+            elif n == 1: assert i.shape == (12, 2, 2**13)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
 
 class TestRDTIterator:
     def test_basic(self, testdata):
@@ -276,6 +330,38 @@ class TestRDTIterator:
         basic_checks(RDTIterator(rdt_channel=f[(0,1)], channels=(0,1)))
         basic_checks(RDTIterator(rdt_channel=f[1]))
         basic_checks(RDTIterator(rdt_channel=f[1], channels=1))
+
+    def test_batches_singleCh(self, testdata):
+        _, f, *_ = testdata
+
+        basic_checks(RDTIterator(rdt_channel=f[0], batch_size=13))
+        
+        it = RDTIterator(rdt_channel=f[0], batch_size=13)
+        it2 = RDTIterator(rdt_channel=f[0])
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_batches_multiCh(self, testdata):
+        _, f, *_ = testdata
+
+        basic_checks(RDTIterator(rdt_channel=f[(0,1)], batch_size=13))
+        
+        it = RDTIterator(rdt_channel=f[(0,1)], batch_size=13)
+        it2 = RDTIterator(rdt_channel=f[(0,1)])
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, 2, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, 2, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
         
 class TestIteratorCollection:
     def test_basic(self, dh, testdata):
@@ -299,3 +385,35 @@ class TestMockIterator:
         basic_checks(MockIterator(mock=mock))
         basic_checks(MockIterator(mock=mock, channels=0))
         basic_checks(MockIterator(mock=mock, channels=(0,1)))
+
+    def test_batches_singleCh(self):
+        mock = MockData()
+
+        basic_checks(MockIterator(mock=mock, batch_size=13)[0])
+        
+        it = MockIterator(mock=mock, batch_size=13)[0]
+        it2 = MockIterator(mock=mock)[0]
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_batches_multiCh(self):
+        mock = MockData()
+
+        basic_checks(MockIterator(mock=mock, batch_size=13))
+        
+        it = MockIterator(mock=mock, batch_size=13)
+        it2 = MockIterator(mock=mock)
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, 2, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, 2, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
