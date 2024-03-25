@@ -44,6 +44,10 @@ class RemoveBaseline(FncBaseClass):
             self._shifted_event = event - self._fit_baseline.model(self._xdata, par)
 
         return self._shifted_event
+    
+    @property
+    def batch_support(self):
+        return 'trivial'
         
     def preview(self, event) -> dict:
         self(event)

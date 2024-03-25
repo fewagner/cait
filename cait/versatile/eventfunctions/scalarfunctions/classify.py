@@ -33,6 +33,10 @@ class AIClassifyBool(FncBaseClass):
         self._prediction = self._model.predict({"event_ch0": event}).numpy().astype(bool)
         return self._prediction[0] if self._prediction.size == 1 else self._prediction
     
+    @property
+    def batch_support(self):
+        return 'trivial'
+    
     def preview(self, event):
         self(event)
         x = np.arange(event.shape[-1])
@@ -67,6 +71,10 @@ class AIClassifyProb(FncBaseClass):
     def __call__(self, event):
         self._prediction = np.exp(self._model.get_prob({"event_ch0": event}).numpy()[:,1])
         return self._prediction[0] if self._prediction.size == 1 else self._prediction
+    
+    @property
+    def batch_support(self):
+        return 'trivial'
     
     def preview(self, event):
         self(event)

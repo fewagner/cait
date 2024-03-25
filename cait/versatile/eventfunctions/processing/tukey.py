@@ -21,6 +21,10 @@ class TukeyFiltering(FncBaseClass):
         self._new_event = event*tukey(event.shape[-1], alpha=self._alpha)
         return self._new_event
     
+    @property
+    def batch_support(self):
+        return 'trivial'
+    
     def preview(self, event) -> dict:
         self(event)
         if np.ndim(event) > 1:

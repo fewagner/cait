@@ -304,7 +304,14 @@ class RDTChannel(DataSourceBaseClass):
     
     def __getitem__(self, val):
         """Return voltage traces of events. Any numpy indexing can be used as if it was an array of shape (n_channels, n_events)."""
-        return self._rdt_file.get_voltage_trace(self._inds[val])
+        if isinstance(val, tuple):
+            if len(val) != 2: 
+                raise ValueError("Indexing only supports up to two arguments.")
+            requested_events = self._inds[val[0]][...,val[1]].T
+        else:
+            requested_events = self._inds[..., val].T
+
+        return self._rdt_file.get_voltage_trace(requested_events)
     
     @property
     def key(self):
@@ -334,9 +341,12 @@ class RDTChannel(DataSourceBaseClass):
         """The unique testpulse amplitudes of the events in this RDTChannel."""
         return sorted(list(set(self.tpas)))
     
-    def get_event_iterator(self):
+    def get_event_iterator(self, batch_size: int = None):
         """
         Get an iterator over the events present in this RDTChannel instance. 
+
+        :param batch_size: The number of events to be returned at once (these are all read together). There will be a trade-off: large batch_sizes cause faster read speed but increase the memory usage.
+        :type batch_size: int
 
         :return: Iterable object
         :rtype: RDTIterator
@@ -355,4 +365,4 @@ class RDTChannel(DataSourceBaseClass):
         >>> # Have a look:
         >>> vai.Preview(it_testpulses)
         """
-        return RDTIterator(self)
+        return RDTIterator(self, batch_size=batch_size)

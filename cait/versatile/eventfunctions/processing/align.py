@@ -27,6 +27,10 @@ class Align(FncBaseClass):
         self._shifted_event = np.roll(event, self._lags(event))
         return self._shifted_event
     
+    @property
+    def batch_support(self):
+        return 'none'
+    
     def preview(self, event):
         self(event)
         return dict(line = {'event': [None, event],

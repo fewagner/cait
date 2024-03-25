@@ -3,6 +3,9 @@ import numpy as np
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_mock import MockIterator
 from ....fit._templates import pulse_template
+from ...analysisobjects.sev import SEV
+from ...analysisobjects.nps import NPS
+from ...analysisobjects.of import OF
 
 class MockData(DataSourceBaseClass):
     """
@@ -50,35 +53,53 @@ class MockData(DataSourceBaseClass):
     def __repr__(self):
         return f'{self.__class__.__name__}(n_events={self.n_events}, record_length={self.record_length}, dt_us={self.dt_us}, measuring_time_h={self._m_time:.2f})'
 
-    def get_event_iterator(self):
+    def get_event_iterator(self, batch_size: int = None):
         """
         Return an event iterator over the events in this mock data instance.
+
+        :param batch_size: The number of events to be returned at once (these are all read together). There will be a trade-off: large batch_sizes cause faster read speed but increase the memory usage.
+        :type batch_size: int
 
         :return: Event iterator
         :rtype: MockIterator
         """
-        return MockIterator(self)
+        return MockIterator(self, batch_size=batch_size)
     
-    def get_event(self, ind: int, channel: slice = None):
+    def get_event(self, inds: int, channel: slice = None):
         """
         Return a single event for a given index.
 
-        :param ind: The index of the event that we want to read from the mock data.
-        :type ind: int
+        :param inds: The index of the event that we want to read from the mock data.
+        :type inds: int
         :param channel: The channel of the event that we want to read from the mock data. If None, then all channels are returned.
         :type channel: int
 
         :return: Event
         :rtype: np.ndarray
         """
-        ph = self._phs[..., ind][:, None]
-        off = self._offsets[..., ind][:, None]
-        rng = np.random.default_rng(self._rand_seeds[ind])
-        noise = 0.1*rng.standard_normal(size=self.n_channels*self._record_length)
+        inds = [inds] if isinstance(inds, int) else inds
+        ph = self._phs[..., inds].T[...,None]
+        off = self._offsets[..., inds].T[...,None]
+        rng = [np.random.default_rng(self._rand_seeds[i]) for i in inds]
+        noise = [0.1*r.standard_normal(size=self.n_channels*self._record_length)
+                 for r in rng]
 
-        out =  off + ph*self._template + np.reshape(noise, (self.n_channels, self._record_length))
+        out =  off + ph*self._template[None,...] + np.reshape(noise, (len(inds), self.n_channels, self._record_length))
 
-        return np.squeeze(out[channel])
+        return out[:, channel]
+    
+    @property
+    def sev(self):
+        return SEV(self._template)
+
+    @property
+    def nps(self):
+        rand = np.random.normal(size=(2, self.n_channels*self._record_length//2))
+        return NPS(np.abs(np.fft.rfft(rand))**2)
+    
+    @property
+    def of(self):
+        return OF(self.sev, self.nps)
 
     @property
     def n_events(self):

@@ -29,6 +29,10 @@ class OptimumFiltering(FncBaseClass):
         self._filtered_event = np.fft.irfft(np.fft.rfft(event)*self._of)
         return self._filtered_event
     
+    @property
+    def batch_support(self):
+        return 'none'
+    
     def preview(self, event) -> dict:
         self(event)
         if np.ndim(event) > 1:
