@@ -384,7 +384,10 @@ class DataHandler(SimulateMixin,
         # Include timestamps
         sec = (it.timestamps//1e6).astype(np.int32)
         mus = (it.timestamps%1e6).astype(np.int32)
+        hours = (sec.astype(np.int64)*int(1e6) + mus.astype(np.int64) - it.ds_start_us)/1e6/3600
+        
         self.set(group, overwrite_existing=True, time_s=sec, time_mus=mus, dtype=np.int32)
+        self.set(group, overwrite_existing=True, hours=hours, dtype=np.float64)
     
     def import_labels(self,
                       path_labels: str,

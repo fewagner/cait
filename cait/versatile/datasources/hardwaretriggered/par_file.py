@@ -1,6 +1,8 @@
 import re
 from typing import Union
 
+CHANNEL_NAME_FORMATS = ["ch(\d+): (.+)", "ch(\d+), (.+)"]
+
 # Would be cool to input parameters manually in case we don't have a PAR file. 
 # This should go directly into this class so that higher level classes don't have to handle it.
 class PARFile:
@@ -87,4 +89,8 @@ class PARFile:
     
     @property
     def channel_names(self):
-        return {int(i[0])-1: i[1] for i in re.findall("ch(\d+): (.+)", self.s)}
+        for fmt in CHANNEL_NAME_FORMATS:
+            out = {int(i[0])-1: i[1].strip() for i in re.findall(fmt, self.s)}
+            if out: return out
+            
+        return {}

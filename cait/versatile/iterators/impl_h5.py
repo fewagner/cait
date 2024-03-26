@@ -126,6 +126,15 @@ class H5Iterator(IteratorBaseClass):
     @property
     def dt_us(self):
         return int(1e6/self._dh.sample_frequency)
+    
+    @property
+    def ds_start_us(self):
+        # There is not really a more accurate way to do this
+        with h5py.File(self._path, 'r') as f:
+            sec = np.array(f[self._group]["time_s"], dtype=np.int64)
+            mus = np.array(f[self._group]["time_mus"], dtype=np.int64)
+
+        return np.min(sec*int(1e6) + mus)
 
     @property
     def timestamps(self):

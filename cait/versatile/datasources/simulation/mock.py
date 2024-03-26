@@ -37,9 +37,9 @@ class MockData(DataSourceBaseClass):
         # Random seeds to get reproducible noise traces
         self._rand_seeds = np.random.randint(0, 1000, size=n_events)
         # Fake trigger timestamps
-        start = 1709116423000000 # Feb 28, 2024
+        self._start = 1426321613000000 # March 14, 2015
         self._m_time = 10 # 10 hours measuring time
-        self._ts = np.sort(np.random.randint(start, start+self._m_time*3600*1000*1000, size=n_events))
+        self._ts = np.sort(np.random.randint(self._start, self._start+self._m_time*3600*1000*1000, size=n_events))
         # Record window used to evaluate the pulse model
         self._t = (np.arange(record_length) - record_length/4)*dt_us/1000
 
@@ -120,6 +120,10 @@ class MockData(DataSourceBaseClass):
     @property
     def dt_us(self):
         return self._dt_us
+    
+    @property
+    def start_us(self):
+        return self._start
     
     @property
     def timestamps(self):
