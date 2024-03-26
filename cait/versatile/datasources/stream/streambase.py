@@ -5,6 +5,8 @@ import numpy as np
 
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
+from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx
+from ...analysisobjects.nps import NPS
 
 class StreamBaseClass(DataSourceBaseClass):
     @abstractmethod
@@ -173,6 +175,25 @@ class StreamBaseClass(DataSourceBaseClass):
                               record_length=record_length, 
                               alignment=alignment, 
                               batch_size=batch_size)
+    
+    def get_nps(self,key:str,record_length: int,draft:bool=False,**kwargs):
+        """_summary_
+
+        :param key: _description_
+        :type key: str
+        :param draft: _description_, defaults to False
+        :type draft: bool, optional
+        :raises IndexError: _description_
+        :raises IndexError: _description_
+        :raises NotImplementedError: _description_
+        :raises IndexError: _description_
+        :return: _description_
+        :rtype: _type_
+        """
+        idx=get_clean_bs_idx(self,record_length, **kwargs)
+        it=self.get_event_iterator(key=key,record_length=record_length,inds=idx)
+        nps=NPS(it)
+        return nps,it
     
 class StreamTime:
     """
