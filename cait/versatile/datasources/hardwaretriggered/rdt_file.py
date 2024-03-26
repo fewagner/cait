@@ -68,7 +68,11 @@ class RDTFile:
         
         self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
 
-        self._available_channels = np.unique(self._raw_file["detector_nmbr"]).tolist()
+        # Copy the relevant data to memory so that we don't have to go through
+        # the memory mapped file all the time (this should only need a few MB of RAM)
+        meta_copy = np.array(self._raw_file[["detector_nmbr", "trig_count"]])
+
+        self._available_channels = np.unique(meta_copy["detector_nmbr"]).tolist()
 
         # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT 
         # If no channels are requested by the user (through __getitem__), the default behavior is such
@@ -84,10 +88,10 @@ class RDTFile:
         self._inds = dict()
         # DETERMINE INDICES FOR SINGLE CHANNELS:
         for c in self._available_channels:
-            self._inds[c] = np.nonzero(self._raw_file["detector_nmbr"] == c)[0]
+            self._inds[c] = np.nonzero(meta_copy["detector_nmbr"] == c)[0]
 
         # DETERMINE INDICES FOR CORRELATED CHANNELS (have same trig_count):
-        vals, idx_start, count = np.unique(np.array(self._raw_file["trig_count"]), return_counts=True, return_index=True)
+        vals, idx_start, count = np.unique(meta_copy["trig_count"], return_counts=True, return_index=True)
         
         # We are only interested in trigger counts that appear more than once
         flag_corr = count > 1
@@ -95,7 +99,7 @@ class RDTFile:
 
             # Split trigger count array according to the first occurences
             # (note: the first entry is discarded)
-            s = np.split(self._raw_file["trig_count"], idx_start)[1:]
+            s = np.split(meta_copy["trig_count"], idx_start)[1:]
         
             # Now restrict to those cases which include more than one occurrence 
             # (note that this has to be done AFTER the splitting above)
@@ -107,23 +111,31 @@ class RDTFile:
             # are adjacent in the file (ensure that only correctly written records
             # are included)
             # (The next line just checks if the pieces in s all include the same value, i.e. are consecutive)
-            flag_adj = [len(set(x))==1 for x in s if len(x)>1]
+            flag_adj = [len(np.unique(x))==1 for x in s if len(x)>1]
             
             # Restrict to adjacent
             vals = vals[flag_adj]
             idx_start = idx_start[flag_adj]
             count = count[flag_adj]
 
-            lst = list()
-            for i, l in zip(idx_start, count):
-                lst.append(tuple(self._raw_file[i:(i+l)]["detector_nmbr"]))
-
-            for tup in list(set(lst)):
-                tup_inds = np.array([i for i, x in enumerate(lst) if x == tup])
-                self._inds[tup] = idx_start[tup_inds]
+            # Create and populate a dictionary whose keys are the unique 
+            # channel combinations and whose values are the corresponding 
+            # data indices
+            unique_tuples = dict()
+            for n, (i, l) in enumerate(zip(idx_start, count)):
+                tup = tuple(meta_copy["detector_nmbr"][i:(i+l)])
+                if not (tup in unique_tuples.keys()): 
+                    unique_tuples[tup] = []
+                unique_tuples[tup].append(n)
+                
+            # Add tuples and corresponding indices to self._inds dictionary
+            for k, v in unique_tuples.items():
+                tup_inds = np.array(v)
+                self._inds[k] = idx_start[tup_inds]
         
     def __repr__(self):
-        return f'{self.__class__.__name__}(keys={self.keys}, record_length={self.record_length}, dt_us={self.dt_us}, measuring_time_h={self.measuring_time_h:.2f})'
+        k = self.keys.keys() if isinstance(self.keys, dict) else self.keys
+        return f'{self.__class__.__name__}(keys={k}, record_length={self.record_length}, dt_us={self.dt_us}, measuring_time_h={self.measuring_time_h:.2f})'
 
     def __getitem__(self, channels: Union[int, str, tuple]):
         """
@@ -192,6 +204,7 @@ class RDTFile:
     
     @property
     def keys(self):
+        """The channel keys that can be used to index this RDTFile instance. If available, the channel names (corresponding to the indices) are shown as well."""
         if self._par.has_channel_names:
             d = dict()
             for k in self._inds.keys():
