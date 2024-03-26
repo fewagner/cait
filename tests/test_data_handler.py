@@ -173,11 +173,17 @@ class TestDataHandler:
         for it in [it1, it2]:
             datahandler.include_event_iterator("iterator_testing_out", it)
             assert datahandler.get("iterator_testing_out", "event").shape == (2, 100, RECORD_LENGTH)
+            datahandler.get("iterator_testing_out", "time_s")
+            datahandler.get("iterator_testing_out", "time_mus")
+            datahandler.get("iterator_testing_out", "hours")
             datahandler.drop("iterator_testing_out")
 
         for it in [it3, it4]:
             datahandler.include_event_iterator("iterator_testing_out", it)
             assert datahandler.get("iterator_testing_out", "event").shape == (1, 100, RECORD_LENGTH)
+            datahandler.get("iterator_testing_out", "time_s")
+            datahandler.get("iterator_testing_out", "time_mus")
+            datahandler.get("iterator_testing_out", "hours")
             datahandler.drop("iterator_testing_out")
 
         with pytest.raises(Exception): # already existing dataset

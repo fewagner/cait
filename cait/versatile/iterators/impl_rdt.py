@@ -85,6 +85,10 @@ class RDTIterator(IteratorBaseClass):
         return self._rdt_channel._rdt_file.dt_us
     
     @property
+    def ds_start_us(self):
+        return self._rdt_channel.start_us
+    
+    @property
     def timestamps(self):
         return self._rdt_channel.timestamps[self._params["inds"]]
     

@@ -107,6 +107,10 @@ class StreamIterator(IteratorBaseClass):
         return self._stream.dt_us
     
     @property
+    def ds_start_us(self):
+        return self._stream.start_us
+    
+    @property
     def timestamps(self):
         return self._stream.time[self._params["inds"]]
     

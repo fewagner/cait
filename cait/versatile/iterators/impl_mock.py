@@ -78,6 +78,10 @@ class MockIterator(IteratorBaseClass):
         return self._mock.dt_us
     
     @property
+    def ds_start_us(self):
+        return self._mock.start_us
+    
+    @property
     def timestamps(self):
         return self._mock.timestamps[self._params["inds"]]
 

@@ -337,6 +337,12 @@ class RDTChannel(DataSourceBaseClass):
         return self._n_channels
     
     @property
+    def start_us(self):
+        s = self._rdt_file._par.start_s
+        mus = self._rdt_file._par.start_us
+        return s*int(1e6) + mus
+    
+    @property
     def timestamps(self):
         """The microsecond timestamps of the events in this RDTChannel."""
         secs = np.array(self._rdt_file._file["abs_time_s"][self._inds[0]], dtype=np.int64)

@@ -218,6 +218,14 @@ class IteratorBaseClass(ABC):
 
     @property
     @abstractmethod
+    def ds_start_us(self):
+        """
+        The microsecond timestamp of the start of the recording for the datasource underlying this iterator object.
+        """
+        ...
+
+    @property
+    @abstractmethod
     def timestamps(self):
         """
         Returns microsecond timestamps corresponding to the trigger times of the events in the iterator.
@@ -370,6 +378,10 @@ class IteratorCollection(IteratorBaseClass):
     @property
     def dt_us(self):
         return self._dt_us
+    
+    @property
+    def ds_start_us(self):
+        return np.min([it.ds_start_us for it in self._iterators])
     
     @property
     def timestamps(self):
