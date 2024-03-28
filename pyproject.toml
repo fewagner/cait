@@ -38,8 +38,12 @@ requires-python = ">=3.8"
 [project.optional-dependencies]
 nn = ["pytorch-lightning==1.9.4", "torch>=1.8"]
 clplot = ["uniplot>=0.12.2"]
+test = ["pytest"]
 
 [project.urls]
 Repository = "https://github.com/fewagner/cait"
 Documentation = "https://cait.readthedocs.io/en/latest/index.html"
 Changelog = "https://cait.readthedocs.io/en/latest/changelog.html"
+
+[tool.setuptools.dynamic]
+version = {attr = "cait._version.__version__"}

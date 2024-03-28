@@ -1,0 +1,15 @@
+stages:
+  - test
+
+pytest:
+  stage: test
+  image: "python3.8"
+  before_script:
+    - python -m pip install --upgrade pip
+    - python -m pip install .[test,clplot]
+  script:
+    - pytest --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
