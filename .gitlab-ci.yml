@@ -3,13 +3,17 @@ stages:
 
 pytest:
   stage: test
-  image: "python:3.8"
+  image: "python:$VERSION"
   before_script:
-    - apt-get update -qq && apt-get install -y -qq hdf5-tools
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools # needed for h5repack
     - python -m pip install --upgrade pip
-    - python -m pip install .[test,clplot]
+    - python -m pip install .[test,clplot] # install opt. dependencies for testing
   script:
+    - python -V
     - pytest --junitxml=report.xml
+  parallel:
+    matrix:
+      - VERSION: ['3.8', '3.10', '3.12']
   artifacts:
     when: always
     reports:
