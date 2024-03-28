@@ -319,8 +319,8 @@ class Limit():
             make_grid()
             plt.xscale('log')
             plt.yscale('log')
-            plt.xlabel("$m_\chi$ [GeV c${^-2}$]")
-            plt.ylabel("$\sigma_0$ [cm$^{-2}$]")
+            plt.xlabel(r"$m_\chi$ [GeV c${^-2}$]")
+            plt.ylabel(r"$\sigma_0$ [cm$^{-2}$]")
             plt.show()
 
         self.x = x
@@ -343,7 +343,7 @@ class Limit():
         x = np.linspace(.1, 5., 100)
         for i, m in enumerate(wimp_masses):
             y = [expected_interaction_rate(e, m, 16) for e in x]
-            plt.plot(x, y, label="$m_\chi$ = {} GeV".format(m), zorder=10 + 2*i)
+            plt.plot(x, y, label=r"$m_\chi$ = {} GeV".format(m), zorder=10 + 2*i)
         make_grid()
         plt.xlabel("Recoil Energy (keV)")
         plt.ylabel("dR/dE (kg$^{-1}$ d$^{-1}$ keV$^{-1}$)")
@@ -369,7 +369,7 @@ class Limit():
                                       self.component_nucleons,
                                       self.component_efficiencies,
                                       self.exposure) for e in x]
-            plt.plot(x, y, label="$m_\chi$ = {:.1} GeV".format(m), zorder=10 + 2*i)
+            plt.plot(x, y, label=r"$m_\chi$ = {:.1} GeV".format(m), zorder=10 + 2*i)
         make_grid()
         plt.xlabel("Recoil Energy (keV)")
         plt.ylabel("dN/dE (keV$^{-1}$)")
