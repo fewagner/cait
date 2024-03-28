@@ -136,7 +136,13 @@ class StreamBaseClass(DataSourceBaseClass):
             self._t = StreamTime(self.start_us, self.dt_us, len(self))
         return self._t
     
-    def get_event_iterator(self, keys: Union[str, List[str]], record_length: int, inds: Union[int, List[int]] = None, timestamps: Union[int, List[int]] = None, alignment: float = 1/4):
+    def get_event_iterator(self, 
+                           keys: Union[str, List[str]], 
+                           record_length: int, 
+                           inds: Union[int, List[int]] = None, 
+                           timestamps: Union[int, List[int]] = None, 
+                           alignment: float = 1/4,
+                           batch_size: int = None):
         """
         Returns an iterator object over voltage traces for given trigger indices or timestamps of a stream file. 
 
@@ -150,7 +156,8 @@ class StreamBaseClass(DataSourceBaseClass):
         :type timestamps: Union[int, List[int]]
         :param alignment: A number in the interval [0,1] which determines the alignment of the record window (of length `record_length`) relative to the specified index. E.g. if `alignment=1/2`, the record window is centered around the index. Defaults to 1/4.
         :type alignment: float
-
+        :param batch_size: The number of events to be returned at once (these are all read together). There will be a trade-off: large batch_sizes cause faster read speed but increase the memory usage.
+        :type batch_size: int
 
         :return: Iterable object
         :rtype: StreamIterator
@@ -160,7 +167,12 @@ class StreamBaseClass(DataSourceBaseClass):
         
         if inds is None: inds = self.time.timestamp_to_ind(timestamps)
 
-        return StreamIterator(self, keys, inds, record_length, alignment)
+        return StreamIterator(self, 
+                              keys=keys, 
+                              inds=inds, 
+                              record_length=record_length, 
+                              alignment=alignment, 
+                              batch_size=batch_size)
     
 class StreamTime:
     """

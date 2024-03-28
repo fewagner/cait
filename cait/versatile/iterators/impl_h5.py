@@ -41,7 +41,6 @@ class H5Iterator(IteratorBaseClass):
     """
 
     def __init__(self, dh, group: str, channels: Union[int, List[int]] = None, inds: List[int] = None, batch_size: int = None):
-        super().__init__()
 
         # Check if dataset has correct shape:
         with h5py.File(dh.get_filepath(), 'r') as f:
@@ -69,26 +68,16 @@ class H5Iterator(IteratorBaseClass):
             
         if inds is None: inds = np.arange(n_events_total)
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
-        self._n_events = len(inds)
 
-        # self._inds will be a list of batches. If we just take the inds list, we have batches of size 1, if we take [inds]
-        # all inds are in one batch, otherwise it is a list of lists where each list is a batch
-        if batch_size is None or batch_size == 1:
-            self._inds = inds
-            self._uses_batches = False
-        elif batch_size == -1:
-            self._inds = [inds]
-            self._uses_batches = True
-        else: 
-            self._inds = [inds[i:i+batch_size] for i in range(0, len(inds), batch_size)]
-            self._uses_batches = True
-
-        self._n_batches = len(self._inds)
+        # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
+        super().__init__(inds=inds, batch_size=batch_size)
 
         # Save values to reconstruct iterator:
-        self._params = {'dh': dh, 'group': group, 
+        self._params = {'dh': dh, 
+                        'group': group, 
                         'channels': self._channels, 
-                        'inds': inds, 'batch_size': batch_size}
+                        'inds': inds, 
+                        'batch_size': batch_size}
 
         # If list specifies all channels, we replace it by a None-slice to bypass h5py's restriction on fancy indexing
         # Notice that this has to be done after saving the list in self._params
@@ -96,12 +85,9 @@ class H5Iterator(IteratorBaseClass):
 
         # For multiple channels and batched data, we transpose the array as read from the HDF5 file to ensure
         # that the first dimension of the output is always the event dimension
-        self._should_be_transposed = self._uses_batches and self._n_channels > 1
+        self._should_be_transposed = self.uses_batches and self._n_channels > 1
 
         self._file_open = False
-    
-    def __len__(self):
-        return self._n_events
 
     def __enter__(self):
         self._f = h5py.File(self._path, 'r')
@@ -117,7 +103,7 @@ class H5Iterator(IteratorBaseClass):
         return self
 
     def _next_raw(self):
-        if self._current_batch_ind < self._n_batches:
+        if self._current_batch_ind < self.n_batches:
             event_inds_in_batch = self._inds[self._current_batch_ind]
             self._current_batch_ind += 1
 
@@ -140,6 +126,15 @@ class H5Iterator(IteratorBaseClass):
     @property
     def dt_us(self):
         return int(1e6/self._dh.sample_frequency)
+    
+    @property
+    def ds_start_us(self):
+        # There is not really a more accurate way to do this
+        with h5py.File(self._path, 'r') as f:
+            sec = np.array(f[self._group]["time_s"], dtype=np.int64)
+            mus = np.array(f[self._group]["time_mus"], dtype=np.int64)
+
+        return np.min(sec*int(1e6) + mus)
 
     @property
     def timestamps(self):
@@ -148,14 +143,6 @@ class H5Iterator(IteratorBaseClass):
             mus = np.array(f[self._group]["time_mus"][self._params["inds"]], dtype=np.int64)
 
         return sec*int(1e6) + mus
-    
-    @property
-    def uses_batches(self):
-        return self._uses_batches
-    
-    @property
-    def n_batches(self):
-        return self._n_batches
     
     @property
     def n_channels(self):

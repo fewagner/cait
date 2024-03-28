@@ -25,6 +25,10 @@ class Downsample(FncBaseClass):
         self._downsampled = np.mean(np.reshape(event, shape), axis=-1)
         return self._downsampled
     
+    @property
+    def batch_support(self):
+        return 'trivial'
+    
     def preview(self, event):
         self(event)
         x = np.arange(event.shape[-1])

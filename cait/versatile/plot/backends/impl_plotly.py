@@ -1,11 +1,11 @@
 from typing import Callable
-from itertools import cycle
+#from itertools import cycle
 
 import numpy as np
 from ipywidgets import widgets
 from IPython.display import display
 import plotly.graph_objects as go
-import plotly.express as px
+#import plotly.express as px
 
 from .backendbase import BackendBaseClass
 from .helper import EmptyRep
@@ -46,7 +46,7 @@ class BaseClassPlotly(BackendBaseClass):
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
-    :param template: Valid plotly theme. Either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'ggplot2'
+    :param template: Valid plotly theme. Either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], defaults to 'seaborn'
     :type template: str, optional
     :param height: Figure height, defaults to 500
     :type height: int, optional
@@ -54,7 +54,7 @@ class BaseClassPlotly(BackendBaseClass):
     :type width: int, optional
     """
     def __init__(self, 
-                 template: str = "ggplot2", 
+                 template: str = "seaborn", 
                  height: int = 500, 
                  width: int = 700, 
                  show_controls: bool = False):
@@ -66,7 +66,7 @@ class BaseClassPlotly(BackendBaseClass):
         #self.x_marker_names = list()
         #self.y_marker_names = list()
 
-        self.colors = cycle(px.colors.qualitative.Plotly)
+        #self.colors = cycle(px.colors.qualitative.Plotly)
 
         self.show_controls = show_controls
         self.buttons_initialized = False
@@ -135,7 +135,7 @@ class BaseClassPlotly(BackendBaseClass):
                                       y=y,
                                       name=name,
                                       mode="lines",
-                                      line={'color': next(self.colors),
+                                      line={#'color': next(self.colors),
                                             'width': 3},
                                       showlegend= True if name is not None else False) 
                                       )
@@ -146,7 +146,7 @@ class BaseClassPlotly(BackendBaseClass):
                                       y=y,
                                       name=name,
                                       mode="markers",
-                                      line={'color': next(self.colors),
+                                      line={#'color': next(self.colors),
                                             'width': 3},
                                       showlegend= True if name is not None else False) 
                                       )
@@ -188,7 +188,7 @@ class BaseClassPlotly(BackendBaseClass):
                                       y=y,
                                       name=name,
                                       mode="lines",
-                                      line={'color': next(self.colors),
+                                      line={#'color': next(self.colors),
                                             'width': 1.5,
                                             'dash': 'dash'},
                                       showlegend= True if name is not None else False) 

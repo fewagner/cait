@@ -12,19 +12,7 @@ class Line(Viewer):
     :type y: Union[List[float], dict]
     :param x: The x-data to plot (for any lines for which x-data was not explicitly specified, see above). If None is specified, the y-data is plotted over the data index. Defaults to None.
     :type x: List[float], optional
-    :param xlabel: x-label for the plot.
-    :type xlabel: str, optional
-    :param ylabel: y-label for the plot.
-    :type ylabel: str, optional
-    :param xscale: x-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
-    :type xscale: str, optional
-    :param yscale: y-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
-    :type yscale: str, optional
-    :param xrange: x-range for the plot. A tuple of (xmin, xmax), defaults to None, i.e. auto-scaling.
-    :type xrange: tuple, optional
-    :param yrange: y-range for the plot. A tuple of (ymin, ymax), defaults to None, i.e. auto-scaling.
-    :type yrange: tuple, optional
-    :param kwargs: Keyword arguments for `Viewer`.
+    :param kwargs: Keyword arguments for `Viewer` like 'width', 'height', 'xrange', 'ylabel'.
     :type kwargs: Any
 
     **Example:**
@@ -36,7 +24,7 @@ class Line(Viewer):
         vai.Line({"first line": [1,2,3], "second line with x data": [[0,1,2],[3,4,5]]})
         vai.Line([1,2,3], x=[1,2,3], xrange=(-1, 4), backend="mpl")
     """
-    def __init__(self, y: Union[List[float], List[List[float]], dict], x: List[float] = None, xlabel: str = None, ylabel: str = None, xscale: str = 'linear', yscale: str = 'linear', xrange: tuple = None, yrange: tuple = None, **kwargs):
+    def __init__(self, y: Union[List[float], List[List[float]], dict], x: List[float] = None, **kwargs):
 
         super().__init__(**kwargs)
 
@@ -54,12 +42,5 @@ class Line(Viewer):
                     self.add_line(x=x, y=line)
             else:
                 self.add_line(x=x, y=lines)
-
-        self.set_xlabel(xlabel)
-        self.set_ylabel(ylabel)
-        self.set_xscale(xscale)
-        self.set_yscale(yscale)
-        self.set_xrange(xrange)
-        self.set_yrange(yrange)
 
         self.show()

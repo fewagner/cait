@@ -18,8 +18,9 @@ class BoxCarSmoothing(FncBaseClass):
         self._length = length
 
     def __call__(self, event):
-        n = np.array(event).ndim
-        shape = (n, self._length) if n > 1 else (self._length, )
+        event = np.array(event)
+        n = event.ndim
+        shape = (event.shape[0], self._length) if n > 1 else (self._length, )
         pad = ((0, 0), (self._length, self._length)) if n > 1 else self._length
 
         event = np.pad(event, pad, 'edge')
@@ -30,6 +31,10 @@ class BoxCarSmoothing(FncBaseClass):
         self._smooth_event =  event[..., self._length:-self._length]
 
         return self._smooth_event
+    
+    @property
+    def batch_support(self):
+        return 'trivial'
     
     def preview(self, event):
         self(event)

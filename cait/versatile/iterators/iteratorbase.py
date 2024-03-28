@@ -20,12 +20,27 @@ def _ensure_not_array(x):
     return x
 
 class IteratorBaseClass(ABC):
-    def __init__(self):
+    def __init__(self, inds: List[int], batch_size: int = None):
         self.fncs = list()
 
-    @abstractmethod
+        self.__n_events = len(inds)
+
+        # self._inds will be a list of batches. If we just take the inds list, we have batches of size 1, if we take [inds]
+        # all inds are in one batch, otherwise it is a list of lists where each list is a batch
+        if batch_size is None or batch_size == 1:
+            self.__inds = inds
+            self._uses_batches = False
+        elif batch_size == -1:
+            self.__inds = [inds]
+            self._uses_batches = True
+        else: 
+            self.__inds = [inds[i:i+batch_size] for i in range(0, len(inds), batch_size)]
+            self._uses_batches = True
+
+        self._n_batches = len(self._inds)
+
     def __len__(self):
-        ...
+        return self.__n_events
 
     @abstractmethod
     def __enter__(self):
@@ -51,7 +66,7 @@ class IteratorBaseClass(ABC):
 
     def _apply_processing(self, out):
         for fnc in self.fncs:
-            out = fnc(out) if not self.uses_batches else BatchResolver(fnc)(out)
+            out = fnc(out) if not self.uses_batches else BatchResolver(fnc, self.n_channels)(out)
 
         return out
 
@@ -165,9 +180,26 @@ class IteratorBaseClass(ABC):
         """
         Return the time axis (record window) of the events in the iterator. It is a millisecond array with 0 being at 1/4th of the window.
         """
-
         return (np.arange(self.record_length) - self.record_length/4)*self.dt_us/1000
 
+    @property
+    def _inds(self):
+        return self.__inds
+    
+    @property
+    def uses_batches(self):
+        """
+        Returns True if the iterator returns batches.
+        """
+        return self._uses_batches
+    
+    @property
+    def n_batches(self):
+        """
+        Returns the number of batches in the iterator.
+        """
+        return self._n_batches
+    
     @property
     @abstractmethod
     def record_length(self):
@@ -186,25 +218,17 @@ class IteratorBaseClass(ABC):
 
     @property
     @abstractmethod
-    def timestamps(self):
+    def ds_start_us(self):
         """
-        Returns microsecond timestamps corresponding to the trigger times of the events in the iterator.
+        The microsecond timestamp of the start of the recording for the datasource underlying this iterator object.
         """
         ...
 
     @property
     @abstractmethod
-    def uses_batches(self):
+    def timestamps(self):
         """
-        Returns True if the iterator returns batches.
-        """
-        ...
-    
-    @property
-    @abstractmethod
-    def n_batches(self):
-        """
-        Returns the number of batches in the iterator.
+        Returns microsecond timestamps corresponding to the trigger times of the events in the iterator.
         """
         ...
 
@@ -249,7 +273,8 @@ class IteratorCollection(IteratorBaseClass):
     >>> it_collection = it + it
     """
     def __init__(self, iterators: Union[IteratorBaseClass, List[IteratorBaseClass]]):
-        super().__init__()
+        # We do not construct the superclass because batching is handled differently
+        self.fncs = list()
         # Check if all elements are IteratorBaseClass instances
         if isinstance(iterators, list):
             for it in iterators:
@@ -281,6 +306,7 @@ class IteratorCollection(IteratorBaseClass):
         self._dt_us = dt_usage[0] # made sure that time base is consistent above
         self._record_length = rec_usage[0] # made sure that record length is consistent above
 
+    # Overrides superclass
     def __len__(self):
         return sum([len(it) for it in self._iterators])
     
@@ -354,13 +380,19 @@ class IteratorCollection(IteratorBaseClass):
         return self._dt_us
     
     @property
+    def ds_start_us(self):
+        return np.min([it.ds_start_us for it in self._iterators])
+    
+    @property
     def timestamps(self):
         return np.concatenate([it.timestamps for it in self._iterators])
 
+    # Overrides superclass
     @property
     def uses_batches(self):
         return self._uses_batches
     
+    # Overrides superclass
     @property
     def n_batches(self):
         return sum([it.n_batches for it in self._iterators])

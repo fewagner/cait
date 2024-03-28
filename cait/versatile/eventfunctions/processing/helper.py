@@ -6,18 +6,28 @@ from ..functionbase import FncBaseClass
 class Unity(FncBaseClass):
     """
     Class that returns events unaltered. This is mostly used as a helper class to preview raw voltage traces.
+
+    :param t: The time array (in milliseconds) corresponding to the voltage trace.
+    :type t: np.ndarray
     """
+    def __init__(self, t: np.ndarray = None):
+        self._t = t
+
     def __call__(self, event):
         return event
     
+    @property
+    def batch_support(self):
+        return 'trivial'
+    
     def preview(self, event):
         if event.ndim > 1:
-            lines = {f'channel {k}': [None, ev] for k, ev in enumerate(event)}
+            lines = {f'channel {k}': [self._t, ev] for k, ev in enumerate(event)}
         else:
-            lines = {'channel 0': [None, event]}
+            lines = {'channel 0': [self._t, event]}
 
         return dict(line=lines, 
-                    axes={"xaxis": {"label": "data index"},
+                    axes={"xaxis": {"label": "time (ms)" if self._t is not None else "data index"},
                           "yaxis": {"label": "data (V)"}
                          })
     
@@ -32,3 +42,7 @@ class Lags(FncBaseClass):
         lags = sp.signal.correlation_lags(self._ref_event.size, event.size, mode="full")
         self._lag = lags[np.argmax(corr)]
         return self._lag
+    
+    @property
+    def batch_support(self):
+        return 'none'

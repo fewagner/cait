@@ -1,4 +1,7 @@
 from typing import Callable
+import datetime
+
+import numpy as np
 
 from ..viewer import Viewer
 from ...iterators.iteratorbase import IteratorBaseClass
@@ -17,7 +20,7 @@ class Preview(Viewer):
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
     """
-    def __init__(self, events: IteratorBaseClass, f: Callable = Unity(), **kwargs):
+    def __init__(self, events: IteratorBaseClass, f: Callable = None, **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
         #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
         super().__init__(data=None, show_controls=True, **kwargs)
@@ -27,15 +30,16 @@ class Preview(Viewer):
 
         self._add_button("Next", self._update_plot, "Show next event.", key="n")
 
-        self.f = f
-        self.events = iter(enumerate(events))
+        self._f = f if f is not None else Unity(events.t)
+        self._events = iter(enumerate(zip(events, events.timestamps)))
         
         self.start()
     
     def _update_plot(self, b=None):
         try:
-            ind, ev = next(self.events)
-            d =  self.f.preview(ev)
+            ind, (ev, ts) = next(self._events)
+            d = self._f.preview(ev)
+            tsstr = np.array(ts, dtype="datetime64[us]").astype(datetime.datetime)[()].strftime('%d-%b-%Y, %H:%M:%S')
 
             # Add event index to y-label
             if d.get("axes") is None: d["axes"] = dict()
@@ -45,7 +49,7 @@ class Preview(Viewer):
             else:
                 d["axes"]["yaxis"]["label"] += ", "
             
-            d["axes"]["yaxis"]["label"] += f"event {ind}"
+            d["axes"]["yaxis"]["label"] += f"event {ind}, {tsstr}"
 
             # Plot
             self.plot(d)

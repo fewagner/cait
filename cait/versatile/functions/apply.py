@@ -47,7 +47,7 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     if n_req_args != 1:
         raise TypeError(f"Input function {f} has too many required arguments ({n_req_args}). Only functions which take one (non-default) argument (the event) are supported.")
     
-    if ev_iter.uses_batches: f = BatchResolver(f)
+    if ev_iter.uses_batches: f = BatchResolver(f, ev_iter.n_channels)
 
     with ev_iter as ev_it:
         if n_processes > 1:
