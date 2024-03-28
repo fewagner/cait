@@ -5,7 +5,7 @@ pytest:
   stage: test
   image: "python:3.8"
   before_script:
-    - apt-get update -qq && apt-get install -y -qq libhdf5-dev
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools
     - python -m pip install --upgrade pip
     - python -m pip install .[test,clplot]
   script:
