@@ -4,9 +4,8 @@ stages:
 pytest:
   stage: test
   rules:
-    # Only run tests when committed to develop branch
-    - if: '$CI_COMMIT_REF_NAME != "develop"'
-      when: never
+    # Only run tests when merge request is created
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: "python:$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
