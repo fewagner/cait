@@ -3,17 +3,23 @@ stages:
 
 pytest:
   stage: test
+  rules:
+    # Only run tests when committed to develop branch
+    - if: '$CI_COMMIT_REF_NAME != "develop"'
+      when: never
   image: "python:$VERSION"
   before_script:
-    - apt-get update -qq && apt-get install -y -qq hdf5-tools # needed for h5repack
+    # needed for h5repack (usually installed on computing clusters)
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools
     - python -m pip install --upgrade pip
-    - python -m pip install .[test,clplot] # install opt. dependencies for testing
+    # install also optional dependencies for testing
+    - python -m pip install .[test,clplot]
   script:
     - python -V
     - pytest --junitxml=report.xml
   parallel:
     matrix:
-      - VERSION: ['3.8', '3.10', '3.12']
+      - VERSION: ['3.8', '3.9', '3.10', '3.11']
   artifacts:
     when: always
     reports:
