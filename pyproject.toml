@@ -20,7 +20,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy<1.25",
+    "numpy>=1.22",
     "scipy>=1.6",
     "pandas>=1.1",
     "h5py>=3.2",
