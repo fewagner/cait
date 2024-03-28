@@ -5,7 +5,7 @@ pytest:
   stage: test
   rules:
     # Only run tests when merge request is created
-    if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
   image: "python:$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
