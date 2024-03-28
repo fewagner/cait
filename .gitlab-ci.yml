@@ -3,10 +3,10 @@ stages:
 
 pytest:
   stage: test
-  rules:
+  #rules:
     # Only run tests when committed to develop branch
-    - if: '$CI_COMMIT_REF_NAME != "develop"'
-      when: never
+    #- if: '$CI_COMMIT_REF_NAME != "develop"'
+    #  when: never
   image: "python:$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
