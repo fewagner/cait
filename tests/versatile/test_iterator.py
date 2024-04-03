@@ -119,6 +119,8 @@ def basic_checks(it):
     flag = np.zeros(len(it_combined), dtype=bool)
     flag[:20] = True
 
+    it_combined_sum = sum([it, it_new, it_new])
+
     next(iter(it_combined[:]))
     next(iter(it_combined[0]))
     next(iter(it_combined[0, :10:3]))

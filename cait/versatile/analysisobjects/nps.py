@@ -42,9 +42,10 @@ class NPS(ArrayWithBenefits):
         else:
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
-    def from_dh(self, dh, group: str = "noise", dataset: str = "nps"):
+    @classmethod
+    def from_dh(cls, dh, group: str = "noise", dataset: str = "nps"):
         """
-        Read NPS from DataHandler. 
+        Construct NPS from DataHandler. 
 
         :param dh: The DataHandler instance to read from.
         :type dh: DataHandler
@@ -56,15 +57,7 @@ class NPS(ArrayWithBenefits):
         :return: Instance of NPS.
         :rtype: NPS
         """
-        self._nps = dh.get(group, dataset)
-        
-        if self._nps.ndim > 1:
-            self._n_ch = self._nps.shape[0]
-            if self._n_ch == 1: self._nps = self._nps.flatten()
-        else:
-            self._n_ch = 1
-
-        return self
+        return cls(dh.get(group, dataset))
         
     def to_dh(self, dh, group: str = "noise", dataset: str = "nps", **kwargs):
         """
@@ -82,9 +75,10 @@ class NPS(ArrayWithBenefits):
         data = self._nps[None,:] if self._n_channels == 1 else self._nps
         dh.set(group, **{dataset: data}, **kwargs)
         
-    def from_file(self, fname: str, src_dir: str = ''):
+    @classmethod
+    def from_file(cls, fname: str, src_dir: str = ''):
         """
-        Read NPS from xy-file.
+        Construct NPS from xy-file.
 
         :param fname: Filename to look for (without file-extension)
         :type fname: str
@@ -109,15 +103,9 @@ class NPS(ArrayWithBenefits):
                 except ValueError: 
                     line_nr += 1
 
-        self._nps = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
-        
-        if self._nps.ndim > 1:
-            self._n_ch = self._nps.shape[0]
-            if self._n_ch == 1: self._nps = self._nps.flatten()
-        else:
-            self._n_ch = 1
+        arr = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
 
-        return self
+        return cls(arr)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """

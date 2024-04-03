@@ -121,6 +121,12 @@ class IteratorBaseClass(ABC):
             raise TypeError(f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'")
 
         return IteratorCollection(l)
+    
+    def __radd__(self, other):
+        # Used to return iterator for situation '0 + it = it'
+        # This way, we can use the built-in sum() to sum a list of iterators
+        if other == 0: return self
+        else: return other.__add__(self)
 
     def add_processing(self, f: Union[Callable, List[Callable]]):
         """
