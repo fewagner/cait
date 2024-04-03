@@ -1,6 +1,5 @@
-**************
 Magic Numbers
-**************
+=============
 
 There are several places in the Cait code, where so-called "magic" number appear, e.g. a hard-coded integer as index
 to an array, with no or only short explanation why this number is taken here. Most of the time, this is due to the
@@ -8,7 +7,7 @@ numbering of labels, main parameters or fit parameters. These numbers are writte
 however we also provide lists here.
 
 Labels
-=========
+~~~~~~
 
 | 0 ... unlabeled
 | 1 ... Event Pulse
@@ -97,7 +96,7 @@ In some cases, we have not enough insight to explain an event. If this concerns 
 
 
 Main Parameters
-===================
+~~~~~~~~~~~~~~~
 
 | 0 ... pulse_height
 
@@ -142,7 +141,7 @@ The difference between the average of the first and last 500 samples of the even
 Usually this is set to zero! The quadratic component of the baseline.
 
 Parametric Fit Parameters
-==============================
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The fit parameters of the parametric pulse shape fit.
 
@@ -154,7 +153,7 @@ The fit parameters of the parametric pulse shape fit.
 | 5 ... tau_t
 
 Standard Event Fit Parameters
-==================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The fit parameters of the standard event fit:
 
@@ -169,7 +168,7 @@ The array fit has the same paramters!
 
 
 Additional Main Parameters
-================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 | 0 ... array_max
 

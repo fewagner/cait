@@ -309,13 +309,10 @@ class TestData():
                 idx = int(e * self.nmbr_channels + c)
                 recs['detector_nmbr'][idx] = self.channels[c]
                 recs['pulse_height'][idx] = self._saturation_curve(
-                    self.all_tpas[e] * self.ph_deviations[e] + np.random.normal(loc=self.offset[c],
-                                                                                scale=
-                                                                                self.baseline_resolution[
-                                                                                    c], size=1),
+                    self.all_tpas[e] * self.ph_deviations[e] + np.random.normal(loc=self.offset[c], scale=self.baseline_resolution[c]),
                     slope=self.slopes[c],
-                    scale=self.scales[c]) * np.random.normal(loc=1,
-                                                             scale=0.05, size=1)
+                    scale=self.scales[c]
+                    ) * np.random.normal(loc=1, scale=0.05)
                 recs['time_stamp_low'][idx] = int((((e + 1) * self.pulser_interval) * 1e7) % (2 ** 32))
                 recs['time_stamp_high'][idx] = int(((e + 1) * self.pulser_interval) * 1e7 / (2 ** 32))
                 recs['dead_time'][idx] = 0
@@ -325,10 +322,9 @@ class TestData():
         recs = recs[tpas > 10]
 
         # write the array to file
-        f = open(self.filepath + ".con", "bw")
-        np.zeros(3, dtype=np.int32).tofile(f)
-        recs.tofile(f)
-        f.close()
+        with open(self.filepath + ".con", "bw") as f:
+            np.zeros(3, dtype=np.int32).tofile(f)
+            recs.tofile(f)
 
         print('Con file written.')
 
