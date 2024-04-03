@@ -21,19 +21,25 @@ class RDTFile:
     :return: Object interfacing an `.rdt` file.
     :rtype: RDTFile
 
-    >>> import cait.versatile as vai
-    >>> f = vai.RDTFile('path/to/file.rdt')
-    >>> # Check available channels
-    >>> print(f.keys)
-    >>> # Choose channel(s) to iterate over, get testpulse amplitudes, ...,  by slicing RDTFile
-    >>> channels = f[(0,1)] # if interested in only one channel: channel0 = f[0]
-    >>> it = channels.get_event_iterator()
-    >>> # You can now further slice this iterator (like any other iterator in cait.versatile):
-    >>> it_testpulses = it[:, channels.tpas > 0]
-    >>> it_events = it[:, channels.tpas == 0]
-    >>> it_noise = it[:, channels.tpas == -1]
-    >>> # Have a look (after removing the baseline):
-    >>> vai.Preview(it_testpulses.with_processing(vai.RemoveBaseline()))
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        f = vai.RDTFile('path/to/file.rdt')
+
+        # Check available channels
+        print(f.keys)
+        # Choose channel(s) to iterate over, get testpulse amplitudes, ...,  by slicing RDTFile
+        channels = f[(0,1)] # if interested in only one channel: channel0 = f[0]
+        it = channels.get_event_iterator()
+
+        # You can now further slice this iterator (like any other iterator in cait.versatile):
+        it_testpulses = it[:, channels.tpas > 0]
+        it_events = it[:, channels.tpas == 0]
+        it_noise = it[:, channels.tpas == -1]
+
+        # Have a look (after removing the baseline):
+        vai.Preview(it_testpulses.with_processing(vai.RemoveBaseline()))
     """
     def __init__(self, path: str, path_par: str = None):
         if not path.endswith(".rdt"):
@@ -293,8 +299,8 @@ class RDTChannel(DataSourceBaseClass):
     :param key: The key which selects the single channel or correlated channels. Either of `rdt_file.keys`.
     :type key: Union[int, tuple]
 
-    :return: Iterable object
-    :rtype: RDTIterator
+    :return: Specified channels of an RDTFile
+    :rtype: RDTChannel
     """
     def __init__(self, rdt_file: RDTFile, key: Union[int, tuple]):
 
@@ -370,18 +376,24 @@ class RDTChannel(DataSourceBaseClass):
         :return: Iterable object
         :rtype: RDTIterator
 
-        >>> import cait.versatile as vai
-        >>> f = vai.RDTFile('path/to/file.rdt')
-        >>> # Choose channel(s) to iterate over by slicing RDTFile
-        >>> channels = f[(0,1)]
-        >>> it = channels.get_event_iterator()
-        >>> # You can now further slice this iterator (like any other iterator in cait.versatile):
-        >>> it_testpulses = it[:, channels.tpas > 0]
-        >>> it_events = it[:, channels.tpas == 0]
-        >>> it_noise = it[:, channels.tpas == -1]
-        >>> # Remove baselines:
-        >>> it_testpulses.add_processing(vai.RemoveBaseline())
-        >>> # Have a look:
-        >>> vai.Preview(it_testpulses)
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            f = vai.RDTFile('path/to/file.rdt')
+
+            # Choose channel(s) to iterate over by slicing RDTFile
+            channels = f[(0,1)]
+            it = channels.get_event_iterator()
+
+            # You can now further slice this iterator (like any other iterator in cait.versatile):
+            it_testpulses = it[:, channels.tpas > 0]
+            it_events = it[:, channels.tpas == 0]
+            it_noise = it[:, channels.tpas == -1]
+            # Remove baselines:
+            it_testpulses.add_processing(vai.RemoveBaseline())
+            
+            # Have a look:
+            vai.Preview(it_testpulses)
         """
         return RDTIterator(self, batch_size=batch_size)

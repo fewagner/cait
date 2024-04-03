@@ -131,12 +131,12 @@ class NPS(ArrayWithBenefits):
                       title="Noise Power Spectrum", 
                       axis=[f"Channel {k}" for k in range(self._n_ch)])
 
-    def show(self, dt: int = None, **kwargs):
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot NPS for all channels. To inspect just one channel, you can index NPS first and call `.show` on the slice.
 
-        :param dt: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
-        :type dt: int
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -146,13 +146,13 @@ class NPS(ArrayWithBenefits):
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
-        if dt is not None:
+        if dt_us is not None:
             if 'x' not in kwargs.keys():
                 n = 2*(self.shape[-1]-1)
-                kwargs['x'] = np.fft.rfftfreq(n, dt/1e6)
+                kwargs['x'] = np.fft.rfftfreq(n, dt_us/1e6)
 
         if 'xlabel' not in kwargs.keys():
-            if dt is not None: 
+            if dt_us is not None: 
                 kwargs['xlabel'] = "Frequency (Hz)"
             else:
                 kwargs['xlabel'] = "Data Index"   

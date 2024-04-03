@@ -40,7 +40,7 @@ def basic_checks(dh, obj, k):
 
     # Methods
     obj.show(backend="plotly")
-    obj.show(dt=5, backend="plotly")
+    obj.show(dt_us=5, backend="plotly")
     appendix = f"_{obj.__class__.__name__}_{k}"
     obj.to_file(fname="test"+appendix, out_dir=dh.get_filedirectory())
     obj.__class__.from_file(fname="test"+appendix, src_dir=dh.get_filedirectory())

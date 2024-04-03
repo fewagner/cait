@@ -37,9 +37,24 @@ class CalcMP(FncBaseClass):
         mp_array = vai.apply(vai.CalcMP(), it)
 
         # WITH the 'dt_us' keyword (output is tuple with physical values)
-        pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=10), it)
+        pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us), it)
 
+        # Example for plotting a histogram of the pulse hights of both channels
         vai.Histogram({'ch0': pulse_height[:,0], 'ch1': pulse_height[:,1]})
+
+    **Example Preview:**
+    ::
+        import cait.versatile as vai
+
+        # Get events from mock data (and remove baseline)
+        it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())[0]
+
+        # View main parameter calculation in action. The plot shows the original
+        # event, the event after the moving average, and the selected datapoints
+        # for calculating the main parameters.
+        vai.Preview(it, vai.CalcMP())
+
+    .. image:: media/CalcMP_preview.png
     """
     def __init__(self,
                  dt_us: int = None, 

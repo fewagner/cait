@@ -12,6 +12,19 @@ class Downsample(FncBaseClass):
  
     :return: Downsampled event.
     :rtype: np.ndarray
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        # Construct mock data (which provides event iterator)
+        md = vai.MockData()
+        it = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+
+        # View effect of downsample on events
+        vai.Preview(it, vai.Downsample(16))
+
+    .. image:: media/Downsample_preview.png
     """
     def __init__(self, down: int = 2):
         self._down = down

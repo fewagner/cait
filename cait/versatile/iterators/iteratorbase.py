@@ -135,8 +135,15 @@ class IteratorBaseClass(ABC):
         :param f: Function(s) to be applied. Function signature: f(event: np.ndarray) -> np.ndarray
         :type f: Union[Callable, List[Callable]]
 
-        >>> it = EventIterator("path_to_file.h5", "events", "event")
-        >>> it.add_processing([f1, f2, f3])
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            def f1(event): return event + 1
+            def f2(event): return event*2
+
+            it = vai.MockData().get_event_iterator()
+            it.add_processing([f1, f2])
         """
         if not isinstance(f, list): f = [f]
 
@@ -147,13 +154,20 @@ class IteratorBaseClass(ABC):
     
     def with_processing(self, f: Union[Callable, List[Callable]]):
         """
-        Same as `add_processing` but it returns a new iterator instead of modifying the original one.
+        Same as ``add_processing`` but it returns a new iterator instead of modifying the original one.
 
         :param f: Function(s) to be applied. Function signature: f(event: np.ndarray) -> np.ndarray
         :type f: Union[Callable, List[Callable]]
 
-        >>> it = EventIterator("path_to_file.h5", "events", "event")
-        >>> new_it = it.with_processing([f1, f2, f3])
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            def f1(event): return event + 1
+            def f2(event): return event*2
+
+            it = vai.MockData().get_event_iterator()
+            new_it = it.with_processing([f1, f2])
         """
 
         return self[:,:].add_processing(f)
@@ -169,14 +183,9 @@ class IteratorBaseClass(ABC):
         ::
             import cait.versatile as vai
 
-            # Get events from mock data
-            it = vai.MockData().get_event_iterator()
-
-            # Get the last event in the iterator
-            selected_event = it.grab(-1)
-
-            # Get events with indices 1, 7, 9
-            selected_events = it.grab([1,7,9])
+            it = vai.MockData().get_event_iterator() # Get events from mock data
+            selected_event = it.grab(-1)             # Get the last event in the iterator
+            selected_events = it.grab([1,7,9])       # Get events with indices 1, 7, 9
         """
 
         return np.squeeze(np.array(list(self[:, which])))[()]

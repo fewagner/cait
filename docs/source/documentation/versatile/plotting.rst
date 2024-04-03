@@ -1,5 +1,8 @@
+.. _plotting:
+
+********
 Plotting
-========
+********
 
 ``cait.versatile`` offers often used, out-of-the-box plotting routines.
 All of them have a number of keyword-arguments which can be used to
@@ -18,7 +21,7 @@ style them. Those keyword arguments are:
    ``['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'``,
    for ``mpl`` either of
    ``['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'``,
-   defaults to ``'ggplot2'`` for ``backend=plotly`` and to ``'default'``
+   defaults to ``'seaborn'`` for ``backend=plotly`` and to ``'seaborn'``
    for ``backend=mpl``. Note that setting a template for backend
    ``'uniplot'`` has no effect.
 
@@ -56,34 +59,30 @@ arguments described above.
 
 .. image:: media/preview_and_streamviewer.png
 
-.. code:: ipython3
+**Example:**
+::
+   import cait.versatile as vai
 
-    import cait.versatile as vai
+   # If x-data is not provided, the index is used for the x-axis.
+   # If y-data is just an array, it will be plotted as such.
+   # If y-data is a dictionary, its keys will be used as legend lables and its values are plotted.
+   # Axis lables and scales can also be provided.
+   
+   l = vai.Line([1,2,3,3,2,1])
+   vai.Line({'line1': [1,2,3,3,2,1], 'line2': [2,4,6,5,3,1]})
+   vai.Scatter([1,2,3,3,2,1], backend="mpl", xlabel="x", template="seaborn")
+   vai.Scatter([1,2,3,3,2,1], show_controls=True, backend="mpl")
 
-.. code:: ipython3
-
-    # If x-data is not provided, the index is used for the x-axis.
-    # If y-data is just an array, it will be plotted as such.
-    # If y-data is a dictionary, its keys will be used as legend lables and its values are plotted.
-    # Axis lables and scales can also be provided.
-    
-    l = vai.Line([1,2,3,3,2,1])
-    vai.Line({'line1': [1,2,3,3,2,1], 'line2': [2,4,6,5,3,1]})
-    vai.Scatter([1,2,3,3,2,1], backend="mpl", xlabel="x", template="seaborn")
-    vai.Scatter([1,2,3,3,2,1], show_controls=True, backend="mpl")
-
-.. code:: ipython3
-
-    # If bins are not provided, the backend's automatic binning is used
-    # If bins is an integer, it's the number of bins to use
-    # If bins is a tuple of the form (start, end, nbins), it is used to do the binning
-    # The functionality of providing just an array for the data as opposed to 
-    # a dictionary is identical to Line/Scatter
-    
-    h = vai.Histogram({'hist1': [1,1,1,2,3,4,4,5,6,7,5,3], 
-                   'hist2': [1,1,0,2,3,4,4,0,6,7,5,3]}, 
-                  bins = 100,
-                  ylabel='y')
+   # If bins are not provided, the backend's automatic binning is used
+   # If bins is an integer, it's the number of bins to use
+   # If bins is a tuple of the form (start, end, nbins), it is used to do the binning
+   # The functionality of providing just an array for the data as opposed to 
+   # a dictionary is identical to Line/Scatter
+   
+   h = vai.Histogram({'hist1': [1,1,1,2,3,4,4,5,6,7,5,3], 
+                  'hist2': [1,1,0,2,3,4,4,0,6,7,5,3]}, 
+               bins = 100,
+               ylabel='y')
 
 Higher level Plotting Classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -99,25 +98,23 @@ quickly:
 
 .. |image1| image:: media/preview_and_streamviewer.png
 
-.. code:: ipython3
+**Example:**
+::
+   # `cait.versatile` also includes functions, which implement a `preview` method (see below)
+   # It also implements iterators over events.
+   # Their interplay can be visualized with `vai.Preview`.
+   # Alternatively, it can also be used to show just the iterator of events.
+   
+   # Show just events in iterator
+   it = dh.get_event_iterator("events")
+   vai.Preview(it)
+   
+   # Show effect of removing baseline for events in iterator
+   it2 = dh.get_event_iterator("events", 0)
+   vai.Preview(it2, vai.RemoveBaseline())
 
-    # `cait.versatile` also includes functions, which implement a `preview` method (see below)
-    # It also implements iterators over events.
-    # Their interplay can be visualized with `vai.Preview`.
-    # Alternatively, it can also be used to show just the iterator of events.
-    
-    # Show just events in iterator
-    it = dh.get_event_iterator("events")
-    vai.Preview(it)
-    
-    # Show effect of removing baseline for events in iterator
-    it2 = dh.get_event_iterator("events", 0)
-    vai.Preview(it2, vai.RemoveBaseline())
-
-.. code:: ipython3
-
-    stream = vai.Stream(hardware="vdaq2", src=fpath)
-    vai.StreamViewer(stream, template="plotly_dark", width=1000, downsample_factor=100)
+   stream = vai.Stream(hardware="vdaq2", src=fpath)
+   vai.StreamViewer(stream, template="plotly_dark", width=1000, downsample_factor=100)
 
 It goes without saying that all the keyword arguments for backend, etc.
 work here as well.

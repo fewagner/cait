@@ -136,12 +136,12 @@ class SEV(ArrayWithBenefits):
                       title="Standard Event", 
                       axis=[f"Channel {k}" for k in range(self._n_ch)])
 
-    def show(self, dt: int = None, **kwargs):
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot SEV for all channels. To inspect just one channel, you can index SEV first and call `.show` on the slice.
 
-        :param dt: Length of a sample in microseconds. If provided, the x-axis is a microsecond axis. Otherwise it's the sample index.
-        :type dt: int
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a microsecond axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -149,13 +149,13 @@ class SEV(ArrayWithBenefits):
             raise Exception("Nothing to plot.")
         
         if 'x' not in kwargs.keys():
-            if dt is not None:
-                kwargs['x'] = dt/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
+            if dt_us is not None:
+                kwargs['x'] = dt_us/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
             else:
                 kwargs['x'] = np.arange(self.shape[-1])
             
         if 'xlabel' not in kwargs.keys():
-            if dt is not None: 
+            if dt_us is not None: 
                 kwargs['xlabel'] = "Time (ms)"
             else:
                 kwargs['xlabel'] = "Data Index"

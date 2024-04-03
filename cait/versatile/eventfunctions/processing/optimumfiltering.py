@@ -13,10 +13,19 @@ class OptimumFiltering(FncBaseClass):
     :return: Filtered event.
     :rtype: np.ndarray
 
-    >>> ev_it = dh.get_event_iterator("events")
-    >>> of = vai.OF().from_dh(dh)
-    >>> f = vai.OptimumFiltering(of)
-    >>> filtered_events = vai.apply(f, ev_it)
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        # Construct mock data (which provides event iterator and optimum filter)
+        md = vai.MockData()
+        it = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+        of = md.of[0]
+
+        # View effect of filtering on events
+        vai.Preview(it, vai.OptimumFiltering(of))
+
+    .. image:: media/OptimumFiltering_preview.png
     """
     def __init__(self, of):
         self._of = of

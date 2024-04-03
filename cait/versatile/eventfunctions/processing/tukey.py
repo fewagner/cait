@@ -13,6 +13,19 @@ class TukeyFiltering(FncBaseClass):
  
     :return: Event with applied window function.
     :rtype: np.ndarray
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        # Construct mock data (which provides event iterator)
+        md = vai.MockData()
+        it = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+
+        # View effect of filtering on events
+        vai.Preview(it, vai.TukeyFiltering())
+
+    .. image:: media/TukeyFiltering_preview.png
     """
     def __init__(self, alpha: float = 0.25):
         self._alpha = alpha
@@ -31,8 +44,8 @@ class TukeyFiltering(FncBaseClass):
             d = dict()
             for i in range(np.ndim(event)):
                 d[f'channel {i}'] = [None, event[i]]
-                d[f'after window channel {i}'] = [None, self._new_event[i]]
+                d[f'filtered channel {i}'] = [None, self._new_event[i]]
         else:
             d = {'event': [None, event],
-                 'after window': [None, self._new_event]}
+                 'filtered event': [None, self._new_event]}
         return dict(line = d)
