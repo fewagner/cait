@@ -156,13 +156,24 @@ class NPS(ArrayWithBenefits):
                 kwargs['xlabel'] = "Frequency (Hz)"
             else:
                 kwargs['xlabel'] = "Data Index"   
+
+        if 'ylabel' not in kwargs.keys():
+            if dt_us is not None: 
+                kwargs['ylabel'] = "Noise Power Density (V²/Hz)"
+            else:
+                kwargs['ylabel'] = "Noise Power Density (a.u.)"
+
+        if dt_us is not None:
+            _array = self._array/int(1e6/dt_us)/self._array.shape[-1]
+        else:
+            _array = self._array
         
         if self._n_channels > 1:
             y = dict()
-            for i, channel in enumerate(self._array):
+            for i, channel in enumerate(_array):
                 y[f'channel {i}'] = channel
         else:
-            y = self._array
+            y = _array
 
         return Line(y, **kwargs)
     
