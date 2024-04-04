@@ -5,7 +5,7 @@ import numpy as np
 
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
-from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx
+from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx,get_clean_bs_idx_draft
 from ...analysisobjects.nps import NPS
 
 class StreamBaseClass(DataSourceBaseClass):
@@ -176,25 +176,28 @@ class StreamBaseClass(DataSourceBaseClass):
                               alignment=alignment, 
                               batch_size=batch_size)
     
-    def get_nps(self,key:str,record_length: int,draft:bool=False,**kwargs):
+
+    def get_nps(self,keys:str,record_length: int,draft:bool=False,**kwargs):
         """_summary_
 
         :param key: _description_
         :type key: str
+        :param record_length: _description_
+        :type record_length: int
         :param draft: _description_, defaults to False
         :type draft: bool, optional
-        :raises IndexError: _description_
-        :raises IndexError: _description_
-        :raises NotImplementedError: _description_
-        :raises IndexError: _description_
         :return: _description_
         :rtype: _type_
         """
-        idx=get_clean_bs_idx(self,record_length, **kwargs)
-        it=self.get_event_iterator(key=key,record_length=record_length,inds=idx)
+        if not draft:
+            idx=get_clean_bs_idx(self,record_length, **kwargs)
+        else:
+            idx=get_clean_bs_idx_draft(self,record_length, **kwargs)
+        it=self.get_event_iterator(keys=keys,record_length=record_length,inds=idx)
         nps=NPS(it)
         return nps,it
     
+
 class StreamTime:
     """
     An object that encapsulates time data for a given Stream object. Not intended to be created by user.
