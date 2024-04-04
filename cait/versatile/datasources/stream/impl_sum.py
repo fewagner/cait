@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 
 from .streambase import StreamBaseClass
@@ -10,7 +12,7 @@ class StreamSum(StreamBaseClass):
     :param stream: The stream which includes the channels we want to sum.
     :type stream: StreamBaseClass
     :param keys: List of channel names that are used to calculate the sum.
-    :type keys: list[str]
+    :type keys: List[str]
 
     **Example:**
         ::
@@ -36,7 +38,7 @@ class StreamSum(StreamBaseClass):
             vai.StreamViewer(ss)
 
     """
-    def __init__(self, stream: StreamBaseClass, keys: list[str]):
+    def __init__(self, stream: StreamBaseClass, keys: List[str]):
         if not all([k in stream.keys for k in keys]):
             raise KeyError(f"All given keys have to be present in the stream's keys. Available: {stream.keys}, got: {keys}")
         

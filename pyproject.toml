@@ -1,0 +1,49 @@
+[build-system]
+requires      = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cait"
+dynamic = ["version"]
+description = "Cryogenic Artificial Intelligence Tools - A Python Package for the Data Analysis of Rare Event Search Experiments with Machine Learning."
+readme = {file = "README.rst", content-type = "text/x-rst"}
+authors = [
+    { name = "Philipp Schreiner", email = "philipp.schreiner@oeaw.ac.at" }, 
+    { name = "Felix Wagner", email = "felix.wagner@oeaw.ac.at" }
+]
+license = { file = "LICENSE" }
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy>=1.22",
+    "scipy>=1.6",
+    "pandas>=1.1",
+    "h5py>=3.2",
+    "uproot>=4.1",
+    "ipywidgets>=7.5",
+    "dash>=2.0",
+    "matplotlib>=3.4",
+    "numba>=0.54",
+    "tqdm>=4.62",
+    "scikit-learn>=0.24",
+    "deprecation"
+]
+requires-python = ">=3.8"
+
+[project.optional-dependencies]
+nn = ["pytorch-lightning==1.9.4", "torch>=1.8"]
+clplot = ["uniplot>=0.12.2"]
+test = ["pytest"]
+
+[project.urls]
+Repository = "https://github.com/fewagner/cait"
+Documentation = "https://cait.readthedocs.io/en/latest/index.html"
+Changelog = "https://cait.readthedocs.io/en/latest/changelog.html"
+
+[tool.setuptools.dynamic]
+version = {attr = "cait._version.__version__"}

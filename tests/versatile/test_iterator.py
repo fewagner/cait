@@ -59,6 +59,7 @@ def basic_checks(it):
     l = it.record_length
     tb = it.dt_us
     t = it.t
+    dsstart = it.ds_start_us
 
     # Test context manager
     S = 0
