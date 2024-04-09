@@ -42,11 +42,9 @@ class IteratorBaseClass(ABC):
     def __len__(self):
         return self.__n_events
 
-    @abstractmethod
     def __enter__(self):
-        ...
+        return self
     
-    @abstractmethod
     def __exit__(self, typ, val, tb):
         ...
     
