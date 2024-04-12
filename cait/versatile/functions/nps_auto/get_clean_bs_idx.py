@@ -1,5 +1,4 @@
 import numpy as np
-import matplotlib.pyplot as plt
 from scipy.signal import find_peaks
 from joblib import Parallel,delayed
 import bottleneck as bn
@@ -55,8 +54,6 @@ def LevelShift_detector(stream,record_length):
     :type stream: numpy.ndarray
     :param record_lenght: Desired length of arrays
     :type record_lenght: int
-
-
     :return: A list of tuples representing the intervals where no level shifts were detected.
     :rtype: list
     """
@@ -97,15 +94,6 @@ def LevelShift_detector(stream,record_length):
     Interval_tuples = list(zip(Intervall_begins, Intervall_ends))                                               #generate tuples of (begin,end) of level-shift free stream
     Output = [(a, b) for (a, b) in Interval_tuples if b - a >= record_length]                                   #check if  substreams is longer than desired length
     return Output
-
-
-
-
-
-
-
-
-
 
 
 def Fourie_Trigger(stream,Begin,End, sigma, windowsize,windowsize_mean,stepsize,sampling_frequency):
@@ -324,7 +312,7 @@ def process_Intervals_Mean(stream, Begin, End, sigma=6, window_size=1500):
     return Intervals
 
 
-def Apply_Fourie_Mean(stream, Tuples, Nr_cores=-1, sigma=6, window_size=1500, record_length=2**15):
+def Apply_Mean_Trigger(stream, Tuples, Nr_cores=-1, sigma=6, window_size=1500, record_length=2**15):
     """
     Apply Fourier mean trigger detection on multiple segments of a stream.
 
@@ -412,7 +400,7 @@ def decaying_Baseline_remover(stream, Tuples):
 
 
 
-def get_clean_bs_idx(self,record_length, **kwargs):
+def get_clean_bs_idx(self,keys:str,record_length, **kwargs):
     """
     Process stream data to extract good intervals and generate Noise Power Spectrum (NPS).
 
@@ -436,25 +424,25 @@ def get_clean_bs_idx(self,record_length, **kwargs):
     # Determine sampling frequency and adjust stream length
     sampling_frequency = int(1e6 / self.dt_us)
     # Detect level shifts and apply Fourier trigger
-    Good_intervals = LevelShift_detector(stream=self, record_length=record_length)
-    Good_intervals = Apply_Fourie_Trigger(self, Good_intervals, sampling_frequency=sampling_frequency, record_length=record_length)
+    Good_intervals = LevelShift_detector(stream=self[keys], record_length=record_length)
+    Good_intervals = Apply_Fourie_Trigger(self[keys], Good_intervals, sampling_frequency=sampling_frequency, record_length=record_length)
     
     # Apply Fourier mean and divide array
-    Good_intervals = Apply_Fourie_Mean(self, Good_intervals, record_length=record_length)
+    Good_intervals = Apply_Mean_Trigger(self[keys], Good_intervals, record_length=record_length)
     Good_intervals = divide_array(Good_intervals, recordlenght=record_length)
 
     # Optionally remove decaying baselines
     if remove_decaying_baseline:
-        Good_intervals = decaying_Baseline_remover(stream=self, Tuples=Good_intervals)
+        Good_intervals = decaying_Baseline_remover(self[keys], Tuples=Good_intervals)
     else:
         Good_intervals=[x[0] for x in Good_intervals]
+    return Good_intervals
 
 
 
 
 
-
-def get_clean_bs_idx_draft(self,record_length, **kwargs):
+def get_clean_bs_idx_draft(self,keys:str,record_length, **kwargs):
     """
     Selects random positions in the stream to extract good intervals and generate a fast Noise Power Spectrum (NPS), improve.
 
@@ -507,17 +495,15 @@ def get_clean_bs_idx_draft(self,record_length, **kwargs):
             Good_intervals.append((idx,idx+100000))
 
 
-
+        Good_intervals = Apply_Fourie_Trigger(self[keys], Good_intervals, sampling_frequency=sampling_frequency, record_length=record_length)
         
-        Good_intervals = Apply_Fourie_Trigger(self, Good_intervals, sampling_frequency=sampling_frequency, record_length=record_length)
-        
-        # Apply Fourier mean and divide array
-        Good_intervals = Apply_Fourie_Mean(self, Good_intervals, record_length=record_length)
+        Good_intervals = Apply_Mean_Trigger(self[keys], Good_intervals, record_length=record_length)
         Good_intervals = divide_array(Good_intervals, recordlenght=record_length)
 
         # Optionally remove decaying baselines
         if remove_decaying_baseline:
-            Good_intervals = decaying_Baseline_remover(stream=self, Tuples=Good_intervals)
+            Good_intervals = decaying_Baseline_remover(self[keys], Tuples=Good_intervals)
         else:
             Good_intervals=[x[0] for x in Good_intervals]
+        return Good_intervals
         

@@ -5,8 +5,7 @@ import numpy as np
 
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
-from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx,get_clean_bs_idx_draft
-from ...analysisobjects.nps import NPS
+
 
 class StreamBaseClass(DataSourceBaseClass):
     @abstractmethod
@@ -176,24 +175,26 @@ class StreamBaseClass(DataSourceBaseClass):
                               alignment=alignment, 
                               batch_size=batch_size)
     
-
+    
     def get_nps(self,keys:str,record_length: int,draft:bool=False,**kwargs):
-        """_summary_
+        """Returns an NPS opject and iterator of empty baselines for a given stream file
 
-        :param key: _description_
+        :param key: The keys (channel names) of the stream object to be iterated over. 
         :type key: str
-        :param record_length: _description_
+        :param record_length: The number of samples ,which represent the recordwindowlength
         :type record_length: int
-        :param draft: _description_, defaults to False
+        :param draft: Boolian if full NPS is needed or generate a draft ,with 300 random seleecteed clean baselines, defaults to False
         :type draft: bool, optional
         :return: _description_
         :rtype: _type_
         """
+        from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx,get_clean_bs_idx_draft
+        from ...analysisobjects.nps import NPS
         if not draft:
-            idx=get_clean_bs_idx(self,record_length, **kwargs)
+            idx=get_clean_bs_idx(self,keys,record_length, **kwargs)
         else:
-            idx=get_clean_bs_idx_draft(self,record_length, **kwargs)
-        it=self.get_event_iterator(keys=keys,record_length=record_length,inds=idx)
+            idx=get_clean_bs_idx_draft(self,keys,record_length, **kwargs)
+        it=self.get_event_iterator(keys=keys,record_length=record_length,inds=idx,alignment=0)
         nps=NPS(it)
         return nps,it
     
