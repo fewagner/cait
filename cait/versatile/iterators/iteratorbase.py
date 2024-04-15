@@ -214,6 +214,13 @@ class IteratorBaseClass(ABC):
         return self._n_batches
     
     @property
+    def hours(self):
+        """
+        Returns the times (in hours) of the events in this iterators since the start of the underlying datasource.
+        """
+        return (self.timestamps - self.ds_start_us)/1e6/3600
+        
+    @property
     @abstractmethod
     def record_length(self):
         """

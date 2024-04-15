@@ -54,6 +54,7 @@ def basic_checks(it):
 
     # Test timestamps
     ts = it.timestamps
+    h = it.hours
 
     # Test record_length, record window and time base
     l = it.record_length
