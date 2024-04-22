@@ -2,10 +2,14 @@ from typing import Union, List
 import datetime
 
 import numpy as np
+import scipy as sp
 
 from ..viewer import Viewer
 from ...datasources.stream.streambase import StreamBaseClass
 from ...datasources.stream.factory import Stream
+
+def filter_chunk(data, of):
+    return sp.signal.oaconvolve(data, np.fft.irfft(of))
 
 # Has no test case (yet)
 class StreamViewer(Viewer):
@@ -20,6 +24,10 @@ class StreamViewer(Viewer):
     :type n_points: int, optional
     :param downsample_factor: This many samples are skipped in the data when plotting it. A higher number increases performance but lowers the level of detail in the data.
     :type downsample_factor: int, optional
+    :param mark_timestamps: A list of timestamps to be shown on top of the stream (e.g. to check trigger timestamps). Can also be a dictionary of lists, in which case they keys of the dictionary are used as legend entries.
+    :type mark_timestamps: Union[List[int], int], optional
+    :param of: If provided, a preview of the optimum filtered stream is shown. Only works for single-channel filters in which case also the 'keys' argument has to be set to exactly one channel (the one you want to filter).
+    :type of: np.ndarray, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
@@ -33,7 +41,8 @@ class StreamViewer(Viewer):
                  keys: Union[str, List[str]] = None,
                  n_points: int = 10000, 
                  downsample_factor: int = 100,
-                 mark_timestamps: Union[List[int], dict] = None, 
+                 mark_timestamps: Union[List[int], dict] = None,
+                 of: np.ndarray = None,
                  **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
@@ -64,6 +73,17 @@ class StreamViewer(Viewer):
         # Adding labels
         # xlabel is dynamic
         self.set_ylabel("trace (V)")
+        
+        # Adding optimum filter
+        if of is not None:
+            if of.ndim > 1:
+                raise ValueError(f"Only filtering of single channels is supported (i.e. 'of' has to be 1d).")
+            if len(self._keys) > 1:
+                raise ValueError(f"In case a filter is provided, you also have to choose a single channel (to be filtered) using the 'keys' argument.")
+            
+            self.add_line(x=None, y=None, name=f"{self._keys[0]} (filtered)")
+                
+        self._of = of
 
         # Adding timestamp markers
         if mark_timestamps is not None:
@@ -112,6 +132,19 @@ class StreamViewer(Viewer):
             if self._marks_timestamps:
                 val_min.append(np.min(y))
                 val_max.append(np.max(y))
+                
+        if self._of:
+            record_length = 2*(self._of.shape[-1] - 1)
+            d = record_length if self.current_start > record_length else 0
+            where_filter = slice(self.current_start - d, 
+                                 self.current_start + self.n_points*self.downsample_factor + record_length)
+            
+            filtered_stream = filter_chunk(self.stream[self._keys[0], where_filter, "as_voltage"], self._of)[d:-record_length]
+            self.update_line(name=f"{self._keys[0]} (filtered)", x=t_ms, y=filtered_stream[::self.downsample_factor])
+            
+            if self._marks_timestamps:
+                val_min.append(np.min(filtered_stream))
+                val_max.append(np.max(filtered_stream))
 
         if self._marks_timestamps: 
             y_min, y_max = np.min(val_min), np.max(val_max)
