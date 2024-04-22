@@ -4,11 +4,37 @@ import numba as nb
 
 from tqdm.auto import tqdm
 
-def filter_chunk(data, of, record_length):
+def filter_chunk(data: np.ndarray, of: np.ndarray, record_length: int):
+    """
+    Filters 'data' with an optimum filter 'of' according to the overlap-add-algorithm.
+
+    :param data: The data filter.
+    :type data: np.ndarray
+    :param of: The filter to use.
+    :type of: np.ndarray
+    :param record_length: The record length as determined by the filter length (this determines, how many samples are discarded in the beginning and end of the data to avoid edge effects).
+    :type record_length: int
+
+    :return: Tuple of trigger indices and trigger heights.
+    :rtype: Tuple[List[int], List[float]]
+    """
     return sp.signal.oaconvolve(data, np.fft.irfft(of))[record_length:-record_length]
 
 @nb.njit
-def search_chunk(data, threshold, record_length):
+def search_chunk(data: np.ndarray, threshold: float, record_length: int):
+    """
+    Searches samples in 'data' exceeding the 'threshold' according to the algorithm discussed in https://edoc.ub.uni-muenchen.de/23762/.
+
+    :param data: The data to search.
+    :type data: np.ndarray
+    :param threshold: The threshold (in Volts) above which events should be triggered.
+    :type threshold: float
+    :param record_length: The record length as determined by the filter (this determines, how many samples are not searched in the end of the data)
+    :type record_length: int
+
+    :return: Tuple of trigger indices and trigger heights.
+    :rtype: Tuple[List[int], List[float]]
+    """
     trigger_inds = []
     trigger_vals = []
     
@@ -35,7 +61,25 @@ def trigger_of(stream,
                of: np.ndarray, 
                n_triggers: int = None,
                chunk_size: int = 100):
-    
+    """
+    Trigger a single channel of a stream object using the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. 
+
+    :param stream: The stream object with the channel to trigger.
+    :type stream: StreamBaseClass
+    :param key: The name of the channel in 'stream' to trigger.
+    :type key: str
+    :param threshold: The threshold (in Volts) above which events should be triggered.
+    :type threshold: float
+    :param of: The optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
+    :type of: np.ndarray
+    :param n_triggers: The number of events to trigger (might be more, depending on 'chunk_size'). E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
+    :type n_triggers: int
+    :param chunk_size: The number of record windows that are processed (i.e. filter + peak search) at a time.
+    :type chunk_size: int
+
+    :return: Tuple of trigger indices and trigger heights.
+    :rtype: Tuple[List[int], List[float]]
+    """
     # size of record window (as determined by the size of the filter)
     record_length = 2*(of.shape[-1] - 1)
     # total number of samples in the stream
@@ -66,10 +110,9 @@ def trigger_of(stream,
 
     for s, e, sz in zip(pbar := tqdm(starts), ends, search_area_sizes):
         chunk[:sz+3*record_length] = stream[key, s-record_length:e+2*record_length, "as_voltage"]
-        #chunk[:sz+3*record_length] = stream[s-record_length:e+2*record_length]
 
-        filterd_chunk = filter_chunk(chunk, of, record_length)
-        inds, vals = search_chunk(filterd_chunk, threshold, record_length)
+        filtered_chunk = filter_chunk(chunk, of, record_length)
+        inds, vals = search_chunk(filtered_chunk, threshold, record_length)
 
         trigger_inds += [s+i for i in inds]
         trigger_vals += vals
