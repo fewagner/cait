@@ -79,6 +79,10 @@ class OF(ArrayWithBenefits):
             H = np.zeros(nps.shape, dtype=complex)
             H[s1] = np.fft.rfft(sev[s1]).conjugate()*np.exp(-1j*t_m*omega[s2])/nps[s1]
 
+            # In any case, we force the 0 component of the filter kernel to 0
+            # (this shifts the signal to 0)
+            H[...,0] = 0
+
             # Normalize to height of SEV
             maxima = np.max(OptimumFiltering(H)(sev), axis=-1)
             # Cast maxima into a column vector such that vectorization works
