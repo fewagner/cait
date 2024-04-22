@@ -94,8 +94,9 @@ class MockData(DataSourceBaseClass):
 
     @property
     def nps(self):
-        rand = np.random.normal(size=(2, self.n_channels*self._record_length//2))
-        return NPS(np.abs(np.fft.rfft(rand))**2)
+        rand = np.random.normal(size=(100, 2, self._record_length))
+        nps = np.mean(np.abs(np.fft.rfft(rand))**2, axis=0)
+        return NPS(nps)
     
     @property
     def of(self):

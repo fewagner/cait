@@ -40,12 +40,12 @@ def basic_checks(dh, obj, k):
 
     # Methods
     obj.show(backend="plotly")
-    obj.show(dt=5, backend="plotly")
+    obj.show(dt_us=5, backend="plotly")
     appendix = f"_{obj.__class__.__name__}_{k}"
     obj.to_file(fname="test"+appendix, out_dir=dh.get_filedirectory())
-    obj.__class__().from_file(fname="test"+appendix, src_dir=dh.get_filedirectory())
+    obj.__class__.from_file(fname="test"+appendix, src_dir=dh.get_filedirectory())
     obj.to_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
-    obj.__class__().from_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
+    obj.__class__.from_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
 
 def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     d1, d2, *_ = testdata_1D_2D_3D_s_mus
@@ -59,7 +59,7 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     assert np.array_equal(sev3, sev4)
 
     # Check consistency with vanilla cait
-    sev5 = SEV().from_dh(dh)
+    sev5 = SEV.from_dh(dh)
 
     # Creation from iterator
     it = dh.get_event_iterator("events")
@@ -88,7 +88,7 @@ def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     assert np.array_equal(nps3, nps4)
 
     # Check consistency with vanilla cait
-    nps5 = NPS().from_dh(dh)
+    nps5 = NPS.from_dh(dh)
 
     # Creation from iterator
     it = dh.get_event_iterator("noise")
@@ -117,10 +117,10 @@ def test_OF(dh, testdata_1D_2D_3D_s_mus):
     assert np.array_equal(of3, of4)
 
     # Check consistency with vanilla cait
-    of5 = OF().from_dh(dh)
+    of5 = OF.from_dh(dh)
 
     # Creation from NPS/SEV
-    of6 = OF(SEV().from_dh(dh), NPS().from_dh(dh))
+    of6 = OF(SEV.from_dh(dh), NPS.from_dh(dh))
     of7 = OF(SEV(dh.get_event_iterator("events")), NPS(dh.get_event_iterator("noise")))
     of8 = OF(NPS(dh.get_event_iterator("noise")), SEV(dh.get_event_iterator("events")))
     assert np.array_equal(of7, of8)

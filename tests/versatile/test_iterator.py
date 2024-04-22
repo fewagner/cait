@@ -54,6 +54,7 @@ def basic_checks(it):
 
     # Test timestamps
     ts = it.timestamps
+    h = it.hours
 
     # Test record_length, record window and time base
     l = it.record_length
@@ -118,6 +119,8 @@ def basic_checks(it):
                                    next(iter(it_new[:,-1])))
     flag = np.zeros(len(it_combined), dtype=bool)
     flag[:20] = True
+
+    it_combined_sum = sum([it, it_new, it_new])
 
     next(iter(it_combined[:]))
     next(iter(it_combined[0]))

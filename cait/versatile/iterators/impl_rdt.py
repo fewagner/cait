@@ -54,12 +54,6 @@ class RDTIterator(IteratorBaseClass):
                         'channels': self._channels, 
                         'inds': inds,
                         'batch_size': batch_size}
-
-    def __enter__(self):
-        return self # Just to be consistent with H5Iterator
-    
-    def __exit__(self, typ, val, tb):
-        ... # Just to be consistent with H5Iterator
     
     def __iter__(self):
         self._current_batch_ind = 0

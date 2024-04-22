@@ -13,6 +13,19 @@ class BoxCarSmoothing(FncBaseClass):
  
     :return: Smoothed event.
     :rtype: np.ndarray
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        # Construct mock data (which provides event iterator)
+        md = vai.MockData()
+        it = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+
+        # View effect of moving average on events
+        vai.Preview(it, vai.BoxCarSmoothing())
+
+    .. image:: media/BoxCarSmoothing_preview.png
     """
     def __init__(self, length: int = 50):
         self._length = length
@@ -45,5 +58,5 @@ class BoxCarSmoothing(FncBaseClass):
                 d[f'smoothed channel {i}'] = [None, self._smooth_event[i]]
         else:
             d = {'event': [None, event],
-                 'after window': [None, self._smooth_event]}
+                 'smoothed event': [None, self._smooth_event]}
         return dict(line = d)

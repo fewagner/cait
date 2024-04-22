@@ -55,12 +55,6 @@ class StreamIterator(IteratorBaseClass):
 
         self._interval = (int(alignment*record_length), record_length - int(alignment*record_length))
 
-    def __enter__(self):
-        return self # Just to be consistent with EventIterator
-    
-    def __exit__(self, typ, val, tb):
-        ... # Just to be consistent with EventIterator
-    
     def __iter__(self):
         self._current_batch_ind = 0
         return self
