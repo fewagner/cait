@@ -176,29 +176,45 @@ class StreamBaseClass(DataSourceBaseClass):
                               batch_size=batch_size)
     
     
-    def get_nps(self,keys:str,record_length: int,draft:bool=False,**kwargs):
-        """Returns an NPS opject and iterator of empty baselines for a given stream file
+    def get_nps(self, key: str, record_length: int, draft: bool = False, **kwargs):
+        """
+        Returns an NPS opject and iterator of empty baselines for a given stream file
 
-        :param key: The keys (channel names) of the stream object to be iterated over. 
+        :param key: The key (channel name) for which we want to calculate the NPS.
         :type key: str
-        :param record_length: The number of samples ,which represent the recordwindowlength
+        :param record_length: Length of the noise traces that are taken from the stream for calculating the NPS.
         :type record_length: int
-        :param draft: Boolian if full NPS is needed or generate a draft ,with 300 random seleecteed clean baselines, defaults to False
+        :param draft: Boolian if full NPS is needed or generate a draft, with 300 randomly selecteed clean baselines, defaults to False
         :type draft: bool, optional
-        :return: _description_
-        :rtype: _type_
+        
+        :return: Tuple of noise power spectrum and an iterator of the noise traces that were used to calculate it.
+        :rtype: Tuple[vai.NPS, vai.IteratorBaseClass]
+        
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            # Construct stream object
+            stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
+            
+            nps, traces =  s.get_nps("ADC1", 2**15, draft=False)
+            
+            # Have a look at the NPS
+            nps.show(dt_us=stream.dt_us)
         """
         from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx,get_clean_bs_idx_draft
         from ...analysisobjects.nps import NPS
+        
         if not draft:
-            idx=get_clean_bs_idx(self,keys,record_length, **kwargs)
+            idx = get_clean_bs_idx(self, key, record_length, **kwargs)
         else:
-            idx=get_clean_bs_idx_draft(self,keys,record_length, **kwargs)
-        it=self.get_event_iterator(keys=keys,record_length=record_length,inds=idx,alignment=0)
-        nps=NPS(it)
-        return nps,it
+            idx = get_clean_bs_idx_draft(self, key, record_length, **kwargs)
+            
+        it = self.get_event_iterator(keys=key, record_length=record_length, inds=idx, alignment=0)
+        nps = NPS(it)
+        
+        return nps, it
     
-
 class StreamTime:
     """
     An object that encapsulates time data for a given Stream object. Not intended to be created by user.
