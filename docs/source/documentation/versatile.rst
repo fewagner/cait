@@ -1,4 +1,4 @@
-cait.versatile - the hackable cait
+cait.versatile - the flexible cait
 ==================================
 
 While ``cait`` provides excellent methods for raw data analysis, it is a very rigid framework mostly developed with the needs of the `CRESST` experiment in mind, and if one needs anything out of the ordinary, individualizing the workflow can be cumbersome. The sub-package ``cait.versatile`` aims to streamline this process and provide clear entry points to the existing framework. Moreover, it introduces convenience features for as-fast-as-possible data quality assessment.

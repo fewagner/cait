@@ -2,7 +2,7 @@ import numpy as np
 import cait as ai
 
 from .streambase import StreamBaseClass
-from ...functions.trigger.trigger import trigger
+from ...functions.trigger.trigger_zscore import trigger_zscore
 from ...eventfunctions.processing.removebaseline import RemoveBaseline
 
 # Helper Function to get testpulse information from VDAQ2 files
@@ -16,11 +16,11 @@ def vdaq2_dac_channel_trigger(stream, threshold, record_length):
     out_tpas = dict()
 
     for c in channels:
-        inds, vals = trigger(stream, 
+        inds, vals = trigger_zscore(stream, 
                              key=c, 
                              threshold=threshold, 
                              record_length=record_length,
-                             preprocessing=[lambda x: x**2, RemoveBaseline()])
+                             apply_first=lambda x: x**2)
         out_timestamps[c] = stream.time[inds]
         out_tpas[c] = np.sqrt(vals) 
 
@@ -81,8 +81,8 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tpas(self):
         if self._tpas is None:
-            # Trigger with generic threshold 0.001 V and record length 1 sec
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 0.001, int(1e6/self.dt_us))
+            # Trigger with generic threshold 5 z-scores and record length 1 sec
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 5, int(1e6/self.dt_us))
 
             self._tpas = tpas
             self._tp_timestamps = timestamps
