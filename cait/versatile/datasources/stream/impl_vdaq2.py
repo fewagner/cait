@@ -92,8 +92,8 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tp_timestamps(self):
         if self._tp_timestamps is None:
-            # Trigger with generic threshold 0.001 V and record length 1 sec
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 0.001, int(1e6/self.dt_us))
+            # Trigger with generic threshold 5 z-scores and record length 1 sec
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 5, int(1e6/self.dt_us))
 
             self._tpas = tpas
             self._tp_timestamps = timestamps
