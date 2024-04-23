@@ -4,7 +4,6 @@ from multiprocessing import Pool
 
 import numpy as np
 from scipy.signal import find_peaks
-import bottleneck as bn
 from tqdm.auto import tqdm
 import random
 
@@ -143,6 +142,8 @@ def fourier_trigger(stream,
     delta_stream = np.diff(tem)       
     
     k = 0
+    
+    
     #Apply mean trigger for delta stream
     while k < (len(delta_stream) - window_size_mean - 1):
         window = delta_stream[k:k+window_size_mean]
@@ -154,7 +155,10 @@ def fourier_trigger(stream,
             k = k + window_size_mean + 1
             j = k*stepsize + window_size
             #add begin and end of stream without event
-            Ends.append(j - 8000 + begin)
+            if (j - 8000 + begin)>0:
+                Ends.append(j - 8000 + begin)
+            else:
+                Ends.append(begin)
             Beginning.append(j + 32000 + begin)
             k = k + 40000//stepsize
             
@@ -277,12 +281,17 @@ def moving_average_and_std_trigger(stream,
     ends = []
 
     # Extract segment of the stream
-    stream_segment = stream[key, begin:end]
+    stream_segment =stream[key, begin:end]
     stream_len = len(stream_segment)
+    stream_segment=np.array(stream_segment)/min(stream_segment)
+    #stream_segment=np.array(stream_segment)
+    window = np.ones(window_size) / window_size
+    moving_avg = np.convolve(stream_segment, window, mode='valid')
+    # Compute the rolling standard deviation using the formula std = sqrt(E[X^2] - (E[X])^2)
+    rolling_squared_mean = np.convolve(stream_segment**2, window, mode='valid')
+    moving_std = np.sqrt(rolling_squared_mean - moving_avg**2)
 
-    # Calculate moving average and standard deviation
-    moving_avg = bn.move_mean(stream_segment, window=window_size, min_count=1)
-    moving_std = bn.move_std(stream_segment, window=window_size, min_count=1)
+
 
     # Calculate threshold values
     threshold_high = moving_avg + sigma * moving_std
@@ -290,18 +299,17 @@ def moving_average_and_std_trigger(stream,
 
     i = 0
     while i < (stream_len - window_size - 1):
-        if i > window_size:
-            next_value = stream_segment[i + window_size]
+        next_value = stream_segment[i + window_size]
 
-            # Check if next value exceeds threshold
-            if next_value > threshold_high[i] or next_value < threshold_low[i]:
-                j = i + window_size
-                if j - window_size - 8000 + begin > 0:
-                    ends.append(j - window_size - 8000 + begin)
-                else:
-                    ends.append(0)
-                beginning.append(j + 2**15 + begin)
-                i = j + int(32768)
+        # Check if next value exceeds threshold
+        if next_value > threshold_high[i] or next_value < threshold_low[i]:
+            j = i 
+            if j  - 8000 + begin > 0:
+                ends.append(j - window_size - 8000 + begin)
+            else:
+                ends.append(0)
+            beginning.append(j + 2**15 + begin)
+            i = j + int(32768)
         i += 1
 
     ends.append(end)
@@ -518,12 +526,12 @@ def get_clean_bs_idx_draft(stream,
                 break
 
         Good_intervals=[]
-       
+        
         #Define good intervals
         for idx in random_indices: 
             Good_intervals.append((idx, idx+100000))
 
-        Good_intervals = apply_fourier_trigger(stream, key, Good_intervals, record_length=record_length)
+        #Good_intervals = apply_fourier_trigger(stream, key, Good_intervals, record_length=record_length)
         
         Good_intervals = apply_mean_trigger(stream, key, Good_intervals, record_length=record_length)
 
