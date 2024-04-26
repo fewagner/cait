@@ -21,6 +21,7 @@ from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt,
 from .versatile.functions.file import ds_source_available
 from .versatile.iterators.impl_h5 import H5Iterator
 from .versatile.iterators.iteratorbase import IteratorBaseClass
+from .versatile.serializing import SerializingMixin, json_loads, json_dumps
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
@@ -303,16 +304,29 @@ class DataHandler(SimulateMixin,
         :return: H5Iterator
         :rtype: Context Manager / Iterator
 
-        >>> # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
-        >>> ev_it = dh.get_event_iterator("events", 0)
-        >>> for ev in ev_it:
-        ...    print(np.max(ev))
+        **Example:**
+        ::
+            # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
+            ev_it = dh.get_event_iterator("events", 0)
+            for ev in ev_it:
+               print(np.max(ev))
 
-        >>> # Usage as context manager (HDF5 file is kept open)
-        >>> with dh.get_event_iterator("events", 0) as ev_it:
-        ...     for ev in ev_it:
-        ...         print(np.max(ev))
+            # Usage as context manager (HDF5 file is kept open)
+            with dh.get_event_iterator("events", 0) as ev_it:
+                for ev in ev_it:
+                    print(np.max(ev))
         """
+        # Check if the events in the specified group are stored externally
+        # by checking if "group/event" has the 'source_shape' attribute which
+        # is only stored when include_event_iterator is called
+        with h5py.File(self.get_filepath(), 'r') as f:
+            if "source_shape" in f[group]["event"].attrs:
+                it = json_loads(f[group]["event"].asstr()[0])
+                channel = slice(None) if channel is None else channel
+                flag = slice(None) if flag is None else flag
+                return it[channel, flag]
+
+        # Else, read event dataset and construct iterator
         # Reading number of events is much faster if we open the HDF5 file directly
         with h5py.File(self.get_filepath(), 'r') as f:
             n_events = f[group]["event"].shape[1]
@@ -323,71 +337,88 @@ class DataHandler(SimulateMixin,
 
         return H5Iterator(self, group=group, channels=channel, inds=inds, batch_size=batch_size)
     
-    def include_event_iterator(self, group: str, it: IteratorBaseClass, dtype: str = 'float32'):
+    def include_event_iterator(self, 
+                               group: str, 
+                               it: IteratorBaseClass, 
+                               dtype: str = 'float32',
+                               copy_events: bool = True):
         """
-        Includes the events returned by an iterator into dataset 'event' of a specified group. The timestamps of the iterator are saved in datasets 'time_s' and 'time_mus' of the same group, in alignment with the convention of cait.
+        Includes the events returned by an iterator into dataset 'event' of a specified group. The timestamps and hours of the iterator are saved in datasets 'time_s', 'time_mus' and 'hours' of the same group, in alignment with the convention of cait. You can choose whether you want to copy the data into the HDF5 file or just save a reference to their source. In this case, the source must be available to retrieve events in the future.
 
         :param group: The target group in the HDF5 file.
         :type group: str
         :param it: The iterator whose events we want to include.
         :type it: IteratorBaseClass
-        :param dtype: The datatype which the events should be stored as. Either 'float32' or 'float64'. Some `cait` methods expect 'float32' event datasets. Defaults to 'float32'
+        :param dtype: The datatype which the events should be stored as. Either 'float32' or 'float64'. Some `cait` methods expect 'float32' event datasets. Has no effect if 'copy_events'=False. Defaults to 'float32'
         :type dtype: str, optional
+        :param copy_events: If True, voltage traces of all events are copied to the HDF5 file. If False, only a reference for where to find the original traces is saved so that they can be reached in their original location. Defaults to True
+        :type copy_events: bool, optional
         """
         # Check if dataset exists (this function does not support overwriting)
         with self.get_filehandle(mode="r+") as f:
             hdf5group = f.require_group(group)
             if 'event' in hdf5group.keys():
                 raise Exception(f"Dataset 'event' already exists in group '{group}'. If you want to overwrite it, delete it first using dh.drop('{group}', 'event')")
-        
-        if dtype not in ['float32', 'float64']:
-            raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64']")
-        
-        # Cast to correct datatype:
-        it = it.with_processing(lambda x: x.astype(dtype))    
-
-        # Assess size of dataset:
-        # get first event returned by iterator
-        # (if batched, get first event in batch)
-        out = next(iter(it))
-        if it.uses_batches: out = out[0]
-        
-        # add extra dimension for single channel
-        # iterators to stay consistent with cait's conventions
-        target_shape = list(np.array(out).shape)
-        if it.n_channels == 1: target_shape = [1] + target_shape
-
-        # build final shape. len(it) gives number of events in iterator
-        target_shape.insert(1, len(it))  # event axis is 1st dim                  
-        target_shape = (*target_shape, )
-
-        # Write iterator contents
-        with self.get_filehandle(mode="r+") as f:
-            hdf5group = f.require_group(group)
-            hdf5ds = hdf5group.require_dataset(name='event', shape=target_shape, dtype=np.array(out).dtype)
-
-            ind = 0
-            with it as events:
-                for ev in tqdm(events, total=it.n_batches):
-                    if it.uses_batches:
-                        step = len(ev)
-                        sl = slice(ind, ind+step)
-
-                        if it.n_channels > 1:
-                            ev = np.transpose(ev, axes=[1,0,2])
-                    else:
-                        step, sl = 1, ind
-
-                    hdf5ds[:, sl, :] = ev
-                    ind += step
-
-        # Include timestamps
+            
+        # Include timestamps and hours
         sec = (it.timestamps//1e6).astype(np.int32)
         mus = (it.timestamps%1e6).astype(np.int32)
-        hours = (sec.astype(np.int64)*int(1e6) + mus.astype(np.int64) - it.ds_start_us)/1e6/3600
+        hours = it.hours
         
         self.set(group, overwrite_existing=True, time_s=sec, time_mus=mus, dtype=np.int32)
         self.set(group, overwrite_existing=True, hours=hours, dtype=np.float64)
+
+        # SAVE REFERENCE ONLY
+        if not copy_events:
+            with self.get_filehandle(mode="r+") as f:
+                hdf5group = f.require_group(group)
+                # create dummy dataset with string content
+                str_content = np.array([json_dumps(it)], dtype=h5py.string_dtype("UTF-8"))
+                hdf5ds = hdf5group.create_dataset(name='event', data=str_content)
+                hdf5ds.attrs["source_shape"] = str((it.n_channels, len(it), it.record_length))
+
+        # COPY ALL EVENTS
+        else:
+            if dtype not in ['float32', 'float64']:
+                raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64']")
+            
+            # Cast to correct datatype:
+            it = it.with_processing(lambda x: x.astype(dtype))    
+
+            # Assess size of dataset:
+            # get first event returned by iterator
+            # (if batched, get first event in batch)
+            out = next(iter(it))
+            if it.uses_batches: out = out[0]
+            
+            # add extra dimension for single channel
+            # iterators to stay consistent with cait's conventions
+            target_shape = list(np.array(out).shape)
+            if it.n_channels == 1: target_shape = [1] + target_shape
+
+            # build final shape. len(it) gives number of events in iterator
+            target_shape.insert(1, len(it))  # event axis is 1st dim                  
+            target_shape = (*target_shape, )
+
+            # Write iterator contents
+            with self.get_filehandle(mode="r+") as f:
+                hdf5group = f.require_group(group)
+                hdf5ds = hdf5group.require_dataset(name='event', shape=target_shape, dtype=np.array(out).dtype)
+
+                ind = 0
+                with it as events:
+                    for ev in tqdm(events, total=it.n_batches, desc='copying events to HDF5 file'):
+                        if it.uses_batches:
+                            step = len(ev)
+                            sl = slice(ind, ind+step)
+
+                            if it.n_channels > 1:
+                                ev = np.transpose(ev, axes=[1,0,2])
+                        else:
+                            step, sl = 1, ind
+
+                        hdf5ds[:, sl, :] = ev
+                        ind += step
     
     def import_labels(self,
                       path_labels: str,
@@ -820,7 +851,21 @@ class DataHandler(SimulateMixin,
         if idx2 is None: idx2 = slice(None)
 
         with self.get_filehandle(mode="r") as f:
-            if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
+            if dataset=='event' and (f[group]['event'].ndim==3):
+                # Events are returned by going through an event iterator first
+                # This way, it is completely irrelevant whether the events are stored
+                # in the HDF5 file or externally
+                # ndim==3 is checked because stdevents for example are accessed without iterator
+                ev_it = self.get_event_iterator(group=group)[idx0, idx1]
+                # Resolve iterator by handing it to list()
+                # Reshape it such that for single channel, the numpy array is also 3d
+                # Finally transpose to get the shape correct
+                with ev_it as it:
+                    data = np.array(list(it)).reshape(
+                        (len(it), it.n_channels, it.record_length)
+                        ).transpose(1,0,2)
+                    
+            elif dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 0])
             elif dataset == 'onset':
                 data = np.array((f[group]['mainpar'][idx0, idx1, 1] - self.record_length / 4) / self.sample_frequency * 1000)
@@ -1054,7 +1099,14 @@ class DataHandler(SimulateMixin,
                     # if dataset is virtual, we include an identifier
                     virt_str = " (v)" if f[group][dataset].is_virtual else ' '*4 
 
-                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")}{fmt_virt(virt_str)} {str(f[group][dataset].shape):<{width_shape+1}} {f[group][dataset].dtype}')
+                    if dataset=='event' and ('source_shape' in f[group][dataset].attrs):
+                        shape = f[group][dataset].attrs['source_shape']
+                        dtype = fmt_virt('(stored externally)')
+                    else:
+                        shape = str(f[group][dataset].shape)
+                        dtype = f[group][dataset].dtype
+
+                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")}{fmt_virt(virt_str)} {shape:<{width_shape+1}} {dtype}')
 
                     if dataset=='mainpar':
                         shape = f[group]['mainpar'].shape[:2]

@@ -5,6 +5,7 @@ import itertools
 import numpy as np
 
 from .batchresolver import BatchResolver
+from ..serializing import SerializingMixin
 
 #### HELPER FUNCTIONS ####
 def _ensure_array(x):
@@ -19,8 +20,10 @@ def _ensure_not_array(x):
     if isinstance(x, str): x = str(x)
     return x
 
-class IteratorBaseClass(ABC):
-    def __init__(self, inds: List[int], batch_size: int = None):
+class IteratorBaseClass(SerializingMixin, ABC):
+    def __init__(self, inds: List[int], batch_size: int = None, **kwargs):
+        super().__init__(inds=inds, batch_size=batch_size, **kwargs)
+
         self.fncs = list()
 
         self.__n_events = len(inds)
@@ -214,6 +217,13 @@ class IteratorBaseClass(ABC):
         return self._n_batches
     
     @property
+    def has_processing(self):
+        """
+        Returns True if processing functions have been added to the iterator.
+        """
+        return bool(self.fncs)
+    
+    @property
     def hours(self):
         """
         Returns the times (in hours) of the events in this iterators since the start of the underlying datasource.
@@ -293,6 +303,8 @@ class IteratorCollection(IteratorBaseClass):
     >>> it_collection = it + it
     """
     def __init__(self, iterators: Union[IteratorBaseClass, List[IteratorBaseClass]]):
+        super(IteratorBaseClass, self).__init__(iterators=iterators)
+        
         # We do not construct the superclass because batching is handled differently
         self.fncs = list()
         # Check if all elements are IteratorBaseClass instances

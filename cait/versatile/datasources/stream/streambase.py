@@ -7,6 +7,9 @@ from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
 
 class StreamBaseClass(DataSourceBaseClass):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @abstractmethod
     def __len__(self):
         ...

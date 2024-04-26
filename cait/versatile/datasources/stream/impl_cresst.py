@@ -13,6 +13,8 @@ class Stream_CRESST(StreamBaseClass):
     CRESST data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
     """
     def __init__(self, files: List[str]):
+        super().__init__(files=files)
+
         if not any([x.endswith('.par') for x in files]):
             raise ValueError("You have to provide a '.par' file to construct this class.")
         if not any([x.endswith('.csmpl') for x in files]):

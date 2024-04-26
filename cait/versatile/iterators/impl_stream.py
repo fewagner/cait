@@ -40,7 +40,13 @@ class StreamIterator(IteratorBaseClass):
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        # Also sets up serializing
+        super().__init__(stream=stream,
+                         keys=keys,
+                         inds=inds,
+                         record_length=record_length,
+                         alignment=alignment,
+                         batch_size=batch_size)
 
         self._stream = stream
         self._record_length = record_length

@@ -26,6 +26,8 @@ class MockData(DataSourceBaseClass):
                  record_length: int = 16384,
                  dt_us: int = 10):
         
+        super().__init__(n_events=n_events, record_length=record_length, dt_us=dt_us)
+        
         self._n_events = n_events
         self._record_length = record_length
         self._dt_us = dt_us

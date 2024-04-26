@@ -44,6 +44,8 @@ class Stream(StreamBaseClass):
         s['ADC1', 10:20, 'as_voltage']
     """
     def __init__(self, hardware: str, src: Union[str, List[str]]):
+        super().__init__(hardware=hardware, src=src)
+        
         if hardware.lower() == "cresst":
             self._stream = Stream_CRESST(src)
         elif hardware.lower() == "vdaq2":

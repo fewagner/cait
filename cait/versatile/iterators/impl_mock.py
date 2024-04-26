@@ -30,7 +30,11 @@ class MockIterator(IteratorBaseClass):
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        # Also sets up serializing
+        super().__init__(mock=mock,
+                         channels=channels,
+                         inds=inds, 
+                         batch_size=batch_size)
 
         self._mock = mock
         

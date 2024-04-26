@@ -12,6 +12,8 @@ class Stream_VDAQ3(StreamBaseClass):
     VDAQ3 data is stored in .bin files. Its header contains instructions on how to read the data and all recorded channels are stored in the separate file.
     """
     def __init__(self, files: Union[str, List[str]]):
+        super().__init__(files=files)
+        
         if type(files) is str: files = [files]
 
         self._data, starts, dTs, lengths = dict(), [], [], []

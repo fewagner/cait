@@ -33,6 +33,8 @@ class Stream_VDAQ2(StreamBaseClass):
     VDAQ2 data is stored in `*.bin` files. Its header contains instructions on how to read the data and all recorded channels are stored in the same file.
     """
     def __init__(self, file: str):
+        super().__init__(file=file)
+
         # Get relevant info about file from its header
         header, keys, self._adc_bits, self._dac_bits, dt_tcp = ai.trigger.read_header(file)
         # Start timestamp of the file in us (header['timestamp'] is in ns)

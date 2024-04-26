@@ -8,8 +8,9 @@ import cait as ai
 from .par_file import PARFile
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_rdt import RDTIterator
+from ...serializing import SerializingMixin
 
-class RDTFile:
+class RDTFile(SerializingMixin):
     """
     Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object with channel indices/names or tuples thereof, the result of the indexing is a :class:`RDTChannel` object which provides testpulse amplitudes, timestamps, and event iterators for (the) selected channel(s) (see documentation for :class:`RDTChannel`).
 
@@ -42,6 +43,8 @@ class RDTFile:
         vai.Preview(it_testpulses.with_processing(vai.RemoveBaseline()))
     """
     def __init__(self, path: str, path_par: str = None):
+        super().__init__(path=path, path_par=path_par)
+        
         if not path.endswith(".rdt"):
             raise ValueError("Unrecognized file extension for 'path'. Please input an *.rdt file.")
         
@@ -303,6 +306,10 @@ class RDTChannel(DataSourceBaseClass):
     :rtype: RDTChannel
     """
     def __init__(self, rdt_file: RDTFile, key: Union[int, tuple]):
+        super().__init__(rdt_file=rdt_file, key=key)
+
+        # If list is used instead of tuple, we silently convert it for convenience
+        if isinstance(key, list): key = tuple(key)
 
         inds = rdt_file._inds[key]
         self._n_channels = len(key) if isinstance(key, tuple) else 1

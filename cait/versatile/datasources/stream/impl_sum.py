@@ -39,6 +39,8 @@ class StreamSum(StreamBaseClass):
 
     """
     def __init__(self, stream: StreamBaseClass, keys: List[str]):
+        super().__init__(stream=stream, keys=keys)
+
         if not all([k in stream.keys for k in keys]):
             raise KeyError(f"All given keys have to be present in the stream's keys. Available: {stream.keys}, got: {keys}")
         

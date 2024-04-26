@@ -41,7 +41,11 @@ class RDTIterator(IteratorBaseClass):
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        # Also sets up serializing
+        super().__init__(rdt_channel=rdt_channel,
+                         channels=channels,
+                         inds=inds, 
+                         batch_size=batch_size)
 
         # Save index array for channel selection in __next__ (the values in self._channels correspond to 
         # actual channel numbers in the RDT file. Here, we are interested in the indices of the already selected
