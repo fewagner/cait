@@ -43,6 +43,7 @@ class DataHandler(SimulateMixin,
                   CsmplMixin,
                   MachineLearningMixin,
                   BinMixin,
+                  SerializingMixin
                   ):
     """
     A class for the processing of raw data events.
@@ -105,6 +106,12 @@ class DataHandler(SimulateMixin,
                  run: str = None,
                  module: str = None,
                  ):
+        super().__init__(record_length=record_length, 
+                         sample_frequency=sample_frequency,
+                         channels=channels,
+                         nmbr_channels=nmbr_channels,
+                         run=run,
+                         module=module)
 
         assert channels is not None or nmbr_channels is not None, 'You need to specify either the channels numbers or the number of channels!'
 
@@ -205,6 +212,11 @@ class DataHandler(SimulateMixin,
 
         >>> dh.set_filepath(path_h5='./', fname='test_001')
         """
+
+        self._set_filepath_kwargs = dict(path_h5=path_h5, 
+                                         fname=fname, 
+                                         appendix=appendix, 
+                                         channels=channels)
 
         if channels is not None: self.channels = channels
 
@@ -321,10 +333,15 @@ class DataHandler(SimulateMixin,
         # is only stored when include_event_iterator is called
         with h5py.File(self.get_filepath(), 'r') as f:
             if "source_shape" in f[group]["event"].attrs:
+                # load string and deserialize iterator
                 it = json_loads(f[group]["event"].asstr()[0])
+
+                # prepare and apply slicing/batching
                 channel = slice(None) if channel is None else channel
                 flag = slice(None) if flag is None else flag
-                return it[channel, flag]
+                batch_size = 1 if batch_size is None else batch_size
+
+                return it[channel,flag].with_batchsize(batch_size)
 
         # Else, read event dataset and construct iterator
         # Reading number of events is much faster if we open the HDF5 file directly
@@ -373,7 +390,10 @@ class DataHandler(SimulateMixin,
             with self.get_filehandle(mode="r+") as f:
                 hdf5group = f.require_group(group)
                 # create dummy dataset with string content
-                str_content = np.array([json_dumps(it)], dtype=h5py.string_dtype("UTF-8"))
+                # before serializing the iterator, we flatten it to resolve 
+                # possible batches (this is just to make things clean;
+                # we don't have to)
+                str_content = np.array([json_dumps(it.flatten())], dtype=h5py.string_dtype("UTF-8"))
                 hdf5ds = hdf5group.create_dataset(name='event', data=str_content)
                 hdf5ds.attrs["source_shape"] = str((it.n_channels, len(it), it.record_length))
 
@@ -851,11 +871,9 @@ class DataHandler(SimulateMixin,
         if idx2 is None: idx2 = slice(None)
 
         with self.get_filehandle(mode="r") as f:
-            if dataset=='event' and (f[group]['event'].ndim==3):
-                # Events are returned by going through an event iterator first
-                # This way, it is completely irrelevant whether the events are stored
-                # in the HDF5 file or externally
-                # ndim==3 is checked because stdevents for example are accessed without iterator
+            if dataset=='event' and ("source_shape" in f[group]['event'].attrs):
+                # If events are stored externally, they are returned by going 
+                # through an event iterator first
                 ev_it = self.get_event_iterator(group=group)[idx0, idx1]
                 # Resolve iterator by handing it to list()
                 # Reshape it such that for single channel, the numpy array is also 3d
@@ -1227,3 +1245,27 @@ class DataHandler(SimulateMixin,
         
         os.replace(newFile, oldFile)
         print(f"Successfully repackaged '{oldFile}'. Memory saved: {sizeof_fmt(memorySaved)}")
+
+    # Overrides the SerializingMixin method because DataHandler needs special attention
+    def to_dict(self):
+        if not hasattr(self, "_set_filepath_kwargs"):
+            raise AttributeError("DataHandler can only be converted to a dictionary after setting the filepath.")
+        
+        return {"class": self.__class__.__name__, 
+                "args": self._init_args, 
+                "kwargs": self._init_kwargs,
+                "set_filepath_kwargs": self._set_filepath_kwargs}
+    
+    # Overrides the SerializingMixin's automatic method to reconstruct classes
+    # (because DataHandler needs special attention due to dh.set_filepath)
+    @classmethod
+    def from_dict(cls, d: dict):
+        if not all([x in d.keys() for x in ["class", "args", "kwargs", "set_filepath_kwargs"]]):
+            raise KeyError("DataHandler can only be constructed from dictionaries containing keys ['class', 'args', 'kwargs', 'set_filepath_kwargs']")
+        if d["class"] != cls.__name__:
+            raise TypeError("Value of field 'class' has to be 'DataHandler'.")
+        
+        dh = cls(*d["args"], **d["kwargs"])
+        dh.set_filepath(**d["set_filepath_kwargs"])
+        
+        return dh

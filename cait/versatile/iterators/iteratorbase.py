@@ -173,6 +173,28 @@ class IteratorBaseClass(SerializingMixin, ABC):
 
         return self[:,:].add_processing(f)
     
+    def with_batchsize(self, batch_size: int):
+        """
+        Returns an identical iterator but with a different batch size.
+
+        :param batch_size: The new batch size.
+        :type batch_size: int
+        """
+        params, _ = self._slice_info
+
+        if "batch_size" not in params.keys():
+            raise Exception(f"{type(self)} does not support changing batch size.")
+        
+        params["batch_size"] = batch_size
+
+        return self.__class__(**params)
+    
+    def flatten(self):
+        """
+        Returns an identical iterator but without batches. Has no effect if iterator didn't use batches before.
+        """
+        return self.with_batchsize(1)
+    
     def grab(self, which: Union[int, list]):
         """
         Grab specified event(s) and return it/them as numpy array.

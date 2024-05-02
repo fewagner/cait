@@ -1,11 +1,33 @@
 import json
+from functools import cache
 
 class SerializingMixin:
+    """
+    Mixin to give serialization properties to an object. 
+    
+    The initializer has to be called from all children classes with all their (keyword) arguments. The mixin then saves those and if 'to_dict' is called on the child, a dictionary with the class name and the (keyword) arguments is returned. If more information is required to reconstruct a class, the 'to_dict' method may be overridden (see e.g. DataHandler).
+    If reconstructing a class from a dictionary requires more than calling the initializer with the (keyword) arguments, the child class has to provide a 'from_dict' class method (see e.g. DataHandler).
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        class SomeClass(vai.serializing.SerializingMixin):
+            def __init__(self, kwarg1=None, kwarg2=None):
+                super().__init__(kwarg1=kwarg1, kwarg2=kwarg2)
+
+        c = SomeClass()
+        c.to_dict()
+    """
     def __init__(self, *args, **kwargs):
+        # Save (keyword) arguments for later reconstruction
         self._init_args = args
         self._init_kwargs = kwargs
         
     def to_dict(self):
+        """
+        Returns a dictionary representation of the object.
+        """
         # Find all serializable classes
         my_subclasses = get_serializable_classes()
 
@@ -46,10 +68,16 @@ def all_subclasses(cls):
     return list(set(cls.__subclasses__()).union(
         [s for c in cls.__subclasses__() for s in all_subclasses(c)]))
 
-def get_serializable_classes(): 
+def get_serializable_classes():
+    """
+    Returns a complete (recursive) list of all classes that use the SerializingMixin, i.e. which are serializable.
+    """
     return all_subclasses(SerializingMixin)
 
 def is_valid_obj_dict(d: dict):
+    """
+    Returns a boolean on whether a dictionary represents a valid, deserializable class.
+    """
     return all([x in d.keys() for x in ["class", "args", "kwargs"]])
 
 def dict2obj(d: dict):
@@ -67,6 +95,11 @@ def dict2obj(d: dict):
     # Check if the class specified by the dictionary is known
     if cls_name not in conversion.keys():
         raise KeyError(f"{cls_name} is not a known, deserializable cait.versatile object.")
+    
+    # If the class provides a special from_dict method, it is used and the general 
+    # procedure below is skipped
+    if hasattr(conversion[cls_name], "from_dict"):
+        return conversion[cls_name].from_dict(d)
     
     args, kwargs = [], {}
 
@@ -105,16 +138,17 @@ def json_dumps(obj: SerializingMixin):
         md = vai.MockData()
         it = md.get_event_iterator()
 
-        md_str = vai.json_dumps(md)
-        it_str = vai.json_dumps(it)
+        md_str = vai.serializing.json_dumps(md)
+        it_str = vai.serializing.json_dumps(it)
 
-        recoverd_md = vai.json_loads(md_str)
-        recoverd_it = vai.json_loads(it_str)
+        recoverd_md = vai.serializing.json_loads(md_str)
+        recoverd_it = vai.serializing.json_loads(it_str)
     """
     if not isinstance(obj, SerializingMixin):
         raise TypeError("Only objects that use the SerializingMixin can be serialized. E.g. iterators and data sources.")
     return json.dumps(obj.to_dict())
 
+@cache
 def json_loads(s: str):
     """
     Returns a cait.versatile object constructed from its string representation (e.g. iterator or data source).
@@ -142,4 +176,3 @@ def json_loads(s: str):
         raise KeyError("JSON string does not represent a valid cait.versatile object. Dictionary must contain keys ['class', 'args', 'kwargs'] to be deserialized.")
     
     return dict2obj(d)
-

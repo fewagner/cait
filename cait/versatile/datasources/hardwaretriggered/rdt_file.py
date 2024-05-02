@@ -1,6 +1,7 @@
 import os
 
 from typing import Union
+from functools import cache
 
 import numpy as np
 import cait as ai
@@ -10,6 +11,7 @@ from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_rdt import RDTIterator
 from ...serializing import SerializingMixin
 
+@cache
 class RDTFile(SerializingMixin):
     """
     Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object with channel indices/names or tuples thereof, the result of the indexing is a :class:`RDTChannel` object which provides testpulse amplitudes, timestamps, and event iterators for (the) selected channel(s) (see documentation for :class:`RDTChannel`).
