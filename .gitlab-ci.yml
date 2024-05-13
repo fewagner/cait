@@ -1,6 +1,6 @@
 default:
   tags: 
-    - docker-machine
+    - docker-privileged-xl
 
 build_kaniko_command:
   stage: build
