@@ -1,13 +1,18 @@
-From debian:buster-slim
+FROM python:3.10.13-slim
 MAINTAINER SAMIR BANIK
 
-RUN apt-get update && apt-get install git libpython3-dev python3-pip
+#update pip
+RUN python -m pip install --upgrade pip
 
-RUN python3 -m pip install numpy
+#install numpy (needed for venv install) and python-magic (helpful)
+RUN pip install numpy && pip install python-magic  && pip install ipympl
+
 
 RUN apt-get update && apt-get install dcap-dev
 
 COPY . /cait
 
 RUN cd /cait && pip install -e ../
+
+RUN pip install https://github.com/jupyterhub/batchspawner/archive/main.zip && pip install jupyterhub
 
