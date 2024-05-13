@@ -8,7 +8,7 @@ RUN python -m pip install --upgrade pip
 RUN pip install numpy && pip install python-magic  && pip install ipympl
 
 
-RUN apt-get update && apt-get install dcap-dev
+RUN apt-get update && apt-get install -y dcap-dev
 
 COPY . /cait
 
