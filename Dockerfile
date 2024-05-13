@@ -9,5 +9,5 @@ RUN apt-get update && apt-get install dcap-dev
 
 COPY . /cait
 
-RUN cd /cait && pip install -e cait
+RUN cd /cait && pip install -e ../
 
