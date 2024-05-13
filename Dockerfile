@@ -17,4 +17,4 @@ RUN pip install -e /cait
 RUN pip install https://github.com/jupyterhub/batchspawner/archive/main.zip && pip install jupyterhub
 
 ENV LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libpdcap.so
+#ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libpdcap.so
