@@ -12,7 +12,8 @@ RUN apt-get update && apt-get install -y dcap-dev
 
 COPY . /cait
 
-RUN cd /cait && pip install -e ../
+RUN pip install -e /cait
 
 RUN pip install https://github.com/jupyterhub/batchspawner/archive/main.zip && pip install jupyterhub
 
+ENV LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:$LD_LIBRARY_PATH
