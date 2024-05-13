@@ -1,6 +1,3 @@
-default:
-  tags: 
-    - docker-machine
 
 build_kaniko_command:
   stage: build
