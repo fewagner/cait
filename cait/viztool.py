@@ -98,7 +98,7 @@ class VizTool():
                 self.dh.set_filepath(path_h5=path_h5, fname=fname, appendix=False)
                 self.path_h5 = path_h5 + fname + '.h5'
             try:
-                self.dh.get(group, "event", 0, 0)
+                self.ev_it = self.dh.get_event_iterator(group=group)
                 self.events_in_file = True
             except:
                 self.events_in_file = False
@@ -342,7 +342,8 @@ class VizTool():
             sev_button.on_click(self._button_sev_fn)
             
             # traces for event plot
-            ev = self.dh.get(self.group, "event", None, 0, None)
+            #ev = self.dh.get(self.group, "event", None, 0, None)
+            ev = self.ev_it.grab(0)
             
             traces = [go.Scatter(x=self.dh.record_window(ms=True),
                                  visible=False,
@@ -612,7 +613,8 @@ class VizTool():
             print('Click only one Event!')
         else:
             for i in self.remaining_idx[points.point_inds]:
-                ev = self.dh.get(self.group, "event", None, i, None)
+                #ev = self.dh.get(self.group, "event", None, i, None)
+                ev = self.ev_it.grab(i)
                 #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
                 n = len(ev)
                 pretrigger_samples = int(self.dh.record_length/8)
@@ -626,7 +628,8 @@ class VizTool():
                 self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
 
     def _plot_event_slider(self, i):
-        ev = self.dh.get(self.group, "event", None, i, None)
+        #ev = self.dh.get(self.group, "event", None, i, None)
+        ev = self.ev_it.grab(i)
         #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
         n = len(ev)
         pretrigger_samples = int(self.dh.record_length/8)
@@ -688,19 +691,22 @@ class VizTool():
                 print('Select events first!')
         else:   
             nmbr_batches = int(len(self.sel) / self.batch_size)
-            self.sevs = [np.zeros(self.dh.get(self.group, "event", 0, 0).shape[0]) for c in range(self.dh.nmbr_channels)]
+            #self.sevs = [np.zeros(self.dh.get(self.group, "event", 0, 0).shape[0]) for c in range(self.dh.nmbr_channels)]
+            self.sevs = [np.zeros(self.ev_it.record_length) for c in range(self.dh.nmbr_channels)]
 
             pretrigger_samples = int(self.dh.record_length/8)
             for b in range(nmbr_batches):
                 for c in range(self.dh.nmbr_channels):
                     start = int(b * self.batch_size)
                     stop = int((b + 1) * self.batch_size)
-                    ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:stop]])
+                    #ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:stop]])
+                    ev = self.ev_it[c].grab(self.remaining_idx[self.sel[start:stop]])
                     ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                     self.sevs[c] += np.sum(ev, axis=0)
             for c in range(self.dh.nmbr_channels):
                 start = int(nmbr_batches * self.batch_size)
-                ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:]])
+                #ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:]])
+                ev = self.ev_it[c].grab(self.remaining_idx[self.sel[start:]])
                 ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                 self.sevs[c] += np.sum(ev, axis=0)
                 self.sevs[c] /= len(self.sel)
