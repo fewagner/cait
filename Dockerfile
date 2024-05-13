@@ -7,3 +7,7 @@ RUN python3 -m pip install numpy
 
 RUN apt-get update && apt-get install dcap-dev
 
+COPY . /cait
+
+RUN cd /cait && pip install -e cait
+
