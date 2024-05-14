@@ -79,7 +79,8 @@ class RDTFile:
 
         # Copy the relevant data to memory so that we don't have to go through
         # the memory mapped file all the time (this should only need a few MB of RAM)
-        meta_copy = np.array(self._raw_file[["detector_nmbr", "trig_count"]])
+        with self._raw_file as f:
+            meta_copy = np.array(f[:][["detector_nmbr", "trig_count"]])
 
         self._available_channels = np.unique(meta_copy["detector_nmbr"]).tolist()
 

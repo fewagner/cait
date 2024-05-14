@@ -162,4 +162,4 @@ class BinaryFile:
             # to copy all data to memory. Hence, using BinaryFile in a context is
             # highly recommended!
             with self as f:
-                return np.array(f.__getitem__(val))
+                return np.array(f.__getitem__(val)).copy()
