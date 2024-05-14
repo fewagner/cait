@@ -6,6 +6,7 @@ import cait as ai
 
 from .streambase import StreamBaseClass
 from ..hardwaretriggered.par_file import PARFile
+from ....readers import BinaryFile
 
 class Stream_CRESST(StreamBaseClass):
     """
@@ -34,32 +35,36 @@ class Stream_CRESST(StreamBaseClass):
 
         self._data = dict()
 
-        for f in csmpl_paths:
-            name = os.path.splitext(os.path.basename(f))[0]
-            self._data[name] = ai.trigger._csmpl.readcs(f)
+        for fname in csmpl_paths:
+            name = os.path.splitext(os.path.basename(fname))[0]
+            self._data[name] = BinaryFile(path=fname, dtype=np.dtype(np.int16))
 
         if test_path:
             if not dig_path:
                 raise Exception("When including testpulse information using a '.test_stamps' file, you also have to provide the corresponding '.dig_stamps' file.")
             test_path = test_path[0]
-            dtype = np.dtype([('stamp', np.uint64),
-                                ('tpa', np.float32),
-                                ('tpch', np.uint32)])
-            stamps = np.fromfile(test_path, dtype=dtype)
+            test_h, tpas, test_chs = ai.trigger._csmpl.get_test_stamps(test_path)
 
             self._tpas = dict()
             self._tp_timestamps = dict()
 
-            for k in list(set(stamps['tpch'])):
-                mask = stamps['tpch'] == k
-                self._tpas[str(k)] = stamps['tpa'][mask]
+            for k in list(set(test_chs)):
+                mask = test_chs == k
+                self._tpas[str(k)] = tpas[mask]
                 # assuming 10 MHz clock
-                self._tp_timestamps[str(k)] = self.start_us + stamps['stamp'][mask]/10 + offset
+                self._tp_timestamps[str(k)] = self.start_us + test_h[mask]*3600*1e6 + offset
 
         self._keys = list(self._data.keys())
 
     def __len__(self):
         return len(self._data[self.keys[0]])
+    
+    def __enter__(self):
+        for bin_file in self._data.values(): bin_file.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        for bin_file in self._data.values(): bin_file.__exit__(typ, val, tb)
     
     def get_channel(self, key: str):
         return self._data[key]

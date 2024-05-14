@@ -1,9 +1,29 @@
 import os
 import mmap
-from contextlib import nullcontext
 
 import numpy as np
 import h5py
+
+def sanitized_dtype(dtype: np.dtype):
+    """
+    Removes empty items (of itemsize 0) from the dtype. This is used, e.g., for HDF5 files which cannot handle size 0 datasets. Notice that removing them does not alter how the files are read.
+
+    :param dtype: dtype to be sanitized
+    :type dtype: np.dtype
+
+    :return: Same dtype but with items of size 0 removed
+    :rtype: np.dtype
+    """
+    if dtype.fields:
+        # Structured dtype
+        out = np.dtype({k:v for k,v in dtype.fields.items() if dtype[k].itemsize > 0})
+    else:
+        # Plain dtype
+        out = dtype if dtype.itemsize > 0 else np.dtype({}) 
+
+    if out.itemsize == 0: raise ValueError("The sanitized dtype has itemsize 0.")
+
+    return out
 
 class BinaryFile:
     """
@@ -65,12 +85,15 @@ class BinaryFile:
             self._size = count
         
         self._path = path
-        self._dtype = dtype
+        self._dtype = sanitized_dtype(dtype)
         self._offset = offset
         self._count = count
 
-        self._f = None
+        self._openf = None
         self._isopen = False
+
+    def __len__(self):
+        return self._size
 
     def __enter__(self):
         # yes, I tried to use numpy.memmap (uses mmap internally)
@@ -90,9 +113,9 @@ class BinaryFile:
             # The datasets of h5py are quite similar to numpy arrays. In particular,
             # they can be indexed identically. Therefore, returning the h5 dataset here
             # and the numpy memmap else creates an identical data handling
-            self._f = self._source["datagroup/dataset"]
+            self._openf = self._source["datagroup/dataset"]
             self._isopen = True
-            return self._f
+            return self._openf
         
         # See the numpy.memmap implementation for reference
         # (https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/memmap.py)
@@ -109,24 +132,34 @@ class BinaryFile:
                                          access=mmap.ACCESS_READ,
                                          offset=start)
             self._isopen = True
-            self._f = np.ndarray.__new__(np.ndarray,
+            self._openf = np.ndarray.__new__(np.ndarray,
                                          shape=(self._size,),
                                          dtype=self._dtype,
                                          buffer=self._source,
                                          offset=array_offset)
             # The array returned here is treated identical to the h5 dataset returned
             # in case we are reading from dcache.
-            return self._f
+            return self._openf
         
     def __exit__(self, typ, val, tb):
             self._source.close()
-            self._f = None
+            self._openf = None
             self._isopen = False
 
     def __getitem__(self, val):
-        with self if not self._isopen else nullcontext(self._f) as f:
-            # When entering the context, self.__enter__ returns f, which
-            # we made sure behaves the same when being indexed in both cases. 
-            # Hence, we can just forward the __getitem__ call to the
-            # (numpy or hdf5) array
-            return f.__getitem__(val)
+        if self._isopen:
+            # If the file is already open (i.e. if we are inside a with context)
+            # we can just call its __getitem__ method (works the same for numpy
+            # as well as h5 files)
+            # Notice that here, the h5 dataset or numpy.memmap object is returned,
+            # allowing for more efficient slicing afterwards
+            return self._openf.__getitem__(val)
+        else:
+            # If the file is not open, we enter a with context to open it
+            # Before returning, we have to cast it to a numpy array to copy it
+            # into memory because the file will be closed right afterwards
+            # This means, that if you slice it afterwards, you nevertheless have 
+            # to copy all data to memory. Hence, using BinaryFile in a context is
+            # highly recommended!
+            with self as f:
+                return np.array(f.__getitem__(val))

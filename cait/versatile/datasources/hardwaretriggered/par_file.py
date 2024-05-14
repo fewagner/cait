@@ -1,6 +1,8 @@
 import re
 from typing import Union
 
+from ....readers import TextFile
+
 CHANNEL_NAME_FORMATS = [r"ch(\d+): (.+)", r"ch(\d+), (.+)"]
 
 # Would be cool to input parameters manually in case we don't have a PAR file. 
@@ -11,7 +13,7 @@ class PARFile:
         if not arg.endswith(".par"):
             raise ValueError("Unrecognized file extension. Please input a *.par file.")
         
-        with open(arg, "r") as f:
+        with TextFile(arg) as f:
             s = f.read()
 
         match = re.findall(r"Timeofday at start\s*\[s\].*Timeofday at start\s*\[us\].*Timeofday at stop\s*\[s\].*Timeofday at stop\s*\[us\].*Measuring time\s*\[h\].*Integers in header.*Unsigned longs in header.*Reals in header.*DVM channels.*Record length.*Time base\s*\[us\]", s, re.DOTALL)

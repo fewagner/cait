@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from ..data._raw import convert_to_V
 from ..filter._of import filter_event
 from ..styles import use_cait_style, make_grid
+from ..readers import BinaryFile
 
 # functions
 
@@ -612,7 +613,8 @@ def get_test_stamps(path,
         ('tpch', np.uint32),
     ])
 
-    stamps = np.fromfile(path, dtype=teststamp)
+    #stamps = np.fromfile(path, dtype=teststamp)
+    stamps = BinaryFile(path=path, dtype=teststamp)
 
     hours = stamps['stamp'] / clock / 3600
     tpas = stamps['tpa']
@@ -684,7 +686,8 @@ def get_offset(path_dig_stamps):
         ('bank2', np.uint32),
     ])
 
-    diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+    #diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+    diq_stamps = BinaryFile(path=path_dig_stamps, dtype=dig)
     dig_samples = diq_stamps['stamp']
     offset_clock = (dig_samples[1] - 2 * dig_samples[0])
 
