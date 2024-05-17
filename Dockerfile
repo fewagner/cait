@@ -17,7 +17,7 @@ RUN python -m pip install jupyterhub
 RUN python -m pip install jupyterlab # jupyterhub alone does not install jupyter(lab)
 
 # configure jupyter
-RUN jupyterhub --generate-config
+# RUN jupyterhub --generate-config
 
 #ENV LD_LIBRARY_PATH=/usr/lib:/usr/local/lib:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
-#ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libpdcap.so
+ENV LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libpdcap.so
