@@ -1083,7 +1083,10 @@ c = get_config()  #noqa
 #      allowing override of 'default' env variables,
 #      such as JUPYTERHUB_API_URL.
 #  Default: {}
-c.Spawner.environment = {"TEST_VARIABLE": "THIS_IS_TEXT"}
+c.Spawner.environment = {
+    "LD_PRELOAD": "/usr/lib/x86_64-linux-gnu/libpdcap.so",
+    "PS1": "caitainer> "
+    }
 
 ## Timeout (in seconds) before giving up on a spawned HTTP server
 #  
