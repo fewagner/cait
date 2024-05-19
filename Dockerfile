@@ -20,6 +20,9 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install jupyterlab \
     && python -m pip install -e /cait
 
+# copy configuration file for jupyterhub
+COPY .jupyterhub_config.py /opt/venv_container/etc/jupyter/
+
 # install dcap library
 RUN apt-get update && apt-get install -y dcap-dev
 
