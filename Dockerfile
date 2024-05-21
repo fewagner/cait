@@ -27,4 +27,4 @@ COPY .jupyterhub_config.py /opt/venv_container/etc/jupyter/jupyterhub_config.py
 RUN apt-get update && apt-get install -y dcap-dev
 
 # set entrypoint such that the jupyterhub config file is appended to the 'singularity run' command called by CLIP
-ENTRYPOINT ["/usr/bin/bash", "-c", "exec $@ -f /opt/venv_container/etc/jupyter/jupyterhub_config.py"]
+ENTRYPOINT ["/usr/bin/bash", "-c", "exec $@ --config /opt/venv_container/etc/jupyter/jupyterhub_config.py"]
