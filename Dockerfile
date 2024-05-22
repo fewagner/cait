@@ -13,6 +13,9 @@ ENV JUPYTER_PREFER_ENV_PATH=1
 # copy cait repository
 COPY . /opt/programs/cait
 
+# install dcap library
+RUN apt-get update && apt-get install -y dcap-dev gcc pkg-config libhdf5-serial-dev
+
 # upgrade pip, install jupyterhub/lab and cait (important: cait last for lab widget dependencies!)
 RUN python -m pip install --upgrade pip \
     && python -m pip install https://github.com/jupyterhub/batchspawner/archive/main.zip \
@@ -21,10 +24,7 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install -e /opt/programs/cait
 
 # copy configuration file for jupyterhub
-COPY .jupyterhub_config.py /opt/venv_container/etc/jupyter/jupyterhub_config.py
-
-# install dcap library
-RUN apt-get update && apt-get install -y dcap-dev
+# COPY .jupyterhub_config.py /opt/venv_container/etc/jupyter/jupyterhub_config.py
 
 # set entrypoint such that the jupyterhub config file is appended to the 'singularity run' command called by CLIP
-ENTRYPOINT ["/usr/bin/bash", "-c", "exec $@ --config /opt/venv_container/etc/jupyter/jupyterhub_config.py"]
+ENTRYPOINT ["/usr/bin/bash", "-c", "$@", "--"]
