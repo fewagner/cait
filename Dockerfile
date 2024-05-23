@@ -13,8 +13,9 @@ ENV JUPYTER_PREFER_ENV_PATH=1
 # copy cait repository
 COPY . /opt/programs/cait
 
-# install dcap library
-RUN mkdir /opt/programs/dcache && cd /opt/programs/dcache \
+# install git and dcap library
+RUN apt-get update && apt-get upgrade -y && apt-get install -y git \
+    && mkdir /opt/programs/dcache && cd /opt/programs/dcache \
     && git clone https://github.com/dCache/dcap.git && cd dcap \
     && sh bootstrap.sh \
     && ./configure --prefix=/opt/programs/dcache && make && make install
