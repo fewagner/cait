@@ -14,7 +14,8 @@ ENV JUPYTER_PREFER_ENV_PATH=1
 COPY . /opt/programs/cait
 
 # install git and dcap library
-RUN apt-get update && apt-get upgrade -y && apt-get install -y git \
+RUN apt-get update && apt-get upgrade -y \
+    && apt-get install -y automake && apt-get install -y git \
     && mkdir /opt/programs/dcache && cd /opt/programs/dcache \
     && git clone https://github.com/dCache/dcap.git && cd dcap \
     && sh bootstrap.sh \
