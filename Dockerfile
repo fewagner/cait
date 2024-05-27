@@ -14,7 +14,8 @@ ENV JUPYTER_PREFER_ENV_PATH=1
 COPY . /opt/programs/cait
 
 # copy/pasted from CAT container (hopefully this contains everything needed by dcap)
-RUN apt-get update && apt-get install -y cmake libx11-dev libxpm-dev libxft-dev libxext-dev \
+RUN apt-get update && apt-get install -y build-essential curl wget git libpython3-dev libpython-dev nano \ 
+cmake libx11-dev libxpm-dev libxft-dev libxext-dev \
 libtiff5-dev libgif-dev libgsl-dev libpython-dev libkrb5-dev libxml2-dev libssl-dev \
 default-libmysqlclient-dev libpq-dev libqt4-opengl-dev libgl2ps-dev libpcre-ocaml-dev \ 
 libgraphviz-dev libdpm-dev unixodbc-dev libsqlite3-dev libfftw3-dev libcfitsio-dev \
