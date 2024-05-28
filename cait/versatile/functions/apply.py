@@ -47,6 +47,10 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     if not isinstance(ev_iter, IteratorBaseClass):
         raise TypeError(f"Input argument 'ev_iter' must be an instance of {IteratorBaseClass} not '{type(ev_iter)}'.")
     
+    # Check if 'ev_iter' is not empty
+    if len(ev_iter)==0:
+        raise IndexError(f"Input argument 'ev_iter' must contain at least 1 event (iterator is empty).")
+    
     # Check if 'f' is indeed a function
     if not callable(f):
         raise TypeError(f"Input argument 'f' must be callable.")
