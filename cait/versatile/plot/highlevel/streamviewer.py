@@ -92,7 +92,7 @@ class StreamViewer(Viewer):
             self._marked_timestamps = mark_timestamps
 
             for name in mark_timestamps.keys():
-                if mark_timestamps[name] == []:
+                if len(mark_timestamps[name]) == 0:
                     raise Exception("Received empty list of timestamps")
                 self.add_vmarker(marker_pos=None, y_int=[None,None], name=name)
             self._marks_timestamps = True
