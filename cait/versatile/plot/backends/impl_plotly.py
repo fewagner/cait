@@ -258,21 +258,22 @@ class BaseClassPlotly(BackendBaseClass):
         y_vals = list()
         for trace in self.fig.select_traces():
             if trace.visible is True:
-                y = trace.y
-                x = trace.x if trace.x is not None else np.arange(len(y))
-                x_mask = np.logical_and(x > xmin, x < xmax)
-                y_mask = np.logical_and(y > ymin, y < ymax)
+                y = np.array(trace.y, dtype=float)
+                x = np.array(trace.x, dtype=float) if trace.x is not None else np.arange(len(y))
+                x_mask = ~np.isnan(x)
+                y_mask = ~np.isnan(y)
+                x_mask[x_mask] = np.logical_and(x[x_mask] > xmin, x[x_mask] < xmax)
+                y_mask[y_mask] = np.logical_and(y[y_mask] > ymin, y[y_mask] < ymax)
                 y_vals.append(y[np.logical_and(x_mask, y_mask)])
 
-        y_vals = np.concatenate(y_vals, axis=0)
-
-        if len(y_vals) == 0:
-            out_str = f"mean_y:  None, min_y: None, delta_y: None\nsigma_y: None, max_y: None"
+        if not y_vals or len(np.concatenate(y_vals, axis=0))==0:
+            out_str = f"ȳ:  None, min_y: None, Δᵧ: None\nσᵧ: None, max_y: None"
         else:
+            y_vals = np.concatenate(y_vals, axis=0)
             dat_min, dat_max = np.min(y_vals), np.max(y_vals)
             dat_diff = dat_max - dat_min
             dat_mean, dat_std = np.mean(y_vals), np.std(y_vals)
-            out_str = f"mean_y: {dat_mean:6.3f}, min_y: {dat_min:6.3f}, delta_y: {dat_diff:5.3f}\nsigma_y: {dat_std:5.3f}, max_y: {dat_max:6.3f}"
+            out_str = f"ȳ: {dat_mean:6.3f}, yₘᵢₙ: {dat_min:6.3f}, Δᵧ: {dat_diff:5.3f}\nσᵧ: {dat_std:5.3f}, yₘₐₓ: {dat_max:6.3f}"
         
         with self._output:
             self._output.clear_output()
