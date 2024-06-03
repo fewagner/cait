@@ -17,6 +17,7 @@ class Histogram(Viewer):
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         vai.Histogram([1,2,3])

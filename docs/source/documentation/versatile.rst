@@ -61,7 +61,7 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
         vai.Preview(it[0], vai.CalcMP())
 
         # Calculate main parameters by applying CalcMP to the iterator
-        pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us))
+        pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us), it)
 
     .. image:: versatile/media/CalcMP_preview.png
 
