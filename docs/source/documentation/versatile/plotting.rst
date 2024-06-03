@@ -14,6 +14,7 @@ style them. Those keyword arguments are:
    this is probably not relevant for all users), defaults to ``'auto'``
    in which case ``'plotly'`` is used in notebooks and ``'uniplot'`` on
    the command line (if installed). 
+
   .. image:: media/backend_comparison.png
 
 *  **template** (str, optional): Valid backend theme. For ``plotly``
@@ -61,6 +62,7 @@ arguments described above.
 
 **Example:**
 ::
+
    import cait.versatile as vai
 
    # If x-data is not provided, the index is used for the x-axis.
@@ -100,6 +102,7 @@ quickly:
 
 **Example:**
 ::
+
    # `cait.versatile` also includes functions, which implement a `preview` method (see below)
    # It also implements iterators over events.
    # Their interplay can be visualized with `vai.Preview`.
@@ -119,9 +122,35 @@ quickly:
 It goes without saying that all the keyword arguments for backend, etc.
 work here as well.
 
+-  **ScatterPreview**: A scatter plot where you can click datapoints and preview the underlying voltage trace. Also allows selection and removal of datapoints (similar to ``VizTool``). This tool only works with ``backend='plotly'`` because it requires data selection which is not supported by a general backend.
+
+**Example:**
+::
+   
+   import cait.versatile as vai
+
+   # generate mock data and calculate main parameters
+   it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
+   pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us), it)
+
+   # plot two main parameters and apply some formatting 
+   # (assigning it to a variable is not necessary but allows for additional functionality)
+   prev = vai.ScatterPreview(x=pulse_height[:,0],
+                          y=decay_time[:,0], 
+                          ev_it=it, 
+                          xlabel="pulse height channel 0", 
+                          ylabel="decay time channel 0", 
+                          width=500)
+
+.. image:: media/ScatterPreview.png
+
+You can use the lasso tool to select a number of events. These events are then directly accessible through ``prev.selected_events`` (returns an ``EventIterator``) and ``prev.selected_inds`` (returns the indices of the selected events). Using this, you can for example do things like this:
+
+.. image:: media/ScatterPreview_SEV.png
+
 Documentation
 ~~~~~~~~~~~~~
 
 .. automodule:: cait.versatile
-   :members: Line, Scatter, Histogram, StreamViewer, Preview, Viewer
+   :members: Line, Scatter, Histogram, StreamViewer, Preview, Viewer, ScatterPreview
    :show-inheritance:

@@ -15,7 +15,7 @@ There are three different kinds of functions:
       it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
       pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us), it)
 
-*  `Other functions`_ don't fall into those two categories (e.g. ``apply``).
+*  `Other functions`_ don't fall into those two categories (e.g. ``apply`` or triggering functions).
 
 Processing functions
 ~~~~~~~~~~~~~~~~~~~~
@@ -34,5 +34,5 @@ Scalar functions
 Other functions
 ~~~~~~~~~~~~~~~
 .. automodule:: cait.versatile
-   :members: apply
+   :members: apply, trigger_of, trigger_zscore
    :member-order: bysource
