@@ -1,224 +1,191 @@
-import unittest
-import tempfile
-import h5py
+import pytest
+
 import os
+import h5py
 import numpy as np
 import cait as ai
 
-RECORD_LENGTH = 2**15
-SAMPLE_FREQUENCY = 2e5
-DATA_1D = np.random.rand(100)
-DATA_2D = np.random.rand(2, 100)
-DATA_3D = np.random.rand(2, 100, RECORD_LENGTH)
+from .fixtures import tempdir, datahandler, testdata_1D_2D_3D_s_mus, RECORD_LENGTH
 
-class TestDataHandler(unittest.TestCase):
-	# tests all methods directly defined in DataHandler (not within mixins) except:
-	# import_labels, import_predictions, drop_raw_data
-	# downsample_raw_data, truncate_raw_data, generate_startstop, record_window
-	# methods are also not tested for virtual datasets
-	@classmethod
-	def setUpClass(cls):
-		cls.dir = tempfile.TemporaryDirectory()
-		cls.dh = ai.DataHandler(record_length=RECORD_LENGTH, 
-			   					 sample_frequency=SAMPLE_FREQUENCY,
-								 nmbr_channels=2)
-		
-		cls.dh.set_filepath(path_h5=cls.dir.name, fname="test_file", appendix=False)
-		cls.dh.init_empty()
+class TestDataHandler:
+    # tests all methods directly defined in DataHandler (not within mixins) except:
+    # import_labels, import_predictions, drop_raw_data
+    # downsample_raw_data, truncate_raw_data, generate_startstop, record_window
+    # methods are also not tested for virtual datasets
+    def test_get_fileinfos(self, tempdir):
+        dh = ai.DataHandler(nmbr_channels=2)
 
-	@classmethod
-	def tearDownClass(cls):			
-		cls.dir.cleanup()
+        # test if exception is raised when filepath is not set
+        with pytest.raises(Exception): dh.get_filepath()
 
-	def test_get_fileinfos(self):
-		dh = ai.DataHandler(nmbr_channels=2)
+        dh.set_filepath(path_h5=tempdir.name, fname="this_does_not_exist", appendix=False)
 
-		# test if exception is raised when filepath is not set
-		with self.assertRaises(Exception):
-			dh.get_filepath()
+        # test if exception is raised when filepath does not exist
+        with pytest.raises(FileNotFoundError): dh.get_filepath()
 
-		dh.set_filepath(path_h5=self.dir.name, fname="this_does_not_exist", appendix=False)
+        dh.init_empty()
 
-		# test if exception is raised when filepath does not exist
-		with self.assertRaises(FileNotFoundError):
-			dh.get_filepath()
+        # test output of get_filepath
+        assert dh.get_filepath(absolute=True) == os.path.join(tempdir.name, "this_does_not_exist.h5")
+        # test output of get_filename
+        assert dh.get_filename() == "this_does_not_exist"
+        # test output of get_filedirectory
+        assert dh.get_filedirectory(absolute=True) == tempdir.name
+        
+    def test_get_filehandle(self, datahandler, tempdir):
+        with h5py.File(datahandler.get_filepath(), "r") as f:
+            with datahandler.get_filehandle(mode="r") as fh:
+                assert f == fh
 
-		dh.init_empty()
+        mock_file = os.path.join(tempdir.name, "mock_file.h5")
+        with h5py.File(mock_file, "a") as f:
+            with datahandler.get_filehandle(path=mock_file, mode="a") as fh:
+                assert f == fh
 
-		# test output of get_filepath
-		self.assertEqual(dh.get_filepath(absolute=True),
-		   				 os.path.join(self.dir.name, "this_does_not_exist.h5"))
-		# test output of get_filename
-		self.assertEqual(dh.get_filename(), "this_does_not_exist")
-		# test output of get_filedirectory
-		self.assertEqual(dh.get_filedirectory(absolute=True), self.dir.name)
-		
-	def test_get_filehandle(self):
-		with h5py.File(self.dh.get_filepath(), "r") as f:
-			with self.dh.get_filehandle(mode="r") as fh:
-				self.assertEqual(f, fh)
+    def test_manipulations(self, datahandler, testdata_1D_2D_3D_s_mus):
+        d1, d2, d3, *_ = testdata_1D_2D_3D_s_mus
 
-		mock_file = os.path.join(self.dir.name, "mock_file.h5")
-		with h5py.File(mock_file, "a") as f:
-			with self.dh.get_filehandle(path=mock_file, mode="a") as fh:
-				self.assertEqual(f, fh)
+        # test info methods before manipulation
+        print(str(datahandler))
+        repr(datahandler)
+        datahandler.keys()
+        datahandler.content()
 
-	def test_manipulations(self):
-		# test info methods before manipulation
-		self.info_methods()
+        ############### PART 1 ####################
+        ### (test set for non-virtual datasets) ###
+        ###########################################
+        # create an empty group
+        datahandler.set(group="group1")
 
-		for name in dir(self): # dir is sorted
-			if name.startswith("manipulations"):
-				getattr(self, name)()
+        # create a group and write datasets directly
+        datahandler.set(group="group2", ds1=d1, ds2=d2, ds3=d3, dtype=d1.dtype)
+        
+        # create a group and write datasets in channel mode
+        datahandler.set(group="group3", n_channels=2, channel=0, ds1d=d1, ds2d=d2)
+        datahandler.set(group="group3", n_channels=2, channel=1, 
+                        ds1d=10*d1, ds2d=100*d2, change_existing=True)
+        
+        # overwrite existing datasets 
+        datahandler.set(group="group4", ds=d1)
+        datahandler.set(group="group4", overwrite_existing=True, ds=d2)
+        
+        with h5py.File(datahandler.get_filepath(), 'r') as h5f:
+            # check if groups are present
+            assert all( [g in list(h5f.keys()) for g in ["group1", "group2", "group3"]] )
+            # check if datasets are present in group2
+            assert all( [ds in list(h5f["group2"].keys()) for ds in ["ds1", "ds2", "ds3"]] )
+            # check if datasets in group2 have correct shape
+            assert all( [h5f["group2"][ds].shape == ref.shape for ds, ref in zip(["ds1", "ds2", "ds3"], [d1, d2, d3])] )
+            # check if datasets in group2 have correct dtype
+            assert all( [h5f["group2"][ds].dtype == ref.dtype for ds, ref in zip(["ds1", "ds2", "ds3"], [d1, d2, d3])] )
 
-		# test info methods again after manipulation
-		self.info_methods()
+            # check if datasets in group3 have correct shape
+            assert h5f["group3/ds1d"].shape == (2, d1.shape[0])
+            assert h5f["group3/ds2d"].shape == (2, d2.shape[0], d2.shape[1])
 
-	def info_methods(self):
-		print(str(self.dh))
-		self.dh.keys()
-		self.dh.content()
+            # check if dataset was overwritten
+            assert h5f["group4/ds"].shape == d2.shape
 
-	def manipulations1(self): # testing set() for non-virtual datasets
-		# create an empty group
-		self.dh.set(group="group1")
+        # check warnings for incorrect use
+        # n_channels without channel
+        with pytest.warns(UserWarning): datahandler.set(group="group", n_channels=2)
+        # channel without n_channels
+        with pytest.warns(UserWarning): datahandler.set(group="group", channel=0)
+        # no change_existing
+        with pytest.warns(UserWarning): datahandler.set(group="group2", ds1=d1)
+        # no overwrite_existing
+        with pytest.warns(UserWarning): 
+            datahandler.set(group="group2", change_existing=True, ds1=d1)
+        # no overwrite_existing (2 channels exist)
+        with pytest.warns(UserWarning): 
+            datahandler.set(group="group3", n_channels=3, channel=1, change_existing=True, ds1d=d1)
+              
+        ############### PART 2 ####################
+        ### (test get for non-virtual datasets) ###
+        ###########################################
+        # check if written datasets match (within numerical precision)
+        diffs = list()
+        diffs.append( datahandler.get("group2", "ds1") - d1 )
+        diffs.append( datahandler.get("group2", "ds2") - d2 )
+        diffs.append( datahandler.get("group2", "ds3") - d3 )
+        diffs.append( datahandler.get("group3", "ds1d") - np.array([d1, 10*d1]) )
+        diffs.append( datahandler.get("group3", "ds2d") - np.array([d2, 100*d2]) )
+        diffs.append( datahandler.get("group4", "ds") - d2 )
+        # check if slicing works
+        diffs.append( datahandler.get("group3", "ds1d", 0) - d1)
+        diffs.append( datahandler.get("group3", "ds1d", 1) - 10*d1)
+        diffs.append( datahandler.get("group3", "ds2d", 0, None, 3) - d2[:,3])
+        diffs.append( datahandler.get("group3", "ds2d", 1, [1]) - 100*d2[1])
 
-		# create a group and write datasets directly
-		self.dh.set(group="group2", 
-	      			ds1=DATA_1D, 
-					ds2=DATA_2D, 
-					ds3=DATA_3D,
-					dtype=DATA_1D.dtype)
-		
-		# create a group and write datasets in channel mode
-		self.dh.set(group="group3",
-	      			n_channels=2,
-					channel=0,
-					ds1d=DATA_1D,
-					ds2d=DATA_2D)
-		self.dh.set(group="group3",
-	      			n_channels=2,
-					channel=1,
-					ds1d=10*DATA_1D,
-					ds2d=100*DATA_2D,
-					change_existing=True)
-		
-		# overwrite existing datasets 
-		self.dh.set(group="group4",
-					ds=DATA_1D)
-		self.dh.set(group="group4",
-	      			overwrite_existing=True,
-					ds=DATA_2D)
-		
-		with h5py.File(self.dh.get_filepath(), 'r') as h5f:
-			# check if groups are present
-			self.assertTrue( all( [g in list(h5f.keys()) for g in ["group1", "group2", "group3"]] ))
-			# check if datasets are present in group2
-			self.assertTrue( all( [ds in list(h5f["group2"].keys()) for ds in ["ds1", "ds2", "ds3"]] ))
-			# check if datasets in group2 have correct shape
-			self.assertTrue( all( [h5f["group2"][ds].shape == ref.shape for ds, ref in zip(["ds1", "ds2", "ds3"], [DATA_1D, DATA_2D, DATA_3D])] ))
-			# check if datasets in group2 have correct dtype
-			self.assertTrue( all( [h5f["group2"][ds].dtype == ref.dtype for ds, ref in zip(["ds1", "ds2", "ds3"], [DATA_1D, DATA_2D, DATA_3D])] ))
+        assert all( [np.all(np.abs(d) < 1e-5) for d in diffs] )
 
-			# check if datasets in group3 have correct shape
-			self.assertEqual(h5f["group3/ds1d"].shape, (2, DATA_1D.shape[0]))
-			self.assertEqual(h5f["group3/ds2d"].shape, (2, DATA_2D.shape[0], DATA_2D.shape[1]))
+        ############### PART 3 ####################
+        ### (testing drop, repackage and rename) ##
+        ###########################################
+        datahandler.drop("group1") # drop empty group
+        datahandler.drop("group4") # drop non-empty group
+        datahandler.drop("group2", "ds1") # drop dataset
+        datahandler.drop("group2", "ds2", repackage=True) # drop dataset and repackage
+        datahandler.repackage() # repackage
+        
+        # check if groups/datasets are gone
+        with h5py.File(datahandler.get_filepath(), 'r') as h5f:
+            still_exist = ["group1" in list(h5f.keys()),
+                           "group4" in list(h5f.keys()),
+                           "ds1" in list(h5f["group2"].keys()),
+                           "ds2" in list(h5f["group2"].keys())
+                           ]
+        assert not any(still_exist)
 
-			# check if dataset was overwritten
-			self.assertEqual( h5f["group4/ds"].shape, DATA_2D.shape)
+        # test rename
+        datahandler.rename(group3="group3_new")
+        datahandler.rename(group="group3_new", ds1d="ds1d_new")
 
-		# check warnings for incorrect use
-		self.assertWarns(UserWarning, self.dh.set, # n_channels without channel
-		   				 group="group",
-						 n_channels=2)
-		self.assertWarns(UserWarning, self.dh.set, # channel without n_channels
-		   				 group="group",
-						 channel=0)
-		self.assertWarns(UserWarning, self.dh.set, # no change_existing
-		   				 group="group2",
-						 ds1=DATA_1D)
-		self.assertWarns(UserWarning, self.dh.set, # no overwrite_existing
-		   				 group="group2",
-						 change_existing=True,
-						 ds1=DATA_1D)
-		self.assertWarns(UserWarning, self.dh.set, # no overwrite_existing (2 channels exist)
-		   				 group="group3",
-						 n_channels=3,
-						 channel=1,
-						 change_existing=True,
-						 ds1d=DATA_1D)
-			
-	def manipulations2(self): # testing get() for non-virtual datasets
-		# check if written datasets match (within numerical precision)
-		diffs = list()
-		diffs.append( self.dh.get("group2", "ds1") - DATA_1D )
-		diffs.append( self.dh.get("group2", "ds2") - DATA_2D )
-		diffs.append( self.dh.get("group2", "ds3") - DATA_3D )
-		
-		diffs.append( self.dh.get("group3", "ds1d") - np.array([DATA_1D, 10*DATA_1D]) )
-		diffs.append( self.dh.get("group3", "ds2d") - np.array([DATA_2D, 100*DATA_2D]) )
+        # check if names were changed and values stayed the same
+        with h5py.File(datahandler.get_filepath(), 'r') as h5f:
+            assert not "group3" in list(h5f.keys())
+            assert "group3_new" in list(h5f.keys())
+            assert not "ds1d" in list(h5f["group3_new"].keys())
+            assert "ds1d_new" in list(h5f["group3_new"].keys())
 
-		diffs.append( self.dh.get("group4", "ds") - DATA_2D )
+        d = datahandler.get("group3_new", "ds1d_new") - np.array([d1, 10*d1])
+        assert np.all(np.abs(d) < 1e-5)
 
-		# check if slicing works
-		diffs.append( self.dh.get("group3", "ds1d", 0) - DATA_1D)
-		diffs.append( self.dh.get("group3", "ds1d", 1) - 10*DATA_1D)
-		diffs.append( self.dh.get("group3", "ds2d", 0, None, 3) - DATA_2D[:,3])
-		diffs.append( self.dh.get("group3", "ds2d", 1, [1]) - 100*DATA_2D[1])
+        # test info methods again after manipulation
+        print(str(datahandler))
+        repr(datahandler)
+        datahandler.keys()
+        datahandler.content()
+ 
+    # The correct functioning of EventIterator is tested in the respective test file
+    def test_event_iterator(self, datahandler, testdata_1D_2D_3D_s_mus): 
+        *_ , d3, s, mus = testdata_1D_2D_3D_s_mus
 
-		self.assertTrue( all( [np.all(np.abs(d) < 1e-5) for d in diffs] ) )
+        # Prepare datasets
+        datahandler.set("iterator_testing", event=d3)
+        datahandler.set(group="iterator_testing", time_s=s, time_mus=mus, dtype=np.int32)
 
-	def manipulations3(self): # testing drop, repackage and rename
-		self.dh.drop("group1") # drop empty group
-		self.dh.drop("group4") # drop non-empty group
-		self.dh.drop("group2", "ds1") # drop dataset
-		self.dh.drop("group2", "ds2", repackage=True) # drop dataset and repackage
-		self.dh.repackage() # repackage
-		
-		# check if groups/datasets are gone
-		with h5py.File(self.dh.get_filepath(), 'r') as h5f:
-			still_exist = ["group1" in list(h5f.keys()),
-		  				   "group4" in list(h5f.keys()),
-						   "ds1" in list(h5f["group2"].keys()),
-						   "ds2" in list(h5f["group2"].keys())
-		  				  ]
-		self.assertFalse( any(still_exist) )
+        it1 = datahandler.get_event_iterator("iterator_testing")
+        it2 = datahandler.get_event_iterator("iterator_testing", batch_size=13)
+        it3 = datahandler.get_event_iterator("iterator_testing", 0)
+        it4 = datahandler.get_event_iterator("iterator_testing", 0, batch_size=13)
 
-		# test rename
-		self.dh.rename(group3="group3_new")
-		self.dh.rename(group="group3_new", ds1d="ds1d_new")
+        for it in [it1, it2]:
+            datahandler.include_event_iterator("iterator_testing_out", it)
+            assert datahandler.get("iterator_testing_out", "event").shape == (2, 100, RECORD_LENGTH)
+            datahandler.get("iterator_testing_out", "time_s")
+            datahandler.get("iterator_testing_out", "time_mus")
+            datahandler.get("iterator_testing_out", "hours")
+            datahandler.drop("iterator_testing_out")
 
-		# check if names were changed and values stayed the same
-		with h5py.File(self.dh.get_filepath(), 'r') as h5f:
-			self.assertFalse( "group3" in list(h5f.keys()) )
-			self.assertTrue( "group3_new" in list(h5f.keys()) )
-			self.assertFalse( "ds1d" in list(h5f["group3_new"].keys()) )
-			self.assertTrue( "ds1d_new" in list(h5f["group3_new"].keys()) )
+        for it in [it3, it4]:
+            datahandler.include_event_iterator("iterator_testing_out", it)
+            assert datahandler.get("iterator_testing_out", "event").shape == (1, 100, RECORD_LENGTH)
+            datahandler.get("iterator_testing_out", "time_s")
+            datahandler.get("iterator_testing_out", "time_mus")
+            datahandler.get("iterator_testing_out", "hours")
+            datahandler.drop("iterator_testing_out")
 
-		d = self.dh.get("group3_new", "ds1d_new") - np.array([DATA_1D, 10*DATA_1D])
-		self.assertTrue( np.all(np.abs(d) < 1e-5))
-
-	def test_event_iterator(self): # The correct functioning of EventIterator is tested in the respective test file
-		self.dh.set("iterator_testing", event=DATA_3D)
-
-		it1 = self.dh.get_event_iterator("iterator_testing")
-		it2 = self.dh.get_event_iterator("iterator_testing", batch_size=13)
-		it3 = self.dh.get_event_iterator("iterator_testing", 0)
-		it4 = self.dh.get_event_iterator("iterator_testing", 0, batch_size=13)
-
-		for it in [it1, it2]:
-			self.dh.include_event_iterator("iterator_testing_out", it)
-			self.assertEqual(self.dh.get("iterator_testing_out", "event").shape, (2, 100, RECORD_LENGTH))
-			self.dh.drop("iterator_testing_out")
-
-		for it in [it3, it4]:
-			self.dh.include_event_iterator("iterator_testing_out", it)
-			self.assertEqual(self.dh.get("iterator_testing_out", "event").shape, (1, 100, RECORD_LENGTH))
-			self.dh.drop("iterator_testing_out")
-
-		with self.assertRaises(Exception): # already existing dataset
-			it = self.dh.get_event_iterator("iterator_testing")
-			self.dh.include_event_iterator("iterator_testing", it)
-		
-if __name__ == '__main__':
-    unittest.main()
+        with pytest.raises(Exception): # already existing dataset
+            it = datahandler.get_event_iterator("iterator_testing")
+            datahandler.include_event_iterator("iterator_testing", it)

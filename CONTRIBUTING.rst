@@ -1,10 +1,13 @@
-***********************
 Contribution Guidelines
-***********************
+=======================
+
+.. note::
+    Development of ``cait`` is done on a non-public gitlab server and the repository is merely mirrored to github (all branches from gitlab are automatically pushed to github but not vice-versa). If you have access to the gitlab repository, create and merge branches there only! To allow contribution to the public (github) repository, too, the develop branch is mirrored back to gitlab. To avoid conflicts, the develop branch is protected and you should **always coordinate** with a core maintainer when creating merge requests on github. 
 
 The repository has the following structure:
 
 .. code::
+
     .
     +--cait/
     |  +--folder1/
@@ -26,9 +29,9 @@ The repository has the following structure:
     +--.gitignore
     +--setup.py
 
-The **cait** folder contains all source code for the package. It directly contains the major classes (EventInterface, DataHandler, ...) and several sub-folders for utility functions. The sub-folders are thematically structured (filter, fit, data, ...) and the intention is, that the user should mainly interact with the utility functions through the major classes. However, advanced users can access some of the utility functions directly (such aus generating filters, fits, etc). Every folder contains an __init__.py file, which specifies all functions that are directly accessable for the user (__all__ = [...]).
+The ``cait`` folder contains all source code for the package. It directly contains the major classes (``DataHandler``, ``VizTool``, ...) and several sub-folders for utility functions. The sub-folders are thematically structured (filter, fit, data, ...) and the intention is, that the user should mainly interact with the utility functions through the major classes. However, advanced users can access some of the utility functions directly (such aus generating filters, fits, etc). Every folder contains an ``__init__.py`` file, which specifies all functions that are directly accessible for the user (``__all__ = [...]``).
 
-The **dist** folder contains the wheel files, that are used for installation. These are automatically created when calling
+The ``dist`` folder contains the wheel files, that are used for installation. These are automatically created when calling
 
 .. code:: console
 
@@ -36,16 +39,16 @@ The **dist** folder contains the wheel files, that are used for installation. Th
 
 in the top level directory.
 
-The **tests** folder contains test files that can be automatically executed.
+The ``tests`` folder contains test files that can be automatically executed. Notice that files and functions (classes) have to start with ``test_`` to be included automatically.
 
-The **docs** folder contains the documentation, written in restructured text, automatically generated with Sphinx. The tutorials subfolder contains tutorials in Jupyter notebooks, that are automatically rendered into the documentation.
+The ``docs`` folder contains the documentation, written in restructured text, automatically generated with ``sphinx``. The tutorials subfolder contains tutorials in ``jupyter`` notebooks, that are automatically rendered into the documentation.
 
-The **.gitignore** file excludes all files that are too large for git or specific for each user: data, virtual environment, ...
+The ``.gitignore`` file excludes all files that are too large for git or specific for each user: data, virtual environment, ...
 
-The **setup.py** file contains information for the installation of the package: dependencies, version number, ...
+The ``setup.py`` file contains information for the installation of the package: dependencies, version number, ...
 
 Code Guidelines
-==================
+~~~~~~~~~~~~~~~
 
 A software project with multiple contributors from various levels of experience needs clear and easy structure to ensure long-term usability. For this reason, please consider the following guidelines in every commit:
 
@@ -62,7 +65,7 @@ A software project with multiple contributors from various levels of experience 
 We allow for deviations from the guidelines in rare cases and for good reasons. A good reason for deviating from the guidelines is, if it serves the purpose of usability and readability of your code significantly better, than following them. No good reason would be e.g. because it is a lot a work to adapt your code to the guidelines or because you are not used to them.
 
 Master, Development and Feature Branches
-=============================================
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 We keep a stable and released version on master branch at all times, it is protected from merge requests. Another branch typically hosts a develop version, on which we bring together all new features and fixes for the next release.
 
@@ -78,7 +81,7 @@ While the core developers sometimes do small fixes directly on the development b
 Please keep as close as possible to this procedure. Keep your changes on the feature branch as close to the issue you defined to work on as possible. Merge the feature branch as soon as possible in the development branch, to avoid merge conflicts due to a drifted apart code base. You can find a very nice summary of the Git workflow in this blog post: https://nvie.com/posts/a-successful-git-branching-model/
 
 Wheel files
-==================
+~~~~~~~~~~~
 
 If you contribute to the code and push your changes, please also update the wheel file and push it. The wheel file can be updated with calling
 

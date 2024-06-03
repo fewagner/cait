@@ -1,104 +1,101 @@
-import unittest
-import tempfile
+import pytest
 
 import cait as ai
-from cait.versatile.rdt import RDTFile, PARFile
+from cait.versatile.datasources.hardwaretriggered.rdt_file import RDTFile
+from cait.versatile.datasources.hardwaretriggered.par_file import PARFile
 
-RDT_LENGTH = 100
 
-class TestRDT(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.dir = tempfile.TemporaryDirectory()
-        data1 = ai.data.TestData(filepath=cls.dir.name+'/data1', 
-                                 duration=RDT_LENGTH,
-                                 channels=[0, 1],
-                                 sample_frequency=25000,
-                                 start_s=13)
-        data2 = ai.data.TestData(filepath=cls.dir.name+'/data2', 
-                                 duration=RDT_LENGTH,
-                                 channels=[1],
-                                 sample_frequency=50000,
-                                 start_s=20349,
-                                 include_carriers=False)
+from ..fixtures import tempdir, RDT_LENGTH
 
-        data1.generate()
-        data2.generate()
+@pytest.fixture(scope="class")
+def rdt_files(tempdir):
+    data1 = ai.data.TestData(filepath=tempdir.name+'/data1', 
+                             duration=RDT_LENGTH,
+                             channels=[0, 1],
+                             sample_frequency=25000,
+                             start_s=13)
+    data2 = ai.data.TestData(filepath=tempdir.name+'/data2',
+                             duration=RDT_LENGTH,
+                             channels=[1],
+                             sample_frequency=50000,
+                             start_s=20349,
+                             include_carriers=False)
 
-        cls.f1 = RDTFile(cls.dir.name+'/data1.rdt')
-        cls.f2 = RDTFile(cls.dir.name+'/data2.rdt')
+    data1.generate()
+    data2.generate()
 
-    @classmethod
-    def tearDownClass(cls):			
-        cls.dir.cleanup()
+    yield RDTFile(tempdir.name+'/data1.rdt'), RDTFile(tempdir.name+'/data2.rdt')
 
-    def test_par(self):
-        p1 = PARFile(self.dir.name+'/data1.par')
-        p2 = PARFile(self.dir.name+'/data2.par')
+class TestRDT:
+    def test_par(self, tempdir, rdt_files): # rdt_files fixture needed to create par files
+        p1 = PARFile(tempdir.name+'/data1.par')
+        p2 = PARFile(tempdir.name+'/data2.par')
 
-        self.assertTrue(p1.start_s == 13)
-        self.assertTrue(p2.start_s == 20349)
+        assert p1.start_s == 13
+        assert p2.start_s == 20349
 
-        self.assertTrue(p1.stop_s == 13 + RDT_LENGTH)
-        self.assertTrue(p2.stop_s == 20349 + RDT_LENGTH)
+        assert p1.stop_s == 13 + RDT_LENGTH
+        assert p2.stop_s == 20349 + RDT_LENGTH
 
-    def test_constructor(self):
-        self.assertTrue(self.f1.sample_frequency == 25000)
-        self.assertTrue(self.f2.sample_frequency == 50000)
+    def test_constructor(self, rdt_files):
+        f1, f2 = rdt_files
+        assert f1.sample_frequency == 25000
+        assert f2.sample_frequency == 50000
 
-        self.assertTrue(self.f1.keys == [0, 1, (0,1)])
-        self.assertTrue(self.f2.keys == [1])
+        assert f1.keys == [0, 1, (0,1)]
+        assert f2.keys == [1]
 
-    def test_channels(self):
-        self.assertTrue(self.f1[0].n_channels == 1)
-        self.assertTrue(self.f1[1].n_channels == 1)
-        self.assertTrue(self.f1[(0,1)].n_channels == 2)
+    def test_channels(self, rdt_files):
+        f1, f2 = rdt_files
+        assert f1[0].n_channels == 1
+        assert f1[1].n_channels == 1
+        assert f1[(0,1)].n_channels == 2
 
-        self.assertTrue(self.f2[1].n_channels == 1)
+        assert f2[1].n_channels == 1
 
         tpas = [-1.0, 0.0, 0.1, 0.3, 0.5, 1.0, 3.0, 10.0]
-        self.assertTrue([float(str(x)) for x in self.f1[0].unique_tpas] == tpas)
-        self.assertTrue([float(str(x)) for x in self.f1[(0,1)].unique_tpas] == tpas)
-        self.assertTrue([float(str(x)) for x in self.f2[1].unique_tpas] == tpas)
+        assert [float(str(x)) for x in f1[0].unique_tpas] == tpas
+        assert [float(str(x)) for x in f1[(0,1)].unique_tpas] == tpas
+        assert [float(str(x)) for x in f2[1].unique_tpas] == tpas
 
-    def test_methods_rdt(self):
-        self.assertTrue(self.f1.default_channels == (0,1))
-        self.assertTrue(self.f2.default_channels == 1)
+    def test_methods_rdt(self, rdt_files):
+        f1, f2 = rdt_files
+        # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT
+        # assert self.f1.default_channels == (0,1)
+        # assert self.f2.default_channels == 1
 
-        self.f1.time_base_us
-        self.f1.measuring_time_h
-        self.f1.keys
-        self.f1.get_voltage_trace([0,1,2])
+        f1.dt_us
+        f1.measuring_time_h
+        f1.keys
+        f1.get_voltage_trace([0,1,2])
 
-        self.f2.time_base_us
-        self.f2.measuring_time_h
-        self.f2.keys
-        self.f2.get_voltage_trace([0,1,2])
+        f2.dt_us
+        f2.measuring_time_h
+        f2.keys
+        f2.get_voltage_trace([0,1,2])
 
-    def test_methods_channels(self):
-        self.f1[0].key
-        self.f1[(0,1)].key
-        self.f2[1].key
+    def test_methods_channels(self, rdt_files):
+        f1, f2 = rdt_files
+        f1[0].key
+        f1[(0,1)].key
+        f2[1].key
 
-        self.f1[0].timestamps
-        self.f1[(0,1)].timestamps
-        self.f2[1].timestamps
+        f1[0].timestamps
+        f1[(0,1)].timestamps
+        f2[1].timestamps
 
-        self.f1[0].tpas
-        self.f1[(0,1)].tpas
-        self.f2[1].tpas
+        f1[0].tpas
+        f1[(0,1)].tpas
+        f2[1].tpas
 
-        it1 = self.f1[0].get_event_iterator()
-        it2 = self.f1[(0,1)].get_event_iterator()
-        it3 = self.f2[1].get_event_iterator()
+        it1 = f1[0].get_event_iterator()
+        it2 = f1[(0,1)].get_event_iterator()
+        it3 = f2[1].get_event_iterator()
 
-        self.assertTrue(it1.n_channels == 1)
-        self.assertTrue(it2.n_channels == 2)
-        self.assertTrue(it3.n_channels == 1)
+        assert it1.n_channels == 1
+        assert it2.n_channels == 2
+        assert it3.n_channels == 1
 
         next(iter(it1))
         next(iter(it2))
         next(iter(it3))
-
-if __name__ == '__main__':
-    unittest.main()

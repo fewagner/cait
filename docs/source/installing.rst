@@ -9,16 +9,19 @@ Our recommendation is therefore to use the development branch, combined with act
 issue tracker. Due to the still very small user and developer community, the stable release is also to be understood as
 a beta version.
 
-**Important Note for JupyterHub on computing clusters:**
+.. note::
+  **Important Note for JupyterHub on computing clusters**
 
-In the past, many users experienced issues with our interactive plotting tools which are based on plotly and ipywidgets. These problems were due to version mismatches between the plotly/ipywidgets packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
+  In the past, many users experienced issues with our interactive plotting tools which are based on plotly and ipywidgets. These problems were due to version mismatches between the plotly/ipywidgets packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
 
-To not run into such issues in the first place, we recommend one of the following approaches:
+  To not run into such issues in the first place, we recommend one of the following approaches:
 
-* Install cait in the base environment of your computing cluster's JupyterLab. 
-* Install it in a virtual environment (because you want or have to) is also possible but you will have to make sure that the same plotly/ipywidgets versions (which are installed as dependencies of cait) are also present in the base environment. A good practice to ensure this is to always pip-upgrade plotly/ipywidgets to the latest version in both environments. Note that you will potentially have to match these versions every time you upgrade cait.
+  * Install cait in the base environment of your computing cluster's JupyterLab. 
+  * Install it in a virtual environment (because you want or have to) is also possible but you will have to make sure that the same plotly/ipywidgets versions (which are installed as dependencies of cait) are also present in the base environment. A good practice to ensure this is to always pip-upgrade plotly/ipywidgets to the latest version in both environments. Note that you will potentially have to match these versions every time you upgrade cait.
 
-Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
+  Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
+
+  To learn how to add a virtual environment as a kernel to jupyterlab, refer to `this great reference <https://janakiev.com/blog/jupyter-virtual-envs/>`_.
 
 Installation from PyPI (recommended)
 ====================================
@@ -31,39 +34,10 @@ Cait is hosted on the Python package index.
 
 For older or unreleased version, use the installation from Git.
 
-Installation from Wheel File
-====================================
-
-For installing Cait, first install and upgrade the following helper libraries:
-
-.. code:: console
-
-    $ pip install -U wheel setuptools twine
-
-Then clone the Git repository. The folder of the repository contains a wheel file:
-
-.. code:: console
-
-    $ dist/*.whl
-
-If there are multiple wheel files, choose the one with the highes version number.
-For installation of the library, run:
-
-.. code:: console
-
-    $ pip install /path/to/wheelfile.whl
-
-You can now import the library in Python, e.g.
-
-.. code:: python
-
-    import cait as ai
-    from cait import EventInterface
-
 Options for Developers
-====================================
+======================
 
-As a developer of the Cait Library, you don't want to generate a new wheel file and install the new version every time you added a new function. In this case, we recommend to use inside the folder that contains the setup.py file the
+As a developer of the Cait Library, you don't want to generate a new wheel file and install the new version every time you added a new function. In this case, we recommend to use inside the folder that contains the pyproject.toml file the
 
 .. code:: console
 
@@ -72,7 +46,7 @@ As a developer of the Cait Library, you don't want to generate a new wheel file 
 pip editable option, that includes changes right away. It is also possible to install directly from the git repository, for this there are many tutorials available, e.g. https://adamj.eu/tech/2019/03/11/pip-install-from-a-git-repository/.
 
 Installation from Git
-====================================
+=====================
 
 The easiest way to install this library is to install it directly from git.
 Following [ https://pip.pypa.io/en/latest/reference/pip_install/#git ] we only have to

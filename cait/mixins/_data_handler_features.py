@@ -414,7 +414,7 @@ class FeaturesMixin(object):
     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
                  chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
                  baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None,
-                 flexibility=1):
+                 flexibility=1, calc_rms=False):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -447,9 +447,14 @@ class FeaturesMixin(object):
         :type onset_to_dominant_channel: list of ints
         :param flexibility: In case a peak position is provided, the maximum search can still deviate by this amount of samples.
         :type flexibility: int
+        :param calc_rms: If true, calculated also the rms of the filtered pulses.
+        :type calc_rms: bool
         """
 
-        print('Calculating OF Heights.')
+        if calc_rms:
+            print('Calculating OF Heights and RMS.')
+        else:
+            print('Calculating OF Heights.')
 
         if onset_to_dominant_channel is None:
             onset_to_dominant_channel = np.zeros(self.nmbr_channels)
@@ -472,6 +477,17 @@ class FeaturesMixin(object):
             f[type].require_dataset(name='of_ph' + name_appendix_set,
                                     shape=(self.nmbr_channels, len(events[0])),
                                     dtype='float')
+            if calc_rms:
+                if 'of_rms' + name_appendix_set in f[type]:
+                    del f[type]['of_rms' + name_appendix_set]
+                if 'of_rms_peak' + name_appendix_set in f[type]:
+                    del f[type]['of_rms_peak' + name_appendix_set]
+                f[type].require_dataset(name='of_rms' + name_appendix_set,
+                                shape=(self.nmbr_channels, len(events[0])),
+                                dtype='float')
+                f[type].require_dataset(name='of_rms_peak' + name_appendix_set,
+                                shape=(self.nmbr_channels, len(events[0])),
+                                dtype='float')
 
             nmbr_events = len(events[0])
             counter = 0
@@ -480,57 +496,94 @@ class FeaturesMixin(object):
             while counter + chunk_size < nmbr_events:
                 for c in range(self.nmbr_channels):
                     if first_channel_dominant and c == 0:
-                        of_ph, peakpos = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                         hard_restrict=hard_restrict, down=down, window=window,
                                                         return_peakpos=True,
                                                         baseline_model=baseline_model,
                                                         pretrigger_samples=pretrigger_samples,
                                                         transfer_function=transfer_function[c],
-                                                        flexibility=flexibility)
+                                                        flexibility=flexibility,
+                                                        calc_rms=calc_rms)
+                        if calc_rms:
+                            of_ph, peakpos, of_rms, of_rms_peak = results
+                        else:
+                            of_ph, peakpos = results
                     elif first_channel_dominant:
-                        of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
                                                peakpos=peakpos + onset_to_dominant_channel[c],
                                                return_peakpos=False,
                                                baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                                transfer_function=transfer_function[c],
-                                                        flexibility=flexibility)
+                                               flexibility=flexibility,
+                                               calc_rms=calc_rms)
+                        if calc_rms:
+                            of_ph, of_rms, of_rms_peak = results
+                        else:
+                            of_ph = results
                     else:
-                        of_ph = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
+                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
                                                hard_restrict=hard_restrict, down=down, window=window,
                                                return_peakpos=False,
                                                baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                                transfer_function=transfer_function[c],
-                                                        flexibility=flexibility)
+                                               flexibility=flexibility,
+                                               calc_rms=calc_rms)
+                        if calc_rms:
+                            of_ph, of_rms, of_rms_peak = results
+                        else:
+                            of_ph = results
 
                     f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
+                    if calc_rms:
+                        f[type]['of_rms' + name_appendix_set][c, counter:counter + chunk_size] = of_rms
+                        f[type]['of_rms_peak' + name_appendix_set][c, counter:counter + chunk_size] = of_rms_peak
                 counter += chunk_size
 
             # calc rest that is smaller than a batch
             for c in range(self.nmbr_channels):
                 if first_channel_dominant and c == 0:
-                    of_ph, peakpos = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                                     hard_restrict=hard_restrict, down=down, window=window,
                                                     return_peakpos=True,
                                                     baseline_model=baseline_model,
                                                     pretrigger_samples=pretrigger_samples,
                                                     transfer_function=transfer_function[c],
-                                                        flexibility=flexibility)
+                                                    flexibility=flexibility,
+                                                    calc_rms=calc_rms)
+                    if calc_rms:
+                        of_ph, peakpos, of_rms, of_rms_peak = results
+                    else:
+                        of_ph, peakpos = results
                 elif first_channel_dominant:
-                    of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
                                            peakpos=peakpos + onset_to_dominant_channel[c], return_peakpos=False,
                                            baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                            transfer_function=transfer_function[c],
-                                                        flexibility=flexibility)
+                                           flexibility=flexibility,
+                                           calc_rms=calc_rms)
+                    if calc_rms:
+                        of_ph, of_rms, of_rms_peak = results
+                    else:
+                        of_ph = results
                 else:
-                    of_ph = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
+                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
                                            hard_restrict=hard_restrict, down=down, window=window,
                                            return_peakpos=False,
                                            baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
                                            transfer_function=transfer_function[c],
-                                                        flexibility=flexibility)
+                                           flexibility=flexibility,
+                                           calc_rms=calc_rms)
+                    if calc_rms:
+                        of_ph, of_rms, of_rms_peak = results
+                    else:
+                        of_ph = results
                 f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
+                if calc_rms:
+                    f[type]['of_rms' + name_appendix_set][c, counter:nmbr_events] = of_rms
+                    f[type]['of_rms_peak' + name_appendix_set][c, counter:nmbr_events] = of_rms_peak
+
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,

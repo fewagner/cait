@@ -1,0 +1,25 @@
+stages:
+  - test
+
+pytest:
+  stage: test
+  rules:
+    # Only run tests when merge request is created
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  image: "python:$VERSION"
+  before_script:
+    # needed for h5repack (usually installed on computing clusters)
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools
+    - python -m pip install --upgrade pip
+    # install also optional dependencies for testing
+    - python -m pip install .[test,clplot]
+  script:
+    - python -V
+    - pytest --junitxml=report.xml
+  parallel:
+    matrix:
+      - VERSION: ['3.8', '3.9', '3.10', '3.11', '3.12']
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml

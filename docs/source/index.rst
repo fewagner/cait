@@ -72,3 +72,4 @@
    documentation/simulate
    documentation/styles
    documentation/trigger
+   documentation/versatile

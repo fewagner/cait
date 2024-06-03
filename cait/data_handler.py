@@ -18,8 +18,9 @@ from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
-from .versatile.file import ds_source_available
-from .versatile.iterators import H5Iterator, IteratorBaseClass
+from .versatile.functions.file import ds_source_available
+from .versatile.iterators.impl_h5 import H5Iterator
+from .versatile.iterators.iteratorbase import IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
 ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
@@ -320,11 +321,11 @@ class DataHandler(SimulateMixin,
 
         if flag is not None: inds = inds[flag]
 
-        return H5Iterator(path_h5=self.get_filepath(), group=group, dataset="event", channels=channel, inds=inds, batch_size=batch_size)
+        return H5Iterator(self, group=group, channels=channel, inds=inds, batch_size=batch_size)
     
     def include_event_iterator(self, group: str, it: IteratorBaseClass, dtype: str = 'float32'):
         """
-        Includes the events returned by an iterator into dataset 'event' of a specified group. 
+        Includes the events returned by an iterator into dataset 'event' of a specified group. The timestamps of the iterator are saved in datasets 'time_s' and 'time_mus' of the same group, in alignment with the convention of cait.
 
         :param group: The target group in the HDF5 file.
         :type group: str
@@ -379,6 +380,14 @@ class DataHandler(SimulateMixin,
 
                     hdf5ds[:, sl, :] = ev
                     ind += step
+
+        # Include timestamps
+        sec = (it.timestamps//1e6).astype(np.int32)
+        mus = (it.timestamps%1e6).astype(np.int32)
+        hours = (sec.astype(np.int64)*int(1e6) + mus.astype(np.int64) - it.ds_start_us)/1e6/3600
+        
+        self.set(group, overwrite_existing=True, time_s=sec, time_mus=mus, dtype=np.int32)
+        self.set(group, overwrite_existing=True, hours=hours, dtype=np.float64)
     
     def import_labels(self,
                       path_labels: str,

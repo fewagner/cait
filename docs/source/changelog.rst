@@ -1,11 +1,18 @@
-***********************
 Features and Changelog
-***********************
+======================
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
+v.1.2.2
+~~~~~~~
+- Added support for python versions 3.11 and 3.12
+- Added possibility to automatically calculate RMS when applying the optimum filter. The option can be toggled using the `calc_rms` keyword on the `dh.apply_of` method.
+- Added tests for general workflow
+- New (experimental) features in `cait.versatile`
+- Documentation for `cait.versatile` in preparation
+
 v1.2.1
-======
+~~~~~~
 - SEV fit parameters of extended pulse shape models are now supported by `cait` analysis routines like `show_sev` and `simulate_pulses`. If the dataset `fitpar` in the `stdevent` group has length `6`, it is assumed to be of the form `(t0, An, At, tau_n, tau_in, tau_t)` and the regular `2`-component pulse shape model is used. If it is of length `2(k+1)` for `k=3,4,...`, an extended `k`-component model is used and the parameters are assumed to be in order `(t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n)`. Notice, however, that there is currently no function which does the corresponding fit for you due to yet unresolved restrictions in the `cait` source code. Therefore, you have to perform the fit yourself, e.g. by using the model function `cait.fit._templates.pulse_template` (which supports extended models) and any fit routine of your choice. Afterwards, you can include the results in the HDF5 file using `DataHandler.set()`.
 - Fixed deprecation issue due to missing `seaborn-paper` style in matplotlib version 3.8.0
 - Fixed a bug where the `exclude_tpas` keyword in `PulserModel` and derived functionalities like `calc_calibration` would not correctly exclude small testpulse amplitudes.
@@ -15,7 +22,7 @@ v1.2.1
 - New (experimental) features in `cait.versatile`.
 
 v1.2.0
-======
+~~~~~~
 
 This release aims to make cait slightly more light-weight by dropping some deprecated/unnecessary dependencies. Most importantly, the torch and torch_lightning packages are not automatically installed anymore (if you use a function that requires those packages, you will be prompted to install them). The reason being that few users need those functionalities yet their installation size is comparatively large.
 Furthermore, we do not fix versions for visualization packages (plotly/ipywidgets) anymore because we figured out the reason for version mismatch issues (see README).
@@ -59,7 +66,7 @@ Additionally, this version introduces a new module called cait.versatile which a
 - fixed a bug which occurred when triggering VDAQ2 data without timestamps
 
 v1.1.0
-======
+~~~~~~
 
 There were significant chages since v1.0, partially affecting the user interface.
 
@@ -132,7 +139,7 @@ New documentation:
 
 
 v1.0.0
-======
+~~~~~~
 
 This is the first stable, full release of Cait. In this original version, the following features are included:
 

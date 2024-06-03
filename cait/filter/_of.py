@@ -90,7 +90,8 @@ def filter_event(event, transfer_function, window=False):
 
 def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, window=False,
                    peakpos=None, return_peakpos=False, flexibility=20,
-                   baseline_model='constant', pretrigger_samples=500, transfer_function=None):
+                   baseline_model='constant', pretrigger_samples=500, transfer_function=None,
+                   calc_rms=False):
     """
     This function determines the amplitudes of several events with optimal sig-noise-ratio.
 
@@ -108,6 +109,7 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
     :param pretrigger_samples: int, the number of samples from the start of the record window to evaluate the baseline
     :param transition_function: 2D complex float numpy array, use this transfer function instead of calculating it
         again from the stdevent and nps
+    :param calc_rms: bool, if true tmr RMS of the filtered peak is also calculated
     :return: 1D array size (nmbr_events), the phs after of filtering; if return_peakpos is true, this is instead
         a 2-tuple of the of_ph and the maximum positions
     """
@@ -128,28 +130,64 @@ def get_amplitudes(events_array, stdevent, nps, hard_restrict=False, down=1, win
         transfer_function = optimal_transfer_function(stdevent, nps, window=window)
     # filter events
     events_filtered = np.array([filter_event(event, transfer_function, window=window) for event in events_array])
+    # filter standard event
+    if calc_rms:
+        stdevent_filtered = filter_event(np.copy(stdevent), transfer_function, window=window)
     # get maximal heights of filtered events
     if peakpos is not None:
         amplitudes = np.array(
             [np.max(events_filtered[i, int(p - flexibility):int(p + flexibility)]) for i, p in enumerate(peakpos)])
     elif not hard_restrict:
+        peakpos = np.argmax(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
+        peakpos += int(length / 8)
         if return_peakpos:
-            peakpos = np.argmax(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
-            peakpos += int(length / 8)
             amplitudes = np.array(
                 [np.max(events_filtered[i, int(p - flexibility):int(p + flexibility)]) for i, p in enumerate(peakpos)])
         else:
             amplitudes = np.max(events_filtered[:, int(length / 8):-int(length / 8)], axis=1)
     else:
+        peakpos = np.argmax(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
+        peakpos += int(length * 20 / 100)
         if return_peakpos:
-            peakpos = np.argmax(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
-            peakpos += int(length * 20 / 100)
             amplitudes = np.array(
                 [np.max(events_filtered[i, int(p - flexibility):int(p + flexibility)]) for i, p in enumerate(peakpos)])
         else:
             amplitudes = np.max(events_filtered[:, int(length * 20 / 100):int(length * 30 / 100)], axis=1)
 
-    if return_peakpos:
+    if calc_rms:
+        rms = get_of_rms(events_filtered,stdevent_filtered,peakpos,amplitudes,around_peak=False)
+        rms_peak = get_of_rms(events_filtered,stdevent_filtered,peakpos,amplitudes,around_peak=True)
+
+    if return_peakpos and calc_rms:
+        return amplitudes, peakpos, rms, rms_peak
+    elif return_peakpos and not calc_rms:
         return amplitudes, peakpos
+    elif not return_peakpos and calc_rms:
+        return amplitudes, rms, rms_peak
     else:
         return amplitudes
+
+def get_of_rms(events_filtered,stdevent_filtered,peakpos,amplitudes,around_peak=False):
+    """
+    This function calculates the rms between the filtered events and the filtered standard event.
+
+    :param events_filtered: 2D array (nmbr_events, rec_length), the filtered events
+    :param stdevent_filtered: 1D array (rec_length), the filtered standard event
+    :param peakpos: 1D array (nmbr_events), the positions of the maxima of the filtered events
+    :param amplitudes: 1D array (nmbr_events), the of amplitude of the events
+    :param around_peak: bool, calculate the rms only around the peak 
+    :return: 1D array (nmbr_events) of rms values
+    """
+    length = events_filtered.shape[1]
+    stdevent_peakpos = np.argmax(stdevent_filtered)
+    rms = np.zeros_like(amplitudes)
+    for i,ev in enumerate(events_filtered):
+        this_stdevent = np.roll(stdevent_filtered*amplitudes[i],int(peakpos[i]-stdevent_peakpos))
+        if around_peak: this_stdevent = this_stdevent[stdevent_peakpos-int(length/32):stdevent_peakpos+int(length/32)]
+        if around_peak:
+            this_ev = ev[int(peakpos[i]-int(length/32)):int(peakpos[i]+int(length/32))]
+            rms[i] = np.mean((this_ev-this_stdevent) ** 2)
+        else:
+            rms[i] = np.mean((ev-this_stdevent) ** 2)
+
+    return rms
