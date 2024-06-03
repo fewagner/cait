@@ -17,6 +17,7 @@ rinohtype==0.5.3
 importlib-metadata==3.4.0
 myst-nb==0.13.1
 lxml-html-clean==0.1.1
+Werkzeug==2.2.2
 
 # cait (to read version)
 cait
