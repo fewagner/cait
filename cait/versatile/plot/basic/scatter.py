@@ -17,6 +17,7 @@ class Scatter(Viewer):
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         vai.Scatter([1,2,3])

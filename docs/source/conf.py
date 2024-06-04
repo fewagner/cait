@@ -15,6 +15,8 @@ import sys
 import sphinx_rtd_theme
 from unittest.mock import MagicMock
 
+import cait
+
 sys.path.insert(0, os.path.abspath('../..'))
 sys.setrecursionlimit(1500)
 
@@ -25,7 +27,7 @@ copyright = '2021, Felix Wagner'
 author = 'Felix Wagner'
 
 # The full version, including alpha/beta/rc tags
-release = '1.2.1'
+release = cait.__version__
 
 # -- General configuration ---------------------------------------------------
 

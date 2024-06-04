@@ -10,6 +10,11 @@ from ...datasources.stream.streambase import StreamBaseClass
 ### FUNCTIONS IN THIS FILE HAVE NO TESTCASES YET ###
 ####################################################
 
+####################################################
+### THIS IS (A VARIANT) OF THE TRIGGER USED BY   ###
+### EXISTING CAIT ROUTINES.                      ###
+####################################################
+
 def trigger(stream, 
             key: str, 
             threshold: float,

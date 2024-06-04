@@ -3,13 +3,13 @@ Features and Changelog
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
-develop version
-~~~~~~~~~~~~~~~
+v.1.2.2
+~~~~~~~
+- Added support for python versions 3.11 and 3.12
 - Added possibility to automatically calculate RMS when applying the optimum filter. The option can be toggled using the `calc_rms` keyword on the `dh.apply_of` method.
 - Added tests for general workflow
 - New (experimental) features in `cait.versatile`
 - Documentation for `cait.versatile` in preparation
-- Added support for python versions 3.11 and 3.12
 
 v1.2.1
 ~~~~~~

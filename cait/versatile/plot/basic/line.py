@@ -17,6 +17,7 @@ class Line(Viewer):
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         vai.Line([1,2,3])
