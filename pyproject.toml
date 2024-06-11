@@ -31,7 +31,8 @@ dependencies = [
     "numba>=0.54",
     "tqdm>=4.62",
     "scikit-learn>=0.24",
-    "deprecation"
+    "deprecation",
+    "webdav4>=0.9.8"
 ]
 requires-python = ">=3.8"
 

@@ -4,6 +4,8 @@ import mmap
 import numpy as np
 import h5py
 
+from .webdavfile import WebdavReader
+
 def sanitized_dtype(dtype: np.dtype):
     """
     Removes empty items (of itemsize 0) from the dtype. This is used, e.g., for HDF5 files which cannot handle size 0 datasets. Notice that removing them does not alter how the files are read.
@@ -29,7 +31,7 @@ class BinaryFile:
     """
     A class that can be used to open binary files (e.g. rdt or stream files) which also supports reading from dcache.
 
-    :param path: The full path (including file extension) to the file of interest. If the path starts with 'dcap://' it is assumed to be a dcache path and reading therefrom is attempted.
+    :param path: The full path (including file extension) to the file of interest. If the path starts with 'dcap://' or 'https://' it is assumed to be a dcache path and reading therefrom is attempted.
     :type path: str
     :param dtype: The numpy (structured) dtype to use when interpreting the contents of the file.
     :type dtype: np.dtype
@@ -37,6 +39,8 @@ class BinaryFile:
     :type offset: int, optional
     :param count: The number of items (of size given by dtype) to read. If -1, the entire file is read, defaults to -1.
     :type count: int, optional
+    :param client_kwargs: Additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html).
+    :type client_kwargs: Any, optional
 
     **Example:**
     ::
@@ -60,17 +64,24 @@ class BinaryFile:
 
         Line(first_event)
     """
-    def __init__(self, path: str, dtype: np.dtype, offset: int = 0, count: int = -1):
+    def __init__(self, path: str, dtype: np.dtype, offset: int = 0, count: int = -1, **client_kwargs):
         # Distinguish between reading from dcache or local
-        self._mode = "dcache" if path.startswith("dcap://") else "local"
+        if path.startswith("dcap://"):
+            self._mode = "dcap"
+        elif path.startswith("https://"):
+            self._mode = "https"
+        else:
+            self._mode = "local"
+
+        self._webdav_client_kwargs = client_kwargs
         
         # Check if environment variable is set correctly to use libpdcap.so
-        if self._mode == "dcache" and "LD_PRELOAD" not in os.environ.keys():
+        if self._mode == "dcap" and "LD_PRELOAD" not in os.environ.keys():
             raise OSError("To read files from dcache, the environment variable 'LD_PRELOAD' has to be set.")
-        if self._mode == "dcache" and not os.path.exists(os.environ["LD_PRELOAD"]):
+        if self._mode == "dcap" and not os.path.exists(os.environ["LD_PRELOAD"]):
             raise FileNotFoundError(f"The dcache library does not exist at the specified path {os.environ['LD_PRELOAD']}")
         
-        flen = os.path.getsize(path) - offset
+        flen = len(WebdavReader(path, dtype, offset)) if self._mode == "https" else os.path.getsize(path) - offset
         itemsize = dtype.itemsize
 
         if count == -1:
@@ -100,7 +111,7 @@ class BinaryFile:
         # yes, I tried to use mmap directly (seems not to work in principle)
         # yes, the HDF5 file approach is stupid
         # yes, I am so over dcache
-        if self._mode == "dcache":
+        if self._mode == "dcap":
             # Create h5 dummy file in memory (driver="core" does not create a file
             # and backing_store=False prevents generating an output file once closed)
             self._source = h5py.File("proxy", "a", driver="core", backing_store=False)
@@ -115,7 +126,17 @@ class BinaryFile:
             # and the numpy memmap else creates an identical data handling
             self._openf = self._source["datagroup/dataset"]
             self._isopen = True
-            return self._openf
+            return self
+        
+        elif self._mode == "https":
+            self._source = None
+            self._openf = WebdavReader(self._path, 
+                                       self._dtype, 
+                                       self._offset, 
+                                       self._count, 
+                                       **self._webdav_client_kwargs).__enter__()
+            self._isopen = True
+            return self
         
         # See the numpy.memmap implementation for reference
         # (https://github.com/numpy/numpy/blob/v1.26.0/numpy/core/memmap.py)
@@ -139,10 +160,14 @@ class BinaryFile:
                                          offset=array_offset)
             # The array returned here is treated identical to the h5 dataset returned
             # in case we are reading from dcache.
-            return self._openf
+            return self
         
     def __exit__(self, typ, val, tb):
-            self._source.close()
+            if hasattr(self._source, "close"):
+                self._source.close()
+            if hasattr(self._openf, "__exit__"):
+                self._openf.__exit__(typ, val, tb)
+
             self._openf = None
             self._isopen = False
 
@@ -153,7 +178,15 @@ class BinaryFile:
             # as well as h5 files)
             # Notice that here, the h5 dataset or numpy.memmap object is returned,
             # allowing for more efficient slicing afterwards
-            return self._openf.__getitem__(val)
+            if isinstance(val, tuple):
+                if self._mode == "https": 
+                    return self._openf.__getitem__(val)
+                else:
+                    out = self._openf.__getitem__(val[0])
+                    for v in val[1:]: out = out.__getitem__(v)
+                    return out
+            else:
+                return self._openf.__getitem__(val)
         else:
             # If the file is not open, we enter a with context to open it
             # Before returning, we have to cast it to a numpy array to copy it
@@ -162,4 +195,12 @@ class BinaryFile:
             # to copy all data to memory. Hence, using BinaryFile in a context is
             # highly recommended!
             with self as f:
-                return np.array(f.__getitem__(val)).copy()
+                if isinstance(val, tuple):
+                    if self._mode == "https": 
+                        return self._openf.__getitem__(val)
+                    else:
+                        out = self._openf.__getitem__(val[0])
+                        for v in val[1:]: out = out.__getitem__(v)
+                        return out.copy()
+                else:
+                    return np.array(f.__getitem__(val)).copy()

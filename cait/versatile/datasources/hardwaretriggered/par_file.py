@@ -37,6 +37,11 @@ class PARFile:
         # else:
         #     raise NotImplementedError(f"Unrecognized input type '{type(arg)}'.")
 
+    def __repr__(self):
+        d = {k: getattr(self, k) for k in ["start_s", "measuring_time_h", "ints_in_header", "dvm_channels", 
+                                           "record_length", "records_written", "time_base_us"]}
+        return f'{self.__class__.__name__}({d})'
+    
     @property
     def start_s(self):
         return int(re.findall(r"Timeofday at start\s*\[s\]\s*:\s+(\d+)", self.s)[0])
