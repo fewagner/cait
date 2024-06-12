@@ -2,7 +2,7 @@
 Tips and Tricks
 ****************
 
-Here we put together some tipps for usage and development of Cait, that we found useful. We hope they help you in you work!
+Here we put together some tips for usage and development of Cait, that we found useful. We hope they help you in you work!
 
 Singularity Containers
 ========================

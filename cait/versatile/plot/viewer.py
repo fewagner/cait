@@ -37,6 +37,7 @@ class Viewer():
 
     **Convention for 'data' Dictionary:**
     ::
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],
