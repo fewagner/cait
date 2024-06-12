@@ -50,6 +50,13 @@ class StreamSum(StreamBaseClass):
     def __len__(self):
         return len(self._stream)
     
+    def __enter__(self):
+        self._stream.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._stream.__exit__(typ, val, tb)
+    
     def get_channel(self, key: str):
         if key == "sum": 
             raise KeyError("Key 'sum' is only supported when reading voltage traces, i.e. for example stream['sum', :100, 'as_voltage'].")
