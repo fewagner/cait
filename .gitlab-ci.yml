@@ -6,8 +6,8 @@ pytest:
   stage: test
   rules:
     # Only run tests when merge request to develop or master is created
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
   image: "python:$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
