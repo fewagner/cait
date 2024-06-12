@@ -1,6 +1,36 @@
+stages:
+  - build
+  - test
+
+pytest:
+  stage: test
+  rules:
+    # Only run tests when merge request to develop or master is created
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
+  image: "python:$VERSION"
+  before_script:
+    # needed for h5repack (usually installed on computing clusters)
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools
+    - python -m pip install --upgrade pip
+    # install also optional dependencies for testing
+    - python -m pip install .[test,clplot]
+  script:
+    - python -V
+    - pytest --junitxml=report.xml
+  parallel:
+    matrix:
+      - VERSION: ['3.8', '3.9', '3.10', '3.11', '3.12']
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
 
 build_kaniko_command:
   stage: build
+  only:
+    - develop
+    - tags
   variables:
     IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
   image:
@@ -10,6 +40,3 @@ build_kaniko_command:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
     - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_DESTINATION 
     - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
-  rules:
-    - if: $CI_COMMIT_TAG
-  
