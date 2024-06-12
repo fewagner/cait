@@ -2,6 +2,7 @@ from typing import Union, List
 from functools import partial
 
 import numpy as np
+from numpy.typing import ArrayLike
 import scipy as sp
 
 from .triggerbase import trigger_base
@@ -26,20 +27,17 @@ def filter_chunk(data: np.ndarray, of: np.ndarray, record_length: int):
     """
     return sp.signal.oaconvolve(data, np.fft.irfft(of))[record_length:-record_length]
 
-def trigger_of(stream, 
-               key: str, 
+def trigger_of(stream: ArrayLike,
                threshold: float, 
                of: np.ndarray, 
                n_triggers: int = None,
                chunk_size: int = 100,
                apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream object using the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. 
+    Trigger a single channel of a stream using the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. 
 
-    :param stream: The stream object with the channel to trigger.
-    :type stream: StreamBaseClass
-    :param key: The name of the channel in 'stream' to trigger.
-    :type key: str
+    :param stream: The stream channel to trigger.
+    :type stream: ArrayLike
     :param threshold: The threshold (in Volts) above which events should be triggered.
     :type threshold: float
     :param of: The optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
@@ -65,7 +63,7 @@ def trigger_of(stream,
         of = vai.MockData().of
         
         # Perform triggering
-        trigger_inds, amplitudes = vai.trigger_of(stream, "ADC1", 0.1, of)
+        trigger_inds, amplitudes = vai.trigger_of(stream["ADC1"], 0.1, of)
         # Get trigger timestamps from trigger indices
         timestamps = stream.time[trigger_inds]
         # Plot trigger amplitude spectrum
@@ -77,8 +75,7 @@ def trigger_of(stream,
     # before samples exceeding threshold are searched, the chunks are filtered
     filter_fnc = partial(filter_chunk, of=of, record_length=record_length)
 
-    return trigger_base(stream=stream, 
-                        key=key, 
+    return trigger_base(stream=stream,
                         threshold=threshold,
                         filter_fnc=filter_fnc,
                         record_length=record_length,

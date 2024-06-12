@@ -53,9 +53,6 @@ class Stream_VDAQ2(StreamBaseClass):
     def __len__(self):
         return len(self._data)
     
-    def get_channel(self, key: str):
-        return self._data[key]
-    
     def get_voltage_trace(self, key: str, where: slice):
         if key.lower().startswith('adc'): 
             bits = self._adc_bits

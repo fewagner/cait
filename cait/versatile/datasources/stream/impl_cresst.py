@@ -61,9 +61,6 @@ class Stream_CRESST(StreamBaseClass):
     def __len__(self):
         return len(self._data[self.keys[0]])
     
-    def get_channel(self, key: str):
-        return self._data[key]
-    
     def get_voltage_trace(self, key: str, where: slice):
        return ai.data.convert_to_V(self._data[key][where], bits=16, min=-10, max=10)
     

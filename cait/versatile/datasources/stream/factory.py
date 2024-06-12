@@ -59,9 +59,6 @@ class Stream(StreamBaseClass):
     def __len__(self):
         return len(self._stream)
         
-    def get_channel(self, key: str):
-        return self._stream.get_channel(key)
-        
     def get_voltage_trace(self, key: str, where: slice):
         return self._stream.get_voltage_trace(key, where)
 
