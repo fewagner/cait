@@ -1,6 +1,7 @@
 import os
 
 from typing import Union
+from contextlib import nullcontext
 
 import numpy as np
 import cait as ai
@@ -8,6 +9,7 @@ import cait as ai
 from .par_file import PARFile
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_rdt import RDTIterator
+from ....readers import BinaryFile
 
 class RDTFile:
     """
@@ -72,11 +74,13 @@ class RDTFile:
                        ('samples', 'i2', self._par.record_length),
                        ])
         
-        self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
+        self._raw_file = BinaryFile(path=path, dtype=self._dtype)
+        #self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
 
         # Copy the relevant data to memory so that we don't have to go through
         # the memory mapped file all the time (this should only need a few MB of RAM)
-        meta_copy = np.array(self._raw_file[["detector_nmbr", "trig_count"]])
+        with self._raw_file as f:
+            meta_copy = np.array(f[["detector_nmbr", "trig_count"]])
 
         self._available_channels = np.unique(meta_copy["detector_nmbr"]).tolist()
 
@@ -142,6 +146,13 @@ class RDTFile:
     def __repr__(self):
         k = self.keys.keys() if isinstance(self.keys, dict) else self.keys
         return f'{self.__class__.__name__}(keys={k}, record_length={self.record_length}, dt_us={self.dt_us}, measuring_time_h={self.measuring_time_h:.2f})'
+    
+    def __enter__(self):
+        self._file.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._file.__exit__(typ, val, tb)
 
     def __getitem__(self, channels: Union[int, str, tuple]):
         """
@@ -320,6 +331,13 @@ class RDTChannel(DataSourceBaseClass):
     
     def __len__(self):
         return self._inds.shape[-1]
+    
+    def __enter__(self):
+        self._rdt_file.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._rdt_file.__exit__(typ, val, tb)
     
     def __getitem__(self, val):
         """Return voltage traces of events. Any numpy indexing can be used as if it was an array of shape (n_channels, n_events)."""
