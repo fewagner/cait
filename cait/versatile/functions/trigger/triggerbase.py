@@ -1,4 +1,5 @@
 from typing import Union, List
+from contextlib import nullcontext
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -118,28 +119,31 @@ def trigger_base(stream: ArrayLike,
     # because trigger was found close to edge of previous chunk)
     skip_first = 0
 
-    for s, e, sz in zip(pbar := tqdm(starts), ends, search_area_sizes):
-        chunk[:sz+3*record_length] = stream[s-record_length:e+2*record_length]
+    # StreamBaseClass can be kept open in a context. To make it work also with regular
+    # arrays, we differentiate here via the existence of an '__enter__' method
+    with stream if hasattr(stream, "__enter__") else nullcontext(stream) as st:
+        for s, e, sz in zip(pbar := tqdm(starts), ends, search_area_sizes):
+            chunk[:sz+3*record_length] = st[s-record_length:e+2*record_length]
 
-        for f in apply_first: chunk[:] = f(chunk)
+            for f in apply_first: chunk[:] = f(chunk)
 
-        filtered_chunk = filter_fnc(chunk)
-        inds, vals = search_chunk(filtered_chunk, threshold, record_length, skip_first=skip_first)
+            filtered_chunk = filter_fnc(chunk)
+            inds, vals = search_chunk(filtered_chunk, threshold, record_length, skip_first=skip_first)
 
-        trigger_inds += [s+i for i in inds]
-        trigger_vals += vals
-        triggers_found += len(inds)
+            trigger_inds += [s+i for i in inds]
+            trigger_vals += vals
+            triggers_found += len(inds)
 
-        pbar.set_postfix({"triggers found": triggers_found})
-        if (n_triggers is not None) and (triggers_found > n_triggers): break
+            pbar.set_postfix({"triggers found": triggers_found})
+            if (n_triggers is not None) and (triggers_found > n_triggers): break
 
-        chunk[:] = 0
+            chunk[:] = 0
 
-        # If trigger is found in last window of search area, we blind the
-        # beginning of the following chunk
-        if inds and (s + inds[-1] > e):
-            skip_first = s + inds[-1] - e + record_length//2
-        else:
-            skip_first = 0
+            # If trigger is found in last window of search area, we blind the
+            # beginning of the following chunk
+            if inds and (s + inds[-1] > e):
+                skip_first = s + inds[-1] - e + record_length//2
+            else:
+                skip_first = 0
         
     return trigger_inds, trigger_vals

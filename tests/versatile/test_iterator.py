@@ -59,6 +59,7 @@ def basic_checks(it):
     # Test record_length, record window and time base
     l = it.record_length
     tb = it.dt_us
+    fs = it.sample_frequency
     t = it.t
     dsstart = it.ds_start_us
 

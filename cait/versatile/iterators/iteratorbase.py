@@ -237,6 +237,13 @@ class IteratorBaseClass(ABC):
         ...
 
     @property
+    def sample_frequency(self):
+        """
+        Returns the sample frequency of the stream in Hz.
+        """
+        return int(1e6/self.dt_us)
+
+    @property
     @abstractmethod
     def ds_start_us(self):
         """

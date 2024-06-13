@@ -38,6 +38,7 @@ def basic_checks(stream):
     stream.get_voltage_trace(k, slice(10, 30))
     stream.start_us
     stream.dt_us
+    stream.sample_frequency
     stream.time
     it1 = stream.get_event_iterator(k, 100, inds=[10,20,30])
     it2 = stream.get_event_iterator(k, 100, timestamps=stream.time[[10,20,30]])

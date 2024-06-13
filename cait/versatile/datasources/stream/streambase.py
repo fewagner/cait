@@ -63,6 +63,16 @@ class StreamBaseClass(DataSourceBaseClass):
         ...
 
     @property
+    def sample_frequency(self):
+        """
+        The sample frequency of the stream in Hz.
+        
+        :return: Record frequency (Hz)
+        :rtype: int
+        """
+        return int(1e6/self.dt_us)
+
+    @property
     @abstractmethod
     def tpas(self):
         """
@@ -182,14 +192,16 @@ class StreamBaseClass(DataSourceBaseClass):
     
     def get_nps(self, key: str, record_length: int, draft: bool = False, **kwargs):
         """
-        Returns an NPS opject and iterator of empty baselines for a given stream file
+        Returns an NPS object and iterator of empty baselines for a given stream file
 
         :param key: The key (channel name) for which we want to calculate the NPS.
         :type key: str
         :param record_length: Length of the noise traces that are taken from the stream for calculating the NPS.
         :type record_length: int
-        :param draft: Boolian if full NPS is needed or generate a draft, with 300 randomly selecteed clean baselines, defaults to False
+        :param draft: Boolean if full NPS is needed or generate a draft, with 300 randomly selected clean baselines, defaults to False
         :type draft: bool, optional
+        :param kwargs: Additional keyword arguments which are passed to 'apply_fourier_trigger' and/or 'apply_mean_trigger'.
+        :type kwargs: any, optional
         
         :return: Tuple of noise power spectrum and an iterator of the noise traces that were used to calculate it.
         :rtype: Tuple[vai.NPS, vai.IteratorBaseClass]
@@ -206,16 +218,18 @@ class StreamBaseClass(DataSourceBaseClass):
             # Have a look at the NPS
             nps.show(dt_us=stream.dt_us)
         """
-        from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx,get_clean_bs_idx_draft
+        from ...functions.nps_auto.get_clean_bs_idx import get_clean_bs_idx, get_clean_bs_idx_draft
         from ...analysisobjects.nps import NPS
         
-        if not draft:
-            idx = get_clean_bs_idx(self, key, record_length, **kwargs)
-        else:
-            idx = get_clean_bs_idx_draft(self, key, record_length, **kwargs)
-            
-        it = self.get_event_iterator(keys=key, record_length=record_length, inds=idx, alignment=0)
-        nps = NPS(it)
+        # enter context such that stream stays opened during all calculations
+        with self as s:
+            if not draft:
+                idx = get_clean_bs_idx(s[key], record_length, s.dt_us, **kwargs)
+            else:
+                idx = get_clean_bs_idx_draft(s[key], record_length, **kwargs)
+                
+            it = s.get_event_iterator(keys=key, record_length=record_length, inds=idx, alignment=0)
+            nps = NPS(it)
         
         return nps, it
     
@@ -245,6 +259,13 @@ class StreamChannel:
 
     def __len__(self):
         return len(self._stream)
+    
+    def __enter__(self):
+        self._stream.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._stream.__exit__(typ, val, tb)
     
     def __getitem__(self, val) -> ArrayLike:
         return self._stream[self._key, val, 'as_voltage']

@@ -65,11 +65,13 @@ class TestRDT:
         # assert self.f2.default_channels == 1
 
         f1.dt_us
+        f1.sample_frequency
         f1.measuring_time_h
         f1.keys
         f1.get_voltage_trace([0,1,2])
 
         f2.dt_us
+        f2.sample_frequency
         f2.measuring_time_h
         f2.keys
         f2.get_voltage_trace([0,1,2])
