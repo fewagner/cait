@@ -65,10 +65,7 @@ class Stream_CRESST(StreamBaseClass):
     
     def __exit__(self, typ, val, tb):
         for bin_file in self._data.values(): bin_file.__exit__(typ, val, tb)
-    
-    def get_channel(self, key: str):
-        return self._data[key]
-    
+
     def get_voltage_trace(self, key: str, where: slice):
        return ai.data.convert_to_V(self._data[key][where], bits=16, min=-10, max=10)
     

@@ -88,6 +88,6 @@ def test_VDAQ3():
 # TODO: test either on "real" data or figure out how cait simulates stream files
 # to validate the trigger indices
 def test_trigger(stream_cresst):
-    i, v = vai.trigger_zscore(stream_cresst, "mock_001_Ch0", 2**14)
-    i, v = vai.trigger_zscore(stream_cresst, "mock_001_Ch0", 2**14, n_triggers=10)
-    i, v = vai.trigger_zscore(stream_cresst, "mock_001_Ch1", 2**14, apply_first=lambda x: -x)
+    i, v = vai.trigger_zscore(stream_cresst["mock_001_Ch0"], 2**14)
+    i, v = vai.trigger_zscore(stream_cresst["mock_001_Ch0"], 2**14, n_triggers=10)
+    i, v = vai.trigger_zscore(stream_cresst["mock_001_Ch1"], 2**14, apply_first=lambda x: -x)

@@ -65,9 +65,6 @@ class Stream_VDAQ3(StreamBaseClass):
     def __len__(self):
         return self._len
     
-    def get_channel(self, key: str):
-        return self._data[key]
-    
     def get_voltage_trace(self, key: str, where: slice):
         # VDAQ3 writes 24bit values, here, we convert them to 32 bits such that numpy can handle them
         adc_32bit = np.vstack([self._data[key]["byte1"][where], 

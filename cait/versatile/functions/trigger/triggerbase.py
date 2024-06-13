@@ -1,6 +1,7 @@
 from typing import Union, List
 
 import numpy as np
+from numpy.typing import ArrayLike
 import numba as nb
 
 from tqdm.auto import tqdm
@@ -46,8 +47,7 @@ def search_chunk(data: np.ndarray, threshold: float, record_length: int, skip_fi
 
     return trigger_inds, trigger_vals
 
-def trigger_base(stream, 
-                 key: str, 
+def trigger_base(stream: ArrayLike,
                  threshold: float,
                  filter_fnc: callable,
                  record_length: int,
@@ -55,12 +55,10 @@ def trigger_base(stream,
                  chunk_size: int = 100,
                  apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream object after pre-processing the stream. This function is used both for optimum filter triggering as well as for z-score triggering.
+    Trigger a single channel of a stream after pre-processing the stream. This function is used both for optimum filter triggering as well as for z-score triggering.
 
-    :param stream: The stream object with the channel to trigger.
-    :type stream: StreamBaseClass
-    :param key: The name of the channel in 'stream' to trigger.
-    :type key: str
+    :param stream: The stream channel to trigger.
+    :type stream: ArrayLike
     :param threshold: The threshold above which events should be triggered (interpretation depends on 'filter_fnc').
     :type threshold: float
     :param filter_fnc: The function to be applied to the data before triggering.
@@ -121,7 +119,7 @@ def trigger_base(stream,
     skip_first = 0
 
     for s, e, sz in zip(pbar := tqdm(starts), ends, search_area_sizes):
-        chunk[:sz+3*record_length] = stream[key, s-record_length:e+2*record_length, "as_voltage"]
+        chunk[:sz+3*record_length] = stream[s-record_length:e+2*record_length]
 
         for f in apply_first: chunk[:] = f(chunk)
 

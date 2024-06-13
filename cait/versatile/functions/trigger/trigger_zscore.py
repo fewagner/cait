@@ -2,6 +2,7 @@ from typing import Union, List
 from functools import partial
 
 import numpy as np
+from numpy.typing import ArrayLike
 import pandas as pd
 
 import cait.versatile as vai
@@ -31,20 +32,17 @@ def zscore_chunk(data: np.ndarray, record_length: int):
 
     return np.array((data-m)/s)[record_length:]
 
-def trigger_zscore(stream, 
-                   key: str,
+def trigger_zscore(stream: ArrayLike,
                    record_length: int,
                    threshold: float = 5,
                    n_triggers: int = None,
                    chunk_size: int = 100,
                    apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream object using a moving z-score.
+    Trigger a single channel of a stream using a moving z-score.
 
-    :param stream: The stream object with the channel to trigger.
-    :type stream: StreamBaseClass
-    :param key: The name of the channel in 'stream' to trigger.
-    :type key: str
+    :param stream: The stream channel to trigger.
+    :type stream: ArrayLike
     :param threshold: The threshold (in z-scores) above which events should be triggered.
     :type threshold: float
     :param n_triggers: The number of events to trigger (might be more, depending on 'chunk_size'). E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
@@ -64,7 +62,7 @@ def trigger_zscore(stream,
         # Construct stream object
         stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
         # Perform triggering
-        trigger_inds, amplitudes = vai.trigger_of(stream, "ADC1", 2**14)
+        trigger_inds, amplitudes = vai.trigger_of(stream["ADC1"], 2**14)
         # Get trigger timestamps from trigger indices
         timestamps = stream.time[trigger_inds]
         # Plot trigger amplitude spectrum
@@ -75,7 +73,6 @@ def trigger_zscore(stream,
 
     # Trigger to get the trigger indices
     inds, _ =  trigger_base(stream=stream,
-                            key=key,
                             threshold=threshold,
                             filter_fnc=filter_fnc,
                             record_length=record_length,
@@ -87,18 +84,28 @@ def trigger_zscore(stream,
     
     # The trigger_vals are given in z-scores.
     # Therefore, we also calculate a naïve pulse height after subtracting a constant baseline
-    events = stream.get_event_iterator(key, record_length, inds)
-    # Slice to search peak in the interval (1/5, 2/5) of the record window
-    sl = slice(int(record_length/5), int(2*record_length/5))
-
+    
     # Also apply the function for the pulse height calculation
     if apply_first is not None:
         if callable(apply_first): apply_first = [apply_first]
     else:
         apply_first = []
 
+    # Record windows centered at 1/4*record_length
+    before = int(record_length/4)
+    after = int(3*record_length/4)
+
+    # Slice to search peak in the interval (1/5, 2/5) of the record window
+    sl = slice(int(record_length/5), int(2*record_length/5))
+
+    phs = []
+    processing = apply_first + [vai.RemoveBaseline()]
+
     print("Calculating pulse heights")
-    phs = vai.apply(lambda x: np.max(x[sl]), 
-                    events.with_processing(apply_first + [vai.RemoveBaseline()]))
+    for i in inds:
+        trace = stream[i-before:i+after]
+        for p in processing: trace = p(trace)
+
+        phs.append(np.max(trace[sl]))
 
     return inds, phs

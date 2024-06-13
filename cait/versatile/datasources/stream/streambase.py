@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Union, List, Tuple
 
 import numpy as np
+from numpy.typing import ArrayLike
 
 from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
@@ -15,10 +16,6 @@ class StreamBaseClass(DataSourceBaseClass):
         
     @abstractmethod
     def __len__(self):
-        ...
-        
-    @abstractmethod
-    def get_channel(self, key: str):
         ...
         
     @abstractmethod
@@ -96,10 +93,7 @@ class StreamBaseClass(DataSourceBaseClass):
             
         # If only a name is given, the channel with the respective name is returned
         if type(val) is str:
-            if val in self.keys:
-                return self.get_channel(val)
-            else:
-                raise KeyError(f'{val} not in stream. Available names: {self.keys}')
+            return self.get_channel(val)
         
         # For tuples of length 2 or 3 there are specific behaviors
         else:
@@ -109,10 +103,7 @@ class StreamBaseClass(DataSourceBaseClass):
             # Return the integer values for the stream 'name' if everything else is fine
             elif len(val) == 2:
                 if type(val[0]) is str and type(val[1]) in [int, slice, list, np.ndarray]:
-                    if val[0] in self.keys:
-                        return self.get_channel(val[0])[val[1]]
-                    else:
-                        raise KeyError(f'{val[0]} not in stream. Available names: {self.keys}')
+                    return self.get_channel(val[0])[val[1]]
                 else:
                     raise TypeError('When slicing with two arguments, the first and second one have to be of type string and int/slice, respectively.')
             # Return the voltage values for the stream 'name' if everything else is fine
@@ -123,7 +114,12 @@ class StreamBaseClass(DataSourceBaseClass):
                     if val[2] != 'as_voltage':
                         raise ValueError(f'Unrecognized string "{val[2]}". Did you mean "as_voltage"?')
                     
-                    where = slice(val[1], val[1]+1) if type(val[1]) is int else val[1]
+                    if type(val[1]) is int:
+                        # special case of indexing just with [-1]
+                        if val[1] == -1: where = slice(val[1], None)
+                        else: where = slice(val[1], val[1]+1)
+                    else:
+                        where = val[1]
                     return self.get_voltage_trace(key=val[0], where=where)
                 else:
                     raise TypeError('When slicing with three arguments, the first, second and third one have to be of type string, int/slice and string, respectively.')
@@ -142,6 +138,9 @@ class StreamBaseClass(DataSourceBaseClass):
             self._t = StreamTime(self.start_us, self.dt_us, len(self))
         return self._t
     
+    def get_channel(self, key: str):
+        return StreamChannel(stream=self, key=key)
+        
     def get_event_iterator(self, 
                            keys: Union[str, List[str]], 
                            record_length: int, 
@@ -180,6 +179,44 @@ class StreamBaseClass(DataSourceBaseClass):
                               alignment=alignment, 
                               batch_size=batch_size)
     
+class StreamChannel:
+    """
+    An array-like object representing a single channel of a stream. For all intents and purposes, this can be treated like a numpy.ndarray.
+
+    :param stream: The parent stream instance.
+    :type stream: StreamBaseClass
+    :param key: The key of the channel of 'stream' to be selected.
+    :type key: str
+    """
+    def __init__(self, stream: StreamBaseClass, key: str):
+        if key not in stream.keys:
+            raise KeyError(f"'{key}' not in stream. Available keys: {stream.keys}")
+
+        self._stream = stream
+        self._key = key
+
+    def __repr__(self):
+        if len(self)<10:
+            preview = ', '.join(str(x) for x in list(self[:]))
+        else:
+            preview = f"{self[0][0]}, {self[1][0]}, ..., {str(self[-1][0])}"
+
+        return f"{self.__class__.__name__}([{preview}], shape={self.shape})"
+
+    def __len__(self):
+        return len(self._stream)
+    
+    def __getitem__(self, val) -> ArrayLike:
+        return self._stream[self._key, val, 'as_voltage']
+    
+    @property
+    def shape(self):
+        return (len(self._stream),)
+    
+    @property
+    def ndim(self):
+        return 1
+
 class StreamTime:
     """
     An object that encapsulates time data for a given Stream object. Not intended to be created by user.

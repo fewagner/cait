@@ -57,12 +57,6 @@ class StreamSum(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         self._stream.__exit__(typ, val, tb)
     
-    def get_channel(self, key: str):
-        if key == "sum": 
-            raise KeyError("Key 'sum' is only supported when reading voltage traces, i.e. for example stream['sum', :100, 'as_voltage'].")
-        
-        return self._stream.get_channel(key)
-    
     def get_voltage_trace(self, key: str, where: slice):
         if key == "sum":
             return np.sum([self._stream.get_voltage_trace(k, where) for k in self._sum_keys], axis=0)

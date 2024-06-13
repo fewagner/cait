@@ -66,9 +66,6 @@ class Stream(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         self._stream.__exit__(typ, val, tb)
         
-    def get_channel(self, key: str):
-        return self._stream.get_channel(key)
-        
     def get_voltage_trace(self, key: str, where: slice):
         return self._stream.get_voltage_trace(key, where)
 
