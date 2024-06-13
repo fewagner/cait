@@ -2,8 +2,9 @@ import numpy as np
 import cait as ai
 
 from .streambase import StreamBaseClass
-from ...functions.trigger.trigger import trigger
+from ...functions.trigger.trigger_zscore import trigger_zscore
 from ...eventfunctions.processing.removebaseline import RemoveBaseline
+from ....readers import BinaryFile
 
 # Helper Function to get testpulse information from VDAQ2 files
 def vdaq2_dac_channel_trigger(stream, threshold, record_length):
@@ -16,11 +17,11 @@ def vdaq2_dac_channel_trigger(stream, threshold, record_length):
     out_tpas = dict()
 
     for c in channels:
-        inds, vals = trigger(stream, 
+        inds, vals = trigger_zscore(stream, 
                              key=c, 
                              threshold=threshold, 
                              record_length=record_length,
-                             preprocessing=[lambda x: x**2, RemoveBaseline()])
+                             apply_first=lambda x: x**2)
         out_timestamps[c] = stream.time[inds]
         out_tpas[c] = np.sqrt(vals) 
 
@@ -44,7 +45,8 @@ class Stream_VDAQ2(StreamBaseClass):
         self._keys = list(set(keys) - set(['Time', 'Settings']))
 
         # Create memory map to binary file
-        self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
+        self._data = BinaryFile(path=file, dtype=dt_tcp, offset=header.nbytes)
+        #self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
 
         # Create placeholders for testpulses
         self._tp_timestamps = None
@@ -53,8 +55,12 @@ class Stream_VDAQ2(StreamBaseClass):
     def __len__(self):
         return len(self._data)
     
-    def get_channel(self, key: str):
-        return self._data[key]
+    def __enter__(self):
+        self._data.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._data.__exit__(typ, val, tb)
     
     def get_voltage_trace(self, key: str, where: slice):
         if key.lower().startswith('adc'): 
@@ -81,8 +87,8 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tpas(self):
         if self._tpas is None:
-            # Trigger with generic threshold 0.001 V and record length 1 sec
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 0.001, int(1e6/self.dt_us))
+            # Trigger with generic threshold 5 z-scores and record length 1 sec
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 5, int(1e6/self.dt_us))
 
             self._tpas = tpas
             self._tp_timestamps = timestamps
@@ -92,8 +98,8 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tp_timestamps(self):
         if self._tp_timestamps is None:
-            # Trigger with generic threshold 0.001 V and record length 1 sec
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 0.001, int(1e6/self.dt_us))
+            # Trigger with generic threshold 5 z-scores and record length 1 sec
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 5, int(1e6/self.dt_us))
 
             self._tpas = tpas
             self._tp_timestamps = timestamps

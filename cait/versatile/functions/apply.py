@@ -27,16 +27,29 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     :return: Results of `f` for all events in `ev_iter`. Has same structure as output of `f` (just with an additional event dimension).
     :rtype: Any
 
-    >>> # Example when func has one output
-    >>> it = dh.get_event_iterator("events", batch_size=42)
-    >>> out = apply(func, it)
-    >>> # Example when func has two outputs
-    >>> it = dh.get_event_iterator("events", batch_size=42)
-    >>> out1, out2 = apply(func, it)
+    **Example:**
+    ::
+        import cait.versatile as vai
+        import numpy as np
+
+        def func1(event): return np.max(event)
+        def func2(event): return np.min(event), np.max(event)
+
+        # Example when func has one output
+        it = vai.MockData().get_event_iterator(batch_size=42)
+        out = vai.apply(func1, it)
+
+        # Example when func has two outputs
+        it = vai.MockData().get_event_iterator(batch_size=42)
+        out1, out2 = vai.apply(func2, it)
     """
     # Check if 'ev_iter' is a cait.versatile iterator object
     if not isinstance(ev_iter, IteratorBaseClass):
         raise TypeError(f"Input argument 'ev_iter' must be an instance of {IteratorBaseClass} not '{type(ev_iter)}'.")
+    
+    # Check if 'ev_iter' is not empty
+    if len(ev_iter)==0:
+        raise IndexError(f"Input argument 'ev_iter' must contain at least 1 event (iterator is empty).")
     
     # Check if 'f' is indeed a function
     if not callable(f):

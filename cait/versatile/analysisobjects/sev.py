@@ -47,9 +47,10 @@ class SEV(ArrayWithBenefits):
         else:
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
-    def from_dh(self, dh, group: str = "stdevent", dataset: str = "event"):
+    @classmethod
+    def from_dh(cls, dh, group: str = "stdevent", dataset: str = "event"):
         """
-        Read SEV from DataHandler. 
+        Construct SEV from DataHandler. 
 
         :param dh: The DataHandler instance to read from.
         :type dh: DataHandler
@@ -61,15 +62,7 @@ class SEV(ArrayWithBenefits):
         :return: Instance of SEV.
         :rtype: SEV
         """
-        self._sev = dh.get(group, dataset)
-        
-        if self._sev.ndim > 1:
-            self._n_ch = self._sev.shape[0]
-            if self._n_ch == 1: self._sev = self._sev.flatten()
-        else:
-            self._n_ch = 1
-
-        return self
+        return cls(dh.get(group, dataset))
         
     def to_dh(self, dh, group: str = "stdevent", dataset: str = "event", **kwargs):
         """
@@ -87,9 +80,10 @@ class SEV(ArrayWithBenefits):
         data = self._sev[None,:] if self._n_channels == 1 else self._sev
         dh.set(group, **{dataset: data}, **kwargs)
         
-    def from_file(self, fname: str, src_dir: str = ''):
+    @classmethod
+    def from_file(cls, fname: str, src_dir: str = ''):
         """
-        Read SEV from xy-file.
+        Construct SEV from xy-file.
 
         :param fname: Filename to look for (without file-extension)
         :type fname: str
@@ -114,15 +108,9 @@ class SEV(ArrayWithBenefits):
                 except ValueError: 
                     line_nr += 1
 
-        self._sev = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
-        
-        if self._sev.ndim > 1:
-            self._n_ch = self._sev.shape[0]
-            if self._n_ch == 1: self._sev = self._sev.flatten()
-        else:
-            self._n_ch = 1
+        arr = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
 
-        return self
+        return cls(arr)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """
@@ -148,12 +136,12 @@ class SEV(ArrayWithBenefits):
                       title="Standard Event", 
                       axis=[f"Channel {k}" for k in range(self._n_ch)])
 
-    def show(self, dt: int = None, **kwargs):
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot SEV for all channels. To inspect just one channel, you can index SEV first and call `.show` on the slice.
 
-        :param dt: Length of a sample in microseconds. If provided, the x-axis is a microsecond axis. Otherwise it's the sample index.
-        :type dt: int
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a microsecond axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -161,13 +149,13 @@ class SEV(ArrayWithBenefits):
             raise Exception("Nothing to plot.")
         
         if 'x' not in kwargs.keys():
-            if dt is not None:
-                kwargs['x'] = dt/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
+            if dt_us is not None:
+                kwargs['x'] = dt_us/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
             else:
                 kwargs['x'] = np.arange(self.shape[-1])
             
         if 'xlabel' not in kwargs.keys():
-            if dt is not None: 
+            if dt_us is not None: 
                 kwargs['xlabel'] = "Time (ms)"
             else:
                 kwargs['xlabel'] = "Data Index"

@@ -43,12 +43,6 @@ class MockIterator(IteratorBaseClass):
                         'inds': inds,
                         'batch_size': batch_size}
 
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, typ, val, tb):
-        ...
-    
     def __iter__(self):
         self._current_batch_ind = 0
         return self

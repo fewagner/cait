@@ -16,6 +16,7 @@ class NPS(ArrayWithBenefits):
     Object representing a Noise Power Spectrum (NPS). It can either be created by averaging the Fourier transformed events from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file.
 
     If created from an `EventIterator`, the (constant) baseline is removed automatically.
+    To improve the quality of the NPS, a window function is often applied to the noise traces before performing the Fourier transform and averaging (see Numerical Recipes by Press, Teukolsky, Vetterling, Flannery chapter 13.4.1). This can only be achieved when we still have the original noise traces, i.e. when we construct the NPS from an iterator. Instead of just a bare iterator ``it`` you can pass the iterator ``it.with_processing([vai.RemoveBaseline(), vai.TukeyFiltering()])`` to ``NPS``. 
 
     :param data: The data to use for the NPS. If None, an empty NPS is created. If `np.ndarray`, each row in the array is interpreted as an NPS for separate channels. If iterator (possibly from multiple channels) an NPS is calculated by averaging the Fourier transformed events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
@@ -42,9 +43,10 @@ class NPS(ArrayWithBenefits):
         else:
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
-    def from_dh(self, dh, group: str = "noise", dataset: str = "nps"):
+    @classmethod
+    def from_dh(cls, dh, group: str = "noise", dataset: str = "nps"):
         """
-        Read NPS from DataHandler. 
+        Construct NPS from DataHandler. 
 
         :param dh: The DataHandler instance to read from.
         :type dh: DataHandler
@@ -56,15 +58,7 @@ class NPS(ArrayWithBenefits):
         :return: Instance of NPS.
         :rtype: NPS
         """
-        self._nps = dh.get(group, dataset)
-        
-        if self._nps.ndim > 1:
-            self._n_ch = self._nps.shape[0]
-            if self._n_ch == 1: self._nps = self._nps.flatten()
-        else:
-            self._n_ch = 1
-
-        return self
+        return cls(dh.get(group, dataset))
         
     def to_dh(self, dh, group: str = "noise", dataset: str = "nps", **kwargs):
         """
@@ -82,9 +76,10 @@ class NPS(ArrayWithBenefits):
         data = self._nps[None,:] if self._n_channels == 1 else self._nps
         dh.set(group, **{dataset: data}, **kwargs)
         
-    def from_file(self, fname: str, src_dir: str = ''):
+    @classmethod
+    def from_file(cls, fname: str, src_dir: str = ''):
         """
-        Read NPS from xy-file.
+        Construct NPS from xy-file.
 
         :param fname: Filename to look for (without file-extension)
         :type fname: str
@@ -109,15 +104,9 @@ class NPS(ArrayWithBenefits):
                 except ValueError: 
                     line_nr += 1
 
-        self._nps = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
-        
-        if self._nps.ndim > 1:
-            self._n_ch = self._nps.shape[0]
-            if self._n_ch == 1: self._nps = self._nps.flatten()
-        else:
-            self._n_ch = 1
+        arr = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
 
-        return self
+        return cls(arr)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """
@@ -143,12 +132,12 @@ class NPS(ArrayWithBenefits):
                       title="Noise Power Spectrum", 
                       axis=[f"Channel {k}" for k in range(self._n_ch)])
 
-    def show(self, dt: int = None, **kwargs):
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot NPS for all channels. To inspect just one channel, you can index NPS first and call `.show` on the slice.
 
-        :param dt: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
-        :type dt: int
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -158,23 +147,34 @@ class NPS(ArrayWithBenefits):
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
-        if dt is not None:
+        if dt_us is not None:
             if 'x' not in kwargs.keys():
                 n = 2*(self.shape[-1]-1)
-                kwargs['x'] = np.fft.rfftfreq(n, dt/1e6)
+                kwargs['x'] = np.fft.rfftfreq(n, dt_us/1e6)
 
         if 'xlabel' not in kwargs.keys():
-            if dt is not None: 
+            if dt_us is not None: 
                 kwargs['xlabel'] = "Frequency (Hz)"
             else:
                 kwargs['xlabel'] = "Data Index"   
+
+        if 'ylabel' not in kwargs.keys():
+            if dt_us is not None: 
+                kwargs['ylabel'] = "Noise Power Density (V²/Hz)"
+            else:
+                kwargs['ylabel'] = "Noise Power Density (a.u.)"
+
+        if dt_us is not None:
+            _array = self._array/int(1e6/dt_us)/self._array.shape[-1]
+        else:
+            _array = self._array
         
         if self._n_channels > 1:
             y = dict()
-            for i, channel in enumerate(self._array):
+            for i, channel in enumerate(_array):
                 y[f'channel {i}'] = channel
         else:
-            y = self._array
+            y = _array
 
         return Line(y, **kwargs)
     

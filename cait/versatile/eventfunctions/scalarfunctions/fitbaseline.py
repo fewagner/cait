@@ -26,6 +26,22 @@ class FitBaseline(FitFncBaseClass):
 
     :return: Fit parameter(s) and RMS as a tuple.
     :rtype: Tuple[Union[float, numpy.ndarray], float]
+
+    **Example:**
+    ::
+        import cait.versatile as vai
+
+        # Construct mock data (which provides event iterator)
+        md = vai.MockData()
+        it = md.get_event_iterator()[0]
+
+        # View effect of fitting baseline on events
+        # We specify that for the fit, 1/8th of the record window should be used,
+        # that we fit with a degree-0-polynomial (i.e. constant)
+        # Specifying the xdata is not necessary, but it lets us plot in terms of time
+        vai.Preview(it, vai.FitBaseline(where=1/8, model=0, xdata=it.t), xlabel="Time (ms)")
+
+    .. image:: media/FitBaseline_preview.png
     """
     def __init__(self, model: Union[int, str] = 0, where: Union[List[bool], slice, float] = slice(None, None, None), xdata: List[float] = None):
         if type(model) not in [str, int]:
@@ -141,11 +157,11 @@ class FitBaseline(FitFncBaseClass):
             d = dict()
             for i in range(np.ndim(event)):
                 d[f'channel {i}'] = [self._xdata, event[i]]
-                d[f'fit channel {i}'] = [self._xdata, fit[i]]
+                d[f'baseline fit channel {i}'] = [self._xdata, fit[i]]
         else:
             
         
             d = {'event': [self._xdata, event],
-                 'fit': [self._xdata, fit]}
+                 'baseline fit': [self._xdata, fit]}
             
         return dict(line = d)

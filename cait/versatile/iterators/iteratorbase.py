@@ -42,11 +42,9 @@ class IteratorBaseClass(ABC):
     def __len__(self):
         return self.__n_events
 
-    @abstractmethod
     def __enter__(self):
-        ...
+        return self
     
-    @abstractmethod
     def __exit__(self, typ, val, tb):
         ...
     
@@ -121,6 +119,12 @@ class IteratorBaseClass(ABC):
             raise TypeError(f"unsupported operand type(s) for +: '{type(self)}' and '{type(other)}'")
 
         return IteratorCollection(l)
+    
+    def __radd__(self, other):
+        # Used to return iterator for situation '0 + it = it'
+        # This way, we can use the built-in sum() to sum a list of iterators
+        if other == 0: return self
+        else: return other.__add__(self)
 
     def add_processing(self, f: Union[Callable, List[Callable]]):
         """
@@ -129,8 +133,15 @@ class IteratorBaseClass(ABC):
         :param f: Function(s) to be applied. Function signature: f(event: np.ndarray) -> np.ndarray
         :type f: Union[Callable, List[Callable]]
 
-        >>> it = EventIterator("path_to_file.h5", "events", "event")
-        >>> it.add_processing([f1, f2, f3])
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            def f1(event): return event + 1
+            def f2(event): return event*2
+
+            it = vai.MockData().get_event_iterator()
+            it.add_processing([f1, f2])
         """
         if not isinstance(f, list): f = [f]
 
@@ -141,13 +152,20 @@ class IteratorBaseClass(ABC):
     
     def with_processing(self, f: Union[Callable, List[Callable]]):
         """
-        Same as `add_processing` but it returns a new iterator instead of modifying the original one.
+        Same as ``add_processing`` but it returns a new iterator instead of modifying the original one.
 
         :param f: Function(s) to be applied. Function signature: f(event: np.ndarray) -> np.ndarray
         :type f: Union[Callable, List[Callable]]
 
-        >>> it = EventIterator("path_to_file.h5", "events", "event")
-        >>> new_it = it.with_processing([f1, f2, f3])
+        **Example:**
+        ::
+            import cait.versatile as vai
+
+            def f1(event): return event + 1
+            def f2(event): return event*2
+
+            it = vai.MockData().get_event_iterator()
+            new_it = it.with_processing([f1, f2])
         """
 
         return self[:,:].add_processing(f)
@@ -163,14 +181,9 @@ class IteratorBaseClass(ABC):
         ::
             import cait.versatile as vai
 
-            # Get events from mock data
-            it = vai.MockData().get_event_iterator()
-
-            # Get the last event in the iterator
-            selected_event = it.grab(-1)
-
-            # Get events with indices 1, 7, 9
-            selected_events = it.grab([1,7,9])
+            it = vai.MockData().get_event_iterator() # Get events from mock data
+            selected_event = it.grab(-1)             # Get the last event in the iterator
+            selected_events = it.grab([1,7,9])       # Get events with indices 1, 7, 9
         """
 
         return np.squeeze(np.array(list(self[:, which])))[()]
@@ -200,6 +213,13 @@ class IteratorBaseClass(ABC):
         """
         return self._n_batches
     
+    @property
+    def hours(self):
+        """
+        Returns the times (in hours) of the events in this iterators since the start of the underlying datasource.
+        """
+        return (self.timestamps - self.ds_start_us)/1e6/3600
+        
     @property
     @abstractmethod
     def record_length(self):

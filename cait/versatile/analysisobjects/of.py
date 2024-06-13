@@ -79,6 +79,10 @@ class OF(ArrayWithBenefits):
             H = np.zeros(nps.shape, dtype=complex)
             H[s1] = np.fft.rfft(sev[s1]).conjugate()*np.exp(-1j*t_m*omega[s2])/nps[s1]
 
+            # In any case, we force the 0 component of the filter kernel to 0
+            # (this shifts the signal to 0)
+            H[...,0] = 0
+
             # Normalize to height of SEV
             maxima = np.max(OptimumFiltering(H)(sev), axis=-1)
             # Cast maxima into a column vector such that vectorization works
@@ -92,9 +96,10 @@ class OF(ArrayWithBenefits):
         else:
             raise TypeError(f"Unsupported input arguments {args}")
     
-    def from_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter*"):
+    @classmethod
+    def from_dh(cls, dh, group: str = "optimumfilter", dataset: str = "optimumfilter*"):
         """
-        Read OF from DataHandler. 
+        Construct OF from DataHandler. 
 
         :param dh: The DataHandler instance to read from.
         :type dh: DataHandler
@@ -109,15 +114,9 @@ class OF(ArrayWithBenefits):
         if "*" not in dataset: dataset += "*"
         ds_prefix, ds_suffix = dataset.split("*")
 
-        self._of = dh.get(group, ds_prefix+'_real'+ds_suffix) + 1j*dh.get(group, ds_prefix+'_imag'+ds_suffix)
-        
-        if self._of.ndim > 1:
-            self._n_ch = self._of.shape[0]
-            if self._n_ch == 1: self._of = self._of.flatten()
-        else:
-            self._n_ch = 1
+        arr = dh.get(group, ds_prefix+'_real'+ds_suffix) + 1j*dh.get(group, ds_prefix+'_imag'+ds_suffix)
             
-        return self
+        return cls(arr)
         
     def to_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter*", **kwargs):
         """
@@ -141,9 +140,10 @@ class OF(ArrayWithBenefits):
                          ds_prefix+"_imag"+ds_suffix: np.imag(data)}, 
                          **kwargs)
         
-    def from_file(self, fname: str, src_dir: str = ''):
+    @classmethod
+    def from_file(cls, fname: str, src_dir: str = ''):
         """
-        Read OF from xy-file.
+        Construct OF from xy-file.
 
         :param fname: Filename to look for (without file-extension)
         :type fname: str
@@ -173,15 +173,9 @@ class OF(ArrayWithBenefits):
         if not (data.ndim%2)==0 or data.ndim==0:
             raise Exception("Compatible files must have an even number of data columns (containing real and imaginary part of the OF, respectively)")
 
-        self._of = data[::2] + 1j*data[1::2]
+        arr = data[::2] + 1j*data[1::2]
         
-        if self._of.ndim > 1:
-            self._n_ch = self._of.shape[0]
-            if self._n_ch == 1: self._of = self._of.flatten()
-        else:
-            self._n_ch = 1
-
-        return self
+        return cls(arr)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """
@@ -208,12 +202,12 @@ class OF(ArrayWithBenefits):
 
         write_xy_file(fpath, data=data, title="Optimum Filter", axis=names)
 
-    def show(self, dt: int = None, **kwargs):
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot OF for all channels. To inspect just one channel, you can index OF first and call `.show` on the slice.
 
-        :param dt: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
-        :type dt: int
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -223,13 +217,13 @@ class OF(ArrayWithBenefits):
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
-        if dt is not None:
+        if dt_us is not None:
             if 'x' not in kwargs.keys():
                 n = 2*(self.shape[-1]-1)
-                kwargs['x'] = np.fft.rfftfreq(n, dt/1e6)
+                kwargs['x'] = np.fft.rfftfreq(n, dt_us/1e6)
 
         if 'xlabel' not in kwargs.keys():
-            if dt is not None: 
+            if dt_us is not None: 
                 kwargs['xlabel'] = "Frequency (Hz)"
             else:
                 kwargs['xlabel'] = "Data Index"

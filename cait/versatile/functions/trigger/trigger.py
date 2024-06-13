@@ -1,17 +1,21 @@
 from typing import Union, List, Callable
 
 import numpy as np
+from numpy.typing import ArrayLike
 from tqdm.auto import tqdm
 
 from ...eventfunctions.processing.removebaseline import RemoveBaseline
-from ...datasources.stream.streambase import StreamBaseClass
 
 ####################################################
 ### FUNCTIONS IN THIS FILE HAVE NO TESTCASES YET ###
 ####################################################
 
-def trigger(stream, 
-            key: str, 
+####################################################
+### THIS IS (A VARIANT) OF THE TRIGGER USED BY   ###
+### EXISTING CAIT ROUTINES.                      ###
+####################################################
+
+def trigger(stream: ArrayLike,
             threshold: float,
             record_length: int,
             overlap_fraction: float = 1/8,
@@ -22,10 +26,8 @@ def trigger(stream,
     Trigger a single channel of a stream object with options for adding preprocessing like optimum filtering, applying window functions, or inverting the stream.
     If no preprocessing is specified, only the baseline of the voltage trace is removed (using a constant baseline model and the first `int(overlap_fraction/2)` samples of the record window). If a function, e.g. `lambda x: -x` is given, it is added *after* the removal of the baseline. Only if `RemoveBaseline` is explicitly given, the user can choose when it is applied, e.g. `[lambda, x: x**2, RemoveBaseline()]` first squares the voltage trace and removes the baseline afterwards. 
 
-    :param stream: The stream object with the channel to trigger.
-    :type stream: StreamBaseClass
-    :param key: The name of the channel in `stream` to trigger.
-    :type key: str
+    :param stream: The stream channel to trigger.
+    :type stream: ArrayLike
     :param threshold: The threshold above which events should be triggered.
     :type threshold: float
     :param record_length: The length of the record window to use for triggering. Typically, this is a power of 2, e.g. 16384.
@@ -43,10 +45,6 @@ def trigger(stream,
     :rtype: Tuple[List[int], List[float]]
     """
     
-    if not isinstance(stream, StreamBaseClass):
-        raise TypeError(f"Input argument 'stream' has to be of type 'StreamBaseClass', not {type(stream)}.")
-    if key not in stream.keys:
-        raise KeyError(f"Stream has no key '{key}'.")
     if overlap_fraction <= 0 or overlap_fraction > 0.25:
         raise ValueError("Input argument 'overlap_fraction' is out of range (0, 0.25].")
     if int(record_length*overlap_fraction/2)<1:
@@ -86,7 +84,7 @@ def trigger(stream,
     trigger_vals = []
     resampled = False
 
-    print(f"Start triggering '{key}' of {stream} with threshold {threshold}, record length {record_length} and preprocessing:")
+    print(f"Start triggering with threshold {threshold}, record length {record_length} and preprocessing:")
     print('\n'.join(['- '+str(i) for i in preprocessing]))
     
     with tqdm(total=max_ind) as progress:
@@ -95,7 +93,7 @@ def trigger(stream,
             s = slice(current_ind, current_ind + record_length)
 
             # Read voltage trace from stream and apply preprocessing
-            trace = stream[key, s, 'as_voltage']
+            trace = stream[s]
             for p in preprocessing: trace = p(trace)
 
             # Read maximum index and value
