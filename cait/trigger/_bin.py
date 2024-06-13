@@ -3,6 +3,7 @@ from tqdm.auto import tqdm
 
 from ..data._raw import convert_to_V
 from ._csmpl import time_to_sample, get_max_index, sample_to_time
+from ..readers import BinaryFile
 
 # functions
 
@@ -107,44 +108,28 @@ def read_header(path_bin):
                           ('timestamp', 'uint64'),
                           ])
 
-    header = np.fromfile(path_bin, dtype=dt_header, count=1)[0]
+    #header = np.fromfile(path_bin, dtype=dt_header, count=1)[0]
+    header = BinaryFile(path=path_bin, dtype=dt_header, count=1)[0]
 
     channelsAndFormat = bin(header['channelsAndFormat'], 32)
 
     # print('channelsAndFormat: ', channelsAndFormat)
 
     # bit 0: Timestamp uint64
-    if channelsAndFormat[-1] == '1':
-        keys.append('Time')
-
+    if channelsAndFormat[-1] == '1': keys.append('Time')
     # bit 1: settings uint32
-    if channelsAndFormat[-2] == '1':
-        keys.append('Settings')
-
+    if channelsAndFormat[-2] == '1': keys.append('Settings')
     # bit 2-5: dac 1-4
     for c, b in enumerate([2, 3, 4, 5]):
-        if channelsAndFormat[-int(b + 1)] == '1':
-            keys.append('DAC' + str(c + 1))
-
+        if channelsAndFormat[-int(b + 1)] == '1': keys.append('DAC' + str(c + 1))
     # bit 6-8: adc 1-3
     for c, b in enumerate([6, 7, 8]):
-        if channelsAndFormat[-int(b + 1)] == '1':
-            keys.append('ADC' + str(c + 1))
-
+        if channelsAndFormat[-int(b + 1)] == '1': keys.append('ADC' + str(c + 1))
     # bit 9-16: -
-
     # bit 16: 0...DAC 16 bit, 1...DAC 32 bit
-    if channelsAndFormat[-17] == '1':
-        dac_short = False
-    else:
-        dac_short = True
-
+    dac_short = not (channelsAndFormat[-17] == '1')
     # bit 17: 0...ADC 16 bit, 1...ADC 32 bit
-    if channelsAndFormat[-18] == '1':
-        adc_short = False
-    else:
-        adc_short = True
-
+    adc_short = not (channelsAndFormat[-18] == '1')
     # bit 18-31: -
 
     # construct data type
@@ -152,31 +137,15 @@ def read_header(path_bin):
     dt_tcp = []
 
     for k in keys:
-        if k.startswith('Time'):
-            dt_tcp.append((k, 'uint64'))
-        elif k.startswith('Settings'):
-            dt_tcp.append((k, 'i4'))
-        elif k.startswith('DAC'):
-            if dac_short:
-                dt_tcp.append((k, 'i2'))
-            else:
-                dt_tcp.append((k, 'i4'))
-        elif k.startswith('ADC'):
-            if adc_short:
-                dt_tcp.append((k, 'i2'))
-            else:
-                dt_tcp.append((k, 'i4'))
+        if k.startswith('Time'): dt_tcp.append((k, 'uint64'))
+        elif k.startswith('Settings'): dt_tcp.append((k, 'i4'))
+        elif k.startswith('DAC'): dt_tcp.append((k, 'i2' if dac_short else 'i4'))
+        elif k.startswith('ADC'): dt_tcp.append((k, 'i2' if adc_short else 'i4'))
 
     dt_tcp = np.dtype(dt_tcp)
 
-    if adc_short:
-        adc_bits = 16
-    else:
-        adc_bits = 24
-    if dac_short:
-        dac_bits = 16
-    else:
-        dac_bits = 24
+    adc_bits = 16 if adc_short else 24
+    dac_bits = 16 if dac_short else 24
 
     return header, keys, adc_bits, dac_bits, dt_tcp
 

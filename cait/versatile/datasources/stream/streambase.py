@@ -8,6 +8,12 @@ from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
 
 class StreamBaseClass(DataSourceBaseClass):
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        ...
+        
     @abstractmethod
     def __len__(self):
         ...

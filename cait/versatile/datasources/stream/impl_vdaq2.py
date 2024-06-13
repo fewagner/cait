@@ -4,6 +4,7 @@ import cait as ai
 from .streambase import StreamBaseClass
 from ...functions.trigger.trigger_zscore import trigger_zscore
 from ...eventfunctions.processing.removebaseline import RemoveBaseline
+from ....readers import BinaryFile
 
 # Helper Function to get testpulse information from VDAQ2 files
 def vdaq2_dac_channel_trigger(stream, threshold, record_length):
@@ -44,7 +45,8 @@ class Stream_VDAQ2(StreamBaseClass):
         self._keys = list(set(keys) - set(['Time', 'Settings']))
 
         # Create memory map to binary file
-        self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
+        self._data = BinaryFile(path=file, dtype=dt_tcp, offset=header.nbytes)
+        #self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
 
         # Create placeholders for testpulses
         self._tp_timestamps = None
@@ -52,6 +54,13 @@ class Stream_VDAQ2(StreamBaseClass):
         
     def __len__(self):
         return len(self._data)
+    
+    def __enter__(self):
+        self._data.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._data.__exit__(typ, val, tb)
     
     def get_voltage_trace(self, key: str, where: slice):
         if key.lower().startswith('adc'): 

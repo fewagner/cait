@@ -1,11 +1,13 @@
 stages:
+  - build
   - test
 
 pytest:
   stage: test
   rules:
-    # Only run tests when merge request is created
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Only run tests when merge request to develop or master is created
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
   image: "python:$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
@@ -23,3 +25,18 @@ pytest:
     when: always
     reports:
       junit: report.xml
+
+build_kaniko_command:
+  stage: build
+  only:
+    - develop
+    - tags
+  variables:
+    IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+  image:
+    name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
+    entrypoint: [""]
+  script:
+    - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_DESTINATION 
+    - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
