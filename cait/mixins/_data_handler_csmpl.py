@@ -196,6 +196,7 @@ class CsmplMixin(object):
             it instead of doing the triggering again. For this, set this argument to True.
         :type read_triggerstamps: bool
         """
+        assert np.logical_or(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:
             take_samples = -1
