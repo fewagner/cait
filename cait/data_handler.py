@@ -17,6 +17,7 @@ from .mixins._data_handler_fit import FitMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
+from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
 from .versatile.functions.file import ds_source_available
 from .versatile.iterators.impl_h5 import H5Iterator
@@ -42,6 +43,7 @@ class DataHandler(SimulateMixin,
                   CsmplMixin,
                   MachineLearningMixin,
                   BinMixin,
+                  TriggerCollectionMixin
                   ):
     """
     A class for the processing of raw data events.
@@ -1017,6 +1019,26 @@ class DataHandler(SimulateMixin,
             else:
                 print(list(f[group].keys()))
 
+    def exists(self, *args: str):
+        """
+        Returns true if 'arg1/arg2' exists in DataHandler. 
+
+        :param args: Keys in the HDF5 file-tree.
+        :type args: str
+        
+        :return: True if exists
+        :rtype: bool
+        
+        **Example:**
+        ::
+            # Check if group 'group' exists in DataHandler dh
+            dh.exists('group')
+            # Check if group 'group' has a dataset 'ds'
+            dh.exists('group', 'ds')
+        """
+        with h5py.File(self.get_filepath(), 'r') as f:
+            return "/".join(args) in f.keys()
+    
     def content(self, group: str = None, print_info: bool = False):
         """
         Print the whole content of the HDF5 file and all derived properties. The shape of the datasets as well as their datatypes are also given.
