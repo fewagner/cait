@@ -30,7 +30,7 @@ def search_chunk(data: np.ndarray, threshold: float, record_length: int, skip_fi
     trigger_inds = []
     trigger_vals = []
     
-    search_len = len(data)-record_length
+    search_len = len(data) - record_length
 
     inds = iter(range(skip_first, search_len))
     for i in inds:
@@ -39,7 +39,7 @@ def search_chunk(data: np.ndarray, threshold: float, record_length: int, skip_fi
             trigger_inds.append(i+j)
             trigger_vals.append(data[i+j])
             
-            if i+j+record_length//2 > search_len: 
+            if i+j+record_length//2 > search_len:
                 break
             else:
                 for _ in range(j+record_length//2): 
@@ -106,7 +106,8 @@ def trigger_base(stream: ArrayLike,
 
     # initialize a chunk for the filtering (this has to start one record window
     # early and end two record windows after the search stop)
-    chunk = np.zeros(search_length + 3*record_length)
+    # chunk = np.zeros(search_length + 3*record_length)
+    chunk = np.zeros(search_length + 2*record_length)
 
     # Initialize the lists that will collect the triggers
     trigger_inds = []
@@ -119,7 +120,8 @@ def trigger_base(stream: ArrayLike,
     skip_first = 0
 
     for s, e, sz in zip(pbar := tqdm(starts), ends, search_area_sizes):
-        chunk[:sz+3*record_length] = stream[s-record_length:e+2*record_length]
+        # chunk[:sz+3*record_length] = stream[s-record_length:e+2*record_length]
+        chunk[:sz+2*record_length] = stream[s-record_length:e+record_length]
 
         for f in apply_first: chunk[:] = f(chunk)
 
@@ -137,8 +139,10 @@ def trigger_base(stream: ArrayLike,
 
         # If trigger is found in last window of search area, we blind the
         # beginning of the following chunk
-        if inds and (s + inds[-1] > e):
-            skip_first = s + inds[-1] - e + record_length//2
+        # if inds and (s + inds[-1] > e):
+        if inds and (s + inds[-1] > e-record_length//2):
+            # skip_first = s + inds[-1] - e + record_length//2
+            skip_first = s + inds[-1] + record_length//2 - e
         else:
             skip_first = 0
         
