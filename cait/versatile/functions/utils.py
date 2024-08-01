@@ -64,7 +64,7 @@ def timestamp_coincidence(a: List[int], b: List[int], interval: Tuple[int]):
      INDICES of `b` NOT in coincidence with `a`,
     )
 
-    Note that the intervals have to be non-overlapping to assure non-ambiguous binning!
+    Note that the timestamps have to be strictly monotonically increasing! However, it is possible that the resulting intervals overlap. In that case, the intervals are symmetrically shrunk to create two smaller intervals which touch in the middle. E.g. if the intervals are [12, 20) and [15, 23), the resulting new intervals will be [12, 18) and [18, 23).
 
     :param a: Array of timestamps in microseconds
     :type a: List[int]
@@ -96,6 +96,14 @@ def timestamp_coincidence(a: List[int], b: List[int], interval: Tuple[int]):
     # in 'F' order, i.e. column-major.
     # Example: for a = [10, 20, 30] and interval = (1, 2), edges = [9, 12, 19, 22, 29, 32]
     edges = np.array([np.array(a)+interval[0], np.array(a)+interval[1]]).flatten(order='F')
+    
+    # if bins overlap, we shrink them symmetrically
+    overlap_inds = np.where(np.diff(edges)<0)[0]
+    
+    overlap_sizes = edges[overlap_inds] - edges[overlap_inds+1]
+    
+    edges[overlap_inds] = edges[overlap_inds] - overlap_sizes//2
+    edges[overlap_inds+1] = edges[overlap_inds+1] + overlap_sizes//2 + 1
 
     # Do binning (right argument specifies the half-open interval)
     bin_inds = np.digitize(np.array(b), edges, right=False)

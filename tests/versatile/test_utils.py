@@ -20,6 +20,12 @@ def test_timestamp_coincidence_standard():
     assert np.array_equal(b[inside], np.array([11,42]))
     assert np.array_equal(b[outside], np.array([1,35,45]))
     assert np.array_equal(a[coincidence_ind], np.array([10,40]))
+    
+def test_timestamp_coincidence_overlap():
+    c = np.array([15, 18])
+    d = np.array([17])
+    inside, coincidence_ind, outside = vai.timestamp_coincidence(c, d, (-2,2))
+    assert np.array_equal(c[coincidence_ind], np.array([18]))
 
 def test_timestamp_coincidence_all_negative():
     a = np.array([10, 20, 30, 40])
