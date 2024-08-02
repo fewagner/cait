@@ -66,8 +66,13 @@ class TriggerCollectionMixin:
                                        )
             """
             stream_arg = [filedict.get("par")] + filedict.get("tp", []) + [v[0] for k,v in filedict.items() if k.lower().startswith("ch")]
-            tp_keys = {os.path.basename(os.path.splitext(v[0])[0]): v[1] for k,v in filedict.items() if k.lower().startswith("ch")}
             stream = vai.Stream("cresst", stream_arg)
+            tp_keys = dict()
+            for ch_name in stream.keys:
+                for k,v in filedict.items():
+                    if k.lower().startswith("ch") and os.path.basename(os.path.splitext(v[0])[0]).endswith(ch_name):
+                        tp_keys[ch_name] = v[1]
+            
             sigmas = [sigma]*len(stream.keys) if isinstance(sigma, (int, float)) else sigma
 
             rec_window_coinc = (-stream.dt_us*self.record_length//4, stream.dt_us*self.record_length//4)
@@ -78,11 +83,11 @@ class TriggerCollectionMixin:
 
             for i, (key, sigma) in enumerate(zip(stream.keys, sigmas)):
                 if reuse_triggers:
-                    if not (self.exists("triggers", f"trigger_ts_{key}") and self.exists("triggers", f"trigger_ph_{key}")):
-                        raise KeyError(f"To reuse triggers, datasets 'trigger_ts_{key}' and 'trigger_ph_{key}' must exist in the 'triggers' group.")
+                    if not (self.exists("triggers", f"ts_{key}") and self.exists("triggers", f"ph_{key}")):
+                        raise KeyError(f"To reuse triggers, datasets 'ts_{key}' and 'ph_{key}' must exist in the 'triggers' group.")
 
-                    ts = list(self.get("triggers", f"trigger_ts_{key}"))
-                    ph = list(self.get("triggers", f"trigger_ph_{key}"))
+                    ts = list(self.get("triggers", f"ts_{key}"))
+                    ph = list(self.get("triggers", f"ph_{key}"))
 
                 else:
                     ind, ph = vai.trigger_zscore(stream[key],
@@ -93,11 +98,11 @@ class TriggerCollectionMixin:
 
                     # save trigger timestamps and trigger heights. Can be used in subsequent calls to avoid going through the trigger process again if just the interval argument for building events changes
                     self.set("triggers", 
-                             **{f"trigger_ts_{key}": np.array(ts)}, 
+                             **{f"ts_{key}": np.array(ts)}, 
                              dtype=np.int64, 
                              overwrite_existing=True)
                     self.set("triggers", 
-                             **{f"trigger_ph_{key}": np.array(ph)}, 
+                             **{f"ph_{key}": np.array(ph)}, 
                              dtype=np.float32, 
                              overwrite_existing=True)
 

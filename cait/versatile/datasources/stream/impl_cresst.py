@@ -37,6 +37,7 @@ class Stream_CRESST(StreamBaseClass):
 
         for fname in csmpl_paths:
             name = os.path.splitext(os.path.basename(fname))[0]
+            if name.split("_")[-1].lower().startswith("ch"): name = name.split("_")[-1]
             self._data[name] = BinaryFile(path=fname, dtype=np.dtype(np.int16))
 
         if test_path:
