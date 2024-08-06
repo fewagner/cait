@@ -66,7 +66,7 @@ class TriggerCollectionMixin:
                                        )
             """
             stream_arg = [filedict.get("par")] + filedict.get("tp", []) + [v[0] for k,v in filedict.items() if k.lower().startswith("ch")]
-            stream = vai.Stream("cresst", stream_arg)
+            stream = vai.Stream("csmpl", stream_arg)
             tp_keys = dict()
             for ch_name in stream.keys:
                 for k,v in filedict.items():

@@ -65,7 +65,7 @@ class StreamBaseClass(DataSourceBaseClass):
     @abstractmethod
     def tpas(self):
         """
-        Dictionary of testpulse amplitudes in the stream. For hardware 'cresst' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
+        Dictionary of testpulse amplitudes in the stream. For hardware 'csmpl' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
         
         :return: Testpulse amplitudes
         :rtype: dict of `np.ndarray`
@@ -76,7 +76,7 @@ class StreamBaseClass(DataSourceBaseClass):
     @abstractmethod
     def tp_timestamps(self):
         """
-        Dictionary of testpulse timestamps (microseconds) in the stream. For hardware 'cresst' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
+        Dictionary of testpulse timestamps (microseconds) in the stream. For hardware 'csmpl' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
         
         :return: Testpulse microsecond timestamps.
         :rtype: dict of `np.ndarray`

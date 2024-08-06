@@ -8,10 +8,10 @@ from .streambase import StreamBaseClass
 from ..hardwaretriggered.par_file import PARFile
 from ....readers import BinaryFile
 
-class Stream_CRESST(StreamBaseClass):
+class Stream_CSMPL(StreamBaseClass):
     """
-    Implementation of StreamBaseClass for hardware 'cresst'.
-    CRESST data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
+    Implementation of StreamBaseClass for hardware 'CSMPL'.
+    The data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
     """
     def __init__(self, files: List[str]):
         if not any([x.endswith('.par') for x in files]):
