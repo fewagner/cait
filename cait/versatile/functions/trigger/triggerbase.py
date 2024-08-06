@@ -55,7 +55,7 @@ def trigger_base(stream: ArrayLike,
                  chunk_size: int = 100,
                  apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream after pre-processing the stream. This function is used both for optimum filter triggering as well as for z-score triggering.
+    Trigger a single channel of a stream after pre-processing the stream. This function is used both for optimum filter triggering as well as for z-score triggering. See below for a description on how the algorithm works.
 
     :param stream: The stream channel to trigger.
     :type stream: ArrayLike
@@ -74,6 +74,23 @@ def trigger_base(stream: ArrayLike,
 
     :return: Tuple of trigger indices and trigger heights.
     :rtype: Tuple[List[int], List[float]]
+
+    **Description of the Trigger Algorithm:**
+
+    The stream is split into (not necessarily equally sized) chunks which are processed at once. This reduces file access and larger chunks are generally preferred if sufficient memory is available. To correctly filter a chunk (optimum filtering or moving z-score), an additional record window *before* the chunk is needed (because the filter length is one record length). For this reason, the very first record window of the stream is discarded, i.e. not searched for triggers. Additionally, one record window *after* the chunk ends is required to not miss any edge cases as marked with numbers 1-3 in the figure (see later). We call the start of a chunk :math:`s`, the end :math:`e` and the record length :math:`N`. The triggering now proceeds as follows:
+
+    1. A chunk is selected and the part of the stream from :math:`s-N` to :math:`e+N` is continuously filtered. The first record window of the filter output is discarded. The valid samples (:math:`s` to :math:`e+N`) to be searched for triggers are shown in the figure.
+    2. The cursor is placed on the first sample, :math:`s`, and progresses through the chunk until a sample above threshold is found.
+    3. If a sample exceeding the threshold is found, the maximum position of the :math:`N` samples *after* that sample is considered the trigger sample :math:`j`. The cursor is moved to :math:`j+N/2`, i.e. the trigger is blinded for half a record window. The process finishes if :math:`j+N/2` falls outside the chunk (i.e. :math:`j+N/2>e`), or if the cursor reaches the end of the chunk, :math:`e`.
+    4. After finishing a chunk, the next one is loaded. We have to be careful not to double count triggers, though: If the last chunk had a trigger later than :math:`e-N/2`, the blinding process affects the following chunk. This is visualised by triggers 1-3 in the figure: 1 is fine, because more than half a record window remains in the chunk and blinding in the following chunk is not required. 2 and 3 on the other hand require blinding of the first :math:`j+N/2-e` samples of the following chunk.
+
+    .. image:: media/TriggerAlgorithm.png
+
+    **Nota bene:** 
+
+    - One could be lead to believe that the additional record window *after* the end of the chunk is unnecessary, but this would introduce a subtle issue in the triggering process: If we find a sample above threshold at position 1 or 2, we cannot search the following :math:`N` samples for a maximum, and if we just stopped the search :math:`N` samples before the end of the chunk, we could miss triggers because those samples are not searched in the subsequent chunk either. Therefore, we have to search until we reach :math:`e`. If we find a sample above threshold just before (or at) :math:`e`, we still have enough samples left to correctly determine the maximum of the upcoming :math:`N` samples. 
+    
+    - In the end of the stream we have to discard 2 (!) record windows even though one appears to be sufficient at first glance. As discussed in the previous bullet point, the algorithm described above could lead to a trigger index as late as :math:`e+N`. To leave enough samples to read the voltage trace of the triggered event in the analysis, an additional record window is kept (even though in the common convention - that the trigger is placed at :math:`N/4` in the record window - :math:`3N/4` samples would technically be sufficient).
     """
 
     if apply_first is not None:

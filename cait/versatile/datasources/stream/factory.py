@@ -7,7 +7,7 @@ from .impl_vdaq2 import Stream_VDAQ2
 class Stream(StreamBaseClass):
     """
     Factory class for providing a common access point to stream data.
-    Currently, only vdaq2 and csmpl stream files are supported but an extension can be straight forwardly implemented by sub-classing :class:`StreamBaseClass` and adding it for selection in the constructor of :class:`Stream`.
+    Currently, only vdaq2 and csmpl stream files are supported but an extension can be straight forwardly implemented by sub-classing :class:`cait.versatile.datasources.stream.streambase.StreamBaseClass` and adding it for selection in the constructor of :class:`Stream`.
 
     The data is accessed by means of slicing (see below). The `time` property is an object of :class:`StreamTime` and offers a convenient time interface as well (see below).
 
@@ -21,17 +21,20 @@ class Stream(StreamBaseClass):
     CSMPL:
     Files are .csmpl files which contain one channel each. Additionally, we need a .par file to read the start timestamp of the stream data from.
     ::
+
         s = Stream(hardware='csmpl', src=['par_file.par', 'stream_Ch0.csmpl', 'stream_Ch1.csmpl'])
 
     VDAQ2:
     Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
     ::
+    
         s = Stream(hardware='vdaq2', src='file.bin')
 
     **Usage slicing:**
 
     Valid options for slicing streams are the following:
     ::
+
         # Get data for one channel
         s['ADC1']
 

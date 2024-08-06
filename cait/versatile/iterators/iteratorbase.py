@@ -135,6 +135,7 @@ class IteratorBaseClass(ABC):
 
         **Example:**
         ::
+        
             import cait.versatile as vai
 
             def f1(event): return event + 1
@@ -159,6 +160,7 @@ class IteratorBaseClass(ABC):
 
         **Example:**
         ::
+
             import cait.versatile as vai
 
             def f1(event): return event + 1
@@ -179,6 +181,7 @@ class IteratorBaseClass(ABC):
 
         **Example:**
         ::
+
             import cait.versatile as vai
 
             it = vai.MockData().get_event_iterator() # Get events from mock data

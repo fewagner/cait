@@ -29,6 +29,7 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
 
     **Example:**
     ::
+    
         import cait.versatile as vai
         import numpy as np
 

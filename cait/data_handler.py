@@ -1031,6 +1031,7 @@ class DataHandler(SimulateMixin,
         
         **Example:**
         ::
+        
             # Check if group 'group' exists in DataHandler dh
             dh.exists('group')
             # Check if group 'group' has a dataset 'ds'

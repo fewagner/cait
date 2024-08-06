@@ -39,7 +39,7 @@ def trigger_zscore(stream: ArrayLike,
                    chunk_size: int = 100,
                    apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream using a moving z-score.
+    Trigger a single channel of a stream using a moving z-score. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
     :param stream: The stream channel to trigger.
     :type stream: ArrayLike
@@ -57,6 +57,7 @@ def trigger_zscore(stream: ArrayLike,
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         # Construct stream object

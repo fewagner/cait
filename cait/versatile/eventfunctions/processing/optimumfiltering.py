@@ -15,6 +15,7 @@ class OptimumFiltering(FncBaseClass):
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         # Construct mock data (which provides event iterator and optimum filter)
