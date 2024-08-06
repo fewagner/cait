@@ -1008,16 +1008,16 @@ class DataHandler(SimulateMixin,
     
     def keys(self, group: str = None):
         """
-        Print the keys of the HDF5 file or a group within it.
+        Return the keys of the HDF5 file or a group within it.
 
         :param group: The name of a group in the HDF5 file of that we print the keys.
         :type group: string or None
         """
-        with h5py.File(self.get_filepath(), 'r+') as f:
+        with self.get_filehandle() as f:
             if group is None:
-                print(list(f.keys()))
+                return list(f.keys())
             else:
-                print(list(f[group].keys()))
+                return list(f[group].keys())
 
     def exists(self, *args: str):
         """
