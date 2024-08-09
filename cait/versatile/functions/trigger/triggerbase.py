@@ -39,7 +39,7 @@ def search_chunk(data: np.ndarray, threshold: float, record_length: int, skip_fi
             trigger_inds.append(i+j)
             trigger_vals.append(data[i+j])
             
-            if i+j+record_length//2 > search_len:
+            if i+j+record_length//2 >= search_len:
                 break
             else:
                 for _ in range(j+record_length//2): 

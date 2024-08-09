@@ -78,6 +78,40 @@ class TriggerCollectionMixin:
             rec_window_coinc = (-stream.dt_us*self.record_length//4, stream.dt_us*self.record_length//4)
             if interval is None: 
                 interval = rec_window_coinc
+                
+            # Collect all testpulses into a coherent dataset, i.e. collect TPs sent at the same times into one event
+            # and if only one channel received the TP, the TPA in all other channels is set to 404
+            # for a commented version of this part, see procedure below for events which is practically identical
+            if "tp" in filedict.keys():
+                all_tpas = [list(stream.tpas[tp_keys[stream.keys[0]]])]
+                all_tp_ts = list(stream.tp_timestamps[tp_keys[stream.keys[0]]])
+                
+                tp_sent_flag = [[True]*len(all_tp_ts)]
+                
+                for i, key in enumerate(stream.keys[1:]):
+                    all_tpas.append(list(stream.tpas[tp_keys[key]]))
+                    
+                    this_tp_ts = stream.tp_timestamps[tp_keys[key]]
+                    inside, coinc_inds, outside = vai.timestamp_coincidence(all_tp_ts, this_tp_ts, rec_window_coinc)
+
+                    for k in range(i+1):
+                        tp_sent_flag[k].extend([False]*len(outside))
+
+                    new_flag = np.array([False]*len(all_tp_ts) + [True]*len(outside))
+                    new_flag[coinc_inds] = True
+                    tp_sent_flag.append(new_flag)
+                    
+                    new_ts = np.concatenate([all_tp_ts, np.array(this_tp_ts)[outside]])
+                    sortind = np.argsort(new_ts)
+                    all_tp_ts = new_ts[sortind]
+
+                    for j in range(i+2):
+                        tp_sent_flag[j] = np.array(tp_sent_flag[j])[sortind].tolist()
+                
+                final_tpas = 404*np.ones(np.array(tp_sent_flag).shape, dtype=np.float32)
+                print(len(all_tpas))
+                for i, pa in enumerate(all_tpas):
+                    final_tpas[i, np.array(tp_sent_flag[i])] = np.array(pa)
 
             trigger_ts, trigger_phs = [], []
 
@@ -106,10 +140,10 @@ class TriggerCollectionMixin:
                              dtype=np.float32, 
                              overwrite_existing=True)
 
-                # if testpulse information is provided, trigger timestamps within one record window around testpulse timestamps are counted as such
+                # if testpulse information is provided, trigger timestamps within a quater record window around 
+                # testpulse timestamps (regardless of the channel) are counted as such
                 if "tp" in filedict.keys():
-                    tp_ts = stream.tp_timestamps[tp_keys[key]]
-                    *_, outside = vai.timestamp_coincidence(tp_ts, ts, rec_window_coinc)
+                    *_, outside = vai.timestamp_coincidence(all_tp_ts, ts, rec_window_coinc)
                     ts = list(np.array(ts)[outside])
                     ph = list(np.array(ph)[outside])
 
@@ -165,12 +199,16 @@ class TriggerCollectionMixin:
 
             if copy_events:
                 # save events in events group
+                print("Writing events to DataHandler...")
                 self.include_event_iterator("events", stream.get_event_iterator(stream.keys, self.record_length, timestamps=event_ts))
 
                 # do the same for testpulses if respective information is provided
                 if "tp" in filedict.keys():
-                    # save testpulses and tpas in separate groups (as they might be pulsed differently)
-                    for key in stream.keys:
-                        group_name = f"testpulses_{key}"
-                        self.include_event_iterator(group_name, stream.get_event_iterator(key, self.record_length, timestamps=stream.tp_timestamps[tp_keys[key]]))
-                        self.set(group_name, testpulseamplitude=stream.tpas[tp_keys[key]])
+                    # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
+                    valid_tp_flag = all_tp_ts < stream.time[-3*self.record_length//4]
+                    if not all(valid_tp_flag): print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
+                    
+                    # save testpulses and tpas
+                    print("Writing testpulses to DataHandler...")
+                    self.include_event_iterator("testpulses", stream.get_event_iterator(stream.keys, self.record_length, timestamps=all_tp_ts[valid_tp_flag]))
+                    self.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag])
