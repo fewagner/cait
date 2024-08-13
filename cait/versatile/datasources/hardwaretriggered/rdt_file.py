@@ -25,6 +25,7 @@ class RDTFile:
 
     **Example:**
     ::
+
         import cait.versatile as vai
 
         f = vai.RDTFile('path/to/file.rdt')
@@ -396,6 +397,7 @@ class RDTChannel(DataSourceBaseClass):
 
         **Example:**
         ::
+        
             import cait.versatile as vai
 
             f = vai.RDTFile('path/to/file.rdt')

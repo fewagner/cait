@@ -8,10 +8,10 @@ from .streambase import StreamBaseClass
 from ..hardwaretriggered.par_file import PARFile
 from ....readers import BinaryFile
 
-class Stream_CRESST(StreamBaseClass):
+class Stream_CSMPL(StreamBaseClass):
     """
-    Implementation of StreamBaseClass for hardware 'cresst'.
-    CRESST data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
+    Implementation of StreamBaseClass for hardware 'CSMPL'.
+    The data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
     """
     def __init__(self, files: List[str]):
         if not any([x.endswith('.par') for x in files]):
@@ -37,6 +37,7 @@ class Stream_CRESST(StreamBaseClass):
 
         for fname in csmpl_paths:
             name = os.path.splitext(os.path.basename(fname))[0]
+            if name.split("_")[-1].lower().startswith("ch"): name = name.split("_")[-1]
             self._data[name] = BinaryFile(path=fname, dtype=np.dtype(np.int16))
 
         if test_path:
@@ -52,7 +53,7 @@ class Stream_CRESST(StreamBaseClass):
                 mask = test_chs == k
                 self._tpas[str(k)] = tpas[mask]
                 # assuming 10 MHz clock
-                self._tp_timestamps[str(k)] = self.start_us + test_h[mask]*3600*1e6 + offset
+                self._tp_timestamps[str(k)] = self.start_us + np.array(test_h[mask]*3600*1e6, dtype=np.int64) + offset
 
         self._keys = list(self._data.keys())
 

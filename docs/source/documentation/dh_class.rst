@@ -21,3 +21,4 @@ documantation page exists.
    mixins/rdt_mixin
    mixins/simulate_mixin
    mixins/bin_mixin
+   mixins/trigger_collection_mixin

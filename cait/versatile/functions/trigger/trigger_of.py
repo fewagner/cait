@@ -34,7 +34,7 @@ def trigger_of(stream: ArrayLike,
                chunk_size: int = 100,
                apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream using the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. 
+    Trigger a single channel of a stream using the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
     :param stream: The stream channel to trigger.
     :type stream: ArrayLike
@@ -54,6 +54,7 @@ def trigger_of(stream: ArrayLike,
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         # Construct stream object

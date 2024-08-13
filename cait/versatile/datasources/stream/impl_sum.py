@@ -24,7 +24,7 @@ class StreamSum(StreamBaseClass):
             test_data.generate()
 
             # Create stream object
-            stream = vai.Stream(hardware="cresst", src=["mockdata/mock_001_Ch0.csmpl",
+            stream = vai.Stream(hardware="csmpl", src=["mockdata/mock_001_Ch0.csmpl",
                                                         "mockdata/mock_001_Ch1.csmpl",
                                                         "mockdata/mock_001.par"])
 

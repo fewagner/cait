@@ -4,6 +4,7 @@ from functools import partial
 import numpy as np
 from numpy.typing import ArrayLike
 import pandas as pd
+from tqdm.auto import tqdm
 
 import cait.versatile as vai
 
@@ -39,7 +40,7 @@ def trigger_zscore(stream: ArrayLike,
                    chunk_size: int = 100,
                    apply_first: Union[callable, List[callable]] = None):
     """
-    Trigger a single channel of a stream using a moving z-score.
+    Trigger a single channel of a stream using a moving z-score. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
     :param stream: The stream channel to trigger.
     :type stream: ArrayLike
@@ -57,6 +58,7 @@ def trigger_zscore(stream: ArrayLike,
 
     **Example:**
     ::
+    
         import cait.versatile as vai
 
         # Construct stream object
@@ -98,14 +100,13 @@ def trigger_zscore(stream: ArrayLike,
     # Slice to search peak in the interval (1/5, 2/5) of the record window
     sl = slice(int(record_length/5), int(2*record_length/5))
 
-    phs = []
-    processing = apply_first + [vai.RemoveBaseline()]
+    phs = np.zeros(len(inds), dtype=np.float32)
+    processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
 
-    print("Calculating pulse heights")
-    for i in inds:
-        trace = stream[i-before:i+after]
+    for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights")):
+        trace = stream[ind-before:ind+after]
         for p in processing: trace = p(trace)
 
-        phs.append(np.max(trace[sl]))
+        phs[i] = np.max(trace[sl])
 
     return inds, phs

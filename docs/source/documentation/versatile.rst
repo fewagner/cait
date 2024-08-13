@@ -12,6 +12,7 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
     **Example:**
     ::
+        
         f = vai.RDTFile("path/to/file.rdt") # construct RDT object
         channels = f[(26,27)]               # choose channels in file
         it = channels.get_event_iterator()  # get event iterator
@@ -27,6 +28,7 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
     **Example:**
     ::
+
         it = vai.MockData().get_event_iterator() # quick way to get iterator of two-channel-events for testing
         it_firstch = it[0]                       # new iterator with first channel only
         it_first10 = it[:,:10]                   # new iterator with only first 10 events (all channels)
@@ -53,6 +55,7 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
     **Example:**
     ::
+
         it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
 
         # Check the effect the CalcMP function has on the events of the first channel
@@ -71,6 +74,7 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
     **Example:**
     ::
+
         it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
 
         # Create standard event from events in iterator

@@ -28,6 +28,7 @@ class CalcMP(FncBaseClass):
 
     **Example:**
     ::
+
         import cait.versatile as vai
 
         # Get events from mock data (and remove baseline)
@@ -44,6 +45,7 @@ class CalcMP(FncBaseClass):
 
     **Example Preview:**
     ::
+    
         import cait.versatile as vai
 
         # Get events from mock data (and remove baseline)
