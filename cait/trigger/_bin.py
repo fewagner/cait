@@ -122,10 +122,12 @@ def read_header(path_bin):
     # bit 2-5: dac 1-4
     for c, b in enumerate([2, 3, 4, 5]):
         if channelsAndFormat[-int(b + 1)] == '1': keys.append('DAC' + str(c + 1))
-    # bit 6-8: adc 1-3
+    # bit 6-8: adc 1-3 Branch name is invalid 
     for c, b in enumerate([6, 7, 8]):
         if channelsAndFormat[-int(b + 1)] == '1': keys.append('ADC' + str(c + 1))
-    # bit 9-16: -
+    #bit 9 sample number, currently only used by NUCLEUS experiment
+    if channelsAndFormat[-10] == '1': keys.append('SampleNr')
+    # bit 10-16: -
     # bit 16: 0...DAC 16 bit, 1...DAC 32 bit
     dac_short = not (channelsAndFormat[-17] == '1')
     # bit 17: 0...ADC 16 bit, 1...ADC 32 bit
@@ -138,6 +140,7 @@ def read_header(path_bin):
 
     for k in keys:
         if k.startswith('Time'): dt_tcp.append((k, 'uint64'))
+        elif k.startswith('SampleNr'): dt_tcp.append((k, 'uint32'))
         elif k.startswith('Settings'): dt_tcp.append((k, 'i4'))
         elif k.startswith('DAC'): dt_tcp.append((k, 'i2' if dac_short else 'i4'))
         elif k.startswith('ADC'): dt_tcp.append((k, 'i2' if adc_short else 'i4'))
