@@ -8,9 +8,8 @@ import cait.versatile as vai
 
 class TriggerCollectionMixin:
     """
-    A mixin clas ....
+    A mixin class with convenience functions concerning triggering and event building, e.g. for CRESST doubleTES analysis.
     """
-
     def trigger_coincidence(self,
                             filedict: dict,
                             interval: Tuple[float] = None,
@@ -20,23 +19,24 @@ class TriggerCollectionMixin:
                             **kwargs
                            ):
             """
-            Explain, what the meaning of the newly created datasets in the DataHandler is
+            A trigger and event building convenience function developed with the needs of CRESST doubleTES analysis in mind. In the first step, a moving z-score trigger is applied to all provided channels. Afterwards, all timestamps found are grouped into events depending on the allowed coincidence interval which was specified. If testpulse information is provided, they are automatically recognized in the event building step and excluded from the events group. The function can be called multiple times with a different ``interval`` argument and as long as ``reuse_triggers==True``, the triggering itself does not have to be performed again. This allows the user to explore different intervals conveniently. Finally, the user can decide to copy the events which were built to the DataHandler by setting ``copy_events=True``. This will create an 'events' group (and a 'testpulses' group if testpulse information was provided).
             
-            :param filedict: 
+            :param filedict: A dictionary containing the required files and timestamp assignment information (see structure in example below). The dictionary needs a 'par' key, whose value is the ``.par`` file of the recording, as well as at least two keys starting with 'ch' (e.g. 'ch4' and 'ch5'), whose values are lists of the ``.csmpl`` file containing the channel's stream and the testpulse channel (in the ``.test_stamps`` file) which pulses to this channel (if a testpulse channel sends pulses to multiple channels, the values can appear more than once). If you also provide a key 'tp', whose value is a list containing the ``.test_stamps`` and ``.dig_stamps`` files, testpulses are automatically recognized in the event building step (i.e. excluded from the particle events group and added to a separate 'testpulses' group).
             :type filedict: dict
-            :param interval: 
+            :param interval: The coincidence interval for event building in microseconds, i.e. if a trigger lies within the specified interval around a trigger of another channel, they are collected to represent one event. Defaults to ``-+dt_us*record_length//4``.
             :type interval: Tuple[float], optional
-            :param sigma: 
+            :param sigma: The threshold of the moving z-score trigger in standard deviations, defaults to 5.
             :type sigma: Union[float, List[float]], optional
-            :param reuse_triggers: 
+            :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
             :type reuse_triggers: bool, optional
-            :param copy_events: 
+            :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
             :type copy_events: bool, optional
-            :param kwargs: Additional keyword arguments forwarded to ``cait.versatile.trigger_zscore``.
+            :param kwargs: Additional keyword arguments forwarded to :func:`cait.versatile.trigger_zscore`.
             :type kwargs: Any
             
             **Example:**
             ::
+
                 filedict = {
                     "par": 'file.par',
                     "tp": ['file.test_stamps', 'file.dig_stamps'],
