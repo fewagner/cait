@@ -199,11 +199,14 @@ class TriggerCollectionMixin:
 
             if copy_events:
                 # save events in events group
+                if self.exists("events"): raise Exception("Could not copy events to DataHandler because the group 'events' already exists. To delete it, use 'dh.drop('events')'.")
+
                 print("Writing events to DataHandler...")
                 self.include_event_iterator("events", stream.get_event_iterator(stream.keys, self.record_length, timestamps=event_ts))
 
                 # do the same for testpulses if respective information is provided
                 if "tp" in filedict.keys():
+                    if self.exists("testpulses"): raise Exception("Could not copy events to DataHandler because the group 'testpulses' already exists. To delete it, use 'dh.drop('testpulses')'.")
                     # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
                     valid_tp_flag = all_tp_ts < stream.time[-3*self.record_length//4]
                     if not all(valid_tp_flag): print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
