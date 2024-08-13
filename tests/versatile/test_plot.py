@@ -75,6 +75,12 @@ class TestViewerPlotly:
         v.show_legend(True)
         v.show_legend(False)
 
+    def test_edit_artist(self):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.get_artist("line").line.dash = "dash"
+
 class TestViewerMPL(TestViewerPlotly):
     BACKEND = "mpl"
     TEMPLATE = "seaborn-v0_8"
@@ -87,12 +93,27 @@ class TestViewerMPL(TestViewerPlotly):
         with pytest.raises(NotImplementedError):
             v.show_legend(False)
 
+    def test_edit_artist(self):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.get_artist("line").set_linestyle("--")
+        v.update()
+
 class TestViewerUniplot(TestViewerPlotly):
     BACKEND = "uniplot"
     SHOW_CONTROLS = False   # Otherwise the plot waits for stdin
 
     def test_legend(self):
         ... # Implementation for uniplot makes no sense
+
+    def test_edit_artist(self):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+
+        with pytest.raises(NotImplementedError):
+            v.get_artist("line")
 
 class TestLinePlotly:
     BACKEND = "plotly"

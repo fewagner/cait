@@ -229,6 +229,9 @@ class BaseClassPlotly(BackendBaseClass):
 
         self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
     
+    def _get_artist(self, name: str):
+        return list(self.fig.select_traces(selector=dict(name=name)))[0]
+
     def _set_axes(self, data):
         if "xaxis" in data.keys():
             if "label" in data["xaxis"].keys():
