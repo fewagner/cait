@@ -44,6 +44,10 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
+    def _get_artist(name: str):
+        ...
+
+    @abstractmethod
     def _set_axes(data: dict):
         ...
 

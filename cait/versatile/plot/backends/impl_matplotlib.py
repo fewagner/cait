@@ -252,6 +252,10 @@ class BaseClassMPL(BackendBaseClass):
 
         #self._draw()
 
+    def _get_artist(self, name: str):
+        ind = [l.get_label() for l in self.fig.axes[0].lines].index(name)
+        return self.fig.axes[0].lines[ind]
+
     def _set_axes(self, data: dict):
         with plt.style.context(self.template):
             if "xaxis" in data.keys():

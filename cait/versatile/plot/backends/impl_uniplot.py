@@ -159,6 +159,9 @@ class BaseClassUniplot(BackendBaseClass):
     def _update_vmarker(self, name, marker_pos, y_int):
         raise NotImplementedError("vmarker not implemented for backend 'uniplot'")
 
+    def _get_artist(self, name: str):
+        raise NotImplementedError("get_artist not implemented for backend 'uniplot'")
+    
     def _set_axes(self, data: dict):
         if "xaxis" in data.keys():
             if "label" in data["xaxis"].keys() and data["xaxis"]["label"] is not None:
