@@ -20,4 +20,4 @@ lxml-html-clean==0.1.1
 Werkzeug==2.2.2
 
 # cait (to read version)
-cait
+-e .
