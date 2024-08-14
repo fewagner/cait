@@ -1,3 +1,5 @@
+.. _caitversatile:
+
 cait.versatile - the flexible cait
 ==================================
 

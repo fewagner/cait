@@ -16,10 +16,12 @@ def timestamps_to_timedict(timestamps_us: np.ndarray,
     :return: Dictionary with keys `hours`, `time_s` and `time_mus`.
     :rtype: dict
 
-    >>> # If we have 'timestamps' for some events, we can include the corresponding
-    >>> # 'hours', 'time_s' and 'time_mus' datasets in a DataHandler instance 'dh' as:
-    >>> time_data = timestamps_to_timedict(timestamps)
-    >>> dh.set(group="events", **time_data)
+    .. code-block:: python
+
+        # If we have 'timestamps' for some events, we can include the corresponding
+        # 'hours', 'time_s' and 'time_mus' datasets in a DataHandler instance 'dh' as:
+        time_data = timestamps_to_timedict(timestamps)
+        dh.set(group="events", **time_data)
     """
     hours = (timestamps_us - np.min(timestamps_us))/1e6/3600 + hours_offset # should be float64
     time_s = np.array(timestamps_us/1e6, dtype=np.int32) # should be int64

@@ -1,3 +1,5 @@
+.. _thedatahandlerclass:
+
 *********************
 The DataHandler Class
 *********************

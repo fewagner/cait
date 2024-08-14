@@ -45,7 +45,9 @@ def get_dataset_properties(files: List[str], group: str, dataset: str, src_dir: 
     
     The following returns a list `[n_events_file1, n_events_file2]` of the number of events for each file, the `shape` of the dataset `event` in group `events` (where the dimension of the events has been dropped, i.e. `len(shape) = dataset.ndim - 1`), the `dtype` of the dataset `event` and the dimension along which the events extend, `events_dim`. See func:`combine` for more information.
 
-    >>> n_events, shape, dtype, events_dim = get_dataset_properties([file1, file2], "events", "event", "directory")
+    .. code-block:: python
+
+        n_events, shape, dtype, events_dim = get_dataset_properties([file1, file2], "events", "event", "directory")
     """
 
     with h5py.File(os.path.join(src_dir, files[0] + ".h5"), 'r') as h5f:

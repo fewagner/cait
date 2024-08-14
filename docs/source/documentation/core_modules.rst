@@ -1,8 +1,10 @@
+.. _coremodules:
+
 ************
 Core Modules
 ************
 
-These are the modules which contain functions that are used throughout the Cait package. Most of them are wrapped into DataHandler Mixins for convenient use but if the user requires direct access to them, the following modules can be used.
+These are the modules which contain functions that are used throughout the ``cait`` package. Most of them are wrapped into :ref:`DataHandler Mixins <thedatahandlerclass>` for convenient use but if the user requires direct access to them, the following modules can be used.
 
 .. toctree::
    :caption: Documentation

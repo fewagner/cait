@@ -293,10 +293,12 @@ class IteratorCollection(IteratorBaseClass):
     :return: Iterable object
     :rtype: IteratorCollection
 
-    >>> it = H5Iterator(dh, "events", "event")
-    >>> it_collection = IteratorCollection([it, it])
-    >>> # Or simply (output of iterator addition is IteratorCollection)
-    >>> it_collection = it + it
+    .. code-block:: python
+
+        it = H5Iterator(dh, "events", "event")
+        it_collection = IteratorCollection([it, it])
+        # Or simply (output of iterator addition is IteratorCollection)
+        it_collection = it + it
     """
     def __init__(self, iterators: Union[IteratorBaseClass, List[IteratorBaseClass]]):
         # We do not construct the superclass because batching is handled differently

@@ -56,6 +56,7 @@
    :caption: Documentation
    :maxdepth: 3
 
+   documentation/aboutdocs
    documentation/dh_class
    documentation/core_modules
    documentation/versatile
