@@ -64,8 +64,9 @@ def trigger_zscore(stream: ArrayLike,
 
         # Construct stream object
         stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
-        # Perform triggering
-        trigger_inds, amplitudes = vai.trigger_of(stream["ADC1"], 2**14)
+        # Perform triggering (use context to keep stream file opened)
+        with stream:
+            trigger_inds, amplitudes = vai.trigger_zscore(stream["ADC1"], 2**14)
         # Get trigger timestamps from trigger indices
         timestamps = stream.time[trigger_inds]
         # Plot trigger amplitude spectrum

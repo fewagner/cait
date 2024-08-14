@@ -64,8 +64,9 @@ def trigger_of(stream: ArrayLike,
         # this will not work for your stream data)
         of = vai.MockData().of
         
-        # Perform triggering
-        trigger_inds, amplitudes = vai.trigger_of(stream["ADC1"], 0.1, of)
+        # Perform triggering (use context to keep stream file opened)
+        with stream:
+            trigger_inds, amplitudes = vai.trigger_of(stream["ADC1"], 0.1, of)
         # Get trigger timestamps from trigger indices
         timestamps = stream.time[trigger_inds]
         # Plot trigger amplitude spectrum

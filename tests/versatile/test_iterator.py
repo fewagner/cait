@@ -130,6 +130,17 @@ def basic_checks(it):
     next(iter(it_combined[0, 0]))
     next(iter(it_combined[0, [0,1,4]]))
 
+    # test if changing batchsize works
+    next(iter(it.with_batchsize(13)))
+    next(iter(it.flatten()))
+    next(iter(it.with_batchsize(13).flatten()))
+    next(iter(it_combined_sum.with_batchsize(13)))
+    next(iter(it_combined_sum.flatten()))
+    next(iter(it_combined_sum.with_batchsize(13).flatten()))
+    next(iter(it[0].with_batchsize(13)))
+    next(iter(it[0].flatten()))
+    next(iter(it[0].with_batchsize(13).flatten()))
+
 class TestH5Iterator:
     def test_iterator_bs1_ch2(self, dh):
         it = H5Iterator(dh, "events")
