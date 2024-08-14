@@ -31,10 +31,14 @@ class StreamViewer(Viewer):
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
-    >>> s = Stream(hardware="vdaq2", src="path/to/file.bin")
-    >>> StreamViewer(s)
+    .. code-block:: python
 
-    >>> StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
+        # Usage 1
+        s = Stream(hardware="vdaq2", src="path/to/file.bin")
+        StreamViewer(s)
+
+        # Usage 2
+        StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
     """
     def __init__(self, 
                  *args: Union[StreamBaseClass, str, list],

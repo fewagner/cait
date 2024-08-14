@@ -36,7 +36,8 @@ class Viewer():
     :type show_controls: bool
 
     **Convention for 'data' Dictionary:**
-    ::
+    
+    .. code-block:: python
     
         data = { 
                 "line": { 
@@ -249,7 +250,8 @@ class Viewer():
         Returns the artist object (e.g. plotly Scatter or matplotlib Line) of the plot. Can be used to further manipulate the plot. References on available functions can be found online, e.g. matplotlib lines (https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html#matplotlib.lines.Line2D) and plotly scatters (https://plotly.com/python-api-reference/generated/plotly.graph_objects.Scatter.html).
 
         **Example:**
-        ::
+
+        .. code-block:: python
 
             import cait.versatile as vai
 

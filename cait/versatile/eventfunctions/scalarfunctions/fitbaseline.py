@@ -28,7 +28,8 @@ class FitBaseline(FitFncBaseClass):
     :rtype: Tuple[Union[float, numpy.ndarray], float]
 
     **Example:**
-    ::
+
+    .. code-block:: python
 
         import cait.versatile as vai
 

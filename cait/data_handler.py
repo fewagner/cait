@@ -204,7 +204,9 @@ class DataHandler(SimulateMixin,
         :param channels: The channels in the `*.rdt` file that belong to the detector module. Attention - the channel number written in the `*.par` file starts counting from 1, while Cait, CCS and other common software frameworks start counting from 0.
         :type channels: list of integers or None
 
-        >>> dh.set_filepath(path_h5='./', fname='test_001')
+        .. code-block:: python
+
+            dh.set_filepath(path_h5='./', fname='test_001')
         """
 
         if channels is not None: self.channels = channels
@@ -280,10 +282,10 @@ class DataHandler(SimulateMixin,
             :return: The opened file stream. Please look into the h5py Python library for details about the file stream.
             :rtype: h5py file stream
 
-            >>> with dh.get_filehandle() as f:
-            ...     f.keys()
-            ...
-            <KeysViewHDF5 ['events', 'noise', 'testpulses']>
+            .. code-block:: python
+
+                with dh.get_filehandle() as f:
+                    print(f.keys())
             """
             if path is None:
                 f = h5py.File(self.get_filepath(), mode)
@@ -305,15 +307,17 @@ class DataHandler(SimulateMixin,
         :return: H5Iterator
         :rtype: Context Manager / Iterator
 
-        >>> # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
-        >>> ev_it = dh.get_event_iterator("events", 0)
-        >>> for ev in ev_it:
-        ...    print(np.max(ev))
+        .. code-block:: python
 
-        >>> # Usage as context manager (HDF5 file is kept open)
-        >>> with dh.get_event_iterator("events", 0) as ev_it:
-        ...     for ev in ev_it:
-        ...         print(np.max(ev))
+            # Usage as regular iterator (HDF5 file is separately opened/closed for each event)
+            ev_it = dh.get_event_iterator("events", 0)
+            for ev in ev_it:
+                print(np.max(ev))
+
+            # Usage as context manager (HDF5 file is kept open)
+            with dh.get_event_iterator("events", 0) as ev_it:
+                for ev in ev_it:
+                    print(np.max(ev))
         """
         # Reading number of events is much faster if we open the HDF5 file directly
         with h5py.File(self.get_filepath(), 'r') as f:
@@ -883,35 +887,37 @@ class DataHandler(SimulateMixin,
         :param kwargs: datasets to include. Pass a keyword argument of the form dataset_name=dataset_data for every dataset that you want to include in the HDF5 file.
         :type kwargs: List[Union[float, bool]]
 
-        >>> # Include 'data1' and 'data2' as datasets 'new_ds1' and 'new_ds2' in group 'noise' 
-        >>> # ('new_ds1' and 'new_ds2' do not yet exist)
-        >>> dh.set(group="noise", new_ds1=data1, new_ds2=data2)
+        .. code-block:: python
 
-        >>> # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
-        >>> # (either or both of 'ds1' and 'ds2' already exist and have correct shape/dtype for new
-        >>> # data)
-        >>> dh.set(group="noise", ds1=data1, ds2=data2, change_existing=True) 
+            # Include 'data1' and 'data2' as datasets 'new_ds1' and 'new_ds2' in group 'noise' 
+            # ('new_ds1' and 'new_ds2' do not yet exist)
+            dh.set(group="noise", new_ds1=data1, new_ds2=data2)
 
-        >>> # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
-        >>> # (either or both of 'ds1' and 'ds2' already exist and have incorrect shape/dtype for new
-        >>> # data, but we want to force the new dtype/shape)
-        >>> dh.set(group="noise", ds1=data1, ds2=data2, overwrite_existing=True)
+            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+            # (either or both of 'ds1' and 'ds2' already exist and have correct shape/dtype for new
+            # data)
+            dh.set(group="noise", ds1=data1, ds2=data2, change_existing=True) 
 
-        >>> # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
-        >>> # ('data1' and 'data2' are 1-dimensional but we want to create 2-dimensional 
-        >>> # datasets (for different channels e.g.) and write the data into the 0-th channel. This also
-        >>> # works for writing single channels to already existing multi-channel datasets.)
-        >>> dh.set(group="noise", n_channels=2, channel=0, ds1=data1, ds2=data2)
+            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+            # (either or both of 'ds1' and 'ds2' already exist and have incorrect shape/dtype for new
+            # data, but we want to force the new dtype/shape)
+            dh.set(group="noise", ds1=data1, ds2=data2, overwrite_existing=True)
 
-        >>> # Include 'data1' as dataset 'ds1' in group 'noise' 
-        >>> # ('ds1' already exists and is a virtual dataset with matching shape but dtype 'float64'.
-        >>> # We want to write to the original data in the respective source files.)
-        >>> dh.set(group="noise", ds1=data1, dtype='float64', write_to_virtual=True)
+            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+            # ('data1' and 'data2' are 1-dimensional but we want to create 2-dimensional 
+            # datasets (for different channels e.g.) and write the data into the 0-th channel. This also
+            # works for writing single channels to already existing multi-channel datasets.)
+            dh.set(group="noise", n_channels=2, channel=0, ds1=data1, ds2=data2)
 
-        >>> # Include 'data1' as dataset 'ds1' in group 'noise' 
-        >>> # ('ds1' already exists and is a virtual dataset. We want to overwrite it and create a 
-        >>> # non-virtual dataset instead)
-        >>> dh.set(group="noise", ds1=data1, write_to_virtual=False)
+            # Include 'data1' as dataset 'ds1' in group 'noise' 
+            # ('ds1' already exists and is a virtual dataset with matching shape but dtype 'float64'.
+            # We want to write to the original data in the respective source files.)
+            dh.set(group="noise", ds1=data1, dtype='float64', write_to_virtual=True)
+
+            # Include 'data1' as dataset 'ds1' in group 'noise' 
+            # ('ds1' already exists and is a virtual dataset. We want to overwrite it and create a 
+            # non-virtual dataset instead)
+            dh.set(group="noise", ds1=data1, write_to_virtual=False)
         """
 
         if np.logical_xor(n_channels==None, channel==None):
@@ -982,11 +988,13 @@ class DataHandler(SimulateMixin,
         :param kwargs: groups/datasets to be renamed. Pass a keyword argument of the form old_name=new_name for every dataset/group that you want to rename in the HDF5 file.
         :type kwargs: str
 
-        >>> # Rename groups 'old_group1' and 'old_group2' to 'new_group1' and 'new_group2'
-        >>> dh.rename(old_group1='new_group1', old_group2='new_group2')
+        .. code-block:: python
 
-        >>> # Rename datasets 'old_ds1' and 'old_ds2' in group 'noise' to 'new_ds1' and 'new_ds2'
-        >>> dh.rename(group='noise', old_ds1='new_ds1', old_ds2='new_ds2')
+            # Rename groups 'old_group1' and 'old_group2' to 'new_group1' and 'new_group2'
+            dh.rename(old_group1='new_group1', old_group2='new_group2')
+
+            # Rename datasets 'old_ds1' and 'old_ds2' in group 'noise' to 'new_ds1' and 'new_ds2'
+            dh.rename(group='noise', old_ds1='new_ds1', old_ds2='new_ds2')
         """
         with self.get_filehandle(mode="r+") as h5f:
             if group is None:
@@ -1030,7 +1038,8 @@ class DataHandler(SimulateMixin,
         :rtype: bool
         
         **Example:**
-        ::
+
+        .. code-block:: python
         
             # Check if group 'group' exists in DataHandler dh
             dh.exists('group')
@@ -1182,9 +1191,11 @@ class DataHandler(SimulateMixin,
     
         This method is equivalent to and can also be done on Ubuntu/Mac e.g. with
 
-        >>> h5repack test_data/test_001.h5 test_data/test_001_copy.h5
-        >>> rm test_data/test_001.h5
-        >>> mv test_data/test_001_copy.h5 test_data/test_001.h5
+        .. code-block:: console
+
+            h5repack test_data/test_001.h5 test_data/test_001_copy.h5
+            rm test_data/test_001.h5
+            mv test_data/test_001_copy.h5 test_data/test_001.h5
         """
 
         oldFile = self.get_filepath()

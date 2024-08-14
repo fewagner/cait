@@ -15,7 +15,9 @@ class BaseClassPlotly(BackendBaseClass):
     Base Class for plots using the `plotly` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ::
+    
+    .. code-block:: python
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],

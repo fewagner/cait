@@ -427,28 +427,33 @@ class AnalysisMixin(object):
         :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
         :type kind: str
 
-        >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
-        ...                     cpe_factor=[1, 1],
-        ...                     exclude_tpas=[0.01],
-        ...                     plot=True,
-        ...                     method='tree',
-        ...                     poly_order=3,
-        ...                     )
-        Energy Calibration for Channel  0
-        Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
-          1.          2.          3.          4.          5.          6.
-          7.          8.          9.         10.        ]
-        Plot Regression Polynomial at 20.8 hours.
-        Calculating Recoil Energies: 0.0 %
-        Calculating Recoil Energies: 65.3 %
-        Energy Calibration for Channel  1
-        Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
-          1.          2.          3.          4.          5.          6.
-          7.          8.          9.         10.        ]
-        Plot Regression Polynomial at 20.8 hours.
-        Calculating Recoil Energies: 0.0 %
-        Calculating Recoil Energies: 65.3 %
-        Finished.
+        .. code-block:: python
+
+            dh.calc_calibration(starts_saturation=[1.5, 0.8],
+                                cpe_factor=[1, 1],
+                                exclude_tpas=[0.01],
+                                plot=True,
+                                method='tree',
+                                poly_order=3,
+                                )
+
+        .. code-block:: text
+
+            Energy Calibration for Channel  0
+            Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
+            1.          2.          3.          4.          5.          6.
+            7.          8.          9.         10.        ]
+            Plot Regression Polynomial at 20.8 hours.
+            Calculating Recoil Energies: 0.0 %
+            Calculating Recoil Energies: 65.3 %
+            Energy Calibration for Channel  1
+            Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
+            1.          2.          3.          4.          5.          6.
+            7.          8.          9.         10.        ]
+            Plot Regression Polynomial at 20.8 hours.
+            Calculating Recoil Energies: 0.0 %
+            Calculating Recoil Energies: 65.3 %
+            Finished.
 
         .. image:: ../pics/Ch0_tphs.png
 

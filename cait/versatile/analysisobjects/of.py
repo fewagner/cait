@@ -19,9 +19,11 @@ class OF(ArrayWithBenefits):
     :param args: The data to use for the OF. If None, an empty OF is created. If `np.ndarray`, each row in the array is interpreted as an OF for separate channels. If instances of class:`SEV` and class:`NPS`, the OF is calculated from them. Defaults to None.
     :type data: Any
 
-    >>> sev = vai.SEV().from_dh(dh)
-    >>> nps = vai.NPS().from_dh(dh)
-    >>> of = vai.OF(sev, nps)
+    .. code-block:: python
+    
+        sev = vai.SEV().from_dh(dh)
+        nps = vai.NPS().from_dh(dh)
+        of = vai.OF(sev, nps)
     """
     def __init__(self, *args: Any):
         if len(args) == 1 and isinstance(args[0], np.ndarray):

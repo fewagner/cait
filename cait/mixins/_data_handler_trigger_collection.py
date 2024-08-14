@@ -35,7 +35,8 @@ class TriggerCollectionMixin:
             :type kwargs: Any
             
             **Example:**
-            ::
+
+            .. code-block:: python
 
                 filedict = {
                     "par": 'file.par',

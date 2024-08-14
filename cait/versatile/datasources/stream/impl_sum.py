@@ -15,28 +15,29 @@ class StreamSum(StreamBaseClass):
     :type keys: List[str]
 
     **Example:**
-        ::
-            import cait as ai
-            import cait.versatile as vai
 
-            # Create mock data (skip if you already have data)
-            test_data = ai.data.TestData(filepath='mockdata/mock_001', duration=1000)
-            test_data.generate()
+    .. code-block:: python
 
-            # Create stream object
-            stream = vai.Stream(hardware="csmpl", src=["mockdata/mock_001_Ch0.csmpl",
-                                                        "mockdata/mock_001_Ch1.csmpl",
-                                                        "mockdata/mock_001.par"])
+        import cait as ai
+        import cait.versatile as vai
 
-            # Check available keys (only those can be used for the sum)
-            print(stream.keys)
+        # Create mock data (skip if you already have data)
+        test_data = ai.data.TestData(filepath='mockdata/mock_001', duration=1000)
+        test_data.generate()
 
-            # Create the stream sum
-            ss = vai.StreamSum(stream, ["mock_001_Ch0", "mock_001_Ch1"])
+        # Create stream object
+        stream = vai.Stream(hardware="csmpl", src=["mockdata/mock_001_Ch0.csmpl",
+                                                    "mockdata/mock_001_Ch1.csmpl",
+                                                    "mockdata/mock_001.par"])
 
-            # View the stream
-            vai.StreamViewer(ss)
+        # Check available keys (only those can be used for the sum)
+        print(stream.keys)
 
+        # Create the stream sum
+        ss = vai.StreamSum(stream, ["mock_001_Ch0", "mock_001_Ch1"])
+
+        # View the stream
+        vai.StreamViewer(ss)
     """
     def __init__(self, stream: StreamBaseClass, keys: List[str]):
         if not all([k in stream.keys for k in keys]):
