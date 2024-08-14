@@ -21,7 +21,9 @@ class TextFile:
     :type client_kwargs: Any, optional
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         from cait.readers import TextFile
 
         par_file = "path/to/file.par"

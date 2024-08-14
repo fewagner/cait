@@ -43,7 +43,9 @@ class BinaryFile:
     :type client_kwargs: Any, optional
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         import numpy as np
         from cait.readers import BinaryFile
         from cait.versatile import Line

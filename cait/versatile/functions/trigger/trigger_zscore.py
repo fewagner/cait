@@ -57,7 +57,8 @@ def trigger_zscore(stream: ArrayLike,
     :rtype: Tuple[List[int], List[float]]
 
     **Example:**
-    ::
+
+    .. code-block:: python
     
         import cait.versatile as vai
 

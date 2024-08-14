@@ -3,6 +3,15 @@ Features and Changelog
 
 On this page we assemble the features of current Cait realeases and changes from the past versions.
 
+development
+~~~~~~~~~~~
+
+- Added dcache file reading support
+- Added pipeline to build containers for released versions and development branch (on CERN gitlab)
+- Added `dh.trigger_coincidence` for CRESST doubleTES analysis
+- Minor improvements
+- New features in `cait.versatile`
+
 v.1.2.2
 ~~~~~~~
 - Added support for python versions 3.11 and 3.12

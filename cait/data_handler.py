@@ -1030,7 +1030,8 @@ class DataHandler(SimulateMixin,
         :rtype: bool
         
         **Example:**
-        ::
+
+        .. code-block:: python
         
             # Check if group 'group' exists in DataHandler dh
             dh.exists('group')

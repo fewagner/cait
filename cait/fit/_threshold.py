@@ -74,7 +74,7 @@ def fit_trigger_efficiency(binned_energies, survived_fraction, a1_0, a0_0=1, a2_
     Estimated energy threshold (keV):  0.4002443060404336
     Estimated energy resolution (keV):  0.06203246371547854
 
-    .. image:: pics/efficiency.png
+    .. image:: ../pics/efficiency.png
 
     """
     x_grid = binned_energies[:-1] + (binned_energies[1:] - binned_energies[:-1]) / 2

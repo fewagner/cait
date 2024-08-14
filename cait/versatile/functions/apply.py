@@ -28,7 +28,8 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     :rtype: Any
 
     **Example:**
-    ::
+
+    .. code-block:: python
     
         import cait.versatile as vai
         import numpy as np

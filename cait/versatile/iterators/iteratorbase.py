@@ -134,7 +134,8 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         **Example:**
-        ::
+
+        .. code-block:: python
         
             import cait.versatile as vai
 
@@ -159,7 +160,8 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         **Example:**
-        ::
+
+        .. code-block:: python
 
             import cait.versatile as vai
 
@@ -180,7 +182,8 @@ class IteratorBaseClass(ABC):
         :type which: Union[int, list]
 
         **Example:**
-        ::
+
+        .. code-block:: python
 
             import cait.versatile as vai
 

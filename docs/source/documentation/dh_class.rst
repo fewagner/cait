@@ -1,6 +1,6 @@
-***************************************
+*********************
 The DataHandler Class
-***************************************
+*********************
 
 The DataHandler class handles most of the processing and organization of your data. It is heavily implemented, consisting
 of the child class DataHandler, which inherits methods from several mixins classes. A mixin is a attribute-less base

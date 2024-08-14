@@ -27,7 +27,8 @@ class CalcMP(FncBaseClass):
     :rtype: np.ndarray, tuple
 
     **Example:**
-    ::
+
+    .. code-block:: python
 
         import cait.versatile as vai
 
@@ -44,7 +45,8 @@ class CalcMP(FncBaseClass):
         vai.Histogram({'ch0': pulse_height[:,0], 'ch1': pulse_height[:,1]})
 
     **Example Preview:**
-    ::
+
+    .. code-block:: python
     
         import cait.versatile as vai
 

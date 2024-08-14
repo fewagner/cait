@@ -24,7 +24,8 @@ class RDTFile:
     :rtype: RDTFile
 
     **Example:**
-    ::
+
+    .. code-block:: python
 
         import cait.versatile as vai
 
@@ -396,7 +397,8 @@ class RDTChannel(DataSourceBaseClass):
         :rtype: RDTIterator
 
         **Example:**
-        ::
+
+        .. code-block:: python
         
             import cait.versatile as vai
 

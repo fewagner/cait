@@ -20,20 +20,23 @@ class Stream(StreamBaseClass):
     
     CSMPL:
     Files are .csmpl files which contain one channel each. Additionally, we need a .par file to read the start timestamp of the stream data from.
-    ::
+
+    .. code-block:: python
 
         s = Stream(hardware='csmpl', src=['par_file.par', 'stream_Ch0.csmpl', 'stream_Ch1.csmpl'])
 
     VDAQ2:
     Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
-    ::
+
+    .. code-block:: python
     
         s = Stream(hardware='vdaq2', src='file.bin')
 
     **Usage slicing:**
 
     Valid options for slicing streams are the following:
-    ::
+
+    .. code-block:: python
 
         # Get data for one channel
         s['ADC1']

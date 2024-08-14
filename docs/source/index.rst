@@ -57,19 +57,8 @@
    :maxdepth: 3
 
    documentation/dh_class
+   documentation/core_modules
+   documentation/versatile
    documentation/eventinterface
    documentation/evaluationtools
    documentation/viztool
-   documentation/calibration
-   documentation/cuts
-   documentation/data
-   documentation/datasets
-   documentation/features
-   documentation/filter
-   documentation/fit
-   documentation/limit
-   documentation/models
-   documentation/simulate
-   documentation/styles
-   documentation/trigger
-   documentation/versatile

@@ -15,7 +15,8 @@ class RemoveBaseline(FncBaseClass):
     :rtype: numpy.ndarray
 
     **Example:**
-    ::
+
+    .. code-block:: python
     
         import cait.versatile as vai
 
