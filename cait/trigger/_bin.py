@@ -117,6 +117,8 @@ def read_header(path_bin):
 
     # bit 0: Timestamp uint64
     if channelsAndFormat[-1] == '1': keys.append('Time')
+    #bit 9 sample number, currently only used by NUCLEUS experiment
+    if channelsAndFormat[-10] == '1': keys.append('SampleNr')
     # bit 1: settings uint32
     if channelsAndFormat[-2] == '1': keys.append('Settings')
     # bit 2-5: dac 1-4
@@ -125,8 +127,7 @@ def read_header(path_bin):
     # bit 6-8: adc 1-3 Branch name is invalid 
     for c, b in enumerate([6, 7, 8]):
         if channelsAndFormat[-int(b + 1)] == '1': keys.append('ADC' + str(c + 1))
-    #bit 9 sample number, currently only used by NUCLEUS experiment
-    if channelsAndFormat[-10] == '1': keys.append('SampleNr')
+    
     # bit 10-16: -
     # bit 16: 0...DAC 16 bit, 1...DAC 32 bit
     dac_short = not (channelsAndFormat[-17] == '1')
