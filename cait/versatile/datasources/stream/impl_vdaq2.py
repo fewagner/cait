@@ -42,7 +42,7 @@ class Stream_VDAQ2(StreamBaseClass):
         self._dt = header['downsamplingFactor']
 
         # VDAQ2 format could contain keys 'Settings' and 'Time' which we do not want to have as available data channels
-        self._keys = list(set(keys) - set(['Time', 'Settings']))
+        self._keys = list(set(keys) - set(['Time', 'Settings', 'SampleNr']))
 
         # Create memory map to binary file
         self._data = BinaryFile(path=file, dtype=dt_tcp, offset=header.nbytes)
