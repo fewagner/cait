@@ -124,10 +124,9 @@ def read_header(path_bin):
     # bit 2-5: dac 1-4
     for c, b in enumerate([2, 3, 4, 5]):
         if channelsAndFormat[-int(b + 1)] == '1': keys.append('DAC' + str(c + 1))
-    # bit 6-8: adc 1-3 Branch name is invalid 
+    # bit 6-8: adc 1-3 
     for c, b in enumerate([6, 7, 8]):
         if channelsAndFormat[-int(b + 1)] == '1': keys.append('ADC' + str(c + 1))
-    
     # bit 10-16: -
     # bit 16: 0...DAC 16 bit, 1...DAC 32 bit
     dac_short = not (channelsAndFormat[-17] == '1')
