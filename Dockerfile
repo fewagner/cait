@@ -13,11 +13,11 @@ ENV JUPYTER_PREFER_ENV_PATH=1
 COPY . /opt/programs/cait
 
 # install hdf5 tools, git and nano
-RUN apt-get update -qq && apt-get install -y -qq hdf5-tools git nano
+RUN apt-get update -qq && apt-get install -y -qq hdf5-tools git nano cmake
 
 # upgrade pip, install jupyterhub/lab and cait (important: cait last for lab widget dependencies!)
 RUN python -m pip install --upgrade pip \
     && python -m pip install https://github.com/jupyterhub/batchspawner/archive/main.zip \
     && python -m pip install jupyterhub \
-    && python -m pip install jupyterlab \
+    && python -m pip install jupyterlab==3.4.0 \
     && python -m pip install -e /opt/programs/cait
