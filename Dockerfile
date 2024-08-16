@@ -13,7 +13,10 @@ ENV JUPYTER_PREFER_ENV_PATH=1
 COPY . /opt/programs/cait
 
 # install hdf5 tools, git and nano
-RUN apt-get update -qq && apt-get install -y -qq hdf5-tools git nano cmake
+RUN apt-get update -qq && apt-get install -y -qq hdf5-tools git nano cmake davix-dev g++ libcurl4-openssl-dev libfuse-dev \
+                                                 libgtest-dev libisal-dev libjson-c-dev libkrb5-dev libmacaroons-dev libreadline-dev \
+                                                 libscitokens-dev libssl-dev libsystemd-dev libtinyxml-dev libxml2-dev make \
+                                                 pkg-config python3-dev python3-setuptools uuid-dev voms-dev zlib1g-dev
 
 # upgrade pip, install jupyterhub/lab and cait (important: cait last for lab widget dependencies!)
 RUN python -m pip install --upgrade pip \
