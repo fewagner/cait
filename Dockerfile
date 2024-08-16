@@ -20,4 +20,5 @@ RUN python -m pip install --upgrade pip \
     && python -m pip install https://github.com/jupyterhub/batchspawner/archive/main.zip \
     && python -m pip install jupyterhub \
     && python -m pip install jupyterlab==3.4.0 \
-    && python -m pip install -e /opt/programs/cait
+    && python -m pip install -e /opt/programs/cait \
+    && python -m pip install xrootd
