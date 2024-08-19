@@ -4,20 +4,25 @@ from urllib.parse import urlparse
 
 import numpy as np
 
-from XRootD import client
-from XRootD.client.flags import OpenFlags, QueryCode
+try: 
+    from XRootD import client
+    from XRootD.client.flags import OpenFlags, QueryCode
+    xrootd_installed = True
+except ImportError:
+    xrootd_installed = False
 
 from .helper import sanitize_slice, is_index_list, is_str_like
 
-def get_filesize(f: client.File):
-    """docstring"""
+def get_filesize(f #: client.File
+                 ): 
+    """Returns the filesize (bytes) of an opened XRootD-File."""
     status, stats = f.stat()
     if status.status: raise IOError(f"Cannot determine filesize: {status}")
     
     return stats.size
 
 def get_root_vread_info(server_url: str):
-    """docstring"""
+    """Returns a dictionary with keys 'max_elem' and 'max_bytes'. The respective values represent the maximum number of chunks (usually 1024) and the maximum total size (2097136) of scattered data that can be read from an XRootD-File in a single request."""
     c = client.FileSystem(server_url)
     # maximum number of elements in a kXR_readv request vector
     status, readv_iov_max = c.query(QueryCode.CONFIG, 'readv_iov_max')
@@ -36,7 +41,7 @@ def get_root_vread_info(server_url: str):
 def divide_chunks(chunks: List[Tuple[int]],
                   max_elem: int = 1024,
                   max_bytes: int = 2097136):
-    """docstring"""
+    """Takes a list of tuples (offset, size) and splits it into sub-lists such that the maximum number of elements and the maximum request size of a single vector-read operation is respected."""
     size_current_read = 0
     n_current_read = 0
     current_read = []
@@ -58,11 +63,25 @@ def divide_chunks(chunks: List[Tuple[int]],
             
     return divided_reads
 
-def vread(f: client.File,
+def vread(f, #: client.File
           dtype: np.dtype,
           chunks: List[Tuple[int]],
           **v_read_info):
-    """docstring"""
+    """
+    Vector-read of an XRootD-File. Takes a list of tuples (offset, size) and reads the respective parts of the file in as few requests as possible.
+    
+    :param f: The opened XRootD-File.
+    :type f: client.File
+    :param dtype: The dtype to interpret each chunk of data in `chunks`.
+    :type dtype: numpy.dtype
+    :param chunks: A list of tuples (offset, size) that specify the parts of the file to read.
+    :type chunks:  List[Tuple[int]]
+    :param v_read_info: Keyword arguments 'max_elem' and 'max_bytes' used to split 'chunks' into sub-chunks.
+    :type v_read_info: dict
+
+    :return: An array which concatenates all data (interpreted using 'dtype' and read from positions specified by 'chunks').
+    :rtype: numpy.ndarray
+    """
     list_of_chunks = divide_chunks(chunks, **v_read_info)
     
     list_of_outputs = []
@@ -75,13 +94,31 @@ def vread(f: client.File,
     return np.concatenate([np.frombuffer(chunk.buffer, dtype=dtype) for chunks in list_of_outputs for chunk in chunks]) 
 
 
-def field_read(f: client.File, 
+def field_read(f, #: client.File
                dtype: np.dtype, 
                name: Union[str, List[str]], 
                offset: int = 0, 
                select: Union[slice, list, int] = None,
                **v_read_info):
-    """docstring"""
+    """
+    Reads an entire field of a file interpreted using a structured (and named) datatype. The reading is done using :func:`vread`, meaning that it is data-efficient while possibly being slower than reading the entire file first and slicing the required field afterwards.
+
+    :param f: The opened XRootD-File.
+    :type f: client.File
+    :param dtype: The structured dtype of the file.
+    :type dtype: numpy.dtype
+    :param name: The field name of the file to read.
+    :type name: str
+    :param offset: The offset until the structured part of the file starts (e.g. there could be a header of size 24 bytes in the file but the actual data is written with a dtype of size 512 bytes. The offset in this example would be 24).
+    :type offset: int
+    :param select: An optional slicing of the field to be read (e.g. ``slice(0, 10)`` to read only the first 10 elements of the specified field).
+    :type select: Union[slice, list, int]
+    :param v_read_info: Keyword arguments 'max_elem' and 'max_bytes' used to split 'chunks' into sub-chunks.
+    :type v_read_info: dict
+
+    :return: The numerical field 'name' of the file.
+    :rtype: numpy.ndarray
+    """
     if dtype.names is None: raise TypeError("Not a dtype with named fields.")
     names = [name] if isinstance(name, str) else name
     
@@ -108,11 +145,25 @@ def field_read(f: client.File,
 
     return np.array(list(zip(*all_reads)), dtype=np.dtype(all_dtypes)) if len(all_reads)>1 else all_reads[0]
 
-def slice_read(f: client.File, 
+def slice_read(f, #: client.File
                dtype: np.dtype,
                sl: slice,
                offset: int = 0):
-    """docstring"""
+    """
+    Reads a continuous region of a file.
+
+    :param f: The opened XRootD-File.
+    :type f: client.File
+    :param dtype: The (structured) dtype to interpret the file.
+    :type dtype: numpy.dtype
+    :param sl: The slice to be read (indices in units of dtype, i.e. ``slice(0, 10)`` means the first 10 elements, each of size ``dtype.itemsize``).
+    :type sl: slice
+    :param offset: The offset of the data in the file (e.g. there could be a header of size 24 bytes in the file but the actual data is written with a dtype of size 512 bytes. The offset in this example would be 24).
+    :type offset: int
+
+    :return: The numerical data in the file, interpreted using 'dtype'.
+    :rtype: numpy.ndarray
+    """
     status, response = f.read(offset=offset+sl.start, size=(sl.stop-sl.start)*dtype.itemsize)
     if status.status: raise IOError(f"Unable to read from file using the root protocol: {status}")
 
@@ -120,7 +171,21 @@ def slice_read(f: client.File,
     return data[::sl.step] if sl.step > 1 else data
 
 class XRootDReader:
+    """
+    File reader for remote files accessed via the XRootD protocol.
+
+    :param url: The full path (including file extension and the 'root://' prefix) to the file of interest.
+    :type url: str
+    :param dtype: The numpy (structured) dtype to use when interpreting the contents of the file.
+    :type dtype: np.dtype
+    :param offset: The offset (in bytes) for reading the file (e.g. if the file has a header which has to be skipped), defaults to 0.
+    :type offset: int, optional
+    :param count: The number of items (of size given by dtype) to read. If -1, the entire file is read, defaults to -1.
+    :type count: int, optional
+    """
     def __init__(self, url: str, dtype: np.dtype, offset: int = 0, count: int = -1):
+        if not xrootd_installed: raise ImportError("To access files using the root protocol, the 'xrootd' library has to be installed.")
+
         self._fpath = url
         self._fserver = f"{urlparse(url).scheme}://{urlparse(url).hostname}"
         self._dtype = dtype

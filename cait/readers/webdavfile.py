@@ -4,8 +4,13 @@ from contextlib import nullcontext
 import json
 
 import numpy as np
-from webdav4.client import Client
-from webdav4.stream import IterStream
+
+try:
+    from webdav4.client import Client
+    from webdav4.stream import IterStream
+    webdav_installed = True
+except ImportError:
+    webdav_installed = False
 
 from .helper import unpack_buffer, sanitize_slice, is_index_list, is_str_like
 
@@ -64,6 +69,8 @@ class WebdavReader:
     The file URL can contain additional arguments used for the request. Additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like 'https://domain.com/file.txt;{kwarg: value}'.
     """
     def __init__(self, url: str, dtype: np.dtype, offset: int = 0, count: int = -1):
+        if not webdav_installed: raise ImportError("To access files using the https protocol, the 'webdav4' library has to be installed.")
+        
         url = urlparse(url)
         self._client = Client(base_url=f"https://{url.netloc}", **(json.loads(url.params) if url.params else {}))
         self._fpath = url.path

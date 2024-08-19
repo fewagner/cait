@@ -12,7 +12,7 @@ class BinaryFile:
     """
     A class that can be used to open binary files (e.g. rdt or stream files) which also supports reading from dcache.
 
-    :param path: The full path (including file extension) to the file of interest. If the path starts with 'dcap://', 'https://' or 'root://', reading with the respective protocol is attempted.
+    :param path: The full path (including file extension) to the file of interest. If the path starts with ``dcap://``, ``https://`` or ``root://``, reading with the respective protocol is attempted.
     :type path: str
     :param dtype: The numpy (structured) dtype to use when interpreting the contents of the file.
     :type dtype: np.dtype
@@ -21,7 +21,7 @@ class BinaryFile:
     :param count: The number of items (of size given by dtype) to read. If -1, the entire file is read, defaults to -1.
     :type count: int, optional
 
-    The file URL can contain additional arguments used for the request. Example: When using the WebDav protocol, additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like 'https://domain.com/file.txt;{kwarg: value}'.
+    The file URL can contain additional arguments used for the request. Example: When using the WebDav protocol, additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like ``https://domain.com/file.txt;{kwarg: value}``.
 
     **Example:**
 

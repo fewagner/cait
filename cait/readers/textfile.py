@@ -23,9 +23,9 @@ def get_root_file(**kwargs):
     fpath = kwargs.pop("file")
     with RootClient.File() as f:
         status, _ = f.open(fpath, OpenFlags.READ)
-        if status.status: raise(f"Unable to open file using the root protocol: {status}")
+        if status.status: raise IOError(f"Unable to open file using the root protocol: {status}")
         status, data = f.read()
-        if status.status: raise(f"Unable to open file using the root protocol: {status}")
+        if status.status: raise IOError(f"Unable to open file using the root protocol: {status}")
     
     return StringIO(data.decode("ascii"))
 
@@ -33,11 +33,11 @@ class TextFile:
     """
     A class that can be used to open text files (e.g. par files) which also supports reading via the Dcap, WebDav, and Root protocol.
 
-    :param path: The full path (including file extension) to the file of interest. If the path starts with 'dcap://', 'https://' or 'root://', reading with the respective protocol is attempted.
+    :param path: The full path (including file extension) to the file of interest. If the path starts with ``dcap://``, ``https://`` or ``root://``, reading with the respective protocol is attempted.
     :type path: str
     :type client_kwargs: Any, optional
 
-    The file URL can contain additional arguments used for the request. Example: When using the WebDav protocol, additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like 'https://domain.com/file.txt;{kwarg: value}'.
+    The file URL can contain additional arguments used for the request. Example: When using the WebDav protocol, additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like ``https://domain.com/file.txt;{kwarg: value}``.
 
     **Example:**
 
