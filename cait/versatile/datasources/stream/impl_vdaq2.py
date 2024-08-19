@@ -70,7 +70,7 @@ class Stream_VDAQ2(StreamBaseClass):
         else:
             raise ValueError(f'Unable to assign the correct itemsize to name "{key}" as it does not start with "ADC" or "DAC".')
             
-        return ai.data.convert_to_V(self._data[key][where], bits=bits, min=-20, max=20)
+        return ai.data.convert_to_V(self._data[where][key], bits=bits, min=-20, max=20)
     
     @property
     def start_us(self):

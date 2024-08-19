@@ -173,7 +173,7 @@ class BinaryFile:
             # Notice that here, the h5 dataset or numpy.memmap object is returned,
             # allowing for more efficient slicing afterwards
             if isinstance(val, tuple):
-                if self._mode == "https": 
+                if self._mode in ["https", "root"]: 
                     return self._openf.__getitem__(val)
                 else:
                     out = self._openf.__getitem__(val[0])
@@ -190,7 +190,7 @@ class BinaryFile:
             # highly recommended!
             with self as f:
                 if isinstance(val, tuple):
-                    if self._mode == "https": 
+                    if self._mode in ["https", "root"]: 
                         return self._openf.__getitem__(val)
                     else:
                         out = self._openf.__getitem__(val[0])
