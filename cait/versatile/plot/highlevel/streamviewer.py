@@ -80,14 +80,14 @@ class StreamViewer(Viewer):
         
         # Adding optimum filter
         if of is not None:
-            if of.ndim > 1:
+            if np.array(of).ndim > 1:
                 raise ValueError(f"Only filtering of single channels is supported (i.e. 'of' has to be 1d).")
             if len(self._keys) > 1:
                 raise ValueError(f"In case a filter is provided, you also have to choose a single channel (to be filtered) using the 'keys' argument.")
             
             self.add_line(x=None, y=None, name=f"{self._keys[0]} (filtered)")
                 
-        self._of = of
+        self._of = np.array(of) if of is not None else None
 
         # Adding timestamp markers
         if mark_timestamps is not None:
@@ -137,7 +137,7 @@ class StreamViewer(Viewer):
                 val_min.append(np.min(y))
                 val_max.append(np.max(y))
                 
-        if self._of:
+        if self._of is not None:
             record_length = 2*(self._of.shape[-1] - 1)
             d = record_length if self.current_start > record_length else 0
             where_filter = slice(self.current_start - d, 
