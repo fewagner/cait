@@ -246,7 +246,7 @@ class RDTFile:
         :return: Array of as many voltage traces as given `inds`.
         :rtype: numpy.array
         """
-        return ai.data.convert_to_V(self._file["samples"][inds], bits=16, min=-10, max=10)
+        return ai.data.convert_to_V(self._file[inds]["samples"], bits=16, min=-10, max=10)
 
     # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT     
     # @property
