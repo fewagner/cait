@@ -64,12 +64,16 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     
     if ev_iter.uses_batches: f = BatchResolver(f, ev_iter.n_channels)
 
+    tqdm_config = dict(total=ev_iter.n_batches, 
+                       unit="batches" if ev_iter.uses_batches else "events",
+                       delay=2)
+
     with ev_iter as ev_it:
         if n_processes > 1:
             with Pool(n_processes) as pool:
-                out = list(tqdm(pool.imap(f, ev_it), total=ev_iter.n_batches))
+                out = list(tqdm(pool.imap(f, ev_it), **tqdm_config))
         else:
-            out = [f(ev) for ev in tqdm(ev_it, total=ev_iter.n_batches)]
+            out = [f(ev) for ev in tqdm(ev_it, **tqdm_config)]
     
     # Chain batches such that the list is indistinguishable from a list using no batches
     # (If uses_batches, 'out' is a list of lists)

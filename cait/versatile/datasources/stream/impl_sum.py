@@ -58,11 +58,11 @@ class StreamSum(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         self._stream.__exit__(typ, val, tb)
     
-    def get_voltage_trace(self, key: str, where: slice):
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
         if key == "sum":
-            return np.sum([self._stream.get_voltage_trace(k, where) for k in self._sum_keys], axis=0)
+            return np.sum([self._stream.get_trace(k, where, voltage=voltage) for k in self._sum_keys], axis=0)
         else:
-            return self._stream.get_voltage_trace(key, where)
+            return self._stream.get_trace(key, where, voltage=voltage)
     
     @property
     def start_us(self):

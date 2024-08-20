@@ -67,8 +67,9 @@ class Stream_CSMPL(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         for bin_file in self._data.values(): bin_file.__exit__(typ, val, tb)
 
-    def get_voltage_trace(self, key: str, where: slice):
-       return ai.data.convert_to_V(self._data[key][where], bits=16, min=-10, max=10)
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
+       data = self._data[key][where]
+       return ai.data.convert_to_V(data, bits=16, min=-10, max=10) if voltage else data
     
     @property
     def start_us(self):

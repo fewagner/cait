@@ -125,10 +125,11 @@ class TriggerCollectionMixin:
                     ph = list(self.get("triggers", f"ph_{key}"))
 
                 else:
-                    ind, ph = vai.trigger_zscore(stream[key],
-                                                 record_length=self.record_length,
-                                                 threshold=sigma,
-                                                 **kwargs)
+                    with stream: # this keeps the stream file opened (performance increase)
+                        ind, ph = vai.trigger_zscore(stream[key],
+                                                    record_length=self.record_length,
+                                                    threshold=sigma,
+                                                    **kwargs)
                     ts = stream.time[ind]
 
                     # save trigger timestamps and trigger heights. Can be used in subsequent calls to avoid going through the trigger process again if just the interval argument for building events changes

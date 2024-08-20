@@ -11,6 +11,16 @@ class Stream(StreamBaseClass):
 
     The data is accessed by means of slicing (see below). The `time` property is an object of :class:`StreamTime` and offers a convenient time interface as well (see below).
 
+    **Important Note:** If you plan to access the stream data repeatedly, you can ensure that the stream file stays open (increases speed) by using it as a context manager:
+
+    .. code-block:: python
+
+        import cait.versatile as vai
+
+        stream = vai.Stream(hardware='vdaq2', src='file.bin')
+        with stream:
+            trigger_inds, amplitudes = vai.trigger_zscore(stream["ADC1"], 2**14)
+
     :param hardware: The hardware which was used to record the stream file. Valid options are ['csmpl', 'vdaq2']
     :type hardware: str
     :param src: The source for the stream. Depending on how the data is taken, this can either be the path to one file or a list of paths to multiple files. This input is handled by the specific implementation of the Stream Object. See below for examples.
@@ -72,8 +82,8 @@ class Stream(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         self._stream.__exit__(typ, val, tb)
         
-    def get_voltage_trace(self, key: str, where: slice):
-        return self._stream.get_voltage_trace(key, where)
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
+        return self._stream.get_trace(key, where, voltage=voltage)
 
     @property
     def keys(self):
