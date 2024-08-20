@@ -135,7 +135,7 @@ class RDTFile:
             # data indices
             unique_tuples = dict()
             for n, (i, l) in enumerate(zip(idx_start, count)):
-                tup = tuple(meta_copy["detector_nmbr"][i:(i+l)])
+                tup = tuple(meta_copy["detector_nmbr"][i:(i+l)].tolist())
                 if not (tup in unique_tuples.keys()): 
                     unique_tuples[tup] = []
                 unique_tuples[tup].append(n)
