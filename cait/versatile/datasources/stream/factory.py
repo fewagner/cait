@@ -82,8 +82,8 @@ class Stream(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         self._stream.__exit__(typ, val, tb)
         
-    def get_voltage_trace(self, key: str, where: slice):
-        return self._stream.get_voltage_trace(key, where)
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
+        return self._stream.get_trace(key, where, voltage=voltage)
 
     @property
     def keys(self):

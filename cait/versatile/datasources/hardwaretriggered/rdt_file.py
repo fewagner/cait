@@ -236,17 +236,20 @@ class RDTFile:
         else:
             return list(self._inds.keys())
         
-    def get_voltage_trace(self, inds: Union[int, list]):
+    def get_trace(self, inds: Union[int, list], voltage: bool = True):
         """
-        Return the voltage traces of events in this RDTFile for given indices.
+        Return the ADC traces of events in this RDTFile for given indices. If ``voltage==True``, the ADC value is converted to a voltage (V) fist.
         
         :param inds: The indices for which to return the voltage traces.
         :type inds: Union[int, list]
+        :param voltage: If True, voltage values are returned instead of ADC values.
+        :type voltage: bool, optional
 
-        :return: Array of as many voltage traces as given `inds`.
+        :return: Array of as many ADC/voltage traces as given `inds`.
         :rtype: numpy.array
         """
-        return ai.data.convert_to_V(self._file[inds]["samples"], bits=16, min=-10, max=10)
+        data = self._file[inds]["samples"]
+        return ai.data.convert_to_V(data, bits=16, min=-10, max=10) if voltage else data
 
     # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT     
     # @property
@@ -350,7 +353,7 @@ class RDTChannel(DataSourceBaseClass):
         else:
             requested_events = self._inds[..., val].T
 
-        return self._rdt_file.get_voltage_trace(requested_events)
+        return self._rdt_file.get_trace(requested_events, voltage=True)
     
     @property
     def key(self):
@@ -371,15 +374,15 @@ class RDTChannel(DataSourceBaseClass):
     @property
     def timestamps(self):
         """The microsecond timestamps of the events in this RDTChannel."""
-        secs = np.array(self._rdt_file._file["abs_time_s"][self._inds[0]], dtype=np.int64)
-        msecs = np.array(self._rdt_file._file["abs_time_mus"][self._inds[0]], dtype=np.int64)
+        secs = np.array(self._rdt_file._file[self._inds[0]]["abs_time_s"], dtype=np.int64)
+        msecs = np.array(self._rdt_file._file[self._inds[0]]["abs_time_mus"], dtype=np.int64)
 
         return secs*int(1e6) + msecs
     
     @property
     def tpas(self):
         """The testpulse amplitudes of the events in this RDTChannel."""
-        return self._rdt_file._file["test_pulse_amplitude"][self._inds[0]]
+        return self._rdt_file._file[self._inds[0]]["test_pulse_amplitude"]
     
     @property
     def unique_tpas(self):

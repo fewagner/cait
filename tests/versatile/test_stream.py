@@ -35,7 +35,8 @@ def basic_checks(stream):
     # Methods
     len(stream)
     stream.get_channel(k)
-    stream.get_voltage_trace(k, slice(10, 30))
+    stream.get_trace(k, slice(10, 30), voltage=True)
+    stream.get_trace(k, slice(10, 30), voltage=False)
     stream.start_us
     stream.dt_us
     stream.time
