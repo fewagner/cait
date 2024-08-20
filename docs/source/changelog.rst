@@ -1,12 +1,12 @@
 Features and Changelog
 ======================
 
-On this page we assemble the features of current Cait realeases and changes from the past versions.
+On this page we assemble the features of current Cait releases and changes from the past versions.
 
 development
 ~~~~~~~~~~~
 
-- Added dcache file reading support
+- Added dcache file reading support (dcap, WebDAV and XRootD protocol; recommended protocol: XRootD)
 - Added pipeline to build containers for released versions and development branch (on CERN gitlab)
 - Added `dh.trigger_coincidence` for CRESST doubleTES analysis
 - Minor improvements

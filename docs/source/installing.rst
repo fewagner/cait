@@ -34,6 +34,17 @@ Cait is hosted on the Python package index.
 
 For older or unreleased version, use the installation from Git.
 
+There are some additional dependencies which can be installed together with cait using the following syntax:
+
+.. code:: console
+
+    $ pip install cait[<opt_dep1>, <opt_dep2>]
+
+- ``remfiles``: Also install libraries needed to access remote files, most prominently using the 'XRootD' protocol.
+- ``nn``: Install neural network dependencies which are not installed by default to keep Cait more light-weight.
+- ``clplot``: If you are one of the few people who want to get the 'uniplot' backend for 'cait.versatile' plotting classes, use this optional dependency to unlock command line plotting.
+- ``test``: Install 'pytest' to run tests.
+
 Options for Developers
 ======================
 

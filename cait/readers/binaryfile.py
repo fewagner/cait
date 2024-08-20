@@ -4,34 +4,15 @@ import mmap
 import numpy as np
 import h5py
 
+from .helper import sanitized_dtype
 from .webdavfile import WebdavReader
-
-def sanitized_dtype(dtype: np.dtype):
-    """
-    Removes empty items (of itemsize 0) from the dtype. This is used, e.g., for HDF5 files which cannot handle size 0 datasets. Notice that removing them does not alter how the files are read.
-
-    :param dtype: dtype to be sanitized
-    :type dtype: np.dtype
-
-    :return: Same dtype but with items of size 0 removed
-    :rtype: np.dtype
-    """
-    if dtype.fields:
-        # Structured dtype
-        out = np.dtype({k:v for k,v in dtype.fields.items() if dtype[k].itemsize > 0})
-    else:
-        # Plain dtype
-        out = dtype if dtype.itemsize > 0 else np.dtype({}) 
-
-    if out.itemsize == 0: raise ValueError("The sanitized dtype has itemsize 0.")
-
-    return out
+from .xrootdfile import XRootDReader
 
 class BinaryFile:
     """
     A class that can be used to open binary files (e.g. rdt or stream files) which also supports reading from dcache.
 
-    :param path: The full path (including file extension) to the file of interest. If the path starts with 'dcap://' or 'https://' it is assumed to be a dcache path and reading therefrom is attempted.
+    :param path: The full path (including file extension) to the file of interest. If the path starts with ``dcap://``, ``https://`` or ``root://``, reading with the respective protocol is attempted.
     :type path: str
     :param dtype: The numpy (structured) dtype to use when interpreting the contents of the file.
     :type dtype: np.dtype
@@ -39,8 +20,8 @@ class BinaryFile:
     :type offset: int, optional
     :param count: The number of items (of size given by dtype) to read. If -1, the entire file is read, defaults to -1.
     :type count: int, optional
-    :param client_kwargs: Additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html).
-    :type client_kwargs: Any, optional
+
+    The file URL can contain additional arguments used for the request. Example: When using the WebDav protocol, additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like ``https://domain.com/file.txt;{kwarg: value}``.
 
     **Example:**
 
@@ -66,24 +47,27 @@ class BinaryFile:
 
         Line(first_event)
     """
-    def __init__(self, path: str, dtype: np.dtype, offset: int = 0, count: int = -1, **client_kwargs):
+    def __init__(self, path: str, dtype: np.dtype, offset: int = 0, count: int = -1):
         # Distinguish between reading from dcache or local
         if path.startswith("dcap://"):
             self._mode = "dcap"
+            # Check if environment variable is set correctly to use libpdcap.so
+            if "LD_PRELOAD" not in os.environ.keys():
+                raise OSError("To read files from dcache, the environment variable 'LD_PRELOAD' has to be set.")
+            if not os.path.exists(os.environ["LD_PRELOAD"]):
+                raise FileNotFoundError(f"The dcache library does not exist at the specified path {os.environ['LD_PRELOAD']}")
+
+            flen = os.path.getsize(path) - offset
         elif path.startswith("https://"):
             self._mode = "https"
+            flen = len(WebdavReader(path, dtype, offset))
+        elif path.startswith("root://"):
+            self._mode = "root"
+            flen = len(XRootDReader(path, dtype, offset))
         else:
             self._mode = "local"
-
-        self._webdav_client_kwargs = client_kwargs
+            flen = os.path.getsize(path) - offset
         
-        # Check if environment variable is set correctly to use libpdcap.so
-        if self._mode == "dcap" and "LD_PRELOAD" not in os.environ.keys():
-            raise OSError("To read files from dcache, the environment variable 'LD_PRELOAD' has to be set.")
-        if self._mode == "dcap" and not os.path.exists(os.environ["LD_PRELOAD"]):
-            raise FileNotFoundError(f"The dcache library does not exist at the specified path {os.environ['LD_PRELOAD']}")
-        
-        flen = len(WebdavReader(path, dtype, offset)) if self._mode == "https" else os.path.getsize(path) - offset
         itemsize = dtype.itemsize
 
         if count == -1:
@@ -135,8 +119,16 @@ class BinaryFile:
             self._openf = WebdavReader(self._path, 
                                        self._dtype, 
                                        self._offset, 
-                                       self._count, 
-                                       **self._webdav_client_kwargs).__enter__()
+                                       self._count).__enter__()
+            self._isopen = True
+            return self
+        
+        elif self._mode == "root":
+            self._source = None
+            self._openf = XRootDReader(self._path, 
+                                       self._dtype, 
+                                       self._offset, 
+                                       self._count).__enter__()
             self._isopen = True
             return self
         
@@ -181,7 +173,7 @@ class BinaryFile:
             # Notice that here, the h5 dataset or numpy.memmap object is returned,
             # allowing for more efficient slicing afterwards
             if isinstance(val, tuple):
-                if self._mode == "https": 
+                if self._mode in ["https", "root"]: 
                     return self._openf.__getitem__(val)
                 else:
                     out = self._openf.__getitem__(val[0])
@@ -198,7 +190,7 @@ class BinaryFile:
             # highly recommended!
             with self as f:
                 if isinstance(val, tuple):
-                    if self._mode == "https": 
+                    if self._mode in ["https", "root"]: 
                         return self._openf.__getitem__(val)
                     else:
                         out = self._openf.__getitem__(val[0])
