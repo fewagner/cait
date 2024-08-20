@@ -4,8 +4,12 @@ from io import StringIO
 from ctypes import cdll
 from urllib.parse import urlparse
 
-from webdav4.client import Client as WebdavClient
-from webdav4.stream import IterStream
+try:
+    from webdav4.client import Client as WebdavClient
+    from webdav4.stream import IterStream
+    webdav_installed = True
+except ImportError:
+    webdav_installed = False
 
 try:
     from XRootD import client as RootClient
@@ -54,20 +58,21 @@ class TextFile:
         # Distinguish between reading from dcache or local
         if path.startswith("dcap://"):
             self._mode = "dcap"
+            # Check if environment variable is set correctly to use libpdcap.so
+            if "LD_PRELOAD" not in os.environ.keys():
+                raise OSError("To read files from dcache, the environment variable 'LD_PRELOAD' has to be set.")
+            if not os.path.exists(os.environ["LD_PRELOAD"]):
+                raise FileNotFoundError(f"The dcache library does not exist at the specified path {os.environ['LD_PRELOAD']}")
         elif path.startswith("https://"):
             self._mode = "https"
+            if not webdav_installed:
+                raise FileNotFoundError(f"To access files using the WebDav protocol, the 'webdav4' library has to be installed.")
         elif path.startswith("root://"):
             self._mode = "root"
+            if not xrootd_installed:
+                raise FileNotFoundError(f"To access files using the root protocol, the 'xrootd' library has to be installed.")
         else:
             self._mode = "local"
-        
-        # Check if environment variable is set correctly to use libpdcap.so
-        if self._mode == "dcap" and "LD_PRELOAD" not in os.environ.keys():
-            raise OSError("To read files from dcache, the environment variable 'LD_PRELOAD' has to be set.")
-        if self._mode == "dcap" and not os.path.exists(os.environ["LD_PRELOAD"]):
-            raise FileNotFoundError(f"The dcache library does not exist at the specified path {os.environ['LD_PRELOAD']}")
-        if self._mode == "root" and not xrootd_installed:
-            raise FileNotFoundError(f"To access files using the root protocol, the 'xrootd' library has to be installed.")
         
         # The differences between reading from dcache or not are:
         # 1. dcache needs a raw string as file path as well as 2. an opener
