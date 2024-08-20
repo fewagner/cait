@@ -30,8 +30,7 @@ dependencies = [
     "numba>=0.54",
     "tqdm>=4.62",
     "scikit-learn>=0.24",
-    "deprecation",
-    "webdav4>=0.9.8"
+    "deprecation"
 ]
 requires-python = ">=3.8"
 
@@ -39,6 +38,7 @@ requires-python = ">=3.8"
 nn = ["pytorch-lightning==1.9.4", "torch>=1.8"]
 clplot = ["uniplot>=0.12.2"]
 test = ["pytest"]
+remfiles = ["webdav4>=0.9.8", "xrootd>=5.7.0"]
 
 [project.urls]
 Repository = "https://github.com/fewagner/cait"
