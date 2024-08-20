@@ -11,7 +11,7 @@ try:
 except ImportError:
     xrootd_installed = False
 
-from .helper import sanitize_slice, is_index_list, is_str_like
+from .helper import sanitize_slice, is_index_list, is_str_like, is_ndim_index_list
 
 def get_filesize(f #: client.File
                  ): 
@@ -207,7 +207,7 @@ class XRootDReader:
     def __enter__(self):
         self._f = client.File().__enter__()
         status, _ = self._f.open(self._fpath, OpenFlags.READ)
-        if status.status: IOError(f"Unable to open file using the root protocol: {status}")
+        if status.status: raise IOError(f"Unable to open file using the root protocol: {status}")
         
         self._isopen = True
         return self
@@ -218,24 +218,36 @@ class XRootDReader:
         
     def __getitem__(self, val):
         with self if not self._isopen else nullcontext(self) as s:
+            # f["key"] or f[["key1", "key2"]]
             if is_str_like(val):
                 return field_read(s._f, self._dtype, val, self._offset, **self._vread_info)
+            # f[[0, 1, 2]]
             elif is_index_list(val):
                 return vread(s._f, self._dtype, 
                              [(self._offset+i*self._dtype.itemsize, self._dtype.itemsize) for i in val], **self._vread_info)
+            # f[[[0, 1, 2], [3, 4, 5]]]
+            elif is_ndim_index_list(val):
+                val_arr = np.array(val)
+                orig_shape = val_arr.shape
+                return np.reshape(self[val_arr.flatten().tolist()], orig_shape)
+            # f[13]
             elif isinstance(val, (int, np.integer)):
                 return self[[val]]
-            elif isinstance(val, np.ndarray) and val.ndim<2:
+            # f[np.array([1,2,3])] or f[np.array([[1,2,3], [4,5,6]])]
+            elif isinstance(val, np.ndarray):
                 return self[val.tolist()]
+            # f[:100]
             elif isinstance(val, slice):
                 return slice_read(s._f, self._dtype, sanitize_slice(val, self._size), self._offset)
             
             elif isinstance(val, tuple) and len(val) == 2:
+                # f["key", :10] or f["key", [0, 1, 2]], etc.
                 if is_str_like(val[0]):
                     return field_read(s._f, self._dtype, val[0], self._offset, val[1], **self._vread_info)
-                elif isinstance(val[0], (int, np.integer, slice)) or is_index_list(val[0]):
+                # f[:10, 0] or f[[0,1,2], "key"], or f[:100, "key"], etc.
+                elif isinstance(val[0], (int, np.integer, slice)) or is_index_list(val[0]) or is_ndim_index_list(val[0]):
                     return self[val[0]][val[1]]
                 else:
-                    raise NotImplementedError(f"")
+                    raise NotImplementedError(f"Slicing with two arguments is only supported when the first argument is a (list of) string(s), a (list of) integer(s) or a slice")
             else:
-                raise NotImplementedError(f"for indexing arguments {val} of type {[type(v) for v in val] if isinstance(val, tuple) else type(val)}")
+                raise NotImplementedError(f"Slicing not supported for arguments {val} of type {[type(v) for v in val] if isinstance(val, tuple) else type(val)}")

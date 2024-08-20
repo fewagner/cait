@@ -39,6 +39,14 @@ def is_index_list(val):
     """Returns true if input is a list of integers."""
     return isinstance(val, list) and all([isinstance(x, (int, np.integer)) for x in val])
 
+def is_ndim_index_list(val):
+    """Returns true if input is a (n-dim) list of lists of integers."""
+    try:
+        val_arr = np.array(val)
+        return val_arr.ndim > 0
+    except ValueError:
+        return False
+
 def is_str_like(val):
     """Returns true if input is a string or a list of strings."""
     return isinstance(val, str) or (isinstance(val, list) and all([isinstance(x, str) for x in val]))
