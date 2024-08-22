@@ -84,7 +84,7 @@ class StreamBaseClass(DataSourceBaseClass):
         ...
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, measuring_time_h={self.__len__()*self.dt_us/1e6/3600:.2f})'
+        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, measuring_time_h={self.__len__()*int(self.dt_us)/1e6/3600:.2f})'
 
     def __getitem__(self, val: Union[str, Tuple[str, Union[int, slice, list, np.ndarray]], Tuple[str, Union[int, slice, list, np.ndarray], str]]):
         # Only names and tuples are supported for slicing (no int)
