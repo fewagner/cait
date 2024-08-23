@@ -2,11 +2,11 @@ from typing import Union
 import os
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from .arraywithbenefits import ArrayWithBenefits
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..eventfunctions.processing.removebaseline import RemoveBaseline
-from ..functions.apply import apply
 from ..plot.basic.line import Line
 
 from ...data import write_xy_file
@@ -25,7 +25,15 @@ class SEV(ArrayWithBenefits):
             self._sev = np.empty(0)
             self._n_ch = 0
         elif isinstance(data, IteratorBaseClass):
-            mean_pulse = np.mean(apply(RemoveBaseline(), data), axis=0)
+            data = data.flatten().with_processing(RemoveBaseline())
+            if len(data) > 1000:
+                mean_pulse = np.zeros_like(data.grab(0))
+                with data:
+                    for ev in tqdm(data, delay=5):
+                        mean_pulse+=ev
+                mean_pulse/=len(data)
+            else:
+                mean_pulse = np.mean(data, axis=0)
             # Normalize
             maxima = np.max(mean_pulse, axis=-1)
             # Cast maxima into a column vector such that vectorization works

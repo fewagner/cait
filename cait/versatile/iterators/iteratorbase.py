@@ -189,7 +189,10 @@ class IteratorBaseClass(ABC):
         new_params = params.copy()
         new_params["batch_size"] = batch_size
 
-        return self.__class__(**new_params)
+        new_iterator = self.__class__(**new_params)
+        new_iterator.add_processing(self.fncs.copy())
+
+        return new_iterator
     
     def flatten(self):
         """
