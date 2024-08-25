@@ -96,6 +96,8 @@ class DataHandler(SimulateMixin,
     Filepath and -name saved.
 
     Most of the methods are included via parent mixin classes (see folder cait/mixins).
+
+    .. automethod:: __getitem__
     """
 
     def __init__(self,
@@ -183,6 +185,36 @@ class DataHandler(SimulateMixin,
                     info += f"Last testpulse on/at: {datetime_fmt(f['testpulses/time_s'][-1])}\n"
 
         return info
+    
+    def __getitem__(self, val):
+        """
+        Shortcut syntax for :meth:`DataHandler.get`. The following are equivalent for a DataHandler object ``dh``:
+        
+        - ``dh.get("events", "pulse_height")`` and ``dh["events/pulse_height"]``
+        - ``dh.get("events", "pulse_height", 0)`` and ``dh["events/pulse_height", 0]``
+        - ``dh.get("events", "mainpar", 0, None, 1)`` and ``dh["events/pulse_height", 0, :, 1]``
+
+        See :meth:`DataHandler.get` for further documentation.
+        """
+        if isinstance(val, str): 
+            return self.get(*val.split("/"))
+        elif isinstance(val, tuple):
+            return self.get(*val[0].split("/"), *tuple(val[1:]))
+        else:
+            raise NotImplementedError(f"Unsupported slicing argument {val} of type {type(val)}.")
+    
+    # used for TAB-completion in iPython/notebooks. Example: dh['ev<TAB> -> 'events/'
+    def _ipython_key_completions_(self):
+        with self.get_filehandle(mode="r") as f:
+            suggestions = [f"{k}/{ds}" for k in f.keys() for ds in f[k]]
+            suggestions += [s.split("mainpar")[0]+mp
+                            for mp in MAINPAR 
+                            for s in suggestions if s.endswith("/mainpar")]
+            suggestions += [s.split("add_mainpar")[0]+mp
+                            for mp in ADD_MAINPAR 
+                            for s in suggestions if s.endswith("/add_mainpar")]
+
+        return suggestions
     
     @property
     def sample_frequency(self):

@@ -196,6 +196,10 @@ class RDTFile:
         
         return RDTChannel(self, key=channels)
     
+    # used for TAB-completion in iPython/notebooks. Example: rdtf[<TAB> -> 0
+    def _ipython_key_completions_(self):
+        return self.keys
+    
     @property
     def _file(self):
         """The `numpy.memmap` object to the underlying `*.rdt` file."""

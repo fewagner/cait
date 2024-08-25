@@ -131,6 +131,10 @@ class StreamBaseClass(DataSourceBaseClass):
                     raise TypeError('When slicing with three arguments, the first, second and third one have to be of type string, int/slice and string, respectively.')
             else:  
                 raise NotImplementedError(f'Tuples of length {len(val)} are not supported for slicing')
+            
+    # used for TAB-completion in iPython/notebooks. Example: stream['A<TAB> -> 'ADC1'
+    def _ipython_key_completions_(self):
+        return self.keys
     
     @property
     def time(self):
