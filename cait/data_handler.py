@@ -111,7 +111,7 @@ class DataHandler(SimulateMixin,
 
         self.run = run
         self.module = module
-        self.record_length = record_length
+        self._record_length = record_length
         self.channels = channels
         if channels is not None:
             self.nmbr_channels = len(channels)
@@ -120,10 +120,10 @@ class DataHandler(SimulateMixin,
                               "not from the nmbr_channels argument!")
         elif nmbr_channels is not None:
             self.nmbr_channels = nmbr_channels
-        self.sample_frequency = sample_frequency
-        self.sample_length = 1000 / self.sample_frequency
-        self.t = (np.arange(0, self.record_length, dtype=float) -
-                  self.record_length / 4) * self.sample_length
+        self._sample_frequency = sample_frequency
+        self.sample_length = 1000 / self._sample_frequency
+        self.t = (np.arange(0, self._record_length, dtype=float) -
+                  self._record_length / 4) * self.sample_length
 
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
@@ -183,6 +183,33 @@ class DataHandler(SimulateMixin,
                     info += f"Last testpulse on/at: {datetime_fmt(f['testpulses/time_s'][-1])}\n"
 
         return info
+    
+    @property
+    def sample_frequency(self):
+        """
+        The sampling frequency of the data in Hz.
+        
+        :return: Sampling frequency (Hz)
+        :rtype: int
+        """
+        return self._sample_frequency
+    
+    @property
+    def dt_us(self):
+        """
+        The length of a sample in the data in microseconds.
+        
+        :return: Microsecond time-delta
+        :rtype: int
+        """
+        return int(1e6//self.sample_frequency)
+    
+    @property
+    def record_length(self):
+        """
+        Returns the record length (in samples) of the events in this DataHandler.
+        """
+        return self._record_length
         
     def set_filepath(self,
                      path_h5: str,

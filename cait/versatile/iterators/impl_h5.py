@@ -127,7 +127,7 @@ class H5Iterator(IteratorBaseClass):
     
     @property
     def dt_us(self):
-        return int(1e6/self._dh.sample_frequency)
+        return self._dh.dt_us
     
     @property
     def ds_start_us(self):

@@ -214,7 +214,7 @@ class RDTFile:
     @property
     def sample_frequency(self):
         """The sample frequency in Hz of the events in the corresponding `*.rdt` file."""
-        return int(np.round(1e6/self._par.time_base_us))
+        return int(1e6//self.dt_us)
     
     @property
     def measuring_time_h(self):
@@ -371,6 +371,10 @@ class RDTChannel(DataSourceBaseClass):
         s = self._rdt_file._par.start_s
         mus = self._rdt_file._par.start_us
         return s*int(1e6) + mus
+    
+    @property
+    def dt_us(self):
+        return self._rdt_file.dt_us
     
     @property
     def timestamps(self):
