@@ -887,15 +887,15 @@ class DataHandler(SimulateMixin,
         with self.get_filehandle(mode="r") as f:
             if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 0])
-            elif dataset == 'onset':
+            elif dataset == 'onset' and 'onset' not in f[group]:
                 data = np.array((f[group]['mainpar'][idx0, idx1, 1] - self.record_length / 4) / self.sample_frequency * 1000)
-            elif dataset == 'rise_time':
+            elif dataset == 'rise_time' and 'rise_time' not in f[group]:
                 data = np.array(
                     (f[group]['mainpar'][idx0, idx1, 2] - f[group]['mainpar'][idx0, idx1, 1]) / self.sample_frequency * 1000)
-            elif dataset == 'decay_time':
+            elif dataset == 'decay_time' and 'decay_time' not in f[group]:
                 data = np.array(
                     (f[group]['mainpar'][idx0, idx1, 6] - f[group]['mainpar'][idx0, idx1, 4]) / self.sample_frequency * 1000)
-            elif dataset == 'slope':
+            elif dataset == 'slope' and 'slope' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 8] * self.record_length)
             else:
                 for i, name in enumerate(ADD_MAINPAR):
