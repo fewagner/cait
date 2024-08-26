@@ -39,7 +39,7 @@ class Stream_VDAQ2(StreamBaseClass):
         # Start timestamp of the file in us (header['timestamp'] is in ns)
         self._start = int(header['timestamp']/1000)
         # Temporal step size in us (= inverse sampling frequency)
-        self._dt = header['downsamplingFactor']
+        self._dt = int(header['downsamplingFactor'])
 
         # VDAQ2 format could contain keys 'Settings' and 'Time' which we do not want to have as available data channels
         self._keys = list(set(keys) - set(['Time', 'Settings', 'SampleNr']))
