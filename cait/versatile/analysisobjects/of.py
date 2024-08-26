@@ -16,7 +16,7 @@ class OF(ArrayWithBenefits):
     """
     Object representing an Optimum Filter (OF). It can either be created from a Standard Event (SEV) and a Noise Power Spectrum (NPS), from an `np.ndarray` or read from a DataHandler or xy-file.
 
-    :param args: The data to use for the OF. If None, an empty OF is created. If `np.ndarray`, each row in the array is interpreted as an OF for separate channels. If instances of class:`SEV` and class:`NPS`, the OF is calculated from them. Defaults to None.
+    :param args: The data to use for the OF. If None, an empty OF is created. If `np.ndarray`, each row in the array is interpreted as an OF for separate channels. If instances of :class:`SEV` and :class:`NPS`, the OF is calculated from them. Defaults to None.
     :type data: Any
 
     .. code-block:: python
