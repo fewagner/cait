@@ -35,7 +35,8 @@ class NPS(ArrayWithBenefits):
                         self._nps+=ev
                 self._nps/=len(data)
             else:
-                self._nps = np.mean(data, axis=0)
+                with data:
+                    self._nps = np.mean(data, axis=0)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()

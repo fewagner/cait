@@ -33,7 +33,8 @@ class SEV(ArrayWithBenefits):
                         mean_pulse+=ev
                 mean_pulse/=len(data)
             else:
-                mean_pulse = np.mean(data, axis=0)
+                with data:
+                    mean_pulse = np.mean(data, axis=0)
             # Normalize
             maxima = np.max(mean_pulse, axis=-1)
             # Cast maxima into a column vector such that vectorization works
