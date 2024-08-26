@@ -866,12 +866,9 @@ class DataHandler(SimulateMixin,
         # if requested dataset is a virtual dataset, we have to make sure that the original files still 
         # exist. Otherwise the returned data is nonsensical
         with self.get_filehandle(mode="r") as f:
-            if dataset in MAINPAR:
-                if dataset == "pulse_height" and 'pulse_height' in f[group]:
-                    available = ds_source_available(f, group, "pulse_height")
-                else: 
-                    available = ds_source_available(f, group, "mainpar")
-            elif dataset in ADD_MAINPAR:
+            if (dataset in MAINPAR) and (dataset not in f[group]):
+                available = ds_source_available(f, group, "mainpar")
+            elif (dataset in ADD_MAINPAR) and (dataset not in f[group]):
                 available = ds_source_available(f, group, "add_mainpar")
             else:
                 available = ds_source_available(f, group, dataset)
