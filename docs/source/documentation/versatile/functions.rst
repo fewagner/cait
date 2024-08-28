@@ -51,6 +51,9 @@ Scalar functions
 .. autoclass:: CalcMP
    :member-order: bysource
    :exclude-members: batch_support
+.. autoclass:: TemplateFit
+   :member-order: bysource
+   :exclude-members: batch_support
 
 Utility functions
 ~~~~~~~~~~~~~~~~~
