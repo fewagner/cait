@@ -81,23 +81,23 @@ class _TemplateCacheSimple:
         :rtype: Tuple[float, int, float]
         """
         if self._fit_onset:
-            res = minimize(self._chij2_simple, 
+            res = minimize(self._chij2, 
                         x0=0, 
                         args=(ev, flag), 
                         method="Powell", 
                         bounds=[(-self._max_shift, self._max_shift)])
-            shift = int(res.x)
+            opt_shift = int(res.x)
         else:
-            shift = 0
+            opt_shift = 0
 
-        s, y = shift_arrays(self._sev, ev, j=shift, flag=flag)
+        s, y = shift_arrays(self._sev, ev, j=opt_shift, flag=flag)
+        opt_param = np.sum(y*s)/self._norm2(j=opt_shift, flag=flag)
+        rms = np.sqrt(self._chij2(opt_shift, ev, flag))
         
-        return ( np.sum(y*s)/self._norm2(j=shift, flag=flag), 
-                 shift, 
-                 np.sqrt(self._chij2_simple(shift, ev, flag)) )
+        return opt_param, opt_shift, rms
     
     ### CHI SQUARED EQUATIONS FOR ONSET FIT ###
-    def _chij2_simple(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+    def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
         Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` in the simplified model.
         See https://edoc.ub.uni-muenchen.de/23762/ for details.
@@ -178,20 +178,21 @@ class _TemplateCachePoly:
         :rtype: Tuple[np.ndarray, int, float]
         """
         if self._fit_onset:
-            res = minimize(self._chij2_poly, 
+            res = minimize(self._chij2, 
                         x0=0, 
                         args=(ev, flag), 
                         method="Powell", 
                         bounds=[(-self._max_shift, self._max_shift)])
-            shift = int(res.x)
+            opt_shift = int(res.x)
         else:
-            shift = 0
+            opt_shift = 0
+
+        opt_param = solve(self._A(opt_shift, flag), self._b(opt_shift, ev, flag), assume_a="sym")
+        rms = np.sqrt(self._chij2(opt_shift, ev, flag))
         
-        return  ( solve(self._A(shift, flag), self._b(shift, ev, flag), assume_a="sym"), # optimal parameters
-                  shift, # optimal shift
-                  np.sqrt(self._chij2_poly(shift, ev, flag)) ) # RMS
+        return opt_param, opt_shift, rms
     
-    def _chij2_poly(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+    def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
         Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` including a non-trivial baseline.
 
