@@ -1,5 +1,5 @@
-from typing import Union, List
-#import warnings
+from typing import List
+from functools import cache
 
 import numpy as np
 from scipy.optimize import minimize
@@ -7,9 +7,6 @@ from scipy.linalg import solve
 
 from ..functionbase import FncBaseClass
 from ..processing.removebaseline import RemoveBaseline
-
-# We do not use scipy's parameter error estimation anyways so we can suppress this warning
-# warnings.filterwarnings("ignore", "Covariance of the parameters could not be estimated")
 
 ########################
 ### HELPER FUNCTIONS ###
@@ -47,216 +44,216 @@ def shift_arrays(sev: np.ndarray,
     
     return out
 
-### SOLVE SIMPLIFIED PROBLEM ###
-def simple_sol(s: np.ndarray, y: np.ndarray):
-    """
-    Solves for the amplitude in the simple model where no baseline fit is performed.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
+############################
+### HELPER CACHE CLASSES ###
+############################
 
-    :param s: The (shifted) reference event.
-    :type s: np.ndarray
-    :param y: The (shifted) event to be fitted.
-    :type y: np.ndarray
-    
-    :return: The fit amplitude for ``y``.
-    :rtype: float
-    """
-    return np.sum(y*s)/np.sum(s**2)
-
-### SOLVE SYSTEM OF EQUATIONS ###
-def A(s: np.ndarray, x: np.ndarray, order: int):
-    """
-    Returns the matrix for the linear system of equations needed for the template fit including a non-trivial baseline.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
-
-    :param s: The (shifted) reference event.
-    :type s: np.ndarray
-    :param x: The (shifted) baseline x-data.
-    :type x: np.ndarray
-    :param order: The order of the polynomial used to fit the baseline.
-    :type order: int
-    
-    :return: The matrix for the linear system of equations.
-    :rtype: np.ndarray
-    """
-    return np.concatenate([
-        np.array([ [np.mean(s**2)] + [np.mean(s*x**k) for k in range(order+1)] ]),
-        np.array([ 
-            [np.mean(s*x**l)] + [np.mean(x**(k+l)) for k in range(order+1)]
-            for l in range(order+1)
-        ])
-    ])
-
-def b(s: np.ndarray, y: np.ndarray, x: np.ndarray, order: int):
-    """
-    Returns right hand side for the linear system of equations needed for the template fit including a non-trivial baseline.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
-
-    :param s: The (shifted) reference event.
-    :type s: np.ndarray
-    :param y: The (shifted) event to be fitted.
-    :type y: np.ndarray
-    :param x: The (shifted) baseline x-data.
-    :type x: np.ndarray
-    :param order: The order of the polynomial used to fit the baseline.
-    :type order: int
-    
-    :return: The right hand side for the linear system of equations.
-    :rtype: np.ndarray
-    """
-    return np.array([np.mean(y*s)] + [np.mean(y*x**k) for k in range(order+1)])
-
-def poly_sol(s: np.ndarray, y: np.ndarray, x: np.ndarray, order: int):
-    """
-    Solves the linear system of equations needed for the template fit including a non-trivial baseline.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
-
-    :param s: The (shifted) reference event.
-    :type s: np.ndarray
-    :param y: The (shifted) event to be fitted.
-    :type y: np.ndarray
-    :param x: The (shifted) baseline x-data.
-    :type x: np.ndarray
-    :param order: The order of the polynomial used to fit the baseline.
-    :type order: int
-    
-    :return: The solution of the linear system of equations (``[fit_amplitude, constant_bl_coeff, linear_bl_coeff, ...]``).
-    :rtype: np.ndarray
-    """
-    return solve(A(s, x, order), b(s, y, x, order), assume_a="sym")
-
-### CHI SQUARED EQUATIONS FOR ONSET FIT ###
-def chij2_simple(j: int, sev: np.ndarray, ev: np.ndarray, flag: np.ndarray = None):
-    """
-    Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` in the simplified model.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
-
-    :param j: The shift.
-    :type j: int
-    :param sev: The reference event.
-    :type sev: np.ndarray
-    :param ev: The event to be fitted.
-    :type ev: np.ndarray
-    :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
-    :type flag: np.ndarray, optional
-    
-    :return: The chi-squared value.
-    :rtype: float
-    """
-    s, y = shift_arrays(sev, ev, j=int(np.round(j)), flag=flag)
-
-    return np.mean( (y - simple_sol(s, y)*s)**2 )
-
-def chij2_poly(j: int, 
-               sev: np.ndarray, 
-               ev: np.ndarray, 
-               xdata: np.ndarray, 
-               order: int,
-               flag: np.ndarray = None):
-    """
-    Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` including a non-trivial baseline.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
-
-    :param j: The shift.
-    :type j: int
-    :param sev: The reference event.
-    :type sev: np.ndarray
-    :param ev: The event to be fitted.
-    :type ev: np.ndarray
-    :param xdata: The baseline x-data.
-    :type xdata: np.ndarray
-    :param order: The order of the polynomial for the baseline fit (0, 1, 2, ...).
-    :type order: int
-    :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
-    :type flag: np.ndarray, optional
-    
-    :return: The chi-squared value.
-    :rtype: float
-    """
-    s, y, x = shift_arrays(sev, ev, xdata, j=int(np.round(j)), flag=flag)
-        
-    sol = poly_sol(s, y, x, order)
-    return np.mean((y - sol[0]*s - np.sum([sol[k+1]*x**k for k in range(order+1)], axis=0))**2)
-
-### WRAPPERS ###
-def template_fit_simple(ev: np.ndarray, 
-                        sev: np.ndarray,
-                        flag: np.ndarray = None,
-                        fit_onset: bool = True, 
-                        max_shift: int = 50):
+class _TemplateCacheSimple:
     """
     Performs the template fit in the simplified model where no baseline fit is performed.
     See https://edoc.ub.uni-muenchen.de/23762/ for details.
 
-    :param ev: The event to be fitted
-    :type ev: np.ndarray
+    Helper class that performs the template fit in the simplified model where no baseline fit is performed. It caches parts of intermediate solutions for the minimization problem for the regular (not truncated) fit to increase computational efficiency.
+
     :param sev: The reference event.
     :type sev: np.ndarray
-    :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
-    :type flag: np.ndarray, optional
     :param fit_onset: If True, the onset value is fitted. If False, the event is fitted as is, defaults to True
     :type fit_onset: bool, optional
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``. Defaults to 50 samples
     :type max_shift: int, optional
-    
-    :return: Tuple of fit result, optimal shift, and RMS value ``(amplitude, shift, rms)``.
-    :rtype: Tuple[float, int, float]
     """
-    if fit_onset:
-        res = minimize(chij2_simple, 
-                       x0=0, 
-                       args=(sev, ev, flag), 
-                       method="Powell", 
-                       bounds=[(-max_shift, max_shift)])
-        shift = int(res.x)
-    else:
-        shift = 0
-    
-    return simple_sol(*shift_arrays(sev, ev, j=shift, flag=flag)), shift, np.sqrt(chij2_simple(shift, sev, ev, flag))
+    def __init__(self, sev: np.ndarray, fit_onset: bool = True, max_shift: int = 50):
+        self._sev = sev
+        self._fit_onset = fit_onset
+        self._max_shift = max_shift
 
-def template_fit_poly(ev: np.ndarray, 
-                      sev: np.ndarray, 
-                      order: int, 
-                      xdata: np.ndarray = None, 
-                      flag: np.ndarray = None,
-                      fit_onset: bool = True,
-                      max_shift: int = 50):
+    def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
+        """
+        Performs the template fit in the simplified model where no baseline fit is performed.
+        See https://edoc.ub.uni-muenchen.de/23762/ for details.
+
+        :param ev: The event to be fitted
+        :type ev: np.ndarray
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+        
+        :return: Tuple of fit result, optimal shift, and RMS value ``(amplitude, shift, rms)``.
+        :rtype: Tuple[float, int, float]
+        """
+        if self._fit_onset:
+            res = minimize(self._chij2_simple, 
+                        x0=0, 
+                        args=(ev, flag), 
+                        method="Powell", 
+                        bounds=[(-self._max_shift, self._max_shift)])
+            shift = int(res.x)
+        else:
+            shift = 0
+
+        s, y = shift_arrays(self._sev, ev, j=shift, flag=flag)
+        
+        return ( np.sum(y*s)/self._norm2(j=shift, flag=flag), 
+                 shift, 
+                 np.sqrt(self._chij2_simple(shift, ev, flag)) )
+    
+    ### CHI SQUARED EQUATIONS FOR ONSET FIT ###
+    def _chij2_simple(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        """
+        Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` in the simplified model.
+        See https://edoc.ub.uni-muenchen.de/23762/ for details.
+
+        :param j: The shift.
+        :type j: int
+        :param ev: The event to be fitted.
+        :type ev: np.ndarray
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+        
+        :return: The chi-squared value.
+        :rtype: float
+        """
+        j = int(np.round(j))
+        s, y = shift_arrays(self._sev, ev, j=j, flag=flag)
+
+        return np.mean( ( y - np.sum(y*s)/self._norm2(j=j, flag=flag)*s )**2 )
+
+    def _norm2(self, j: int, flag: np.ndarray = None):
+        """
+        Returns the squared norm of the SEV for a given shift value.
+
+        :param j: The shift value.
+        :type j: int
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+
+        :return: The squared norm of the (shifted and/or truncated) SEV.
+        :rtype: float
+        """
+        return self._norm2_cached(j) if flag is None else self._norm2_uncached(j, flag)
+    
+    def _norm2_uncached(self, j: int, flag: np.ndarray):
+        return np.sum( shift_arrays(self._sev, j=j, flag=flag)[0]**2 )
+    
+    @cache
+    def _norm2_cached(self, j: int):
+        return self._norm2_uncached(j=j, flag=None)
+    
+class _TemplateCachePoly:
     """
-    Performs the template fit including a non-trivial baseline.
+    Helper class that performs the template fit including a non-trivial baseline. It caches the matrices used for solving the minimization problem for the regular (not truncated) fit to increase computational efficiency.
     See https://edoc.ub.uni-muenchen.de/23762/ for details.
 
-    :param ev: The event to be fitted
-    :type ev: np.ndarray
     :param sev: The reference event.
     :type sev: np.ndarray
-    :param order: The order of the polynomial for the baseline fit (0, 1, 2, ...).
-    :type order: int
     :param xdata: The x-data to use for the baseline model evaluation. If None, the default ``xdata=np.linspace(0, 1, len(sev))`` is used, defaults to None.
     :type xdata: np.ndarray, optional
-    :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
-    :type flag: np.ndarray, optional
     :param fit_onset: If True, the onset value is fitted. If False, the event is fitted as is, defaults to True
     :type fit_onset: bool, optional
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``. Defaults to 50 samples
     :type max_shift: int, optional
-    
-    :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``.
-    :rtype: Tuple[np.ndarray, int, float]
     """
-    if xdata is None: xdata = np.linspace(0, 1, np.array(sev).shape[-1])
+    def __init__(self, 
+                 sev: np.ndarray, 
+                 xdata: np.ndarray, 
+                 order: int, 
+                 fit_onset: bool = True,
+                 max_shift: int = 50):
+        self._sev = sev
+        self._xdata = xdata
+        self._order = order
+        self._fit_onset = fit_onset
+        self._max_shift = max_shift
+
+    def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
+        """
+        Performs the template fit including a non-trivial baseline.
+        See https://edoc.ub.uni-muenchen.de/23762/ for details.
+
+        :param ev: The event to be fitted
+        :type ev: np.ndarray
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+        
+        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``.
+        :rtype: Tuple[np.ndarray, int, float]
+        """
+        if self._fit_onset:
+            res = minimize(self._chij2_poly, 
+                        x0=0, 
+                        args=(ev, flag), 
+                        method="Powell", 
+                        bounds=[(-self._max_shift, self._max_shift)])
+            shift = int(res.x)
+        else:
+            shift = 0
+        
+        return  ( solve(self._A(shift, flag), self._b(shift, ev, flag), assume_a="sym"), # optimal parameters
+                  shift, # optimal shift
+                  np.sqrt(self._chij2_poly(shift, ev, flag)) ) # RMS
     
-    if fit_onset:
-        res = minimize(chij2_poly, 
-                       x0=0, 
-                       args=(sev, ev, xdata, order, flag), 
-                       method="Powell", 
-                       bounds=[(-max_shift, max_shift)])
-        shift = int(res.x)
-    else:
-        shift = 0
+    def _chij2_poly(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        """
+        Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` including a non-trivial baseline.
+
+        :param j: The shift.
+        :type j: int
+        :param ev: The event to be fitted.
+        :type ev: np.ndarray
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+        
+        :return: The chi-squared value.
+        :rtype: float
+        """
+        j = int(np.round(j))
+        s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
+            
+        sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
+        return np.mean((y - sol[0]*s - np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0))**2)
+
+    def _A(self, j: int, flag: np.ndarray = None):
+        """
+        Returns the matrix for the linear system of equations needed for the template fit including a non-trivial baseline. If flag is None, cached values (if available) for a given shift value ``j`` are returned.
+
+        :param j: The shift value.
+        :type j: int
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+        
+        :return: The matrix for the linear system of equations.
+        :rtype: np.ndarray
+        """
+        return self._A_cached(j) if flag is None else self._A_uncached(j, flag)
+
+    def _A_uncached(self, j: int, flag: np.ndarray):
+        s, x = shift_arrays(self._sev, self._xdata, j=j, flag=flag)
+
+        return np.concatenate([
+            np.array([ [np.mean(s**2)] + [np.mean(s*x**k) for k in range(self._order+1)] ]),
+            np.array([ 
+                [np.mean(s*x**l)] + [np.mean(x**(k+l)) for k in range(self._order+1)]
+                for l in range(self._order+1)
+            ])
+        ])
+
+    @cache
+    def _A_cached(self, j: int):
+        return self._A_uncached(j=j, flag=None)
     
-    return  ( poly_sol(*shift_arrays(sev, ev, xdata, j=shift, flag=flag), order), shift,
-              np.sqrt(chij2_poly(shift, sev, ev, xdata, order, flag)) )
+    def _b(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        """
+        Returns right hand side for the linear system of equations needed for the template fit including a non-trivial baseline.
+
+        :param j: The shift value.
+        :type j: int
+        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
+        :type flag: np.ndarray, optional
+
+        :return: The right hand side for the linear system of equations.
+        :rtype: np.ndarray
+        """
+        s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
+        return np.array([np.mean(y*s)] + [np.mean(y*x**k) for k in range(self._order+1)])
 
 ########################
 ### CLASS DEFINITION ###
@@ -329,14 +326,17 @@ class TemplateFit(FncBaseClass):
 
         if bl_poly_order is None:
             self._mode = 'simple'
-            self._solver = template_fit_simple
-            self._solver_args = dict(sev=self._sev, fit_onset=fit_onset, max_shift=max_shift)
+            self._solver = _TemplateCacheSimple(sev=self._sev, 
+                                                fit_onset=fit_onset, 
+                                                max_shift=max_shift)
             self._rm_bl = RemoveBaseline(dict(model=0, where=1/8, xdata=None))
         else:
             self._mode = 'poly'
-            self._solver = template_fit_poly
-            self._solver_args = dict(sev=self._sev, order=bl_poly_order, xdata=self._xdata,
-                                     fit_onset=fit_onset, max_shift=max_shift)
+            self._solver = _TemplateCachePoly(sev=self._sev, 
+                                              xdata=self._xdata, 
+                                              order=bl_poly_order, 
+                                              fit_onset=fit_onset, 
+                                              max_shift=max_shift)
             self._rm_bl = RemoveBaseline(dict(model=1, where=1/8, xdata=None))
 
     def __call__(self, event):
@@ -351,7 +351,7 @@ class TemplateFit(FncBaseClass):
                 below_truncation_limit = np.ones_like(flag)
                 below_truncation_limit[start:end] = False
                 
-        return self._solver(event, **self._solver_args, flag=below_truncation_limit)
+        return self._solver(event, flag=below_truncation_limit)
     
     @property
     def batch_support(self):
