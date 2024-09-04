@@ -5,6 +5,7 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from .arraywithbenefits import ArrayWithBenefits
+from .helper import is_array_like
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..eventfunctions.processing.removebaseline import RemoveBaseline
 from ..plot.basic.line import Line
@@ -17,7 +18,7 @@ class SEV(ArrayWithBenefits):
 
     If created from an `EventIterator`, the (constant) baseline is removed automatically.
 
-    :param data: The data to use for the SEV. If None, an empty SEV is created. If `np.ndarray`, each row in the array is interpreted as a SEV for separate channels. If iterator (possibly from multiple channels) a SEV is calculated by averaging the events returned by the iterator. Defaults to None.
+    :param data: The data to use for the SEV. If None, an empty SEV is created. If `np.ndarray` (or a list that can be converted to an array), each row in the array is interpreted as a SEV for separate channels. If iterator (possibly from multiple channels) a SEV is calculated by averaging the events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
     """
     def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None):
@@ -46,8 +47,8 @@ class SEV(ArrayWithBenefits):
                 if self._n_ch == 1: self._sev = self._sev.flatten()
             else:
                 self._n_ch = 1
-        elif isinstance(data, np.ndarray):
-            self._sev = data
+        elif isinstance(data, np.ndarray) or is_array_like(data):
+            self._sev = np.array(data)
             if self._sev.ndim > 1:
                 self._n_ch = self._sev.shape[0]
                 if self._n_ch == 1: self._sev = self._sev.flatten()

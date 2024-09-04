@@ -5,6 +5,7 @@ import numpy as np
 from tqdm.auto import tqdm
 
 from .arraywithbenefits import ArrayWithBenefits
+from .helper import is_array_like
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..eventfunctions.processing.removebaseline import RemoveBaseline
 from ..plot.basic.line import Line
@@ -42,8 +43,8 @@ class NPS(ArrayWithBenefits):
                 if self._n_ch == 1: self._nps = self._nps.flatten()
             else:
                 self._n_ch = 1
-        elif isinstance(data, np.ndarray):
-            self._nps = data
+        elif isinstance(data, np.ndarray) or is_array_like(data):
+            self._nps = np.array(data)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()
