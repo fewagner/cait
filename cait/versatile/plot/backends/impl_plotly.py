@@ -163,7 +163,7 @@ class BaseClassPlotly(BackendBaseClass):
             arg = dict(xbins=dict(start=bins[0], end=bins[1], size=(bins[1]-bins[0])/bins[2]) )
         elif isinstance(bins, (list, np.ndarray)):
             bins = np.array(bins)
-            if np.unique(np.diff(bins)).size > 1:
+            if not np.all(np.diff(np.unique(np.diff(bins))) < 1e-10):
                 raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
             arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
@@ -220,7 +220,7 @@ class BaseClassPlotly(BackendBaseClass):
             arg = dict(xbins=dict(start=bins[0], end=bins[1], size=(bins[1]-bins[0])/bins[2]) )
         elif isinstance(bins, (list, np.ndarray)):
             bins = np.array(bins)
-            if np.unique(np.diff(bins)).size > 1:
+            if not np.all(np.diff(np.unique(np.diff(bins))) < 1e-10):
                 raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
             arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
