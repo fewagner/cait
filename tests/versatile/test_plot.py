@@ -16,7 +16,8 @@ DATA = dict(
     histogram = dict(
         hist1 = [None, np.sin(x)],
         hist2 = [100, np.sin(x)],
-        hist3 = [(0.1,1,20), np.sin(x)] 
+        hist3 = [(0.1,1,20), np.sin(x)],
+        hist4 = [np.arange(1,10), np.sin(x)] 
     ),
     axes = dict(
         xaxis = {"label": "xlabel", "scale": "log"},

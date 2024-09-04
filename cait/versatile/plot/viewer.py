@@ -193,7 +193,7 @@ class Viewer():
         """
         self.fig_widget._add_scatter(x, y, name)
 
-    def add_histogram(self, bins: Union[int, tuple], data: List[float], name: str = None):
+    def add_histogram(self, bins: Union[int, tuple, list], data: List[float], name: str = None):
         """
         Add a histogram to the figure. If a name is provided, it is registered and can later be updated.
 
@@ -226,7 +226,7 @@ class Viewer():
         """
         self.fig_widget._update_scatter(name, x, y)
 
-    def update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+    def update_histogram(self, name: str, bins: Union[int, tuple, list], data: List[float]):
         """
         Update the histogram called `name` with data `data` and bins `bins`.
         See `func:add_histogram` for an explanation of the arguments.
