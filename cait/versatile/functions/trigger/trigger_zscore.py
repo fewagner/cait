@@ -105,7 +105,7 @@ def trigger_zscore(stream: ArrayLike,
     phs = np.zeros(len(inds), dtype=np.float32)
     processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
 
-    for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights")):
+    for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
         trace = stream[ind-before:ind+after]
         for p in processing: trace = p(trace)
 
