@@ -1,5 +1,7 @@
 from typing import List
-from functools import cache
+# cannot use functools.cache because it got added in python 3.9 and cait currently supports python 3.8 still
+# but as of the functools documentation, functools.lru_cache(maxsize=None) is equivalent to functools.cache
+from functools import lru_cache
 
 import numpy as np
 from scipy.optimize import minimize
@@ -134,7 +136,7 @@ class _TemplateCacheSimple:
     def _norm2_uncached(self, j: int, flag: np.ndarray):
         return np.sum( shift_arrays(self._sev, j=j, flag=flag)[0]**2 )
     
-    @cache
+    @lru_cache(maxsize=None)
     def _norm2_cached(self, j: int):
         return self._norm2_uncached(j=j, flag=None)
     
@@ -237,7 +239,7 @@ class _TemplateCachePoly:
             ])
         ])
 
-    @cache
+    @lru_cache(maxsize=None)
     def _A_cached(self, j: int):
         return self._A_uncached(j=j, flag=None)
     
