@@ -96,6 +96,8 @@ class DataHandler(SimulateMixin,
     Filepath and -name saved.
 
     Most of the methods are included via parent mixin classes (see folder cait/mixins).
+
+    .. automethod:: __getitem__
     """
 
     def __init__(self,
@@ -111,7 +113,7 @@ class DataHandler(SimulateMixin,
 
         self.run = run
         self.module = module
-        self.record_length = record_length
+        self._record_length = record_length
         self.channels = channels
         if channels is not None:
             self.nmbr_channels = len(channels)
@@ -120,10 +122,10 @@ class DataHandler(SimulateMixin,
                               "not from the nmbr_channels argument!")
         elif nmbr_channels is not None:
             self.nmbr_channels = nmbr_channels
-        self.sample_frequency = sample_frequency
-        self.sample_length = 1000 / self.sample_frequency
-        self.t = (np.arange(0, self.record_length, dtype=float) -
-                  self.record_length / 4) * self.sample_length
+        self._sample_frequency = sample_frequency
+        self.sample_length = 1000 / self._sample_frequency
+        self.t = (np.arange(0, self._record_length, dtype=float) -
+                  self._record_length / 4) * self.sample_length
 
         if self.nmbr_channels == 2:
             self.channel_names = ['Phonon', 'Light']
@@ -183,6 +185,63 @@ class DataHandler(SimulateMixin,
                     info += f"Last testpulse on/at: {datetime_fmt(f['testpulses/time_s'][-1])}\n"
 
         return info
+    
+    def __getitem__(self, val):
+        """
+        Shortcut syntax for :meth:`DataHandler.get`. The following are equivalent for a DataHandler object ``dh``:
+        
+        - ``dh.get("events", "pulse_height")`` and ``dh["events/pulse_height"]``
+        - ``dh.get("events", "pulse_height", 0)`` and ``dh["events/pulse_height", 0]``
+        - ``dh.get("events", "mainpar", 0, None, 1)`` and ``dh["events/pulse_height", 0, :, 1]``
+
+        See :meth:`DataHandler.get` for further documentation.
+        """
+        if isinstance(val, str): 
+            return self.get(*val.split("/"))
+        elif isinstance(val, tuple):
+            return self.get(*val[0].split("/"), *tuple(val[1:]))
+        else:
+            raise NotImplementedError(f"Unsupported slicing argument {val} of type {type(val)}.")
+    
+    # used for TAB-completion in iPython/notebooks. Example: dh['ev<TAB> -> 'events/'
+    def _ipython_key_completions_(self):
+        with self.get_filehandle(mode="r") as f:
+            suggestions = [f"{k}/{ds}" for k in f.keys() for ds in f[k]]
+            suggestions += [s.split("mainpar")[0]+mp
+                            for mp in MAINPAR 
+                            for s in suggestions if s.endswith("/mainpar")]
+            suggestions += [s.split("add_mainpar")[0]+mp
+                            for mp in ADD_MAINPAR 
+                            for s in suggestions if s.endswith("/add_mainpar")]
+
+        return suggestions
+    
+    @property
+    def sample_frequency(self):
+        """
+        The sampling frequency of the data in Hz.
+        
+        :return: Sampling frequency (Hz)
+        :rtype: int
+        """
+        return self._sample_frequency
+    
+    @property
+    def dt_us(self):
+        """
+        The length of a sample in the data in microseconds.
+        
+        :return: Microsecond time-delta
+        :rtype: int
+        """
+        return int(1e6//self.sample_frequency)
+    
+    @property
+    def record_length(self):
+        """
+        Returns the record length (in samples) of the events in this DataHandler.
+        """
+        return self._record_length
         
     def set_filepath(self,
                      path_h5: str,
@@ -807,12 +866,9 @@ class DataHandler(SimulateMixin,
         # if requested dataset is a virtual dataset, we have to make sure that the original files still 
         # exist. Otherwise the returned data is nonsensical
         with self.get_filehandle(mode="r") as f:
-            if dataset in MAINPAR:
-                if dataset == "pulse_height" and 'pulse_height' in f[group]:
-                    available = ds_source_available(f, group, "pulse_height")
-                else: 
-                    available = ds_source_available(f, group, "mainpar")
-            elif dataset in ADD_MAINPAR:
+            if (dataset in MAINPAR) and (dataset not in f[group]):
+                available = ds_source_available(f, group, "mainpar")
+            elif (dataset in ADD_MAINPAR) and (dataset not in f[group]):
                 available = ds_source_available(f, group, "add_mainpar")
             else:
                 available = ds_source_available(f, group, dataset)
@@ -828,15 +884,15 @@ class DataHandler(SimulateMixin,
         with self.get_filehandle(mode="r") as f:
             if dataset == 'pulse_height' and 'pulse_height' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 0])
-            elif dataset == 'onset':
+            elif dataset == 'onset' and 'onset' not in f[group]:
                 data = np.array((f[group]['mainpar'][idx0, idx1, 1] - self.record_length / 4) / self.sample_frequency * 1000)
-            elif dataset == 'rise_time':
+            elif dataset == 'rise_time' and 'rise_time' not in f[group]:
                 data = np.array(
                     (f[group]['mainpar'][idx0, idx1, 2] - f[group]['mainpar'][idx0, idx1, 1]) / self.sample_frequency * 1000)
-            elif dataset == 'decay_time':
+            elif dataset == 'decay_time' and 'decay_time' not in f[group]:
                 data = np.array(
                     (f[group]['mainpar'][idx0, idx1, 6] - f[group]['mainpar'][idx0, idx1, 4]) / self.sample_frequency * 1000)
-            elif dataset == 'slope':
+            elif dataset == 'slope' and 'slope' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 8] * self.record_length)
             else:
                 for i, name in enumerate(ADD_MAINPAR):

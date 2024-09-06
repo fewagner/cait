@@ -7,9 +7,7 @@ import scipy as sp
 from ..viewer import Viewer
 from ...datasources.stream.streambase import StreamBaseClass
 from ...datasources.stream.factory import Stream
-
-def filter_chunk(data, of):
-    return sp.signal.oaconvolve(data, np.fft.irfft(of))
+from ...functions.trigger.trigger_of import filter_chunk
 
 # Has no test case (yet)
 class StreamViewer(Viewer):
@@ -139,11 +137,19 @@ class StreamViewer(Viewer):
                 
         if self._of is not None:
             record_length = 2*(self._of.shape[-1] - 1)
-            d = record_length if self.current_start > record_length else 0
-            where_filter = slice(self.current_start - d, 
+            if self.current_start > record_length:
+                where_filter = slice(self.current_start - record_length, 
                                  self.current_start + self.n_points*self.downsample_factor + record_length)
+                chunk_to_filter = self.stream[self._keys[0], where_filter, "as_voltage"]
+                
+            else:
+                where_filter = slice(self.current_start, 
+                                 self.current_start + self.n_points*self.downsample_factor + record_length)
+                chunk_to_filter = np.concatenate([np.zeros(record_length), self.stream[self._keys[0], where_filter, "as_voltage"]])
             
-            filtered_stream = filter_chunk(self.stream[self._keys[0], where_filter, "as_voltage"], self._of)[d:-record_length]
+            
+            
+            filtered_stream = filter_chunk(chunk_to_filter, self._of, record_length)
             self.update_line(name=f"{self._keys[0]} (filtered)", x=t_ms, y=filtered_stream[::self.downsample_factor])
             
             if self._marks_timestamps:

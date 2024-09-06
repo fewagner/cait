@@ -18,9 +18,9 @@ class CalcMP(FncBaseClass):
     :type peak_bounds: tuple, optional
     :param edge_size: The (relative) size of the record window that is used to compute the linear drift. Defaults to 1/8, meaning that the first and last 1/8th of the record window is used.
     :type edge_size: float, optional
-    :param box_car_smoothing: Arguments for class:`BoxCarSmoothing`, which are used for the application of the moving average. Defaults to ``{'length': 50}``.
+    :param box_car_smoothing: Arguments for :class:`BoxCarSmoothing`, which are used for the application of the moving average. Defaults to ``{'length': 50}``.
     :type box_car_smoothing: dict, optional
-    :param fit_baseline: Arguments for class:`FitBaseline`, which are used for the baseline subtractions. Defaults to ``{'model': 0, 'where': 1/8, 'xdata': None}``.
+    :param fit_baseline: Arguments for :class:`FitBaseline`, which are used for the baseline subtractions. Defaults to ``{'model': 0, 'where': 1/8, 'xdata': None}``.
     :type fit_baseline: dict, optional
 
     :return: Either an array or tuple. See above.

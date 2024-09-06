@@ -103,6 +103,9 @@ def trigger_base(stream: ArrayLike,
             raise TypeError(f"Unsupported type '{type(apply_first)}' for input argument 'apply_first'.")
     else:
         apply_first = []
+        
+    if len(stream) <= 3*record_length:
+        raise Exception(f"Length of data to trigger ({len(stream)}) has to be larger than three record windows (3*{record_length}). See docstring about the trigger algorithm.")
 
     # total number of samples in the stream
     stream_length = len(stream)
@@ -110,7 +113,10 @@ def trigger_base(stream: ArrayLike,
     search_length = chunk_size*record_length
 
     # number of such search chunks (the first and last record window is not
-    # searched because those regions cannot be filtered correctly)
+    # searched because it cannot be filtered correctly, the second to last is implicitly
+    # searched because the chunks are expanded by one record length both at the beginning
+    # and at the end, and the last record window shouldn't be searched because then
+    # potential events cannot be completely read from the streams data)
     n_search_areas = (stream_length - 3*record_length)//search_length
     remainder = (stream_length - 3*record_length)%search_length
 
@@ -122,9 +128,11 @@ def trigger_base(stream: ArrayLike,
     ends = [s+sz for s,sz in zip(starts, search_area_sizes)]
 
     # initialize a chunk for the filtering (this has to start one record window
-    # early and end two record windows after the search stop)
-    # chunk = np.zeros(search_length + 3*record_length)
+    # early and end one record windows after the search stop)
+    # also initialize an array for the filtering result (this will be one 
+    # record windows shorter)
     chunk = np.zeros(search_length + 2*record_length)
+    filtered_chunk = np.zeros(search_length + record_length)
 
     # Initialize the lists that will collect the triggers
     trigger_inds = []
@@ -136,14 +144,14 @@ def trigger_base(stream: ArrayLike,
     # because trigger was found close to edge of previous chunk)
     skip_first = 0
 
-    for s, e, sz in zip(pbar := tqdm(starts), ends, search_area_sizes):
-        # chunk[:sz+3*record_length] = stream[s-record_length:e+2*record_length]
+    for s, e, sz in zip(pbar := tqdm(starts, disable=len(starts)<2), ends, search_area_sizes):
         chunk[:sz+2*record_length] = stream[s-record_length:e+record_length]
 
-        for f in apply_first: chunk[:] = f(chunk)
+        for f in apply_first: chunk[:sz+2*record_length] = f(chunk[:sz+2*record_length])
 
-        filtered_chunk = filter_fnc(chunk)
-        inds, vals = search_chunk(filtered_chunk, threshold, record_length, skip_first=skip_first)
+        # filter the relevant part of the chunk (the result is one record windows shorter than that)
+        filtered_chunk[:sz+record_length] = filter_fnc(chunk[:sz+2*record_length])
+        inds, vals = search_chunk(filtered_chunk[:sz+record_length], threshold, record_length, skip_first=skip_first)
 
         trigger_inds += [s+i for i in inds]
         trigger_vals += vals
@@ -151,8 +159,6 @@ def trigger_base(stream: ArrayLike,
 
         pbar.set_postfix({"triggers found": triggers_found})
         if (n_triggers is not None) and (triggers_found > n_triggers): break
-
-        chunk[:] = 0
 
         # If trigger is found in last window of search area, we blind the
         # beginning of the following chunk

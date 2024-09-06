@@ -67,6 +67,12 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     sev7 = SEV(it[0])
     assert np.array_equal(sev6[0], sev7)
 
+    it = dh.get_event_iterator("events", batch_size=13)
+    sev8 = SEV(it)
+    sev9 = SEV(it[0])
+    assert np.array_equal(sev6, sev8)
+    assert np.array_equal(sev7, sev9)
+
     basic_checks(dh, sev2, 0)
     basic_checks(dh, sev3, 1)
     basic_checks(dh, sev4, 2)
@@ -95,6 +101,12 @@ def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     nps6 = NPS(it)
     nps7 = NPS(it[0])
     assert np.array_equal(nps6[0], nps7)
+
+    it = dh.get_event_iterator("noise", batch_size=13)
+    nps8 = NPS(it)
+    nps9 = NPS(it[0])
+    assert np.array_equal(nps6, nps8)
+    assert np.array_equal(nps7, nps9)
 
     basic_checks(dh, nps2, 0)
     basic_checks(dh, nps3, 1)

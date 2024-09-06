@@ -124,6 +124,9 @@ class BaseClassUniplot(BackendBaseClass):
             arg = dict(bins=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(bins=np.arange(bins[0], bins[1], (bins[1]-bins[0])/bins[2]))
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            arg = dict(bins=bins)
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
 

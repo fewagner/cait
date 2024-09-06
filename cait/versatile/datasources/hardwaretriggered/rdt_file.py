@@ -196,6 +196,10 @@ class RDTFile:
         
         return RDTChannel(self, key=channels)
     
+    # used for TAB-completion in iPython/notebooks. Example: rdtf[<TAB> -> 0
+    def _ipython_key_completions_(self):
+        return self.keys
+    
     @property
     def _file(self):
         """The `numpy.memmap` object to the underlying `*.rdt` file."""
@@ -214,7 +218,7 @@ class RDTFile:
     @property
     def sample_frequency(self):
         """The sample frequency in Hz of the events in the corresponding `*.rdt` file."""
-        return int(np.round(1e6/self._par.time_base_us))
+        return int(1e6//self.dt_us)
     
     @property
     def measuring_time_h(self):
@@ -248,7 +252,8 @@ class RDTFile:
         :return: Array of as many ADC/voltage traces as given `inds`.
         :rtype: numpy.array
         """
-        data = self._file[inds]["samples"]
+        # index with ["key", inds] for best XRootD-protocol read performance
+        data = self._file["samples", inds]
         return ai.data.convert_to_V(data, bits=16, min=-10, max=10) if voltage else data
 
     # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT     
@@ -372,22 +377,29 @@ class RDTChannel(DataSourceBaseClass):
         return s*int(1e6) + mus
     
     @property
+    def dt_us(self):
+        return self._rdt_file.dt_us
+    
+    @property
     def timestamps(self):
         """The microsecond timestamps of the events in this RDTChannel."""
-        secs = np.array(self._rdt_file._file[self._inds[0]]["abs_time_s"], dtype=np.int64)
-        msecs = np.array(self._rdt_file._file[self._inds[0]]["abs_time_mus"], dtype=np.int64)
+        # index with ["key", inds] for best XRootD-protocol read performance
+        secs = np.array(self._rdt_file._file["abs_time_s", self._inds[0]], dtype=np.int64)
+        msecs = np.array(self._rdt_file._file["abs_time_mus", self._inds[0]], dtype=np.int64)
 
         return secs*int(1e6) + msecs
     
     @property
     def tpas(self):
         """The testpulse amplitudes of the events in this RDTChannel."""
-        return self._rdt_file._file[self._inds[0]]["test_pulse_amplitude"]
+        # index with ["key", inds] for best XRootD-protocol read performance
+        return self._rdt_file._file["test_pulse_amplitude", self._inds[0]]
     
     @property
     def unique_tpas(self):
         """The unique testpulse amplitudes of the events in this RDTChannel."""
-        return sorted(list(set(self.tpas)))
+        # use numpy string representation to convert to python floats
+        return sorted([float(str(x)) for x in np.unique(self.tpas)])
     
     def get_event_iterator(self, batch_size: int = None):
         """

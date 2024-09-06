@@ -189,7 +189,10 @@ class IteratorBaseClass(ABC):
         new_params = params.copy()
         new_params["batch_size"] = batch_size
 
-        return self.__class__(**new_params)
+        new_iterator = self.__class__(**new_params)
+        new_iterator.add_processing(self.fncs.copy())
+
+        return new_iterator
     
     def flatten(self):
         """
@@ -264,6 +267,16 @@ class IteratorBaseClass(ABC):
         Returns the time base (in microseconds) of the events in the iterator.
         """
         ...
+
+    @property
+    def sample_frequency(self):
+        """
+        Returns the sampling frequency (in Hz) of the events in the iterator.
+        
+        :return: Sampling frequency (Hz)
+        :rtype: int
+        """
+        return int(1e6//self.dt_us)
 
     @property
     @abstractmethod

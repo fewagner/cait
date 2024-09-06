@@ -25,7 +25,11 @@ def filter_chunk(data: np.ndarray, of: np.ndarray, record_length: int):
     :return: Filtered chunk
     :rtype: np.ndarray
     """
-    return sp.signal.oaconvolve(data, np.fft.irfft(of))[record_length:-record_length]
+    # The scipy function 'oaconvolve' does NOT assume the response function to be in wrap-around order.
+    # Therefore, we have to shift it such that the maximum position is again at 1/4 of the record window
+    offset = record_length//4
+    return sp.signal.oaconvolve(np.roll(np.fft.irfft(of), offset),
+                                data)[record_length+offset:-record_length+offset]
 
 def trigger_of(stream: ArrayLike,
                threshold: float, 

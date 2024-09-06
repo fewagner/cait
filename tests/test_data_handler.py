@@ -116,6 +116,21 @@ class TestDataHandler:
         diffs.append( datahandler.get("group3", "ds1d", 1) - 10*d1)
         diffs.append( datahandler.get("group3", "ds2d", 0, None, 3) - d2[:,3])
         diffs.append( datahandler.get("group3", "ds2d", 1, [1]) - 100*d2[1])
+        # check short-cut notation
+        diffs.append( datahandler.get("group2", "ds1") - datahandler["group2/ds1"] )
+        diffs.append( datahandler.get("group2", "ds2") - datahandler["group2/ds2"] )
+        diffs.append( datahandler.get("group2", "ds3") - datahandler["group2/ds3"] )
+        diffs.append( datahandler.get("group3", "ds1d") - datahandler["group3/ds1d"] )
+        diffs.append( datahandler.get("group3", "ds2d") - datahandler["group3/ds2d"] )
+        diffs.append( datahandler.get("group4", "ds") - datahandler["group4/ds"] )
+        diffs.append( datahandler.get("group3", "ds1d", 0) - 
+                        datahandler["group3/ds1d", 0])
+        diffs.append( datahandler.get("group3", "ds1d", 1) - 
+                        datahandler["group3/ds1d", 1])
+        diffs.append( datahandler.get("group3", "ds2d", 0, None, 3) - 
+                        datahandler["group3/ds2d", 0, :, 3])
+        diffs.append( datahandler.get("group3", "ds2d", 1, [1]) - 
+                        datahandler["group3/ds2d", 1, [1]])
 
         assert all( [np.all(np.abs(d) < 1e-5) for d in diffs] )
 

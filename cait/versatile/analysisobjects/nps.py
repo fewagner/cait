@@ -2,11 +2,12 @@ from typing import Union
 import os
 
 import numpy as np
+from tqdm.auto import tqdm
 
 from .arraywithbenefits import ArrayWithBenefits
+from .helper import is_array_like
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..eventfunctions.processing.removebaseline import RemoveBaseline
-from ..functions.apply import apply
 from ..plot.basic.line import Line
 
 from ...data import write_xy_file
@@ -26,15 +27,24 @@ class NPS(ArrayWithBenefits):
             self._nps = np.empty(0)
             self._n_ch = 0
         elif isinstance(data, IteratorBaseClass):
-            data = data.with_processing(RemoveBaseline())
-            self._nps = np.mean(apply(lambda x: np.abs(np.fft.rfft(x))**2, data), axis=0)
+            data = data.flatten().with_processing([RemoveBaseline(), 
+                                                lambda x: np.abs(np.fft.rfft(x))**2])
+            if len(data) > 1000:
+                self._nps = np.zeros_like(data.grab(0))
+                with data:
+                    for ev in tqdm(data, delay=5):
+                        self._nps+=ev
+                self._nps/=len(data)
+            else:
+                with data:
+                    self._nps = np.mean(data, axis=0)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()
             else:
                 self._n_ch = 1
-        elif isinstance(data, np.ndarray):
-            self._nps = data
+        elif isinstance(data, np.ndarray) or is_array_like(data):
+            self._nps = np.array(data)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()

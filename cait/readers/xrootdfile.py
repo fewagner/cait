@@ -229,7 +229,10 @@ class XRootDReader:
             elif is_ndim_index_list(val):
                 val_arr = np.array(val)
                 orig_shape = val_arr.shape
-                return np.reshape(self[val_arr.flatten().tolist()], orig_shape)
+                out = self[val_arr.flatten().tolist()]
+                # add -1 in case the return value is an array (automatically infers new shape)
+                if out[0].ndim > 0: orig_shape = tuple(list(orig_shape) + [-1])
+                return np.reshape(out, orig_shape)
             # f[13]
             elif isinstance(val, (int, np.integer)):
                 return self[[val]]
@@ -243,7 +246,15 @@ class XRootDReader:
             elif isinstance(val, tuple) and len(val) == 2:
                 # f["key", :10] or f["key", [0, 1, 2]], etc.
                 if is_str_like(val[0]):
-                    return field_read(s._f, self._dtype, val[0], self._offset, val[1], **self._vread_info)
+                    if is_ndim_index_list(val[1]):
+                        val_arr = np.array(val[1])
+                        orig_shape = val_arr.shape
+                        out = field_read(s._f, self._dtype, val[0], self._offset, val_arr.flatten().tolist(), **self._vread_info)
+                        # add -1 in case the return value is an array (automatically infers new shape)
+                        if out[0].ndim > 0: orig_shape = tuple(list(orig_shape) + [-1])
+                        return np.reshape(out, orig_shape)
+                    else:
+                        return field_read(s._f, self._dtype, val[0], self._offset, val[1], **self._vread_info)
                 # f[:10, 0] or f[[0,1,2], "key"], or f[:100, "key"], etc.
                 elif isinstance(val[0], (int, np.integer, slice)) or is_index_list(val[0]) or is_ndim_index_list(val[0]):
                     return self[val[0]][val[1]]
