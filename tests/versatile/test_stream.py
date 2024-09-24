@@ -88,7 +88,52 @@ def test_VDAQ3():
 
 # TODO: test either on "real" data or figure out how cait simulates stream files
 # to validate the trigger indices
-def test_trigger(stream_csmpl):
+def test_trigger_basic(stream_csmpl):
     i, v = vai.trigger_zscore(stream_csmpl["Ch0"], 2**14)
     i, v = vai.trigger_zscore(stream_csmpl["Ch0"], 2**14, n_triggers=10)
     i, v = vai.trigger_zscore(stream_csmpl["Ch1"], 2**14, apply_first=lambda x: -x)
+
+def test_trigger_single_samples():
+    record_length = 2**15
+    of = np.ones(record_length//2+1)
+
+    for trigger in [lambda d: vai.trigger_zscore(d, record_length=record_length),
+                    lambda d: vai.trigger_of(d, threshold=0.5, of=of)]:
+
+        # should not find the peak (outside of search area)
+        data = np.zeros(record_length*13)
+        data[record_length-1] = 1
+        i, _ = trigger(data)
+        assert len(i)==0
+
+        # should find the peak on first searched sample
+        data = np.zeros(record_length*13)
+        data[record_length] = 1
+        i, _ = trigger(data)
+        assert len(i)==1 and i[0]==record_length 
+
+        # should not find the peak (outside of search area)
+        data = np.zeros(record_length*13)
+        data[-2*record_length] = 1
+        i, _ = trigger(data)
+        assert len(i)==0 
+
+        # should find the peak on first sample (from back) that is searched
+        data = np.zeros(record_length*13)
+        data[-2*record_length-1] = 1
+        i, _ = trigger(data)
+        assert len(i)==1 and i[0]==(len(data) - 2*record_length - 1)
+
+        # should find the peak on first searched sample but not the second one (within record_length/2)
+        data = np.zeros(record_length*13)
+        data[record_length] = 1
+        data[record_length+record_length//2] = 1
+        i, _ = trigger(data)
+        assert len(i)==1
+
+        # should find both peaks (outside record_length/2)
+        data = np.zeros(record_length*13)
+        data[record_length] = 1
+        data[record_length+record_length//2+1] = 1
+        i, _ = trigger(data)
+        assert len(i)==2 and i[1]==(record_length+record_length//2+1)

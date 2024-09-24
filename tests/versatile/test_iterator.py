@@ -43,10 +43,14 @@ def testdata(tempdir):
 def basic_checks(it):
     # Copy to not alter the original iterator
     it = it[:,:]
+    assert not it.has_processing
+
     # Test adding of processing
     it_new = it.with_processing(lambda x: x**2)
+    assert it_new.has_processing
     it.add_processing(lambda x: x**2)
-
+    assert it.has_processing
+    
     # Test application of function
     arr1 = apply(lambda x: -x, it)
     arr2 = apply(lambda x: x, it)

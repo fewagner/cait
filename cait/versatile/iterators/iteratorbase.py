@@ -174,6 +174,14 @@ class IteratorBaseClass(ABC):
 
         return self[:,:].add_processing(f)
     
+    def pop_processing(self):
+        """
+        Removes all processing functions from the iterator and returns them as a list.
+        """
+        fncs = self.fncs.copy()
+        self.fncs = list()
+        return fncs
+    
     def with_batchsize(self, batch_size: int):
         """
         Returns an identical iterator but with a different batch size.
@@ -244,6 +252,13 @@ class IteratorBaseClass(ABC):
         Returns the number of batches in the iterator.
         """
         return self._n_batches
+    
+    @property
+    def has_processing(self):
+        """
+        Returns True if one or more processing functions have been added to the iterator.
+        """
+        return len(self.fncs) > 0
     
     @property
     def hours(self):

@@ -38,7 +38,8 @@ def trigger_zscore(stream: ArrayLike,
                    threshold: float = 5,
                    n_triggers: int = None,
                    chunk_size: int = 100,
-                   apply_first: Union[callable, List[callable]] = None):
+                   apply_first: Union[callable, List[callable]] = None,
+                   n_processes: int = None):
     """
     Trigger a single channel of a stream using a moving z-score. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
@@ -52,6 +53,8 @@ def trigger_zscore(stream: ArrayLike,
     :type chunk_size: int
     :param apply_first: A function or list of functions to be applied to the stream data BEFORE the filter function is applied. E.g. ``lambda x: -x`` to trigger on the inverted stream.
     :type apply_first: Union[callable, List[callable]], optional
+    :param n_processes: The number of processes to use to process chunks. If None, all available cores are utilized. Defaults to None
+    :type n_processes: int, optional
 
     :return: Tuple of trigger indices and trigger heights.
     :rtype: Tuple[List[int], List[float]]
@@ -82,7 +85,8 @@ def trigger_zscore(stream: ArrayLike,
                             record_length=record_length,
                             n_triggers=n_triggers,
                             chunk_size=chunk_size,
-                            apply_first=apply_first)
+                            apply_first=apply_first,
+                            n_processes=n_processes)
     
     if not inds: return [], []
     
