@@ -1,0 +1,48 @@
+# MODIFIED VERSION OF THE STYLESHEET MIMICING ROOT IN https://github.com/scikit-hep/mplhep/tree/master
+
+axes.prop_cycle: cycler("color", ["4b73ae", "dd8456", "55a86c", "c44e53", "8173b1", "937861", "da8cc1", "8c8c8c", "ccb979", "63b5cc"])
+
+font.sans-serif: [TeX Gyre Heros, Helvetica, Arial]
+font.family: sans-serif
+mathtext.fontset: custom
+mathtext.rm: TeX Gyre Heros
+mathtext.bf: TeX Gyre Heros:bold
+mathtext.sf: TeX Gyre Heros
+mathtext.it: TeX Gyre Heros:italic
+mathtext.tt: TeX Gyre Heros
+mathtext.cal: TeX Gyre Heros
+mathtext.default: regular
+font.size: 17
+axes.labelsize: medium
+axes.unicode_minus: False
+xtick.labelsize: small
+ytick.labelsize: small
+legend.fontsize: small
+legend.handlelength: 1
+legend.borderpad: 2
+legend.frameon: False
+xtick.direction: in
+xtick.major.size: 12
+xtick.minor.size: 6
+xtick.major.pad: 6
+xtick.top: True
+xtick.major.top: True
+xtick.major.bottom: True
+xtick.minor.top: True
+xtick.minor.bottom: True
+xtick.minor.visible: True
+ytick.direction: in
+ytick.major.size: 12
+ytick.minor.size: 6.0
+ytick.right: True
+ytick.major.left: True
+ytick.major.right: True
+ytick.minor.left: True
+ytick.minor.right: True
+ytick.minor.visible: True
+grid.alpha: 0.8
+grid.linestyle: :
+axes.linewidth: 2
+savefig.transparent: False
+xaxis.labellocation: right
+yaxis.labellocation: top

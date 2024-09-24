@@ -58,7 +58,7 @@ class BaseClassMPL(BackendBaseClass):
     Line/scatter plots are created for each key of the line/scatter dictionaries. The respective values have to be tuples/lists of length 2 including x and y data.
     The axes dictionary (as well as 'label' and 'scale') are optional and only intended to be used in case one wants to put axes labels or change to a log scale.
 
-    :param template: Custom style 'cait', 'science' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'seaborn'
+    :param template: Custom style 'cait', 'root' or any valid matplotlib theme, i.e. either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'seaborn'
     :type template: str, optional
     :param height: Figure height, defaults to 3
     :type height: float, optional
@@ -74,7 +74,9 @@ class BaseClassMPL(BackendBaseClass):
         self._line_names = list()
         self._scatter_names = list()
         self._histogram_names = list()
-        self.heatmap_names = list()
+        #self.heatmap_names = list()
+
+        self._histogram_patches = dict()
 
         # To catch the missing seaborn styles in newer matplotlib versions
         if type(template) is str:
@@ -83,12 +85,12 @@ class BaseClassMPL(BackendBaseClass):
             template = [_correct_seaborn_styles(t) for t in template]
             
         # Special styles
-        if type(template) is str and template == "science":
-            template = "cait.styles.science"
+        if type(template) is str and template == "root":
+            template = "cait.styles.root"
         elif type(template) is str and template == "cait":
             template = "cait.styles.cait_style"
-        elif type(template) is list and "science" in template:
-            template[template.index("science")] = "cait.styles.science"
+        elif type(template) is list and "root" in template:
+            template[template.index("root")] = "cait.styles.root"
         elif type(template) is list and "cait" in template:
             template[template.index("cait")] = "cait.styles.cait_style"
 
@@ -181,7 +183,8 @@ class BaseClassMPL(BackendBaseClass):
         if name is not None: self._histogram_names.append(name)
 
         with plt.style.context(self.template):
-            self.fig.axes[0].hist(x=data, **arg, label=name)
+            *_, patch = self.fig.axes[0].hist(x=data, **arg, label=name)
+            if name is not None: self._histogram_patches[name] = patch
 
         self._draw()
 
@@ -258,8 +261,12 @@ class BaseClassMPL(BackendBaseClass):
         #self._draw()
 
     def _get_artist(self, name: str):
-        ind = [l.get_label() for l in self.fig.axes[0].lines].index(name)
-        return self.fig.axes[0].lines[ind]
+        all_lines = [l.get_label() for l in self.fig.axes[0].lines]
+
+        if name in all_lines:
+            return self.fig.axes[0].lines[all_lines.index(name)]
+        elif name in self._histogram_patches.keys():
+            return self._histogram_patches[name].patches
 
     def _set_axes(self, data: dict):
         with plt.style.context(self.template):
