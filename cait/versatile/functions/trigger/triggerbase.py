@@ -1,10 +1,15 @@
+import os
 from typing import Union, List
+from contextlib import nullcontext
+from multiprocessing import Pool
 
 import numpy as np
 from numpy.typing import ArrayLike
 import numba as nb
 
 from tqdm.auto import tqdm
+
+from ..apply import Compose
 
 ####################################################
 ### FUNCTIONS IN THIS FILE HAVE NO TESTCASES YET ###
@@ -53,7 +58,8 @@ def trigger_base(stream: ArrayLike,
                  record_length: int,
                  n_triggers: int = None,
                  chunk_size: int = 100,
-                 apply_first: Union[callable, List[callable]] = None):
+                 apply_first: Union[callable, List[callable]] = None,
+                 n_processes: int = None):
     """
     Trigger a single channel of a stream after pre-processing the stream. This function is used both for optimum filter triggering as well as for z-score triggering. See below for a description on how the algorithm works.
 
@@ -71,6 +77,8 @@ def trigger_base(stream: ArrayLike,
     :type chunk_size: int
     :param apply_first: A function or list of functions to be applied to the stream data BEFORE the filter function is applied. E.g. ``lambda x: -x`` to trigger on the inverted stream.
     :type apply_first: Union[callable, List[callable]], optional
+    :param n_processes: The number of processes to use to process chunks. If None, all available cores are utilized. Defaults to None
+    :type n_processes: int, optional
 
     :return: Tuple of trigger indices and trigger heights.
     :rtype: Tuple[List[int], List[float]]
@@ -81,7 +89,7 @@ def trigger_base(stream: ArrayLike,
 
     1. A chunk is selected and the part of the stream from :math:`s-N` to :math:`e+N` is continuously filtered. The first record window of the filter output is discarded. The valid samples (:math:`s` to :math:`e+N`) to be searched for triggers are shown in the figure.
     2. The cursor is placed on the first sample, :math:`s`, and progresses through the chunk until a sample above threshold is found.
-    3. If a sample exceeding the threshold is found, the maximum position of the :math:`N` samples *after* that sample is considered the trigger sample :math:`j`. The cursor is moved to :math:`j+N/2`, i.e. the trigger is blinded for half a record window. The process finishes if :math:`j+N/2` falls outside the chunk (i.e. :math:`j+N/2\ge e`), or if the cursor reaches the end of the chunk, :math:`e`.
+    3. If a sample exceeding the threshold is found, the maximum position of the :math:`N` samples *after* that sample is considered the trigger sample :math:`j`. The cursor is moved to :math:`j+N/2`, i.e. the trigger is blinded for half a record window. The process finishes if :math:`j+N/2` falls outside the chunk (i.e. :math:`j+N/2\\ge e`), or if the cursor reaches the end of the chunk, :math:`e`.
     4. After finishing a chunk, the next one is loaded. We have to be careful not to double count triggers, though: If the last chunk had a trigger later than :math:`e-N/2`, the blinding process affects the following chunk. This is visualised by triggers 1-3 in the figure: 1 is fine, because more than half a record window remains in the chunk and blinding in the following chunk is not required. 2 and 3 on the other hand require blinding of the first :math:`j+N/2-e` samples of the following chunk.
 
     .. image:: media/TriggerAlgorithm.png
@@ -107,6 +115,9 @@ def trigger_base(stream: ArrayLike,
     if len(stream) <= 3*record_length:
         raise Exception(f"Length of data to trigger ({len(stream)}) has to be larger than three record windows (3*{record_length}). See docstring about the trigger algorithm.")
 
+    if n_processes is None: 
+        n_processes = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()
+
     # total number of samples in the stream
     stream_length = len(stream)
     # number of samples to be searched for triggers at a time
@@ -127,13 +138,6 @@ def trigger_base(stream: ArrayLike,
     starts = [record_length + x*search_length for x in range(len(search_area_sizes))]
     ends = [s+sz for s,sz in zip(starts, search_area_sizes)]
 
-    # initialize a chunk for the filtering (this has to start one record window
-    # early and end one record windows after the search stop)
-    # also initialize an array for the filtering result (this will be one 
-    # record windows shorter)
-    chunk = np.zeros(search_length + 2*record_length)
-    filtered_chunk = np.zeros(search_length + record_length)
-
     # Initialize the lists that will collect the triggers
     trigger_inds = []
     trigger_vals = []
@@ -144,29 +148,35 @@ def trigger_base(stream: ArrayLike,
     # because trigger was found close to edge of previous chunk)
     skip_first = 0
 
-    for s, e, sz in zip(pbar := tqdm(starts, disable=len(starts)<2), ends, search_area_sizes):
-        chunk[:sz+2*record_length] = stream[s-record_length:e+record_length]
+    # If only one chunk is searched anyways, we skip initializing the worker pool
+    if n_search_areas < 2: n_processes = 1
 
-        for f in apply_first: chunk[:sz+2*record_length] = f(chunk[:sz+2*record_length])
+    # If n_processes > 1, we distribute the task of filtering the chunks to multiple workers
+    with Pool(n_processes) if n_processes>1 else nullcontext(None) as pool:
+        mapping = pool.imap if n_processes>1 else map
+        
+        # chunk iterator
+        chunk_it = (stream[s-record_length:e+record_length] for s,e in zip(starts, ends))
+        # chunk iterator mapped through all apply_first functions and the filter function
+        processed_chunk_it = mapping(Compose(apply_first+[filter_fnc]), chunk_it)
 
-        # filter the relevant part of the chunk (the result is one record windows shorter than that)
-        filtered_chunk[:sz+record_length] = filter_fnc(chunk[:sz+2*record_length])
-        inds, vals = search_chunk(filtered_chunk[:sz+record_length], threshold, record_length, skip_first=skip_first)
+        for s, e, c in zip(pbar := tqdm(starts, disable=len(starts)<2), ends, processed_chunk_it):
+            inds, vals = search_chunk(c, threshold, record_length, skip_first=skip_first)
 
-        trigger_inds += [s+i for i in inds]
-        trigger_vals += vals
-        triggers_found += len(inds)
+            trigger_inds += [s+i for i in inds]
+            trigger_vals += vals
+            triggers_found += len(inds)
 
-        pbar.set_postfix({"triggers found": triggers_found})
-        if (n_triggers is not None) and (triggers_found > n_triggers): break
+            pbar.set_postfix({"triggers found": triggers_found})
+            if (n_triggers is not None) and (triggers_found > n_triggers): break
 
-        # If trigger is found in last window of search area, we blind the
-        # beginning of the following chunk
-        # if inds and (s + inds[-1] > e):
-        if inds and (s + inds[-1] > e-record_length//2):
-            # skip_first = s + inds[-1] - e + record_length//2
-            skip_first = s + inds[-1] + record_length//2 - e
-        else:
-            skip_first = 0
+            # If trigger is found in last window of search area, we blind the
+            # beginning of the following chunk
+            # if inds and (s + inds[-1] > e):
+            if inds and (s + inds[-1] > e-record_length//2):
+                # skip_first = s + inds[-1] - e + record_length//2
+                skip_first = s + inds[-1] + record_length//2 - e
+            else:
+                skip_first = 0
         
     return trigger_inds, trigger_vals
