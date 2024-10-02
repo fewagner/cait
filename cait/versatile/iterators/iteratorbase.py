@@ -134,7 +134,9 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         **Example:**
-        ::
+
+        .. code-block:: python
+        
             import cait.versatile as vai
 
             def f1(event): return event + 1
@@ -158,7 +160,9 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         **Example:**
-        ::
+
+        .. code-block:: python
+
             import cait.versatile as vai
 
             def f1(event): return event + 1
@@ -170,6 +174,40 @@ class IteratorBaseClass(ABC):
 
         return self[:,:].add_processing(f)
     
+    def pop_processing(self):
+        """
+        Removes all processing functions from the iterator and returns them as a list.
+        """
+        fncs = self.fncs.copy()
+        self.fncs = list()
+        return fncs
+    
+    def with_batchsize(self, batch_size: int):
+        """
+        Returns an identical iterator but with a different batch size.
+
+        :param batch_size: The new batch size.
+        :type batch_size: int
+        """
+        params, _ = self._slice_info
+
+        if "batch_size" not in params.keys():
+            raise Exception(f"{type(self)} does not support changing batch size.")
+        
+        new_params = params.copy()
+        new_params["batch_size"] = batch_size
+
+        new_iterator = self.__class__(**new_params)
+        new_iterator.add_processing(self.fncs.copy())
+
+        return new_iterator
+    
+    def flatten(self):
+        """
+        Returns an identical iterator but without batches. Has no effect if iterator didn't use batches before.
+        """
+        return self.with_batchsize(1)
+    
     def grab(self, which: Union[int, list]):
         """
         Grab specified event(s) and return it/them as numpy array.
@@ -178,15 +216,17 @@ class IteratorBaseClass(ABC):
         :type which: Union[int, list]
 
         **Example:**
-        ::
+
+        .. code-block:: python
+
             import cait.versatile as vai
 
             it = vai.MockData().get_event_iterator() # Get events from mock data
             selected_event = it.grab(-1)             # Get the last event in the iterator
             selected_events = it.grab([1,7,9])       # Get events with indices 1, 7, 9
         """
-
-        return np.squeeze(np.array(list(self[:, which])))[()]
+        with self: # so that all events are read without re-opening the file
+            return np.squeeze(np.array(list(self[:, which])))[()]
 
     @property
     def t(self):
@@ -214,6 +254,13 @@ class IteratorBaseClass(ABC):
         return self._n_batches
     
     @property
+    def has_processing(self):
+        """
+        Returns True if one or more processing functions have been added to the iterator.
+        """
+        return len(self.fncs) > 0
+    
+    @property
     def hours(self):
         """
         Returns the times (in hours) of the events in this iterators since the start of the underlying datasource.
@@ -239,9 +286,12 @@ class IteratorBaseClass(ABC):
     @property
     def sample_frequency(self):
         """
-        Returns the sample frequency of the stream in Hz.
+        Returns the sampling frequency (in Hz) of the events in the iterator.
+        
+        :return: Sampling frequency (Hz)
+        :rtype: int
         """
-        return int(1e6/self.dt_us)
+        return int(1e6//self.dt_us)
 
     @property
     @abstractmethod
@@ -294,10 +344,12 @@ class IteratorCollection(IteratorBaseClass):
     :return: Iterable object
     :rtype: IteratorCollection
 
-    >>> it = H5Iterator(dh, "events", "event")
-    >>> it_collection = IteratorCollection([it, it])
-    >>> # Or simply (output of iterator addition is IteratorCollection)
-    >>> it_collection = it + it
+    .. code-block:: python
+
+        it = H5Iterator(dh, "events", "event")
+        it_collection = IteratorCollection([it, it])
+        # Or simply (output of iterator addition is IteratorCollection)
+        it_collection = it + it
     """
     def __init__(self, iterators: Union[IteratorBaseClass, List[IteratorBaseClass]]):
         # We do not construct the superclass because batching is handled differently
@@ -397,6 +449,16 @@ class IteratorCollection(IteratorBaseClass):
         new_collection.add_processing(self.fncs.copy())
 
         return new_collection
+    
+    # overrides default behavior
+    def with_batchsize(self, batch_size: int):
+        """
+        Returns an identical iterator but with a different batch size.
+
+        :param batch_size: The new batch size.
+        :type batch_size: int
+        """
+        return self.__class__([it.with_batchsize(batch_size) for it in self._iterators])
 
     @property
     def record_length(self):

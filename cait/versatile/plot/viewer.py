@@ -36,7 +36,8 @@ class Viewer():
     :type show_controls: bool
 
     **Convention for 'data' Dictionary:**
-    ::
+    
+    .. code-block:: python
     
         data = { 
                 "line": { 
@@ -192,7 +193,7 @@ class Viewer():
         """
         self.fig_widget._add_scatter(x, y, name)
 
-    def add_histogram(self, bins: Union[int, tuple], data: List[float], name: str = None):
+    def add_histogram(self, bins: Union[int, tuple, list], data: List[float], name: str = None):
         """
         Add a histogram to the figure. If a name is provided, it is registered and can later be updated.
 
@@ -225,7 +226,7 @@ class Viewer():
         """
         self.fig_widget._update_scatter(name, x, y)
 
-    def update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+    def update_histogram(self, name: str, bins: Union[int, tuple, list], data: List[float]):
         """
         Update the histogram called `name` with data `data` and bins `bins`.
         See `func:add_histogram` for an explanation of the arguments.
@@ -243,6 +244,30 @@ class Viewer():
         Returns the figure object of the plot. Can be used to further manipulate the plot.
         """
         return self.fig_widget._get_figure()
+    
+    def get_artist(self, name: str):
+        """
+        Returns the artist object (e.g. plotly Scatter or matplotlib Line) of the plot. Can be used to further manipulate the plot. References on available functions can be found online, e.g. matplotlib lines (https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html#matplotlib.lines.Line2D) and plotly scatters (https://plotly.com/python-api-reference/generated/plotly.graph_objects.Scatter.html).
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait.versatile as vai
+
+            # PLOTLY: 
+            plot = vai.Viewer({"line": {"line1": [[1, 2, 3, 4], [1, 4, 9, 16]]}}, backend="plotly")
+            plot.get_artist("line1").line.dash = "dash"
+
+            # MATPLOTLIB:
+            plot = vai.Viewer({"line": {"line1": [[1, 2, 3, 4], [1, 4, 9, 16]]}}, backend="mpl")
+            plot.get_artist("line1").set_linestyle("--")
+            plot.update() # required for matplotlib backend
+
+            # works analogously for vai.Line({"line1": [[1, 2, 3, 4], [1, 4, 9, 16]]})
+            # and other higher-level plotting functions
+        """
+        return self.fig_widget._get_artist(name=name)
 
     def plot(self, data: dict):
         """

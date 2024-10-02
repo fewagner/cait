@@ -5,6 +5,7 @@ import os
 import numpy as np
 
 from .arraywithbenefits import ArrayWithBenefits
+from .helper import is_array_like
 from .sev import SEV
 from .nps import NPS
 from ..plot.basic.line import Line
@@ -16,16 +17,18 @@ class OF(ArrayWithBenefits):
     """
     Object representing an Optimum Filter (OF). It can either be created from a Standard Event (SEV) and a Noise Power Spectrum (NPS), from an `np.ndarray` or read from a DataHandler or xy-file.
 
-    :param args: The data to use for the OF. If None, an empty OF is created. If `np.ndarray`, each row in the array is interpreted as an OF for separate channels. If instances of class:`SEV` and class:`NPS`, the OF is calculated from them. Defaults to None.
+    :param args: The data to use for the OF. If None, an empty OF is created. If `np.ndarray`, each row in the array is interpreted as an OF for separate channels. If instances of :class:`SEV` and :class:`NPS`, the OF is calculated from them. Defaults to None.
     :type data: Any
 
-    >>> sev = vai.SEV().from_dh(dh)
-    >>> nps = vai.NPS().from_dh(dh)
-    >>> of = vai.OF(sev, nps)
+    .. code-block:: python
+    
+        sev = vai.SEV().from_dh(dh)
+        nps = vai.NPS().from_dh(dh)
+        of = vai.OF(sev, nps)
     """
     def __init__(self, *args: Any):
-        if len(args) == 1 and isinstance(args[0], np.ndarray):
-            self._of = args[0]
+        if len(args) == 1 and (isinstance(args[0], np.ndarray) or is_array_like(args[0])):
+            self._of = np.array(args[0])
             if self._of.ndim > 1:
                 self._n_ch = self._of.shape[0]
                 if self._n_ch == 1: self._of = self._of.flatten()

@@ -15,7 +15,9 @@ class BaseClassPlotly(BackendBaseClass):
     Base Class for plots using the `plotly` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ::
+    
+    .. code-block:: python
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],
@@ -159,6 +161,11 @@ class BaseClassPlotly(BackendBaseClass):
             arg = dict(nbinsx=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(xbins=dict(start=bins[0], end=bins[1], size=(bins[1]-bins[0])/bins[2]) )
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            if not np.all(np.diff(np.unique(np.diff(bins))) < 1e-10):
+                raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
+            arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
@@ -211,6 +218,11 @@ class BaseClassPlotly(BackendBaseClass):
             arg = dict(nbinsx=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(xbins=dict(start=bins[0], end=bins[1], size=(bins[1]-bins[0])/bins[2]) )
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            if not np.all(np.diff(np.unique(np.diff(bins))) < 1e-10):
+                raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
+            arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
@@ -229,6 +241,9 @@ class BaseClassPlotly(BackendBaseClass):
 
         self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
     
+    def _get_artist(self, name: str):
+        return list(self.fig.select_traces(selector=dict(name=name)))[0]
+
     def _set_axes(self, data):
         if "xaxis" in data.keys():
             if "label" in data["xaxis"].keys():

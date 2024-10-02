@@ -20,11 +20,11 @@ class StreamBaseClass(DataSourceBaseClass):
         ...
         
     @abstractmethod
-    def get_voltage_trace(self, key: str, where: slice):
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
         """
-        Get the voltage trace for a given channel 'key' and slice 'where'.
+        Get the ADC trace for a given channel 'key' and slice 'where'. If ``voltage==True``, the ADC value is converted to a voltage (V) fist.
         
-        :return: Voltage trace.
+        :return: ADC or voltage trace.
         :rtype: np.ndarray
         """
         ...
@@ -76,7 +76,7 @@ class StreamBaseClass(DataSourceBaseClass):
     @abstractmethod
     def tpas(self):
         """
-        Dictionary of testpulse amplitudes in the stream. For hardware 'cresst' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
+        Dictionary of testpulse amplitudes in the stream. For hardware 'csmpl' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
         
         :return: Testpulse amplitudes
         :rtype: dict of `np.ndarray`
@@ -87,7 +87,7 @@ class StreamBaseClass(DataSourceBaseClass):
     @abstractmethod
     def tp_timestamps(self):
         """
-        Dictionary of testpulse timestamps (microseconds) in the stream. For hardware 'cresst' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
+        Dictionary of testpulse timestamps (microseconds) in the stream. For hardware 'csmpl' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
         
         :return: Testpulse microsecond timestamps.
         :rtype: dict of `np.ndarray`
@@ -95,7 +95,7 @@ class StreamBaseClass(DataSourceBaseClass):
         ...
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, measuring_time_h={self.__len__()*self.dt_us/1e6/3600:.2f})'
+        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, measuring_time_h={self.__len__()*int(self.dt_us)/1e6/3600:.2f})'
 
     def __getitem__(self, val: Union[str, Tuple[str, Union[int, slice, list, np.ndarray]], Tuple[str, Union[int, slice, list, np.ndarray], str]]):
         # Only names and tuples are supported for slicing (no int)
@@ -114,7 +114,13 @@ class StreamBaseClass(DataSourceBaseClass):
             # Return the integer values for the stream 'name' if everything else is fine
             elif len(val) == 2:
                 if type(val[0]) is str and type(val[1]) in [int, slice, list, np.ndarray]:
-                    return self.get_channel(val[0])[val[1]]
+                    if type(val[1]) is int:
+                        # special case of indexing just with [-1]
+                        if val[1] == -1: where = slice(val[1], None)
+                        else: where = slice(val[1], val[1]+1)
+                    else:
+                        where = val[1]
+                    return self.get_trace(key=val[0], where=where, voltage=False)
                 else:
                     raise TypeError('When slicing with two arguments, the first and second one have to be of type string and int/slice, respectively.')
             # Return the voltage values for the stream 'name' if everything else is fine
@@ -131,11 +137,15 @@ class StreamBaseClass(DataSourceBaseClass):
                         else: where = slice(val[1], val[1]+1)
                     else:
                         where = val[1]
-                    return self.get_voltage_trace(key=val[0], where=where)
+                    return self.get_trace(key=val[0], where=where, voltage=True)
                 else:
                     raise TypeError('When slicing with three arguments, the first, second and third one have to be of type string, int/slice and string, respectively.')
             else:  
                 raise NotImplementedError(f'Tuples of length {len(val)} are not supported for slicing')
+            
+    # used for TAB-completion in iPython/notebooks. Example: stream['A<TAB> -> 'ADC1'
+    def _ipython_key_completions_(self):
+        return self.keys
     
     @property
     def time(self):
@@ -235,7 +245,7 @@ class StreamBaseClass(DataSourceBaseClass):
     
 class StreamChannel:
     """
-    An array-like object representing a single channel of a stream. For all intents and purposes, this can be treated like a numpy.ndarray.
+    An array-like object representing a single channel of a stream. For all intents and purposes, this can be treated like a numpy.ndarray. Slicing this object returns voltage traces and is equivalent to slicing the original ``Stream``-object like ``stream[key, slicing, 'as_voltage']``.
 
     :param stream: The parent stream instance.
     :type stream: StreamBaseClass
@@ -268,7 +278,7 @@ class StreamChannel:
         self._stream.__exit__(typ, val, tb)
     
     def __getitem__(self, val) -> ArrayLike:
-        return self._stream[self._key, val, 'as_voltage']
+        return self._stream[self._key, val, "as_voltage"]
     
     @property
     def shape(self):

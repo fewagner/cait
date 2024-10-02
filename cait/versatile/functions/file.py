@@ -2,7 +2,8 @@ import os
 import h5py
 from typing import List
 
-from ...styles._print_styles import sizeof_fmt
+import cait as ai
+from ...styles._print_styles import sizeof_fmt, fmt_ds
 
 def ds_source_available(file: h5py.File, group: str, dataset: str):
     """
@@ -44,7 +45,9 @@ def get_dataset_properties(files: List[str], group: str, dataset: str, src_dir: 
     
     The following returns a list `[n_events_file1, n_events_file2]` of the number of events for each file, the `shape` of the dataset `event` in group `events` (where the dimension of the events has been dropped, i.e. `len(shape) = dataset.ndim - 1`), the `dtype` of the dataset `event` and the dimension along which the events extend, `events_dim`. See func:`combine` for more information.
 
-    >>> n_events, shape, dtype, events_dim = get_dataset_properties([file1, file2], "events", "event", "directory")
+    .. code-block:: python
+
+        n_events, shape, dtype, events_dim = get_dataset_properties([file1, file2], "events", "event", "directory")
     """
 
     with h5py.File(os.path.join(src_dir, files[0] + ".h5"), 'r') as h5f:
@@ -119,7 +122,8 @@ def combine(fname: str,
             src_dir: str = '', 
             out_dir: str = '', 
             groups_combine: List[str] = ["events", "testpulses", "noise"], 
-            groups_include: List[str] = []
+            groups_include: List[str] = [],
+            extend_hours: bool = True
             ):
     """
     Combines multiple HDF5 files into a single file using virtual datasets, i.e. none of the data is actually copied, yet it can be accessed as if it was stored in the same file. It is important that the initial HDF5 files have the same structure, at least for the data groups handed by groups_merge. Otherwise the function might crash or, even worse, yield nonsensical data combinations.
@@ -138,6 +142,8 @@ def combine(fname: str,
     :type groups_combine: List[str]
     :param groups_include: Groups you just wish to copy from one representative file, i.e. the data will not be appended. This can be useful for SEVs or optimum filter, etc. 
     :type groups_include: List[str]
+    :param extend_hours: If True, the ``hours`` dataset of all groups is updated in the final file such that it does not restart at 0 after every file but continuously increases. This requires the existence of datasets ``event``, ``time_s``, and ``time_mus`` in the respective groups.
+    :type extend_hours: bool
     """
 
     out_path = os.path.join(out_dir, fname + ".h5")
@@ -198,7 +204,23 @@ def combine(fname: str,
 
     print(f"Successfully combined files {files} into '{out_path}' ({sizeof_fmt(os.path.getsize(out_path))}).")
 
-def merge(fname: str, files: List[str], src_dir: str = '', out_dir: str = '', groups_merge: List[str] = ["events", "testpulses", "noise"], groups_include: List[str] = []):
+    if extend_hours:
+        print(f"Calculating extended {fmt_ds('hours')} for all groups with datasets {fmt_ds('event')}, {fmt_ds('hours')}, {fmt_ds('time_s')}, {fmt_ds('time_mus')}:")
+        # We use existing functionality of the event iterator to easily create the 'hours' dataset
+        dh = ai.DataHandler(nmbr_channels=1) # the number of channels is irrelevant for our purposes here
+        dh.set_filepath(os.path.dirname(out_path), os.path.splitext(os.path.basename(out_path))[0], appendix=False)
+
+        for k in dh.keys():
+            if dh.exists(f"{k}/hours") and dh.exists(f"{k}/event") and dh.exists(f"{k}/time_s") and dh.exists(f"{k}/time_mus"):
+                dh.set(k, hours=dh.get_event_iterator(k).hours, overwrite_existing=True, write_to_virtual=False)
+
+def merge(fname: str, 
+          files: List[str], 
+          src_dir: str = '', 
+          out_dir: str = '', 
+          groups_merge: List[str] = ["events", "testpulses", "noise"], 
+          groups_include: List[str] = [],
+          extend_hours: bool = True):
     """
     Merges multiple HDF5 files into a single one just like `func:combine` but it actually copies the data.
 
@@ -216,11 +238,13 @@ def merge(fname: str, files: List[str], src_dir: str = '', out_dir: str = '', gr
     :type groups_merge: List[str]
     :param groups_include: Groups you just wish to copy from one representative file, i.e. the data will not be appended. This can be useful for SEVs or optimum filter, etc. 
     :type groups_include: List[str]
+    :param extend_hours: If True, the ``hours`` dataset of all groups is updated in the final file such that it does not restart at 0 after every file but continuously increases. This requires the existence of datasets ``event``, ``time_s``, and ``time_mus`` in the respective groups.
+    :type extend_hours: bool
     """
 
     # temporarily combine files (with virtual datasets)
     in_path = os.path.join(out_dir, fname + "_temp.h5")
-    combine(fname=fname+"_temp", files=files, src_dir=src_dir, out_dir=out_dir, groups_combine=groups_merge, groups_include=groups_include)
+    combine(fname=fname+"_temp", files=files, src_dir=src_dir, out_dir=out_dir, groups_combine=groups_merge, groups_include=groups_include, extend_hours=extend_hours)
 
     # set up merged file
     out_path = os.path.join(out_dir, fname + ".h5")

@@ -65,7 +65,7 @@ class Stream_VDAQ3(StreamBaseClass):
     def __len__(self):
         return self._len
     
-    def get_voltage_trace(self, key: str, where: slice):
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
         # VDAQ3 writes 24bit values, here, we convert them to 32 bits such that numpy can handle them
         adc_32bit = np.vstack([self._data[key]["byte1"][where], 
                                self._data[key]["byte2"][where], 
@@ -73,7 +73,7 @@ class Stream_VDAQ3(StreamBaseClass):
                                np.zeros_like(self._data[key]["byte1"][where]),
                                ]).flatten("F").view("<u4")
  
-        return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20)
+        return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
     
     @property
     def start_us(self):

@@ -8,6 +8,7 @@ from ._data_handler_rdt import *
 from ._data_handler_fit import *
 from ._data_handler_ml import *
 from ._data_handler_bin import *
+from ._data_handler_trigger_collection import *
 
 __all__=['AnalysisMixin',
          'CsmplMixin',
@@ -18,4 +19,5 @@ __all__=['AnalysisMixin',
          'SimulateMixin',
          'MachineLearningMixin',
          'BinMixin',
+         'TriggerCollectionMixin'
          ]

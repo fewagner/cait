@@ -973,15 +973,17 @@ class FeaturesMixin(object):
             non-dominant channels.
         :type max_search_range: int
 
-        >>> import cait as ai
+        .. code-block:: python
+        
+            import cait as ai
 
-        >>> path_data = '../CRESST_DATA/run36/run36_Gode1/'
-        >>> fname = 'stream_bck_003'
+            path_data = '../CRESST_DATA/run36/run36_Gode1/'
+            fname = 'stream_bck_003'
 
-        >>> dh_stream = ai.DataHandler(channels=[9, 10, 11, ])
-        >>> dh_stream.set_filepath(path_h5=path_data, fname=fname, appendix=False)
+            dh_stream = ai.DataHandler(channels=[9, 10, 11, ])
+            dh_stream.set_filepath(path_h5=path_data, fname=fname, appendix=False)
 
-        >>> dh_stream.calc_ph_correlated()
+            dh_stream.calc_ph_correlated()
         """
 
         with h5py.File(self.path_h5, 'r+') as f:

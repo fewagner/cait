@@ -7,3 +7,4 @@ from .processing.tukey import TukeyFiltering
 
 from .scalarfunctions.calcmp import CalcMP
 from .scalarfunctions.fitbaseline import FitBaseline
+from .scalarfunctions.templatefit import TemplateFit

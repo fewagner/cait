@@ -16,7 +16,8 @@ class Histogram(Viewer):
     :type kwargs: Any
 
     **Example:**
-    ::
+
+    .. code-block:: python
     
         import cait.versatile as vai
 

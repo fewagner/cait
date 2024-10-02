@@ -15,7 +15,9 @@ class BoxCarSmoothing(FncBaseClass):
     :rtype: np.ndarray
 
     **Example:**
-    ::
+
+    .. code-block:: python
+    
         import cait.versatile as vai
 
         # Construct mock data (which provides event iterator)

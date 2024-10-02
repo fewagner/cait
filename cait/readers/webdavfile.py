@@ -1,15 +1,18 @@
 from typing import Union, BinaryIO
 from urllib.parse import urlparse
 from contextlib import nullcontext
+import json
 
 import numpy as np
-from webdav4.client import Client
-from webdav4.stream import IterStream
 
-def unpack_buffer(buffer: bytearray, dtype: np.dtype, select: Union[slice, list, int] = None):
-    """Helper function to unpack a binary array according to a given dtype. Additional slicing for the array after unpacking can be specified using the 'select' keyword."""
-    arr = np.frombuffer(buffer, dtype=dtype)
-    return arr if select is None else arr[select]
+try:
+    from webdav4.client import Client
+    from webdav4.stream import IterStream
+    webdav_installed = True
+except ImportError:
+    webdav_installed = False
+
+from .helper import unpack_buffer, sanitize_slice, is_index_list, is_str_like
 
 def read_index(f: BinaryIO, 
                dtype: np.dtype, 
@@ -50,20 +53,6 @@ def read_list(f: BinaryIO,
         out.append(unpack_buffer(f.read(dtype.itemsize), dtype, select))
     return np.concatenate(out)
 
-def sanitize_slice(sl: slice, size: int):
-    """Converts None values in slice to appropriate integers."""
-    start = sl.start if sl.start else 0
-    stop = sl.stop if sl.stop else size
-    return slice(start, stop, sl.step)
-
-def is_index_list(val):
-    """Returns true if input is a list of integers."""
-    return isinstance(val, list) and all([isinstance(x, (int, np.integer)) for x in val])
-
-def is_str_like(val):
-    """Returns true if input is a string or a list of strings."""
-    return isinstance(val, str) or (isinstance(val, list) and all([isinstance(x, str) for x in val]))
-
 class WebdavReader:
     """
     File reader for dcache files accessed via the WebDAV protocol.
@@ -76,13 +65,14 @@ class WebdavReader:
     :type offset: int, optional
     :param count: The number of items (of size given by dtype) to read. If -1, the entire file is read, defaults to -1.
     :type count: int, optional
-    :param client_kwargs: Additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html).
-    :type client_kwargs: Any, optional
+
+    The file URL can contain additional arguments used for the request. Additional keyword arguments for ``webdav4.client.Client`` (https://skshetry.github.io/webdav4/reference/client.html) can be supplied. This can be achieved through URLs like 'https://domain.com/file.txt;{kwarg: value}'.
     """
-    def __init__(self, url: str, dtype: np.dtype, offset: int = 0, count: int = -1, **client_kwargs):
+    def __init__(self, url: str, dtype: np.dtype, offset: int = 0, count: int = -1):
+        if not webdav_installed: raise ImportError("To access files using the https protocol, the 'webdav4' library has to be installed.")
+        
         url = urlparse(url)
-        verify = client_kwargs.pop("verify", False)
-        self._client = Client(base_url=f"https://{url.netloc}", verify=verify, **client_kwargs)
+        self._client = Client(base_url=f"https://{url.netloc}", **(json.loads(url.params) if url.params else {}))
         self._fpath = url.path
         self._dtype = dtype
         self._offset = offset

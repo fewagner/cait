@@ -25,7 +25,9 @@ class BaseClassMPL(BackendBaseClass):
     Base Class for plots using the `matplotlib` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ::
+    
+    .. code-block:: python
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],
@@ -170,6 +172,9 @@ class BaseClassMPL(BackendBaseClass):
             arg = dict(bins=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(bins=np.arange(bins[0], bins[1], (bins[1]-bins[0])/bins[2]))
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            arg = dict(bins=bins)
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
@@ -251,6 +256,10 @@ class BaseClassMPL(BackendBaseClass):
             self.fig.axes[0].lines[ind].set_ydata(y)
 
         #self._draw()
+
+    def _get_artist(self, name: str):
+        ind = [l.get_label() for l in self.fig.axes[0].lines].index(name)
+        return self.fig.axes[0].lines[ind]
 
     def _set_axes(self, data: dict):
         with plt.style.context(self.template):

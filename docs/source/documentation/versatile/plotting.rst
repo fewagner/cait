@@ -61,7 +61,8 @@ arguments described above.
 .. image:: media/preview_and_streamviewer.png
 
 **Example:**
-::
+
+.. code-block:: python
 
    import cait.versatile as vai
 
@@ -101,7 +102,8 @@ quickly:
 .. |image1| image:: media/preview_and_streamviewer.png
 
 **Example:**
-::
+
+.. code-block:: python
 
    # `cait.versatile` also includes functions, which implement a `preview` method (see below)
    # It also implements iterators over events.
@@ -125,7 +127,8 @@ work here as well.
 -  **ScatterPreview**: A scatter plot where you can click datapoints and preview the underlying voltage trace. Also allows selection and removal of datapoints (similar to ``VizTool``). This tool only works with ``backend='plotly'`` because it requires data selection which is not supported by a general backend.
 
 **Example:**
-::
+
+.. code-block:: python
    
    import cait.versatile as vai
 

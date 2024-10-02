@@ -1,3 +1,5 @@
+.. _caitversatile:
+
 cait.versatile - the flexible cait
 ==================================
 
@@ -11,7 +13,9 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
     The crucial thing is that the technical details on how to access the data behind a data source are hidden from the user. The objects of most interest are voltage traces ("events") and data sources make it easy to access those voltage traces, no matter how they are stored. A data source provides **event iterators**.
 
     **Example:**
-    ::
+
+    .. code-block:: python
+        
         f = vai.RDTFile("path/to/file.rdt") # construct RDT object
         channels = f[(26,27)]               # choose channels in file
         it = channels.get_event_iterator()  # get event iterator
@@ -26,7 +30,9 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
     You can tell iterators to apply a processing function on its events before it returns them. Processing functions are discussed below.
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         it = vai.MockData().get_event_iterator() # quick way to get iterator of two-channel-events for testing
         it_firstch = it[0]                       # new iterator with first channel only
         it_first10 = it[:,:10]                   # new iterator with only first 10 events (all channels)
@@ -52,7 +58,9 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
     Functions also expose a ``.preview()`` method which can be used to interactively investigate the effects a function has on events. See below.
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
 
         # Check the effect the CalcMP function has on the events of the first channel
@@ -70,7 +78,9 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
     ``SEV`` and ``NPS`` can also be created from event iterators (e.g. after creating a clean subset of noise traces, you could just hand the iterator to ``NPS`` which will build the noise power spectrum for you).
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
 
         # Create standard event from events in iterator
@@ -85,9 +95,8 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
     The plotting classes are built upon different backends and you can choose the backend using the ``backend`` keyword argument when creating a plot. This lets you, e.g., get an interactive ``plotly`` graph at first, which you can then switch to a ``matplotlib`` graph for your presentations easily.
 
-Detailed Documentations
-~~~~~~~~~~~~~~~~~~~~~~~
 .. toctree::
+   :caption: Detailed Documentation
    :maxdepth: 1
 
    versatile/datasources

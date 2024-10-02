@@ -39,10 +39,10 @@ class Stream_VDAQ2(StreamBaseClass):
         # Start timestamp of the file in us (header['timestamp'] is in ns)
         self._start = int(header['timestamp']/1000)
         # Temporal step size in us (= inverse sampling frequency)
-        self._dt = header['downsamplingFactor']
+        self._dt = int(header['downsamplingFactor'])
 
         # VDAQ2 format could contain keys 'Settings' and 'Time' which we do not want to have as available data channels
-        self._keys = list(set(keys) - set(['Time', 'Settings']))
+        self._keys = list(set(keys) - set(['Time', 'Settings', 'SampleNr']))
 
         # Create memory map to binary file
         self._data = BinaryFile(path=file, dtype=dt_tcp, offset=header.nbytes)
@@ -62,15 +62,16 @@ class Stream_VDAQ2(StreamBaseClass):
     def __exit__(self, typ, val, tb):
         self._data.__exit__(typ, val, tb)
     
-    def get_voltage_trace(self, key: str, where: slice):
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
         if key.lower().startswith('adc'): 
             bits = self._adc_bits
         elif key.lower().startswith('dac'):
             bits = self._dac_bits
         else:
             raise ValueError(f'Unable to assign the correct itemsize to name "{key}" as it does not start with "ADC" or "DAC".')
-            
-        return ai.data.convert_to_V(self._data[key][where], bits=bits, min=-20, max=20)
+        
+        data = self._data[where][key]
+        return ai.data.convert_to_V(data, bits=bits, min=-20, max=20) if voltage else data
     
     @property
     def start_us(self):

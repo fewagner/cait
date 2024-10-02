@@ -4,6 +4,7 @@ from functools import partial
 import numpy as np
 from numpy.typing import ArrayLike
 import pandas as pd
+from tqdm.auto import tqdm
 
 import cait.versatile as vai
 
@@ -37,9 +38,10 @@ def trigger_zscore(stream: ArrayLike,
                    threshold: float = 5,
                    n_triggers: int = None,
                    chunk_size: int = 100,
-                   apply_first: Union[callable, List[callable]] = None):
+                   apply_first: Union[callable, List[callable]] = None,
+                   n_processes: int = None):
     """
-    Trigger a single channel of a stream using a moving z-score.
+    Trigger a single channel of a stream using a moving z-score. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
     :param stream: The stream channel to trigger.
     :type stream: ArrayLike
@@ -51,18 +53,23 @@ def trigger_zscore(stream: ArrayLike,
     :type chunk_size: int
     :param apply_first: A function or list of functions to be applied to the stream data BEFORE the filter function is applied. E.g. ``lambda x: -x`` to trigger on the inverted stream.
     :type apply_first: Union[callable, List[callable]], optional
+    :param n_processes: The number of processes to use to process chunks. If None, all available cores are utilized. Defaults to None
+    :type n_processes: int, optional
 
     :return: Tuple of trigger indices and trigger heights.
     :rtype: Tuple[List[int], List[float]]
 
     **Example:**
-    ::
+
+    .. code-block:: python
+    
         import cait.versatile as vai
 
         # Construct stream object
         stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
-        # Perform triggering
-        trigger_inds, amplitudes = vai.trigger_of(stream["ADC1"], 2**14)
+        # Perform triggering (use context to keep stream file opened)
+        with stream:
+            trigger_inds, amplitudes = vai.trigger_zscore(stream["ADC1"], 2**14)
         # Get trigger timestamps from trigger indices
         timestamps = stream.time[trigger_inds]
         # Plot trigger amplitude spectrum
@@ -78,7 +85,8 @@ def trigger_zscore(stream: ArrayLike,
                             record_length=record_length,
                             n_triggers=n_triggers,
                             chunk_size=chunk_size,
-                            apply_first=apply_first)
+                            apply_first=apply_first,
+                            n_processes=n_processes)
     
     if not inds: return [], []
     
@@ -98,14 +106,13 @@ def trigger_zscore(stream: ArrayLike,
     # Slice to search peak in the interval (1/5, 2/5) of the record window
     sl = slice(int(record_length/5), int(2*record_length/5))
 
-    phs = []
-    processing = apply_first + [vai.RemoveBaseline()]
+    phs = np.zeros(len(inds), dtype=np.float32)
+    processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
 
-    print("Calculating pulse heights")
-    for i in inds:
-        trace = stream[i-before:i+after]
+    for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
+        trace = stream[ind-before:ind+after]
         for p in processing: trace = p(trace)
 
-        phs.append(np.max(trace[sl]))
+        phs[i] = np.max(trace[sl])
 
     return inds, phs

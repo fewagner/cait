@@ -1,7 +1,17 @@
 Features and Changelog
 ======================
 
-On this page we assemble the features of current Cait realeases and changes from the past versions.
+On this page we assemble the features of current Cait releases and changes from the past versions.
+
+development
+~~~~~~~~~~~
+
+- Added dcache file reading support (dcap, WebDAV and XRootD protocol; recommended protocol: XRootD)
+- Added pipeline to build containers for released versions and development branch (on CERN gitlab)
+- Added `dh.trigger_coincidence` for CRESST doubleTES analysis
+- Added short-cut notation for `dh.get`: Now you can slice a DataHandler object using `dh['<group>/<dataset>']`. Additionally, this syntax supports iPython's TAB-completion, i.e. you can start typing `dh[` and hit 'TAB' to preview a list of possible datasets.
+- Minor improvements
+- New features in `cait.versatile`
 
 v.1.2.2
 ~~~~~~~

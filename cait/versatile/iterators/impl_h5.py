@@ -31,13 +31,15 @@ class H5Iterator(IteratorBaseClass):
     :return: Iterable object
     :rtype: EventIterator
 
-    >>> it = H5Iterator(dh, "events", batch_size=100, channels=1, inds=[0,2,19,232])
-    >>> for i in it:
-    ...    print(i.shape)
+    .. code-block:: python
+
+        it = H5Iterator(dh, "events", batch_size=100, channels=1, inds=[0,2,19,232])
+        for i in it:
+            print(i.shape)
     
-    >>> with it as opened_it:
-    ...     for i in opened_it:
-    ...         print(i.shape)
+        with it as opened_it:
+            for i in opened_it:
+                print(i.shape)
     """
 
     def __init__(self, dh, group: str, channels: Union[int, List[int]] = None, inds: List[int] = None, batch_size: int = None):
@@ -125,7 +127,7 @@ class H5Iterator(IteratorBaseClass):
     
     @property
     def dt_us(self):
-        return int(1e6/self._dh.sample_frequency)
+        return self._dh.dt_us
     
     @property
     def ds_start_us(self):

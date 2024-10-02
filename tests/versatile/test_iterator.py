@@ -30,7 +30,7 @@ def testdata(tempdir):
                             channels=[0, 1],
                             start_s=13)
     data.generate()
-    stream = Stream('cresst', [tempdir.name+'/mock_001_Ch0.csmpl',
+    stream = Stream('csmpl', [tempdir.name+'/mock_001_Ch0.csmpl',
                                tempdir.name+'/mock_001_Ch1.csmpl',
                                tempdir.name+'/mock_001.test_stamps',
                                tempdir.name+'/mock_001.dig_stamps',
@@ -43,10 +43,14 @@ def testdata(tempdir):
 def basic_checks(it):
     # Copy to not alter the original iterator
     it = it[:,:]
+    assert not it.has_processing
+
     # Test adding of processing
     it_new = it.with_processing(lambda x: x**2)
+    assert it_new.has_processing
     it.add_processing(lambda x: x**2)
-
+    assert it.has_processing
+    
     # Test application of function
     arr1 = apply(lambda x: -x, it)
     arr2 = apply(lambda x: x, it)
@@ -130,6 +134,17 @@ def basic_checks(it):
     next(iter(it_combined[:, flag]))
     next(iter(it_combined[0, 0]))
     next(iter(it_combined[0, [0,1,4]]))
+
+    # test if changing batchsize works
+    next(iter(it.with_batchsize(13)))
+    next(iter(it.flatten()))
+    next(iter(it.with_batchsize(13).flatten()))
+    next(iter(it_combined_sum.with_batchsize(13)))
+    next(iter(it_combined_sum.flatten()))
+    next(iter(it_combined_sum.with_batchsize(13).flatten()))
+    next(iter(it[0].with_batchsize(13)))
+    next(iter(it[0].flatten()))
+    next(iter(it[0].with_batchsize(13).flatten()))
 
 class TestH5Iterator:
     def test_iterator_bs1_ch2(self, dh):
@@ -255,19 +270,19 @@ class TestStreamIterator:
         inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
 
         basic_checks(StreamIterator(stream=stream,
-                                    keys="mock_001_Ch0",
+                                    keys="Ch0",
                                     inds=inds[:25],
                                     record_length=2**13))
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds,
                                     record_length=2**14))
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds,
                                     record_length=2**15))
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds,
                                     record_length=2**15,
                                     alignment=1/2))
@@ -278,18 +293,18 @@ class TestStreamIterator:
         inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
         
         basic_checks(StreamIterator(stream=stream,
-                                    keys="mock_001_Ch0",
+                                    keys="Ch0",
                                     inds=inds[:25],
                                     record_length=2**13,
                                     batch_size=13))
         
         it = StreamIterator(stream=stream,
-                            keys="mock_001_Ch0",
+                            keys="Ch0",
                             inds=inds[:25],
                             record_length=2**13,
                             batch_size=13)
         it2 = StreamIterator(stream=stream,
-                            keys="mock_001_Ch0",
+                            keys="Ch0",
                             inds=inds[:25],
                             record_length=2**13)
 
@@ -305,18 +320,18 @@ class TestStreamIterator:
         inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
         
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds[:25],
                                     record_length=2**13,
                                     batch_size=13))
         
         it = StreamIterator(stream=stream,
-                            keys=["mock_001_Ch0","mock_001_Ch1"],
+                            keys=["Ch0","Ch1"],
                             inds=inds[:25],
                             record_length=2**13,
                             batch_size=13)
         it2 = StreamIterator(stream=stream,
-                            keys=["mock_001_Ch0","mock_001_Ch1"],
+                            keys=["Ch0","Ch1"],
                             inds=inds[:25],
                             record_length=2**13)
 

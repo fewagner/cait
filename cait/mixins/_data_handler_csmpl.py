@@ -196,12 +196,6 @@ class CsmplMixin(object):
             it instead of doing the triggering again. For this, set this argument to True.
         :type read_triggerstamps: bool
         """
-
-        assert all([os.path.isfile(p) for p in csmpl_paths]), 'One of the csmpl files does not exists!'
-        if path_dig is not None:
-            assert os.path.isfile(path_dig), 'Dig file does not exists!'
-        if path_sql is not None:
-            assert os.path.isfile(path_sql), 'Sql file does not exists!'
         assert np.logical_or(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:

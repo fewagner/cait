@@ -7,9 +7,7 @@ import scipy as sp
 from ..viewer import Viewer
 from ...datasources.stream.streambase import StreamBaseClass
 from ...datasources.stream.factory import Stream
-
-def filter_chunk(data, of):
-    return sp.signal.oaconvolve(data, np.fft.irfft(of))
+from ...functions.trigger.trigger_of import filter_chunk
 
 # Has no test case (yet)
 class StreamViewer(Viewer):
@@ -31,10 +29,14 @@ class StreamViewer(Viewer):
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
-    >>> s = Stream(hardware="vdaq2", src="path/to/file.bin")
-    >>> StreamViewer(s)
+    .. code-block:: python
 
-    >>> StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
+        # Usage 1
+        s = Stream(hardware="vdaq2", src="path/to/file.bin")
+        StreamViewer(s)
+
+        # Usage 2
+        StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
     """
     def __init__(self, 
                  *args: Union[StreamBaseClass, str, list],
@@ -76,14 +78,14 @@ class StreamViewer(Viewer):
         
         # Adding optimum filter
         if of is not None:
-            if of.ndim > 1:
+            if np.array(of).ndim > 1:
                 raise ValueError(f"Only filtering of single channels is supported (i.e. 'of' has to be 1d).")
             if len(self._keys) > 1:
                 raise ValueError(f"In case a filter is provided, you also have to choose a single channel (to be filtered) using the 'keys' argument.")
             
             self.add_line(x=None, y=None, name=f"{self._keys[0]} (filtered)")
                 
-        self._of = of
+        self._of = np.array(of) if of is not None else None
 
         # Adding timestamp markers
         if mark_timestamps is not None:
@@ -133,13 +135,21 @@ class StreamViewer(Viewer):
                 val_min.append(np.min(y))
                 val_max.append(np.max(y))
                 
-        if self._of:
+        if self._of is not None:
             record_length = 2*(self._of.shape[-1] - 1)
-            d = record_length if self.current_start > record_length else 0
-            where_filter = slice(self.current_start - d, 
+            if self.current_start > record_length:
+                where_filter = slice(self.current_start - record_length, 
                                  self.current_start + self.n_points*self.downsample_factor + record_length)
+                chunk_to_filter = self.stream[self._keys[0], where_filter, "as_voltage"]
+                
+            else:
+                where_filter = slice(self.current_start, 
+                                 self.current_start + self.n_points*self.downsample_factor + record_length)
+                chunk_to_filter = np.concatenate([np.zeros(record_length), self.stream[self._keys[0], where_filter, "as_voltage"]])
             
-            filtered_stream = filter_chunk(self.stream[self._keys[0], where_filter, "as_voltage"], self._of)[d:-record_length]
+            
+            
+            filtered_stream = filter_chunk(chunk_to_filter, self._of, record_length)
             self.update_line(name=f"{self._keys[0]} (filtered)", x=t_ms, y=filtered_stream[::self.downsample_factor])
             
             if self._marks_timestamps:

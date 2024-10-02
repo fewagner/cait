@@ -14,7 +14,9 @@ class BaseClassUniplot(BackendBaseClass):
     Base Class for plots using the `uniplot` library (has to be installed). Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ::
+    
+    .. code-block:: python
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],
@@ -122,6 +124,9 @@ class BaseClassUniplot(BackendBaseClass):
             arg = dict(bins=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(bins=np.arange(bins[0], bins[1], (bins[1]-bins[0])/bins[2]))
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            arg = dict(bins=bins)
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
 
@@ -159,6 +164,9 @@ class BaseClassUniplot(BackendBaseClass):
     def _update_vmarker(self, name, marker_pos, y_int):
         raise NotImplementedError("vmarker not implemented for backend 'uniplot'")
 
+    def _get_artist(self, name: str):
+        raise NotImplementedError("get_artist not implemented for backend 'uniplot'")
+    
     def _set_axes(self, data: dict):
         if "xaxis" in data.keys():
             if "label" in data["xaxis"].keys() and data["xaxis"]["label"] is not None:
