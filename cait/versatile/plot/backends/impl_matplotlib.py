@@ -103,6 +103,8 @@ class BaseClassMPL(BackendBaseClass):
         # If user sets xlim or ylim, they are not auto-scaled
         self._x_lim_auto = True
         self._y_lim_auto = True
+
+        self._legend_visible = False
     
         self._init_fig(height, width)
 
@@ -138,6 +140,7 @@ class BaseClassMPL(BackendBaseClass):
         
         with plt.style.context(self.template):
             self.fig.legend()
+            self._legend_visible = True
             
         self._draw()
 
@@ -343,6 +346,7 @@ class BaseClassMPL(BackendBaseClass):
 
     def _update(self):
         self._draw()
+        if self._legend_visible: self._show_legend()
 
     def _close(self, b=None):
         self.is_visible = False
