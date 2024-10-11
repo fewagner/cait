@@ -170,7 +170,7 @@ class BaseClassMPL(BackendBaseClass):
 
         self._draw()
 
-    def _add_histogram(self, bins, data, name=None):
+    def _add_histogram(self, bins, data, weight=1., name=None):
         if bins is None:
             arg = dict()
         elif isinstance(bins, int):
@@ -186,7 +186,7 @@ class BaseClassMPL(BackendBaseClass):
         if name is not None: self._histogram_names.append(name)
 
         with plt.style.context(self.template):
-            *_, patch = self.fig.axes[0].hist(x=data, **arg, label=name)
+            *_, patch = self.fig.axes[0].hist(x=data, **arg, weights=weight*np.ones_like(data), label=name)
             if name is not None: self._histogram_patches[name] = patch
 
         self._draw()
@@ -241,7 +241,7 @@ class BaseClassMPL(BackendBaseClass):
         
         #self._draw()
 
-    def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+    def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float], weight: float = 1.):
         ...
 
     def _update_vmarker(self, name, marker_pos, y_int):

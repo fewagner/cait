@@ -193,7 +193,7 @@ class Viewer():
         """
         self.fig_widget._add_scatter(x, y, name)
 
-    def add_histogram(self, bins: Union[int, tuple, list], data: List[float], name: str = None):
+    def add_histogram(self, bins: Union[int, tuple, list], data: List[float], weight: float = 1., name: str = None):
         """
         Add a histogram to the figure. If a name is provided, it is registered and can later be updated.
 
@@ -201,14 +201,16 @@ class Viewer():
         :type bins: Union[None, int, tuple], optional
         :param data: The data to bin.
         :type data: List[float]
+        :param weight: The bar hights in the histogram are scaled by this factor.
+        :type weight: float, optional
         :param name: The name of the histogram in the legend and its unique identifier for later updates. If None, the histogram does not show up in the legend and is not registered for later update.
         :type name: str, optional
         """
-        self.fig_widget._add_histogram(bins, data, name)
+        self.fig_widget._add_histogram(bins, data, weight, name)
 
     def add_vmarker(self, marker_pos: Union[float, List[float]], y_int: Tuple[float], name: str = None):
         """
-        
+        Add a vertical marker line to the plot.
         """
         self.fig_widget._add_vmarker(marker_pos, y_int, name)
 
@@ -226,16 +228,17 @@ class Viewer():
         """
         self.fig_widget._update_scatter(name, x, y)
 
-    def update_histogram(self, name: str, bins: Union[int, tuple, list], data: List[float]):
+    def update_histogram(self, name: str, bins: Union[int, tuple, list], data: List[float], weight: float = 1.):
         """
         Update the histogram called `name` with data `data` and bins `bins`.
         See `func:add_histogram` for an explanation of the arguments.
         """
-        self.fig_widget._update_histogram(name, bins, data)
+        self.fig_widget._update_histogram(name, bins, data, weight)
 
     def update_vmarker(self, name: str, marker_pos: Union[float, List[float]], y_int: Tuple[float]):
         """
-        
+        Updates the vmarker called `name`.
+        See `func:add_vmarker` for an explanation of the arguments.
         """
         self.fig_widget._update_vmarker(name, marker_pos, y_int)
 

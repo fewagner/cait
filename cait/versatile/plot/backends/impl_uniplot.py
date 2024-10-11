@@ -117,7 +117,7 @@ class BaseClassUniplot(BackendBaseClass):
         if name is None: name = f"scatter {len(self.scatters)+1}"
         self.scatters[name] = [x, y]
 
-    def _add_histogram(self, bins, data, name=None):
+    def _add_histogram(self, bins, data, weight=1., name=None):
         if bins is None:
             arg = dict()
         elif isinstance(bins, int):
@@ -130,7 +130,7 @@ class BaseClassUniplot(BackendBaseClass):
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
 
-        hist, bin_edges = np.histogram(data, **arg)
+        hist, bin_edges = np.histogram(data, **arg, weights=weight*np.ones_like(data))
 
         x = np.zeros(2*len(bin_edges))
         y = np.zeros(2*len(bin_edges))
@@ -158,7 +158,7 @@ class BaseClassUniplot(BackendBaseClass):
 
         self.scatters[name] = [x, y]
 
-    def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+    def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float], weight: float = 1.):
         ...
 
     def _update_vmarker(self, name, marker_pos, y_int):

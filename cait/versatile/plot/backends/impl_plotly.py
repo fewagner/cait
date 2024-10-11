@@ -154,7 +154,7 @@ class BaseClassPlotly(BackendBaseClass):
                                       )
         if name is not None: self._scatter_names.append(name)
 
-    def _add_histogram(self, bins, data, name=None):
+    def _add_histogram(self, bins, data, weight=1., name=None):
         if bins is None:
             arg = dict()
         elif isinstance(bins, int):
@@ -167,10 +167,12 @@ class BaseClassPlotly(BackendBaseClass):
                 raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
             arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
-            raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
+            raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")    
         
         self.fig.add_trace(go.Histogram(name=name, 
                                         x=data,
+                                        y=weight*np.ones_like(data),
+                                        histfunc="sum",
                                         **arg,
                                         showlegend = True if name is not None else False)
                             )
@@ -208,7 +210,7 @@ class BaseClassPlotly(BackendBaseClass):
     def _update_scatter(self, name, x, y):
         self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
 
-    def _update_histogram(self, name, bins, data):
+    def _update_histogram(self, name, bins, data, weight=1.):
         #n_histograms = len([k for k in self.fig.select_traces(selector="histogram")])
         opacity = 0.8 if len(self._histogram_names)>1 else 1
 
@@ -226,7 +228,7 @@ class BaseClassPlotly(BackendBaseClass):
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
-        self.fig.update_traces(dict(x=data, opacity=opacity, **arg), selector=dict(name=name))
+        self.fig.update_traces(dict(x=data, y=weight*np.ones_like(data), opacity=opacity, **arg), selector=dict(name=name))
 
     def _update_vmarker(self, name, marker_pos, y_int):
         if marker_pos is None or y_int is None: 

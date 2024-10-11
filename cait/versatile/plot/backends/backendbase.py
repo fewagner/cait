@@ -20,7 +20,7 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
-    def _add_histogram(bins: Union[int, tuple, list], data: List[float], name: str = None):
+    def _add_histogram(bins: Union[int, tuple, list], data: List[float], weight: float = 1., name: str = None):
         ...
 
     @abstractmethod
@@ -36,7 +36,7 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
-    def _update_histogram(name: str, bins: Union[int, tuple, list], data: List[float]):
+    def _update_histogram(name: str, bins: Union[int, tuple, list], data: List[float], weight: float = 1.):
         ...
 
     @abstractmethod
