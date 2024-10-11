@@ -176,7 +176,7 @@ class _TemplateCachePoly:
         :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
         :type flag: np.ndarray, optional
         
-        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If the fit was unsuccessful, the RMS value is set to -1.
+        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If the fit was unsuccessful, the RMS value is set to -404.
         :rtype: Tuple[np.ndarray, int, float]
         """
         try:
