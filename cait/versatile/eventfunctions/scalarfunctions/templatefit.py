@@ -5,7 +5,7 @@ from functools import lru_cache
 
 import numpy as np
 from scipy.optimize import minimize
-from scipy.linalg import solve
+from scipy.linalg import solve, LinAlgError
 
 from ..functionbase import FncBaseClass
 from ..processing.removebaseline import RemoveBaseline
@@ -79,7 +79,7 @@ class _TemplateCacheSimple:
         :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
         :type flag: np.ndarray, optional
         
-        :return: Tuple of fit result, optimal shift, and RMS value ``(amplitude, shift, rms)``.
+        :return: Tuple of fit result, optimal shift, and RMS value ``(amplitude, shift, rms)``. If the fit was unsuccessful, the RMS value is set to -404.
         :rtype: Tuple[float, int, float]
         """
         if self._fit_onset:
@@ -176,21 +176,25 @@ class _TemplateCachePoly:
         :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
         :type flag: np.ndarray, optional
         
-        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``.
+        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If the fit was unsuccessful, the RMS value is set to -404.
         :rtype: Tuple[np.ndarray, int, float]
         """
-        if self._fit_onset:
-            res = minimize(self._chij2, 
-                        x0=0, 
-                        args=(ev, flag), 
-                        method="Powell", 
-                        bounds=[(-self._max_shift, self._max_shift)])
-            opt_shift = int(res.x)
-        else:
-            opt_shift = 0
+        try:
+            if self._fit_onset:
+                res = minimize(self._chij2, 
+                            x0=0, 
+                            args=(ev, flag), 
+                            method="Powell", 
+                            bounds=[(-self._max_shift, self._max_shift)])
+                opt_shift = int(res.x)
+            else:
+                opt_shift = 0
 
-        opt_param = solve(self._A(opt_shift, flag), self._b(opt_shift, ev, flag), assume_a="sym")
-        rms = np.sqrt(self._chij2(opt_shift, ev, flag))
+            opt_param = solve(self._A(opt_shift, flag), self._b(opt_shift, ev, flag), assume_a="sym")
+            rms = np.sqrt(self._chij2(opt_shift, ev, flag))
+
+        except LinAlgError:
+            opt_param, opt_shift, rms = np.zeros(self._order+1), 0, -404
         
         return opt_param, opt_shift, rms
     
@@ -279,7 +283,7 @@ class TemplateFit(FncBaseClass):
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``.
     :type max_shift: int
     
-    :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0.
+    :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0. If the fit fails, all fit parameters are set to 0 and the RMS value is set to -404.
     :rtype: Tuple[np.ndarray, int, float]
 
     **Example:**
