@@ -194,7 +194,7 @@ class _TemplateCachePoly:
             rms = np.sqrt(self._chij2(opt_shift, ev, flag))
 
         except LinAlgError:
-            opt_param, opt_shift, rms = np.zeros(self._order+1), 0, -404
+            opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
         
         return opt_param, opt_shift, rms
     
