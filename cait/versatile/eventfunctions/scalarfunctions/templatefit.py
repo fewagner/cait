@@ -1,7 +1,4 @@
 from typing import List
-# cannot use functools.cache because it got added in python 3.9 and cait currently supports python 3.8 still
-# but as of the functools documentation, functools.lru_cache(maxsize=None) is equivalent to functools.cache
-from functools import lru_cache
 
 import numpy as np
 from scipy.optimize import minimize
@@ -68,6 +65,12 @@ class _TemplateCacheSimple:
         self._sev = sev
         self._fit_onset = fit_onset
         self._max_shift = max_shift
+        
+        # Precalculate and cache for later access
+        # This is the only strategy that worked with multiprocessing
+        self._cache = dict()
+        for i in range(-max_shift, max_shift+1):
+            self._cache[i] = self._norm2_uncached(i, flag=None)
 
     def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -136,9 +139,8 @@ class _TemplateCacheSimple:
     def _norm2_uncached(self, j: int, flag: np.ndarray):
         return np.sum( shift_arrays(self._sev, j=j, flag=flag)[0]**2 )
     
-    @lru_cache(maxsize=None)
     def _norm2_cached(self, j: int):
-        return self._norm2_uncached(j=j, flag=None)
+        return self._cache[j]
     
 class _TemplateCachePoly:
     """
@@ -165,6 +167,12 @@ class _TemplateCachePoly:
         self._order = order
         self._fit_onset = fit_onset
         self._max_shift = max_shift
+        
+        # Precalculate and cache for later access
+        # This is the only strategy that worked with multiprocessing
+        self._cache = dict()
+        for i in range(-max_shift, max_shift+1):
+            self._cache[i] = self._A_uncached(i, flag=None)
 
     def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -243,9 +251,8 @@ class _TemplateCachePoly:
             ])
         ])
 
-    @lru_cache(maxsize=None)
     def _A_cached(self, j: int):
-        return self._A_uncached(j=j, flag=None)
+        return self._cache[j]
     
     def _b(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
