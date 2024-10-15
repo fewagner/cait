@@ -1,8 +1,13 @@
+import os
+from functools import partial
+
 import numpy as np
 import cait as ai
 
 from .streambase import StreamBaseClass
-from ...functions.trigger.trigger_zscore import trigger_zscore
+from ...functions.apply import apply
+from ...functions.trigger.triggerbase import trigger_base
+from ...functions.trigger.trigger_zscore import zscore_chunk
 from ...eventfunctions.processing.removebaseline import RemoveBaseline
 from ....readers import BinaryFile
 
@@ -17,13 +22,19 @@ def vdaq2_dac_channel_trigger(stream, threshold, record_length):
     out_tpas = dict()
 
     for c in channels:
-        inds, vals = trigger_zscore(stream, 
-                             key=c, 
-                             threshold=threshold, 
-                             record_length=record_length,
-                             apply_first=lambda x: x**2)
+        inds, _ =  trigger_base(stream=stream[c],
+                            threshold=threshold,
+                            filter_fnc=partial(zscore_chunk, record_length=record_length),
+                            record_length=record_length)
+        
         out_timestamps[c] = stream.time[inds]
-        out_tpas[c] = np.sqrt(vals) 
+        it = stream.get_event_iterator(keys=c, 
+                                       record_length=record_length//5, 
+                                       timestamps=out_timestamps[c],
+                                       alignment=1/2)
+        out_tpas[c] = apply(np.max, 
+                            it.with_processing([partial(np.power, 2), RemoveBaseline()]),
+                            n_processes=len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count())
 
     return out_timestamps, out_tpas
 
