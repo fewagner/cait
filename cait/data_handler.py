@@ -19,7 +19,7 @@ from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_bin import BinMixin
 from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
 from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
-from .versatile.functions.file import ds_source_available
+from .data._merge_h5 import ds_source_available
 from .versatile.iterators.impl_h5 import H5Iterator
 from .versatile.iterators.iteratorbase import IteratorBaseClass
 

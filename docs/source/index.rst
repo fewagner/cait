@@ -33,7 +33,6 @@
    tutorials/12cryoaug
    tutorials/13universaltrainingset
    tutorials/14pileupseparation
-   tutorials/15versatile_beta
 
 .. toctree::
    :caption: Templates
