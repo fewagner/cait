@@ -1,11 +1,8 @@
 from typing import List
-# cannot use functools.cache because it got added in python 3.9 and cait currently supports python 3.8 still
-# but as of the functools documentation, functools.lru_cache(maxsize=None) is equivalent to functools.cache
-from functools import lru_cache
 
 import numpy as np
 from scipy.optimize import minimize
-from scipy.linalg import solve
+from scipy.linalg import solve, LinAlgError
 
 from ..functionbase import FncBaseClass
 from ..processing.removebaseline import RemoveBaseline
@@ -68,6 +65,12 @@ class _TemplateCacheSimple:
         self._sev = sev
         self._fit_onset = fit_onset
         self._max_shift = max_shift
+        
+        # Precalculate and cache for later access
+        # This is the only strategy that worked with multiprocessing
+        self._cache = dict()
+        for i in range(-max_shift, max_shift+1):
+            self._cache[i] = self._norm2_uncached(i, flag=None)
 
     def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -79,7 +82,7 @@ class _TemplateCacheSimple:
         :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
         :type flag: np.ndarray, optional
         
-        :return: Tuple of fit result, optimal shift, and RMS value ``(amplitude, shift, rms)``.
+        :return: Tuple of fit result, optimal shift, and RMS value ``(amplitude, shift, rms)``. If the fit was unsuccessful, the RMS value is set to -404.
         :rtype: Tuple[float, int, float]
         """
         if self._fit_onset:
@@ -136,9 +139,8 @@ class _TemplateCacheSimple:
     def _norm2_uncached(self, j: int, flag: np.ndarray):
         return np.sum( shift_arrays(self._sev, j=j, flag=flag)[0]**2 )
     
-    @lru_cache(maxsize=None)
     def _norm2_cached(self, j: int):
-        return self._norm2_uncached(j=j, flag=None)
+        return self._cache[j]
     
 class _TemplateCachePoly:
     """
@@ -165,6 +167,12 @@ class _TemplateCachePoly:
         self._order = order
         self._fit_onset = fit_onset
         self._max_shift = max_shift
+        
+        # Precalculate and cache for later access
+        # This is the only strategy that worked with multiprocessing
+        self._cache = dict()
+        for i in range(-max_shift, max_shift+1):
+            self._cache[i] = self._A_uncached(i, flag=None)
 
     def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -176,21 +184,25 @@ class _TemplateCachePoly:
         :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
         :type flag: np.ndarray, optional
         
-        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``.
+        :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If the fit was unsuccessful, the RMS value is set to -404.
         :rtype: Tuple[np.ndarray, int, float]
         """
-        if self._fit_onset:
-            res = minimize(self._chij2, 
-                        x0=0, 
-                        args=(ev, flag), 
-                        method="Powell", 
-                        bounds=[(-self._max_shift, self._max_shift)])
-            opt_shift = int(res.x)
-        else:
-            opt_shift = 0
+        try:
+            if self._fit_onset:
+                res = minimize(self._chij2, 
+                            x0=0, 
+                            args=(ev, flag), 
+                            method="Powell", 
+                            bounds=[(-self._max_shift, self._max_shift)])
+                opt_shift = int(res.x)
+            else:
+                opt_shift = 0
 
-        opt_param = solve(self._A(opt_shift, flag), self._b(opt_shift, ev, flag), assume_a="sym")
-        rms = np.sqrt(self._chij2(opt_shift, ev, flag))
+            opt_param = solve(self._A(opt_shift, flag), self._b(opt_shift, ev, flag), assume_a="sym")
+            rms = np.sqrt(self._chij2(opt_shift, ev, flag))
+
+        except LinAlgError:
+            opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
         
         return opt_param, opt_shift, rms
     
@@ -239,9 +251,8 @@ class _TemplateCachePoly:
             ])
         ])
 
-    @lru_cache(maxsize=None)
     def _A_cached(self, j: int):
-        return self._A_uncached(j=j, flag=None)
+        return self._cache[j]
     
     def _b(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -279,7 +290,7 @@ class TemplateFit(FncBaseClass):
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``.
     :type max_shift: int
     
-    :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0.
+    :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0. If the fit fails, all fit parameters are set to 0 and the RMS value is set to -404.
     :rtype: Tuple[np.ndarray, int, float]
 
     **Example:**
