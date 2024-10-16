@@ -54,6 +54,9 @@ Scalar functions
 .. autoclass:: TemplateFit
    :member-order: bysource
    :exclude-members: batch_support
+.. autoclass:: NPeaks
+   :member-order: bysource
+   :exclude-members: batch_support
 
 Utility functions
 ~~~~~~~~~~~~~~~~~

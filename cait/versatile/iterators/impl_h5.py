@@ -131,12 +131,13 @@ class H5Iterator(IteratorBaseClass):
     
     @property
     def ds_start_us(self):
-        # There is not really a more accurate way to do this
+        # calculate start from existing hours relative to timestamps
         with h5py.File(self._path, 'r') as f:
-            sec = np.array(f[self._group]["time_s"], dtype=np.int64)
-            mus = np.array(f[self._group]["time_mus"], dtype=np.int64)
+            sec = np.array(f[self._group]["time_s"][0], dtype=np.int64)
+            mus = np.array(f[self._group]["time_mus"][0], dtype=np.int64)
+            hours = np.array(f[self._group]["hours"][0], dtype=np.float32)
 
-        return np.min(sec*int(1e6) + mus)
+            return sec*int(1e6) + mus - int(1e6*3600*hours)
 
     @property
     def timestamps(self):

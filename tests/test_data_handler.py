@@ -175,10 +175,12 @@ class TestDataHandler:
     # The correct functioning of EventIterator is tested in the respective test file
     def test_event_iterator(self, datahandler, testdata_1D_2D_3D_s_mus): 
         *_ , d3, s, mus = testdata_1D_2D_3D_s_mus
+        ts = s*int(1e6) + mus
 
         # Prepare datasets
         datahandler.set("iterator_testing", event=d3)
         datahandler.set(group="iterator_testing", time_s=s, time_mus=mus, dtype=np.int32)
+        datahandler.set(group="iterator_testing", hours=(ts - np.min(ts))/1e6/3600, dtype=np.float32)
 
         it1 = datahandler.get_event_iterator("iterator_testing")
         it2 = datahandler.get_event_iterator("iterator_testing", batch_size=13)
