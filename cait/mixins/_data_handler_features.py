@@ -1,10 +1,14 @@
-from multiprocessing import Pool
+from typing import Tuple, List
 from warnings import warn
 from deprecation import deprecated
+from functools import partial
 
 import numpy as np
 import h5py
 from tqdm.auto import trange
+
+import cait as ai
+import cait.versatile as vai
 
 from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..features._ph_corr import calc_correlated_ph
@@ -17,7 +21,8 @@ from ..filter._ma import rem_off
 from ..trigger._peakdet import get_triggers
 from ..data._baselines import calculate_mean_nps
 
-
+def _calc_mp_helper(event, down, max_bounds):
+    return calc_main_parameters(event, down, max_bounds).getArray()
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -32,8 +37,12 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
-    def calc_mp(self, type='events', path_h5=None, processes=4, down=1,
-                max_bounds=None):
+    def calc_mp(self, 
+                type: str = 'events', 
+                path_h5: str = None, 
+                processes: int = -1, 
+                down: int = 1,
+                max_bounds: Tuple[int] = None):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
@@ -44,7 +53,7 @@ class FeaturesMixin(object):
         :type type: string
         :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
         :type path_h5: string or None
-        :param processes: The number of processes to use for the calculation.
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
         :type processes: int
         :param down: The events get downsampled by this factor for the calculation of main parameters.
         :type down: int
@@ -52,41 +61,34 @@ class FeaturesMixin(object):
         :type max_bounds: tuple of two ints
         """
 
-        if not path_h5:
-            path_h5 = self.path_h5
+        if not path_h5: path_h5 = self.path_h5
+        if processes == -1: processes = ai._available_workers
+
+        f = partial(_calc_mp_helper, down=down, max_bounds=max_bounds)
+        events = [self.get_event_iterator(type, channel=ch, batch_size=100) for ch in range(self.nmbr_channels)]
+        n_events = len(events[0])
+
+        out = []
+        print('CALCULATE MAIN PARAMETERS ...')
+        for ch in range(self.nmbr_channels):
+            print(f"Channel {ch}:")
+            out.append( vai.apply(f, events[ch], n_processes=processes if n_events>1000 else 1) )
+
+        self.set(type, mainpar=np.array(out), dtype=np.float32, overwrite_existing=True)
 
         with h5py.File(path_h5, 'r+') as h5f:
-            events = h5f[type]
-            nmbr_ev = events['event'].shape[1]
+            group = h5f[type]
 
-            print('CALCULATE MAIN PARAMETERS.')
-
-            with Pool(processes) as p:  # basically a for loop running on 4 processes
-                mainpar_list_event = []
-                for c in range(self.nmbr_channels):
-                    mainpar_list_event.append(p.starmap(
-                        calc_main_parameters,
-                        [(events['event'][c, i, :], down, max_bounds) for i in range(nmbr_ev)]))
-            mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
-
-            if 'mainpar' in events:
-                del events['mainpar']
-
-            events.require_dataset(name='mainpar',
-                                   shape=(mainpar_event.shape),
-                                   dtype='float')
-            events['mainpar'][...] = mainpar_event
-
-            events['mainpar'].attrs.create(name='pulse_height', data=0)
-            events['mainpar'].attrs.create(name='t_zero', data=1)
-            events['mainpar'].attrs.create(name='t_rise', data=2)
-            events['mainpar'].attrs.create(name='t_max', data=3)
-            events['mainpar'].attrs.create(name='t_decaystart', data=4)
-            events['mainpar'].attrs.create(name='t_half', data=5)
-            events['mainpar'].attrs.create(name='t_end', data=6)
-            events['mainpar'].attrs.create(name='offset', data=7)
-            events['mainpar'].attrs.create(name='linear_drift', data=8)
-            events['mainpar'].attrs.create(name='quadratic_drift', data=9)
+            group['mainpar'].attrs.create(name='pulse_height', data=0)
+            group['mainpar'].attrs.create(name='t_zero', data=1)
+            group['mainpar'].attrs.create(name='t_rise', data=2)
+            group['mainpar'].attrs.create(name='t_max', data=3)
+            group['mainpar'].attrs.create(name='t_decaystart', data=4)
+            group['mainpar'].attrs.create(name='t_half', data=5)
+            group['mainpar'].attrs.create(name='t_end', data=6)
+            group['mainpar'].attrs.create(name='offset', data=7)
+            group['mainpar'].attrs.create(name='linear_drift', data=8)
+            group['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
     # calc stdevent testpulses
     def calc_sev(self,
@@ -411,10 +413,21 @@ class FeaturesMixin(object):
             print('OF updated.')
 
     # apply the optimum filter
-    def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None,
-                 flexibility=1, calc_rms=False):
+    def apply_of(self, 
+                 type: str = 'events', 
+                 name_appendix_group: str = '', 
+                 name_appendix_set: str = '',
+                 chunk_size: int = 10000, 
+                 hard_restrict: bool = False, 
+                 down: int = 1, 
+                 window: bool = True, 
+                 first_channel_dominant: bool = False,
+                 baseline_model: str = 'constant', 
+                 pretrigger_samples: int = 500, 
+                 onset_to_dominant_channel: List[int] = None,
+                 flexibility: int = 1, 
+                 calc_rms: bool = False
+                 ):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -452,9 +465,9 @@ class FeaturesMixin(object):
         """
 
         if calc_rms:
-            print('Calculating OF Heights and RMS.')
+            print('Calculating OF heights and RMS ...')
         else:
-            print('Calculating OF Heights.')
+            print('Calculating OF heights ...')
 
         if onset_to_dominant_channel is None:
             onset_to_dominant_channel = np.zeros(self.nmbr_channels)
@@ -824,7 +837,12 @@ class FeaturesMixin(object):
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
 
-    def calc_additional_mp(self, type='events', path_h5=None, down=1, no_of=False):
+    def calc_additional_mp(self, 
+                           type: str = 'events', 
+                           path_h5: str = None, 
+                           down: int = 1, 
+                           no_of: bool = False, 
+                           processes: int = -1):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 
@@ -836,52 +854,56 @@ class FeaturesMixin(object):
         :type down: int
         :param no_of: Do not use the optimum filter, fill the quantities with zeros instead.
         :type no_of: bool
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
+        :type processes: int
         """
 
-        if not path_h5:
-            path_h5 = self.path_h5
+        if not path_h5: path_h5 = self.path_h5
+        if processes == -1: processes = ai._available_workers
+
+        assert self.exists("optimumfilter") or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
+
+        if no_of:
+            of = [None]*self.nmbr_channels
+        else:
+            of_real = self.get("optimumfilter", "optimumfilter_real")
+            of_imag = self.get("optimumfilter", "optimumfilter_imag")
+            of = of_real + 1j * of_imag
+           
+        f = [partial(calc_additional_parameters, optimal_transfer_function=of[c], down=down) 
+             for c in range(self.nmbr_channels)]
+        
+        events = [self.get_event_iterator(type, channel=ch, batch_size=100) for ch in range(self.nmbr_channels)]
+        n_events = len(events[0])
+        
+        out = []
+        print('CALCULATE ADDITIONAL MAIN PARAMETERS ...')
+        for ch in range(self.nmbr_channels):
+            print(f"Channel {ch}:")
+            out.append( vai.apply(f[ch], events[ch], n_processes=processes if n_events>1000 else 1)
+            )
+
+        self.set(type, add_mainpar=np.array(out), dtype=np.float32, overwrite_existing=True)
 
         with h5py.File(path_h5, 'r+') as h5f:
-            events = h5f[type]
+            group = h5f[type]
 
-            assert 'optimumfilter' in h5f or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
-
-            if not no_of:
-                of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
-                of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
-                of = of_real + 1j * of_imag
-            else:
-                of = [None for i in range(self.nmbr_channels)]
-
-            print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
-
-            add_par_event = []
-            for c in range(self.nmbr_channels):
-                add_par_event.append([calc_additional_parameters(ev, of[c], down=down) for ev in events['event'][c]])
-
-            add_par_event = np.array(add_par_event)
-
-            events.require_dataset(name='add_mainpar',
-                                   shape=(add_par_event.shape),
-                                   dtype='float')
-            events['add_mainpar'][...] = add_par_event
-
-            events['add_mainpar'].attrs.create(name='array_max', data=0)
-            events['add_mainpar'].attrs.create(name='array_min', data=1)
-            events['add_mainpar'].attrs.create(name='var_first_eight', data=2)
-            events['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
-            events['add_mainpar'].attrs.create(name='var_last_eight', data=4)
-            events['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
-            events['add_mainpar'].attrs.create(name='var', data=6)
-            events['add_mainpar'].attrs.create(name='mean', data=7)
-            events['add_mainpar'].attrs.create(name='skewness', data=8)
-            events['add_mainpar'].attrs.create(name='max_derivative', data=9)
-            events['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
-            events['add_mainpar'].attrs.create(name='min_derivative', data=11)
-            events['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
-            events['add_mainpar'].attrs.create(name='max_filtered', data=13)
-            events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
-            events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
+            group['add_mainpar'].attrs.create(name='array_max', data=0)
+            group['add_mainpar'].attrs.create(name='array_min', data=1)
+            group['add_mainpar'].attrs.create(name='var_first_eight', data=2)
+            group['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
+            group['add_mainpar'].attrs.create(name='var_last_eight', data=4)
+            group['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
+            group['add_mainpar'].attrs.create(name='var', data=6)
+            group['add_mainpar'].attrs.create(name='mean', data=7)
+            group['add_mainpar'].attrs.create(name='skewness', data=8)
+            group['add_mainpar'].attrs.create(name='max_derivative', data=9)
+            group['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
+            group['add_mainpar'].attrs.create(name='min_derivative', data=11)
+            group['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
+            group['add_mainpar'].attrs.create(name='max_filtered', data=13)
+            group['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
+            group['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
     def apply_logical_cut(self,
                           cut_flag: list,

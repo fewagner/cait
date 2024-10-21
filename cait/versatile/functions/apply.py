@@ -66,7 +66,7 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
         raise TypeError(f"Input argument 'f' must be callable.")
     
     # Check if 'f' takes exactly one required argument (the event)
-    n_req_args = np.sum([x.default == _empty for x in signature(f).parameters.values()])
+    n_req_args = np.sum([x.default is _empty for x in signature(f).parameters.values()])
     if n_req_args != 1:
         raise TypeError(f"Input function {f} has too many required arguments ({n_req_args}). Only functions which take one (non-default) argument (the event) are supported.")
     
