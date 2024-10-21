@@ -17,7 +17,7 @@ class Compose:
         for f in self._fncs[1:]: out = f(out)
         return out
     
-def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
+def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1, pb_prefix: str = ""):
     """
     Apply a function to events provided by an EventIterator. 
 
@@ -31,6 +31,8 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     :type ev_iter: `~class:cait.versatile.file.EventIterator`
     :param n_processes: Number of processes to use for multiprocessing.
     :type n_processes: int
+    :param pb_prefix: An optional prefix for the progress bar.
+    :type pb_prefix: str
 
     :return: Results of `f` for all events in `ev_iter`. Has same structure as output of `f` (just with an additional event dimension).
     :rtype: Any
@@ -93,7 +95,8 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
 
     tqdm_config = dict(total=ev_iter.n_batches, 
                        unit="batches" if ev_iter.uses_batches else "events",
-                       delay=2)
+                       delay=2,
+                       desc=pb_prefix)
 
     with ev_iter as ev_it:
         if n_processes > 1:
