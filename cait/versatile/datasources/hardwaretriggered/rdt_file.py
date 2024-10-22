@@ -78,11 +78,21 @@ class RDTFile:
         
         self._raw_file = BinaryFile(path=path, dtype=self._dtype)
         #self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
-
+        
+        import time
+        t0 = time.time()
+        
         # Copy the relevant data to memory so that we don't have to go through
         # the memory mapped file all the time (this should only need a few MB of RAM)
         with self._raw_file as f:
-            meta_copy = np.array(f[["detector_nmbr", "trig_count"]])
+            # iterating through the file like this is much faster than calling np.array(f[["detector_nmbr", "trig_count"]])
+            meta_copy = {"detector_nmbr": np.zeros(len(f), dtype=np.int32), 
+                         "trig_count": np.zeros(len(f), dtype=np.int32)}
+            for i in range(len(f)):
+                meta_copy["detector_nmbr"][i] = f[i, "detector_nmbr"]
+                meta_copy["trig_count"][i] = f[i, "trig_count"]
+                
+        print(time.time() - t0)
 
         self._available_channels = np.unique(meta_copy["detector_nmbr"]).tolist()
 

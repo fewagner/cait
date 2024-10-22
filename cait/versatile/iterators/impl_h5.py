@@ -142,8 +142,8 @@ class H5Iterator(IteratorBaseClass):
     @property
     def timestamps(self):
         with h5py.File(self._path, 'r') as f:
-            sec = np.array(f[self._group]["time_s"][self._params["inds"]], dtype=np.int64)
-            mus = np.array(f[self._group]["time_mus"][self._params["inds"]], dtype=np.int64)
+            sec = np.array(f[self._group]["time_s"], dtype=np.int64)[self._params["inds"]]
+            mus = np.array(f[self._group]["time_mus"], dtype=np.int64)[self._params["inds"]]
 
         return sec*int(1e6) + mus
     
