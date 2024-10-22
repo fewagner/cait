@@ -1,10 +1,14 @@
-from multiprocessing import Pool
+from typing import Tuple, List
 from warnings import warn
 from deprecation import deprecated
+from functools import partial
 
 import numpy as np
 import h5py
 from tqdm.auto import trange
+
+import cait as ai
+import cait.versatile as vai
 
 from ..features._mp import calc_main_parameters, calc_additional_parameters
 from ..features._ph_corr import calc_correlated_ph
@@ -16,8 +20,42 @@ from ..fit._templates import pulse_template
 from ..filter._ma import rem_off
 from ..trigger._peakdet import get_triggers
 from ..data._baselines import calculate_mean_nps
+from ..styles._print_styles import txt_fmt
 
+# convenience function used in calc_mp
+def _calc_mp_helper(event, down, max_bounds):
+    return calc_main_parameters(event, down, max_bounds).getArray()
 
+# convenience function used in apply_of
+def _apply_of_helper(events, 
+                     functions: List[callable], 
+                     correlated: bool, 
+                     onsets: List[int]):
+    n_channels = len(functions)
+
+    # if only one channel is present, we just call the filtering function on this channel
+    if n_channels == 1:
+        return functions[0](events)
+    
+    # if multiple channels are present but first_channel_dominant=False, we just apply the
+    # filtering to the channels separately
+    elif not correlated:
+        out = [functions[i](events[:,i]) for i in range(n_channels)]
+        # restructure the outputs such that same outputs for all channels are grouped
+        return tuple([np.array(list(i)).T for i in zip(*out)])
+    
+    # if multiple channels are present and first_channel_dominant=True, we fist apply the
+    # filtering to the first channel and use its peak_pos to filter the remaining channels
+    else:
+        out = [functions[0](events[:,0])]
+        # peak_pos is second output of the function call above
+        peak_pos = out[0][1]
+
+        for i in range(1, n_channels):
+            out.append(partial(functions[i], peakpos=peak_pos+onsets[i])(events[:,i]))
+
+        # restructure the outputs such that same outputs for all channels are grouped
+        return tuple([np.array(list(i)).T for i in zip(*out)])
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -32,8 +70,12 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
-    def calc_mp(self, type='events', path_h5=None, processes=4, down=1,
-                max_bounds=None):
+    def calc_mp(self, 
+                type: str = 'events', 
+                path_h5: str = None, 
+                processes: int = -1, 
+                down: int = 1,
+                max_bounds: Tuple[int] = None):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
@@ -44,7 +86,7 @@ class FeaturesMixin(object):
         :type type: string
         :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
         :type path_h5: string or None
-        :param processes: The number of processes to use for the calculation.
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
         :type processes: int
         :param down: The events get downsampled by this factor for the calculation of main parameters.
         :type down: int
@@ -52,41 +94,41 @@ class FeaturesMixin(object):
         :type max_bounds: tuple of two ints
         """
 
-        if not path_h5:
-            path_h5 = self.path_h5
+        if not path_h5: path_h5 = self.path_h5
+        if processes == -1: processes = ai._available_workers
+
+        f = partial(_calc_mp_helper, down=down, max_bounds=max_bounds)
+        events = [self.get_event_iterator(type, channel=ch, batch_size=100) for ch in range(self.nmbr_channels)]
+        n_events = len(events[0])
+
+        out = []
+        print(txt_fmt('Calculating main parameters ...', style="bold"))
+        for ch in range(self.nmbr_channels):
+            out.append( vai.apply(f, 
+                                  events[ch], 
+                                  n_processes=processes if n_events>1000 else 1,
+                                  pb_prefix=f"Channel {ch}") )
+
+        self.set(type, 
+                 mainpar=np.array(out), 
+                 dtype=np.float32, 
+                 overwrite_existing=True,
+                 write_to_virtual=False)
+        print("\n")
 
         with h5py.File(path_h5, 'r+') as h5f:
-            events = h5f[type]
-            nmbr_ev = events['event'].shape[1]
+            group = h5f[type]
 
-            print('CALCULATE MAIN PARAMETERS.')
-
-            with Pool(processes) as p:  # basically a for loop running on 4 processes
-                mainpar_list_event = []
-                for c in range(self.nmbr_channels):
-                    mainpar_list_event.append(p.starmap(
-                        calc_main_parameters,
-                        [(events['event'][c, i, :], down, max_bounds) for i in range(nmbr_ev)]))
-            mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
-
-            if 'mainpar' in events:
-                del events['mainpar']
-
-            events.require_dataset(name='mainpar',
-                                   shape=(mainpar_event.shape),
-                                   dtype='float')
-            events['mainpar'][...] = mainpar_event
-
-            events['mainpar'].attrs.create(name='pulse_height', data=0)
-            events['mainpar'].attrs.create(name='t_zero', data=1)
-            events['mainpar'].attrs.create(name='t_rise', data=2)
-            events['mainpar'].attrs.create(name='t_max', data=3)
-            events['mainpar'].attrs.create(name='t_decaystart', data=4)
-            events['mainpar'].attrs.create(name='t_half', data=5)
-            events['mainpar'].attrs.create(name='t_end', data=6)
-            events['mainpar'].attrs.create(name='offset', data=7)
-            events['mainpar'].attrs.create(name='linear_drift', data=8)
-            events['mainpar'].attrs.create(name='quadratic_drift', data=9)
+            group['mainpar'].attrs.create(name='pulse_height', data=0)
+            group['mainpar'].attrs.create(name='t_zero', data=1)
+            group['mainpar'].attrs.create(name='t_rise', data=2)
+            group['mainpar'].attrs.create(name='t_max', data=3)
+            group['mainpar'].attrs.create(name='t_decaystart', data=4)
+            group['mainpar'].attrs.create(name='t_half', data=5)
+            group['mainpar'].attrs.create(name='t_end', data=6)
+            group['mainpar'].attrs.create(name='offset', data=7)
+            group['mainpar'].attrs.create(name='linear_drift', data=8)
+            group['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
     # calc stdevent testpulses
     def calc_sev(self,
@@ -411,10 +453,22 @@ class FeaturesMixin(object):
             print('OF updated.')
 
     # apply the optimum filter
-    def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None,
-                 flexibility=1, calc_rms=False):
+    def apply_of(self, 
+                 type: str = 'events', 
+                 name_appendix_group: str = '', 
+                 name_appendix_set: str = '',
+                 chunk_size: int = 100, 
+                 hard_restrict: bool = False, 
+                 down: int = 1, 
+                 window: bool = True, 
+                 first_channel_dominant: bool = False,
+                 baseline_model: str = 'constant', 
+                 pretrigger_samples: int = 500, 
+                 onset_to_dominant_channel: List[int] = None,
+                 flexibility: int = 1, 
+                 calc_rms: bool = False,
+                 processes: int = -1
+                 ):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -449,141 +503,69 @@ class FeaturesMixin(object):
         :type flexibility: int
         :param calc_rms: If true, calculated also the rms of the filtered pulses.
         :type calc_rms: bool
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
+        :type processes: int
         """
-
-        if calc_rms:
-            print('Calculating OF Heights and RMS.')
-        else:
-            print('Calculating OF Heights.')
+        if processes == -1: processes = ai._available_workers
 
         if onset_to_dominant_channel is None:
             onset_to_dominant_channel = np.zeros(self.nmbr_channels)
         assert len(onset_to_dominant_channel) == self.nmbr_channels, \
             'onset_to_dominant_channel must have length nmbr_channels!'
 
-        with h5py.File(self.path_h5, 'r+') as f:
-            events = f[type]['event']
-            sev = np.array(f['stdevent' + name_appendix_group]['event'])
-            nps = np.array(f['noise']['nps'])
-            if 'optimumfilter' + name_appendix_group in f:
-                transfer_function = np.array(f['optimumfilter' + name_appendix_group]['optimumfilter_real']) + \
-                                    1j * np.array(f['optimumfilter' + name_appendix_group]['optimumfilter_imag'])
-            else:
-                transfer_function = None
+        sev = self.get(f'stdevent{name_appendix_group}', 'event')
+        nps = self.get('noise', 'nps')
 
-            if 'of_ph' + name_appendix_set in f[type]:
-                del f[type]['of_ph' + name_appendix_set]
+        # Use existing optimum filter if it has already been calculated
+        if self.exists(f'optimumfilter{name_appendix_group}'):
+            of_real = self.get(f'optimumfilter{name_appendix_group}', 'optimumfilter_real')
+            of_imag = self.get(f'optimumfilter{name_appendix_group}', 'optimumfilter_imag')
+            transfer_function = of_real + 1j*of_imag
+        else:
+            transfer_function = [None]*self.nmbr_channels
+        
+        events = self.get_event_iterator(type, batch_size=chunk_size)
 
-            f[type].require_dataset(name='of_ph' + name_appendix_set,
-                                    shape=(self.nmbr_channels, len(events[0])),
-                                    dtype='float')
-            if calc_rms:
-                if 'of_rms' + name_appendix_set in f[type]:
-                    del f[type]['of_rms' + name_appendix_set]
-                if 'of_rms_peak' + name_appendix_set in f[type]:
-                    del f[type]['of_rms_peak' + name_appendix_set]
-                f[type].require_dataset(name='of_rms' + name_appendix_set,
-                                shape=(self.nmbr_channels, len(events[0])),
-                                dtype='float')
-                f[type].require_dataset(name='of_rms_peak' + name_appendix_set,
-                                shape=(self.nmbr_channels, len(events[0])),
-                                dtype='float')
+        fs = [partial(get_amplitudes, 
+                        stdevent=sev[c], 
+                        nps=nps[c],
+                        hard_restrict=hard_restrict,
+                        down=down,
+                        window=window,
+                        return_peakpos=True,
+                        baseline_model=baseline_model,
+                        pretrigger_samples=pretrigger_samples,
+                        transfer_function=transfer_function[c],
+                        flexibility=flexibility,
+                        calc_rms=calc_rms)
+                for c in range(events.n_channels)]
+        
+        wrapper = partial(_apply_of_helper, 
+                            functions=fs, 
+                            correlated=first_channel_dominant and events.n_channels>1, 
+                            onsets=onset_to_dominant_channel)
+        
+        wrapper.batch_support = "full"
+    
+        print(txt_fmt('Calculating OF pulse heights ...', style="bold"))
 
-            nmbr_events = len(events[0])
-            counter = 0
+        # first output: optimum filter pulse height, second output: peakpos (not relevant anymore)
+        # remaining output: empty if calc_rms=False, else rms and peak_rms
+        of_ph, _, *remainder = vai.apply(wrapper, events, n_processes=processes if len(events)>1000 else 1)
 
-            # we do the calculation in batches, so that memory does not overflow
-            while counter + chunk_size < nmbr_events:
-                for c in range(self.nmbr_channels):
-                    if first_channel_dominant and c == 0:
-                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                                        hard_restrict=hard_restrict, down=down, window=window,
-                                                        return_peakpos=True,
-                                                        baseline_model=baseline_model,
-                                                        pretrigger_samples=pretrigger_samples,
-                                                        transfer_function=transfer_function[c],
-                                                        flexibility=flexibility,
-                                                        calc_rms=calc_rms)
-                        if calc_rms:
-                            of_ph, peakpos, of_rms, of_rms_peak = results
-                        else:
-                            of_ph, peakpos = results
-                    elif first_channel_dominant:
-                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window,
-                                               peakpos=peakpos + onset_to_dominant_channel[c],
-                                               return_peakpos=False,
-                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                               transfer_function=transfer_function[c],
-                                               flexibility=flexibility,
-                                               calc_rms=calc_rms)
-                        if calc_rms:
-                            of_ph, of_rms, of_rms_peak = results
-                        else:
-                            of_ph = results
-                    else:
-                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window,
-                                               return_peakpos=False,
-                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                               transfer_function=transfer_function[c],
-                                               flexibility=flexibility,
-                                               calc_rms=calc_rms)
-                        if calc_rms:
-                            of_ph, of_rms, of_rms_peak = results
-                        else:
-                            of_ph = results
+        if calc_rms:
+            output = {'of_ph' + name_appendix_set: of_ph.T,
+                      'of_rms' + name_appendix_set: remainder[0].T,
+                      'of_rms_peak' + name_appendix_set: remainder[1].T}
+        else:
+            output = {'of_ph' + name_appendix_set: of_ph.T}
 
-                    f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
-                    if calc_rms:
-                        f[type]['of_rms' + name_appendix_set][c, counter:counter + chunk_size] = of_rms
-                        f[type]['of_rms_peak' + name_appendix_set][c, counter:counter + chunk_size] = of_rms_peak
-                counter += chunk_size
-
-            # calc rest that is smaller than a batch
-            for c in range(self.nmbr_channels):
-                if first_channel_dominant and c == 0:
-                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                                    hard_restrict=hard_restrict, down=down, window=window,
-                                                    return_peakpos=True,
-                                                    baseline_model=baseline_model,
-                                                    pretrigger_samples=pretrigger_samples,
-                                                    transfer_function=transfer_function[c],
-                                                    flexibility=flexibility,
-                                                    calc_rms=calc_rms)
-                    if calc_rms:
-                        of_ph, peakpos, of_rms, of_rms_peak = results
-                    else:
-                        of_ph, peakpos = results
-                elif first_channel_dominant:
-                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                           hard_restrict=hard_restrict, down=down, window=window,
-                                           peakpos=peakpos + onset_to_dominant_channel[c], return_peakpos=False,
-                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                           transfer_function=transfer_function[c],
-                                           flexibility=flexibility,
-                                           calc_rms=calc_rms)
-                    if calc_rms:
-                        of_ph, of_rms, of_rms_peak = results
-                    else:
-                        of_ph = results
-                else:
-                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                           hard_restrict=hard_restrict, down=down, window=window,
-                                           return_peakpos=False,
-                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                           transfer_function=transfer_function[c],
-                                           flexibility=flexibility,
-                                           calc_rms=calc_rms)
-                    if calc_rms:
-                        of_ph, of_rms, of_rms_peak = results
-                    else:
-                        of_ph = results
-                f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
-                if calc_rms:
-                    f[type]['of_rms' + name_appendix_set][c, counter:nmbr_events] = of_rms
-                    f[type]['of_rms_peak' + name_appendix_set][c, counter:nmbr_events] = of_rms_peak
-
+        self.set(type, 
+                 **output, 
+                 dtype=np.float32, 
+                 overwrite_existing=True,
+                 write_to_virtual=False)
+        print("\n")
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
@@ -824,7 +806,12 @@ class FeaturesMixin(object):
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
 
-    def calc_additional_mp(self, type='events', path_h5=None, down=1, no_of=False):
+    def calc_additional_mp(self, 
+                           type: str = 'events', 
+                           path_h5: str = None, 
+                           down: int = 1, 
+                           no_of: bool = False, 
+                           processes: int = -1):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 
@@ -836,52 +823,63 @@ class FeaturesMixin(object):
         :type down: int
         :param no_of: Do not use the optimum filter, fill the quantities with zeros instead.
         :type no_of: bool
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
+        :type processes: int
         """
 
-        if not path_h5:
-            path_h5 = self.path_h5
+        if not path_h5: path_h5 = self.path_h5
+        if processes == -1: processes = ai._available_workers
+
+        assert self.exists("optimumfilter") or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
+
+        if no_of:
+            of = [None]*self.nmbr_channels
+        else:
+            of_real = self.get("optimumfilter", "optimumfilter_real")
+            of_imag = self.get("optimumfilter", "optimumfilter_imag")
+            of = of_real + 1j * of_imag
+           
+        f = [partial(calc_additional_parameters, optimal_transfer_function=of[c], down=down) 
+             for c in range(self.nmbr_channels)]
+        
+        events = [self.get_event_iterator(type, channel=ch, batch_size=100) for ch in range(self.nmbr_channels)]
+        n_events = len(events[0])
+        
+        out = []
+        print(txt_fmt('Calculating additional main parameters ...', style="bold"))
+        for ch in range(self.nmbr_channels):
+            out.append( vai.apply(f[ch], 
+                                  events[ch], 
+                                  n_processes=processes if n_events>1000 else 1,
+                                  pb_prefix=f"Channel {ch}")
+            )
+
+        self.set(type, 
+                 add_mainpar=np.array(out), 
+                 dtype=np.float32, 
+                 overwrite_existing=True,
+                 write_to_virtual=False)
+        print("\n")
 
         with h5py.File(path_h5, 'r+') as h5f:
-            events = h5f[type]
+            group = h5f[type]
 
-            assert 'optimumfilter' in h5f or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
-
-            if not no_of:
-                of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
-                of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
-                of = of_real + 1j * of_imag
-            else:
-                of = [None for i in range(self.nmbr_channels)]
-
-            print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
-
-            add_par_event = []
-            for c in range(self.nmbr_channels):
-                add_par_event.append([calc_additional_parameters(ev, of[c], down=down) for ev in events['event'][c]])
-
-            add_par_event = np.array(add_par_event)
-
-            events.require_dataset(name='add_mainpar',
-                                   shape=(add_par_event.shape),
-                                   dtype='float')
-            events['add_mainpar'][...] = add_par_event
-
-            events['add_mainpar'].attrs.create(name='array_max', data=0)
-            events['add_mainpar'].attrs.create(name='array_min', data=1)
-            events['add_mainpar'].attrs.create(name='var_first_eight', data=2)
-            events['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
-            events['add_mainpar'].attrs.create(name='var_last_eight', data=4)
-            events['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
-            events['add_mainpar'].attrs.create(name='var', data=6)
-            events['add_mainpar'].attrs.create(name='mean', data=7)
-            events['add_mainpar'].attrs.create(name='skewness', data=8)
-            events['add_mainpar'].attrs.create(name='max_derivative', data=9)
-            events['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
-            events['add_mainpar'].attrs.create(name='min_derivative', data=11)
-            events['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
-            events['add_mainpar'].attrs.create(name='max_filtered', data=13)
-            events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
-            events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
+            group['add_mainpar'].attrs.create(name='array_max', data=0)
+            group['add_mainpar'].attrs.create(name='array_min', data=1)
+            group['add_mainpar'].attrs.create(name='var_first_eight', data=2)
+            group['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
+            group['add_mainpar'].attrs.create(name='var_last_eight', data=4)
+            group['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
+            group['add_mainpar'].attrs.create(name='var', data=6)
+            group['add_mainpar'].attrs.create(name='mean', data=7)
+            group['add_mainpar'].attrs.create(name='skewness', data=8)
+            group['add_mainpar'].attrs.create(name='max_derivative', data=9)
+            group['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
+            group['add_mainpar'].attrs.create(name='min_derivative', data=11)
+            group['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
+            group['add_mainpar'].attrs.create(name='max_filtered', data=13)
+            group['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
+            group['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
     def apply_logical_cut(self,
                           cut_flag: list,

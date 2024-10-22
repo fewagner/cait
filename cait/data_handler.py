@@ -1027,7 +1027,7 @@ class DataHandler(SimulateMixin,
                 else: 
                     ds[...] = value
 
-                print(f"Successfully written {fmt_ds(key)} with shape {ds.shape} and dtype '{ds.dtype}' to group {fmt_gr(group)}.\n")
+                print(f"Successfully written {fmt_ds(key)} with shape {ds.shape} and dtype '{ds.dtype}' to group {fmt_gr(group)}.")
 
     def rename(self, group: str = None, **kwargs: str):
         """

@@ -11,7 +11,7 @@ def sizeof_fmt(num, suffix="B"):
 def datetime_fmt(timestamp):
      return str(datetime.fromtimestamp(timestamp, tz=timezone.utc)) + " (UTC)"
      
-def txt_fmt(text: str, color: str, style: str = None):
+def txt_fmt(text: str, color: str = None, style: str = None):
     """
     Format output string with color and style.
 
@@ -28,12 +28,18 @@ def txt_fmt(text: str, color: str, style: str = None):
               "blue": '\033[94m', 
               "green": '\033[92m',
               "yellow": '\033[93m', 
-              "red": '\033[91m'}
+              "red": '\033[91m',
+              }
     styles = {"underline": '\033[4m', 
               "bold": '\033[1m'}
     end = '\033[0m'
-    
-    return styles[style]+colors[color]+text+end if style is not None else colors[color]+text+end
+
+    if color is not None:
+         text = colors[color] + text + end
+    if style is not None:
+         text = styles[style] + text + end
+
+    return text
 
 def fmt_gr(text):
     """
