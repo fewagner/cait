@@ -27,6 +27,10 @@ def vdaq2_dac_channel_trigger(stream, threshold, record_length):
                             filter_fnc=partial(zscore_chunk, record_length=record_length),
                             record_length=record_length)
         
+        if not inds:
+            out_timestamps[c], out_tpas[c] = [], []
+            continue
+            
         out_timestamps[c] = stream.time[inds]
         it = stream.get_event_iterator(keys=c, 
                                        record_length=record_length//5, 
@@ -99,8 +103,8 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tpas(self):
         if self._tpas is None:
-            # Trigger with generic threshold 5 z-scores and record length 1 sec
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 5, int(1e6/self.dt_us))
+            # Trigger with generic threshold 3 z-scores and record length 50 ms
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 3, int(1e6/self.dt_us/20))
 
             self._tpas = tpas
             self._tp_timestamps = timestamps
@@ -110,8 +114,8 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tp_timestamps(self):
         if self._tp_timestamps is None:
-            # Trigger with generic threshold 5 z-scores and record length 1 sec
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 5, int(1e6/self.dt_us))
+            # Trigger with generic threshold 3 z-scores and record length 50 ms
+            timestamps, tpas = vdaq2_dac_channel_trigger(self, 3, int(1e6/self.dt_us/20))
 
             self._tpas = tpas
             self._tp_timestamps = timestamps
