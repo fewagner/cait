@@ -17,6 +17,7 @@ def _trigger_helper(dh,
                     reuse_triggers,
                     interval,
                     trigger_fncs,
+                    n_noise,
                     name_appendix
                     ):
     
@@ -104,6 +105,11 @@ def _trigger_helper(dh,
     if testpulse_channels is not None:
         dh.set(f"event_building-{name_appendix}", tp_ts=all_tp_ts, dtype=np.int64, overwrite_existing=True)
         dh.set(f"event_building-{name_appendix}", tpas=final_tpas, dtype=np.float32, overwrite_existing=True)
+        
+    if n_noise > 0:
+        inds = stream.time.timestamp_to_ind(dh.get(f"event_building-{name_appendix}", "event_timestamps"))
+        noise_inds = vai.sample_noise(inds.tolist(), dh.record_length, n_samples=n_noise)
+        dh.set(f"event_building-{name_appendix}", noise_ts=stream.time[noise_inds], dtype=np.int64, overwrite_existing=True)
 
     if copy_events:
         # save events in events group
@@ -111,12 +117,15 @@ def _trigger_helper(dh,
             raise Exception("Could not copy events to DataHandler because the group 'events' already exists. To delete it, use 'dh.drop('events')'.")
 
         print("Writing events to DataHandler ...")
-        dh.include_event_iterator("events", 
-                                  stream.get_event_iterator(
-                                      trigger_channels + ([] if slave_channels is None else slave_channels), 
-                                      dh.record_length, 
-                                      timestamps=event_ts
-                                  ))
+        if len(event_ts)>0:
+            dh.include_event_iterator("events", 
+                                      stream.get_event_iterator(
+                                          trigger_channels + ([] if slave_channels is None else slave_channels), 
+                                          dh.record_length, 
+                                          timestamps=event_ts
+                                      ))
+        else:
+            print("No events found to write to DataHandler.")
 
         # do the same for testpulses if respective information is provided
         if testpulse_channels is not None:
@@ -129,14 +138,30 @@ def _trigger_helper(dh,
 
             # save testpulses and tpas
             print("Writing testpulses to DataHandler ...")
-            dh.include_event_iterator("testpulses", 
-                                      stream.get_event_iterator(
-                                          testpulse_channels, 
-                                          dh.record_length, 
-                                          timestamps=all_tp_ts[valid_tp_flag]
-                                      ))
-            dh.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag])
-                
+            tp_ts = all_tp_ts[valid_tp_flag]
+            if len(tp_ts)>0:
+                dh.include_event_iterator("testpulses", 
+                                          stream.get_event_iterator(
+                                              testpulse_channels, 
+                                              dh.record_length, 
+                                              timestamps=tp_ts
+                                          ))
+                dh.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag])
+            else:
+                print("No testpulses found to write to DataHandler.")
+            
+        if n_noise>0:
+            print("Writing noise to DataHandler ...")
+            noise_ts = dh.get(f"event_building-{name_appendix}", "noise_ts")
+            if len(noise_ts)>0:
+                dh.include_event_iterator("noise", 
+                                          stream.get_event_iterator(
+                                              trigger_channels + ([] if slave_channels is None else slave_channels), 
+                                              dh.record_length, 
+                                              timestamps=noise_ts
+                                          ))
+            else:
+                print("No noise found to write to DataHandler.")
 
 class TriggerCollectionMixin:
     """
@@ -151,6 +176,7 @@ class TriggerCollectionMixin:
                        copy_events: bool = False,
                        reuse_triggers: bool = False,
                        interval: Tuple[float] = None,
+                       n_noise: int = 0,
                        **kwargs
                       ):
         """
@@ -178,6 +204,8 @@ class TriggerCollectionMixin:
         :type reuse_triggers: bool, optional
         :param interval: The coincidence interval for event building in microseconds, i.e. if a trigger lies within the specified interval around a trigger of another channel, they are collected to represent one event. Defaults to ``-+dt_us*record_length//4``.
         :type interval: Tuple[float], optional
+        :param n_noise: The number of empty noise traces to include. Defaults to 0, i.e. no noise is included.
+        :type n_noise: int, optional
         :param kwargs: Additional keyword arguments forwarded to :func:`cait.versatile.trigger_zscore`.
         :type kwargs: Any
 
@@ -214,6 +242,9 @@ class TriggerCollectionMixin:
         # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
         thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
         
+        if len(thresholds) != len(trigger_channels):
+            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+        
         trigger_fncs = [partial(vai.trigger_zscore, 
                                threshold=thresh, 
                                record_length=self.record_length, 
@@ -221,7 +252,7 @@ class TriggerCollectionMixin:
                        for thresh in thresholds]
         
         _trigger_helper(self, stream, trigger_channels, slave_channels, testpulse_channels, copy_events, reuse_triggers,
-                        interval, trigger_fncs, "z-score")
+                        interval, trigger_fncs, n_noise, "z-score")
         
     def trigger_of(self,
                    stream: vai.datasources.stream.streambase.StreamBaseClass,
@@ -233,6 +264,7 @@ class TriggerCollectionMixin:
                    reuse_triggers: bool = False,
                    interval: Tuple[float] = None,
                    of: np.ndarray = None,
+                   n_noise: int = 0,
                    **kwargs
                    ):
         """
@@ -262,6 +294,8 @@ class TriggerCollectionMixin:
         :type interval: Tuple[float], optional
         :param of: The optimum filter to use for triggering (has to have one for each channel in 'trigger_channels'). If none is specified (default), the optimum filter is read from the DataHandler.
         :type of: np.ndarray, optional
+        :param n_noise: The number of empty noise traces to include. Defaults to 0, i.e. no noise is included.
+        :type n_noise: int, optional
         :param kwargs: Additional keyword arguments forwarded to :func:`cait.versatile.trigger_of`.
         :type kwargs: Any
 
@@ -301,6 +335,9 @@ class TriggerCollectionMixin:
         # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
         thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
         
+        if len(thresholds) != len(trigger_channels):
+            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+            
         if of is not None:
             ofs = of
         elif self.exists("optimumfilter"):
@@ -312,7 +349,7 @@ class TriggerCollectionMixin:
             ofs = np.array([ofs])
             
         if len(ofs) != len(trigger_channels):
-            raise ValueError(f"Optimum filter has to have as many channels as channels to trigger, i.e. len(of) must be len(trigger_channels). Received {len(of)} and {len(trigger_channels)}.")
+            raise ValueError(f"Optimum filter has to have as many channels as channels to trigger, i.e. len(of) must be len(trigger_channels). Received {len(ofs)} and {len(trigger_channels)}.")
         
         trigger_fncs = [partial(vai.trigger_of, 
                                of=of,
@@ -321,7 +358,7 @@ class TriggerCollectionMixin:
                        for of, thresh in zip(ofs, thresholds)]
         
         _trigger_helper(self, stream, trigger_channels, slave_channels, testpulse_channels, copy_events, reuse_triggers,
-                        interval, trigger_fncs, "of")
+                        interval, trigger_fncs, n_noise, "of")
         
     def trigger_coincidence(self,
                             filedict: dict,
