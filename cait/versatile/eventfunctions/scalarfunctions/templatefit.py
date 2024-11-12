@@ -203,6 +203,11 @@ class _TemplateCachePoly:
 
         except LinAlgError:
             opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
+        except ValueError as err:
+            if err.args[0] == "array must not contain infs or NaNs":
+                opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
+            else:
+                raise err
         
         return opt_param, opt_shift, rms
     
