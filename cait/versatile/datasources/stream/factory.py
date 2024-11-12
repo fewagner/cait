@@ -25,6 +25,8 @@ class Stream(StreamBaseClass):
     :type hardware: str
     :param src: The source for the stream. Depending on how the data is taken, this can either be the path to one file or a list of paths to multiple files. This input is handled by the specific implementation of the Stream Object. See below for examples.
     :type src: Union[str, List[str]]
+    :param args, kwargs: Additional arguments for the chosen hardware (see respective documentation).
+    :type args, kwargs: Any
 
     **Usage for different hardware:**
     
@@ -59,11 +61,11 @@ class Stream(StreamBaseClass):
         # values instead of the ADC values
         s['ADC1', 10:20, 'as_voltage']
     """
-    def __init__(self, hardware: str, src: Union[str, List[str]]):
+    def __init__(self, hardware: str, src: Union[str, List[str]], *args, **kwargs):
         if hardware.lower() == "csmpl":
-            self._stream = Stream_CSMPL(src)
+            self._stream = Stream_CSMPL(src, *args, **kwargs)
         elif hardware.lower() == "vdaq2":
-            self._stream = Stream_VDAQ2(src)
+            self._stream = Stream_VDAQ2(src, *args, **kwargs)
         #elif hardware.lower() == "vdaq3":
         #    self._stream = Stream_VDAQ3(src)
         else:

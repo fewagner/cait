@@ -1,4 +1,3 @@
-import os
 from functools import partial
 
 import numpy as np
@@ -12,33 +11,30 @@ from ...eventfunctions.processing.removebaseline import RemoveBaseline
 from ....readers import BinaryFile
 
 # Helper Function to get testpulse information from VDAQ2 files
-def vdaq2_dac_channel_trigger(stream, threshold, record_length):
-    channels = [x for x in stream.keys if x.lower().startswith('dac')]
+def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
+    if not key.startswith('DAC'):
+        raise KeyError(f"Invalid testpulse channel '{key}'. Valid channels start with 'DAC'.")
+    
+    if not key in stream.keys:
+        raise KeyError(f"'{key}' is not present in this stream file.")
 
-    if not channels:
-        raise KeyError("No DAC channels present in this stream file.")
-
-    out_timestamps = dict()
-    out_tpas = dict()
-
-    for c in channels:
-        inds, _ =  trigger_base(stream=stream[c],
+    inds, _ =  trigger_base(stream=stream[key],
                             threshold=threshold,
                             filter_fnc=partial(zscore_chunk, record_length=record_length),
                             record_length=record_length)
-        
-        if not inds:
-            out_timestamps[c], out_tpas[c] = [], []
-            continue
-            
-        out_timestamps[c] = stream.time[inds]
-        it = stream.get_event_iterator(keys=c, 
-                                       record_length=record_length//5, 
-                                       timestamps=out_timestamps[c],
+    
+    if not inds:
+        out_timestamps, out_tpas = [], []
+
+    else:
+        out_timestamps = stream.time[inds]
+        it = stream.get_event_iterator(keys=key,
+                                       record_length=record_length//5,
+                                       timestamps=out_timestamps,
                                        alignment=1/2)
-        out_tpas[c] = apply(np.max, 
-                            it.with_processing([partial(np.power, 2), RemoveBaseline()]),
-                            n_processes=len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count())
+        out_tpas = apply(np.max,
+                         it.with_processing([partial(np.power, 2), RemoveBaseline()]),
+                         n_processes=ai._available_workers)
 
     return out_timestamps, out_tpas
 
@@ -47,8 +43,19 @@ class Stream_VDAQ2(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'vdaq2'.
     VDAQ2 data is stored in `*.bin` files. Its header contains instructions on how to read the data and all recorded channels are stored in the same file.
+
+    :param file: The binary file with the stream data (including the file extension).
+    :type file: str
+    :param dac_trig_thr: Trigger threshold (in sigmas) to find testpulses from the DAC channels. Defaults to 5 sigmas
+    :type dac_trig_thr: float, optional
+    :param dac_trig_win_len_ms: Trigger window length (in ms) to find testpulses from the DAC channels. Defaults to 100 ms
+    :type dac_trig_win_len_ms: int, optional
     """
-    def __init__(self, file: str):
+    def __init__(self, 
+                 file: str, 
+                 dac_trig_thr: float = 5.,      # sigmas
+                 dac_trig_win_len_ms: int = 100 # ms
+                 ):
         # Get relevant info about file from its header
         header, keys, self._adc_bits, self._dac_bits, dt_tcp = ai.trigger.read_header(file)
         # Start timestamp of the file in us (header['timestamp'] is in ns)
@@ -63,9 +70,13 @@ class Stream_VDAQ2(StreamBaseClass):
         self._data = BinaryFile(path=file, dtype=dt_tcp, offset=header.nbytes)
         #self._data = np.memmap(file, dtype=dt_tcp, mode='r', offset=header.nbytes)
 
+        self._dac_trig_thr = dac_trig_thr
+        self._dac_trig_win_len_ms = dac_trig_win_len_ms
+        self._dac_trig_win_len = int(1000*dac_trig_win_len_ms/self._dt)
+
         # Create placeholders for testpulses
-        self._tp_timestamps = None
-        self._tpas = None
+        self._tp_timestamps = dict()
+        self._tpas = dict()
         
     def __len__(self):
         return len(self._data)
@@ -102,22 +113,48 @@ class Stream_VDAQ2(StreamBaseClass):
     
     @property
     def tpas(self):
-        if self._tpas is None:
-            # Trigger with generic threshold 3 z-scores and record length 50 ms
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 3, int(1e6/self.dt_us/20))
-
-            self._tpas = tpas
-            self._tp_timestamps = timestamps
-
-        return self._tpas
+        return VDAQ2_TPAS(self)
 
     @property
     def tp_timestamps(self):
-        if self._tp_timestamps is None:
-            # Trigger with generic threshold 3 z-scores and record length 50 ms
-            timestamps, tpas = vdaq2_dac_channel_trigger(self, 3, int(1e6/self.dt_us/20))
+        return VDAQ2_TP_TS(self)
+    
+class VDAQ2_TPAS:
+    """A helper class for accessing testpulse amplitudes of the VDAQ2 hardware (which requires triggering a DAC channel)."""
+    def __init__(self, stream: Stream_VDAQ2):
+        self._stream = stream
 
-            self._tpas = tpas
-            self._tp_timestamps = timestamps
+    def __repr__(self):
+        return f'{self.__class__.__name__}(keys={[x for x in self._stream.keys if x.startswith("DAC")]})'
 
-        return self._tp_timestamps
+    def __getitem__(self, key: str):
+        if key not in self._stream._tpas.keys():
+            print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
+            timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
+                                                         self._stream._dac_trig_thr,
+                                                         self._stream._dac_trig_win_len)
+
+            self._stream._tpas[key] = tpas
+            self._stream._tp_timestamps[key] = timestamps
+
+        return self._stream._tpas[key]
+    
+class VDAQ2_TP_TS:
+    """A helper class for accessing testpulse timestamps of the VDAQ2 hardware (which requires triggering a DAC channel)."""
+    def __init__(self, stream: Stream_VDAQ2):
+        self._stream = stream
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(keys={[x for x in self._stream.keys if x.startswith("DAC")]})'
+
+    def __getitem__(self, key: str):
+        if key not in self._stream._tp_timestamps.keys():
+            print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
+            timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
+                                                         self._stream._dac_trig_thr,
+                                                         self._stream._dac_trig_win_len)
+
+            self._stream._tpas[key] = tpas
+            self._stream._tp_timestamps[key] = timestamps
+
+        return self._stream._tp_timestamps[key]
