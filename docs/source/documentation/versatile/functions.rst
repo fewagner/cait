@@ -72,3 +72,4 @@ Utility functions
 .. currentmodule:: cait.versatile
 .. autofunction:: timestamp_coincidence
 .. autofunction:: sample_noise
+.. autofunction:: event_building
