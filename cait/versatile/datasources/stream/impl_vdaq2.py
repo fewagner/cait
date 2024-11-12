@@ -18,10 +18,11 @@ def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
     if not key in stream.keys:
         raise KeyError(f"'{key}' is not present in this stream file.")
 
-    inds, _ =  trigger_base(stream=stream[key],
-                            threshold=threshold,
-                            filter_fnc=partial(zscore_chunk, record_length=record_length),
-                            record_length=record_length)
+    with stream:
+        inds, _ =  trigger_base(stream=stream[key],
+                                threshold=threshold,
+                                filter_fnc=partial(zscore_chunk, record_length=record_length),
+                                record_length=record_length)
     
     if not inds:
         out_timestamps, out_tpas = [], []

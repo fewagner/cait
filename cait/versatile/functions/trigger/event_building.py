@@ -202,4 +202,9 @@ def event_building(trigger_ts: List[List[int]],
         original_ts[i, np.array(trigger_flag[i])] = np.array(t)
         original_ph[i, np.array(trigger_flag[i])] = np.array(p)
 
-    return np.array(event_ts), np.array(trigger_flag), original_ts, original_ph, all_tp_ts, final_tpas
+    return (np.array(event_ts), 
+            np.array(trigger_flag), 
+            np.array(original_ts), 
+            np.array(original_ph), 
+            np.array(all_tp_ts), 
+            np.array(final_tpas))
