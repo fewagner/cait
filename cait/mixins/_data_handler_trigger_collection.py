@@ -28,12 +28,14 @@ def _trigger_helper(dh,
     if ( slave_channels is not None ) and ( not all([x in stream.keys for x in slave_channels]) ):
         raise KeyError(f"All 'slave_channels' have to be valid channel names. Available: {stream.keys}")
 
-    if ( testpulse_channels is not None ) and ( not all([x in stream.keys for x in testpulse_channels]) ):
-        raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {stream.keys}")
+    if ( testpulse_channels is not None ) and ( not all([x in stream.tpas.keys() for x in testpulse_channels]) ):
+        raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {list(stream.tpas.keys())}")
 
     if testpulse_channels is not None:
         if len(trigger_channels) + (0 if slave_channels is None else len(slave_channels)) != len(testpulse_channels):
             raise ValueError(f"Testpulse channels are required for all channels (including slave channels). I.e. len(testpulse_channels)' must match 'len(trigger_channels)+len(slave_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels)}+{0 if slave_channels is None else len(slave_channels)}")
+
+    all_channels = trigger_channels + ([] if slave_channels is None else slave_channels)
 
     # Triggering channels
     for i, key in enumerate(trigger_channels):
@@ -120,7 +122,7 @@ def _trigger_helper(dh,
         if len(event_ts)>0:
             dh.include_event_iterator("events", 
                                       stream.get_event_iterator(
-                                          trigger_channels + ([] if slave_channels is None else slave_channels), 
+                                          all_channels, 
                                           dh.record_length, 
                                           timestamps=event_ts
                                       ))
@@ -142,7 +144,7 @@ def _trigger_helper(dh,
             if len(tp_ts)>0:
                 dh.include_event_iterator("testpulses", 
                                           stream.get_event_iterator(
-                                              testpulse_channels, 
+                                              all_channels, 
                                               dh.record_length, 
                                               timestamps=tp_ts
                                           ))
@@ -156,7 +158,7 @@ def _trigger_helper(dh,
             if len(noise_ts)>0:
                 dh.include_event_iterator("noise", 
                                           stream.get_event_iterator(
-                                              trigger_channels + ([] if slave_channels is None else slave_channels), 
+                                              all_channels, 
                                               dh.record_length, 
                                               timestamps=noise_ts
                                           ))

@@ -12,12 +12,6 @@ from ....readers import BinaryFile
 
 # Helper Function to get testpulse information from VDAQ2 files
 def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
-    if not key.startswith('DAC'):
-        raise KeyError(f"Invalid testpulse channel '{key}'. Valid channels start with 'DAC'.")
-    
-    if not key in stream.keys:
-        raise KeyError(f"'{key}' is not present in this stream file.")
-
     with stream:
         inds, _ =  trigger_base(stream=stream[key],
                                 threshold=threshold,
@@ -124,11 +118,15 @@ class VDAQ2_TPAS:
     """A helper class for accessing testpulse amplitudes of the VDAQ2 hardware (which requires triggering a DAC channel)."""
     def __init__(self, stream: Stream_VDAQ2):
         self._stream = stream
+        self._keys = [x for x in stream.keys if x.startswith("DAC")]
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(keys={[x for x in self._stream.keys if x.startswith("DAC")]})'
+        return f'{self.__class__.__name__}(keys={self.keys()})'
 
     def __getitem__(self, key: str):
+        if not key in self.keys():
+            raise KeyError(f"Invalid testpulse key '{key}'. Valid keys: {self.keys()}")
+    
         if key not in self._stream._tpas.keys():
             print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
             timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
@@ -140,15 +138,22 @@ class VDAQ2_TPAS:
 
         return self._stream._tpas[key]
     
+    def keys(self):
+        return self._keys
+    
 class VDAQ2_TP_TS:
     """A helper class for accessing testpulse timestamps of the VDAQ2 hardware (which requires triggering a DAC channel)."""
     def __init__(self, stream: Stream_VDAQ2):
         self._stream = stream
+        self._keys = [x for x in stream.keys if x.startswith("DAC")]
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(keys={[x for x in self._stream.keys if x.startswith("DAC")]})'
+        return f'{self.__class__.__name__}(keys={self.keys()})'
 
     def __getitem__(self, key: str):
+        if not key in self.keys():
+            raise KeyError(f"Invalid testpulse key '{key}'. Valid keys: {self.keys()}")
+        
         if key not in self._stream._tp_timestamps.keys():
             print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
             timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
@@ -159,3 +164,6 @@ class VDAQ2_TP_TS:
             self._stream._tp_timestamps[key] = timestamps
 
         return self._stream._tp_timestamps[key]
+    
+    def keys(self):
+        return self._keys
