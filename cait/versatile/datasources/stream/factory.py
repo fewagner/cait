@@ -100,6 +100,10 @@ class Stream(StreamBaseClass):
         return self._stream.dt_us
     
     @property
+    def tp_keys(self):
+        return self._stream.tp_keys
+    
+    @property
     def tpas(self):
         return self._stream.tpas
 

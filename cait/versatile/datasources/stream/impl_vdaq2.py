@@ -107,6 +107,10 @@ class Stream_VDAQ2(StreamBaseClass):
         return self._keys
     
     @property
+    def tp_keys(self):
+        return [x for x in self.keys if x.startswith("DAC")]
+    
+    @property
     def tpas(self):
         return VDAQ2_TPAS(self)
 
@@ -118,7 +122,6 @@ class VDAQ2_TPAS:
     """A helper class for accessing testpulse amplitudes of the VDAQ2 hardware (which requires triggering a DAC channel)."""
     def __init__(self, stream: Stream_VDAQ2):
         self._stream = stream
-        self._keys = [x for x in stream.keys if x.startswith("DAC")]
 
     def __repr__(self):
         return f'{self.__class__.__name__}(keys={self.keys()})'
@@ -127,7 +130,7 @@ class VDAQ2_TPAS:
         if not key in self.keys():
             raise KeyError(f"Invalid testpulse key '{key}'. Valid keys: {self.keys()}")
     
-        if key not in self._stream._tpas.keys():
+        if key not in self._stream.tp_keys:
             print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
             timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
                                                          self._stream._dac_trig_thr,
@@ -139,13 +142,12 @@ class VDAQ2_TPAS:
         return self._stream._tpas[key]
     
     def keys(self):
-        return self._keys
+        return self._stream.tp_keys
     
 class VDAQ2_TP_TS:
     """A helper class for accessing testpulse timestamps of the VDAQ2 hardware (which requires triggering a DAC channel)."""
     def __init__(self, stream: Stream_VDAQ2):
         self._stream = stream
-        self._keys = [x for x in stream.keys if x.startswith("DAC")]
 
     def __repr__(self):
         return f'{self.__class__.__name__}(keys={self.keys()})'
@@ -154,7 +156,7 @@ class VDAQ2_TP_TS:
         if not key in self.keys():
             raise KeyError(f"Invalid testpulse key '{key}'. Valid keys: {self.keys()}")
         
-        if key not in self._stream._tp_timestamps.keys():
+        if key not in self._stream.tp_keys:
             print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
             timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
                                                          self._stream._dac_trig_thr,
@@ -166,4 +168,4 @@ class VDAQ2_TP_TS:
         return self._stream._tp_timestamps[key]
     
     def keys(self):
-        return self._keys
+        return self._stream.tp_keys

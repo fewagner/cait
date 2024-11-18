@@ -77,6 +77,10 @@ class StreamSum(StreamBaseClass):
         return self._keys
     
     @property
+    def tp_keys(self):
+        return self._stream.tp_keys
+    
+    @property
     def tpas(self):
         return self._stream.tpas
 

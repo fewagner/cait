@@ -84,6 +84,13 @@ class Stream_CSMPL(StreamBaseClass):
         return self._keys
     
     @property
+    def tp_keys(self):
+        if not hasattr(self, '_tpas'):
+            return []
+        else:
+            return list(self._tpas.keys())
+    
+    @property
     def tpas(self):
         if not hasattr(self, '_tpas'):
             raise KeyError("Testpulse amplitudes not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")

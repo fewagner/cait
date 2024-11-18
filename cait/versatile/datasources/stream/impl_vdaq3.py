@@ -88,6 +88,10 @@ class Stream_VDAQ3(StreamBaseClass):
         return list(self._data.keys())
     
     @property
+    def tp_keys(self):
+        return list(self._data.keys())
+    
+    @property
     def tpas(self):
         raise NotImplementedError("Not yet implemented")
 
