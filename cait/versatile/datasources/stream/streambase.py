@@ -311,6 +311,8 @@ class StreamTime:
     
     def timestamp_to_ind(self, timestamps: Union[int, List[int]]):
         """Function to convert timestamps to indices."""
+        if np.array(timestamps).size == 0: return np.array([], dtype=int)
+
         out = (np.array(timestamps)-self._start)//self._dt
         if np.min(out) < 0 or np.max(out) >= self._n:
             raise IndexError("Requested timestamp is out of range.")

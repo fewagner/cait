@@ -135,6 +135,9 @@ def sample_noise(trigger_inds: List[int], record_length: int, n_samples: int = N
     :rtype: List[int]
     """
 
+    # Make sure we have list (and no numpy array)
+    if isinstance(trigger_inds, np.ndarray): trigger_inds = trigger_inds.tolist()
+
     if n_samples is None: n_samples = np.inf
 
     # Index of trigger relative to beginning of record window

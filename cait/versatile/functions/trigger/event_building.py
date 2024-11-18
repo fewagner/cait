@@ -50,10 +50,10 @@ def event_building(trigger_ts: List[List[int]],
     """
     
     # Make sure we have lists of lists (and no numpy arrays)
-    if isinstance(trigger_ts, np.ndarray): trigger_ts.tolist()
-    if isinstance(trigger_phs, np.ndarray): trigger_phs.tolist()
-    if isinstance(tp_ts, np.ndarray): tp_ts.tolist()
-    if isinstance(tpas, np.ndarray): tpas.tolist()
+    if isinstance(trigger_ts, np.ndarray): trigger_ts = trigger_ts.tolist()
+    if isinstance(trigger_phs, np.ndarray): trigger_phs = trigger_phs.tolist()
+    if isinstance(tp_ts, np.ndarray): tp_ts = tp_ts.tolist()
+    if isinstance(tpas, np.ndarray): tpas = tpas.tolist()
 
     if not len(trigger_ts) == len(trigger_phs):
         raise ValueError(f"'trigger_ts' and 'trigger_ph' must have the same length (number of triggered channels). Received {len(trigger_ts)} and {len(trigger_phs)}.")
@@ -196,11 +196,17 @@ def event_building(trigger_ts: List[List[int]],
     # also save the original trigger timestamps exactly like the trigger flag array
     # values of -1 indicate that the corresponding value does not exist
     # (because the channel didn't trigger separately for that event)
-    original_ts = -1*np.ones(np.array(trigger_flag).shape, dtype=np.int64)
-    original_ph = -1*np.ones(np.array(trigger_flag).shape, dtype=np.float32)
-    for i, (t, p) in enumerate(zip(trigger_ts_new, trigger_phs_new)):
-        original_ts[i, np.array(trigger_flag[i])] = np.array(t)
-        original_ph[i, np.array(trigger_flag[i])] = np.array(p)
+    if np.array(trigger_flag).size>0:
+        original_ts = -1*np.ones(np.array(trigger_flag).shape, dtype=np.int64)
+        original_ph = -1*np.ones(np.array(trigger_flag).shape, dtype=np.float32)
+
+        for i, (t, p) in enumerate(zip(trigger_ts_new, trigger_phs_new)):
+            original_ts[i, np.array(trigger_flag[i])] = np.array(t)
+            original_ph[i, np.array(trigger_flag[i])] = np.array(p)
+    
+    else:
+        original_ts = [[] for _ in range(len(trigger_flag))]
+        original_ph = [[] for _ in range(len(trigger_flag))]
 
     return (np.array(event_ts), 
             np.array(trigger_flag), 
