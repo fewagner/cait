@@ -96,7 +96,8 @@ def check_file_consistency(files: List[str], src_dir: str, groups_combine: List[
                 assert group in list(h5f.keys()), f"Group '{group}' is not present in file '{f}'."
                 datasets.append(set(h5f[group].keys()))
 
-        assert all(datasets[0] == s for s in datasets[1:]), f"Datasets of group '{group}' are not consistent across all files."
+        if len(datasets)>1:
+            assert all(datasets[0] == s for s in datasets[1:]), f"Datasets of group '{group}' are not consistent across all files."
 
         # if passed, check for same shape (datasets[0] is representative, as we already made sure that they are all the same)
         for ds in datasets[0]:
@@ -111,8 +112,10 @@ def check_file_consistency(files: List[str], src_dir: str, groups_combine: List[
                     shapes.append(shape)
                     dtypes.append(dtype)
             
-            assert all(shapes[0] == s for s in shapes[1:]), f"Shapes of dataset '{ds}' in group '{group}' are not consistent across all files."
-            assert all(dtypes[0] == d for d in dtypes[1:]), f"dtypes of dataset '{ds}' in group '{group}' are not consistent across all files."
+            if len(shapes) > 0:
+                assert all(shapes[0] == s for s in shapes[1:]), f"Shapes of dataset '{ds}' in group '{group}' are not consistent across all files."
+            if len(dtypes) > 0:
+                assert all(dtypes[0] == d for d in dtypes[1:]), f"dtypes of dataset '{ds}' in group '{group}' are not consistent across all files."
 
     # check if groups_include are present in at least one file
     all_groups = set()
@@ -158,7 +161,8 @@ def combine_h5(fname: str,
         print(f"Overwriting existing file '{out_path}'.")
         os.remove(out_path)
 
-    assert len(files) > 1, "At least two files have to be chosen to merge."
+    # we now allow to "combine" lists of a single file
+    # assert len(files) > 1, "At least two files have to be chosen to merge."
 
     check_file_consistency(files, src_dir, groups_combine, groups_include)
 
