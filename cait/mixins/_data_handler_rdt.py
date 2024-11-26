@@ -608,7 +608,13 @@ class RdtMixin(object):
         cond = data['detector_nmbr'] == self.channels[0]
         nmbr_cp = np.sum(cond)
         print('{} Control Pulses for channel {} in file.'.format(nmbr_cp, self.channels[0]))
-        hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) / clock_frequency / 3600
+
+        ts_high = np.array(data['time_stamp_high'][cond], dtype=np.int64)
+        ts_low = np.array(data['time_stamp_low'][cond], dtype=np.int64)
+        hours = (ts_high*(2**32) + ts_low)/clock_frequency/3600
+    
+        # Caused OverflowError in numpy>=2
+        #hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) / clock_frequency / 3600
 
         # create file handles
         with h5py.File(self.path_h5, 'r+') as f:
