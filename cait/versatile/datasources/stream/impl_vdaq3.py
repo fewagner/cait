@@ -6,12 +6,11 @@ import cait as ai
 
 from .streambase import StreamBaseClass
 from ....readers import BinaryFile
-
-# TODO: finally implement and test cases    
+  
 class Stream_VDAQ3(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'vdaq3'.
-    VDAQ3 data is stored in .bin files. Its header contains instructions on how to read the data and all recorded channels are stored in the separate file.
+    VDAQ3 data is stored in .dat files. Its header contains instructions on how to read the data and all recorded channels are stored in the separate file.
     """
     def __init__(self, files: Union[str, List[str]]):
         if type(files) is str: files = [files]
@@ -47,8 +46,9 @@ class Stream_VDAQ3(StreamBaseClass):
             
             dTs.append(header_json["timestep_ns"])
             
-            # There is also a 'ts_ns' which gives the clock of the DAQ
-            starts.append(header_json["ts_utc_ns"]//1000)
+            # There is also a 'ts_utc_ns' which gives the UTC time but it is not
+            # synchronized with e.g. muon veto
+            starts.append(header_json["ts_ns"]//1000)
 
             channel_name = header_json["channel_id"]
             prec = header_json["sample_size_bytes"]
