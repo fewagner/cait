@@ -124,16 +124,16 @@ def test_trigger_single_samples():
         i, _ = trigger(data)
         assert len(i)==1 and i[0]==(len(data) - 2*record_length - 1)
 
-        # should find the peak on first searched sample but not the second one (within record_length/2)
+        # should find the peak on first searched sample but not the second one (within record_length/2 and smaller)
         data = np.zeros(record_length*13)
         data[record_length] = 1
-        data[record_length+record_length//2] = 1
+        data[record_length+record_length//2] = 0.9
         i, _ = trigger(data)
-        assert len(i)==1
+        assert len(i)==1 and i[0]==record_length
 
-        # should find both peaks (outside record_length/2)
+        # should find both peaks (outside record_length/2 and smaller)
         data = np.zeros(record_length*13)
         data[record_length] = 1
-        data[record_length+record_length//2+1] = 1
+        data[record_length+record_length//2+1] = 0.9
         i, _ = trigger(data)
         assert len(i)==2 and i[1]==(record_length+record_length//2+1)

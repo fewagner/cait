@@ -86,6 +86,7 @@ class TestViewerMPL(TestViewerPlotly):
     BACKEND = "mpl"
     TEMPLATE = "seaborn-v0_8"
 
+    @pytest.mark.filterwarnings('ignore:No artists with labels found to put in legend.')
     def test_legend(self):
         v = vai.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                             template=self.TEMPLATE)

@@ -18,6 +18,9 @@ plt.switch_backend("Agg")
 @pytest.mark.filterwarnings('ignore:Matplotlib is currently using agg')
 @pytest.mark.filterwarnings('ignore:FigureCanvasAgg is non-interactive')
 def test_workflow(dh, tempdir):
+    # Include CON file (had an issue in numpy>=2)
+    dh.include_con_file(tempdir.name+'/mock_001.con')
+
     # Calculate MP and additional MP
     dh.calc_mp("events")
     dh.calc_mp("noise")
