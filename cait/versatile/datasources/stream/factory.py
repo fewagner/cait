@@ -3,6 +3,7 @@ from typing import Union, List
 from .streambase import StreamBaseClass
 from .impl_csmpl import Stream_CSMPL
 from .impl_vdaq2 import Stream_VDAQ2
+from .impl_vdaq3 import Stream_VDAQ3
 
 class Stream(StreamBaseClass):
     """
@@ -98,6 +99,10 @@ class Stream(StreamBaseClass):
     @property
     def dt_us(self):
         return self._stream.dt_us
+    
+    @property
+    def tp_keys(self):
+        return self._stream.tp_keys
     
     @property
     def tpas(self):

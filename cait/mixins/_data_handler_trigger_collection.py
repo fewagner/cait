@@ -28,8 +28,8 @@ def _trigger_helper(dh,
     if ( slave_channels is not None ) and ( not all([x in stream.keys for x in slave_channels]) ):
         raise KeyError(f"All 'slave_channels' have to be valid channel names. Available: {stream.keys}")
 
-    if ( testpulse_channels is not None ) and ( not all([x in stream.tpas.keys() for x in testpulse_channels]) ):
-        raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {list(stream.tpas.keys())}")
+    if ( testpulse_channels is not None ) and ( not all([x in stream.tp_keys for x in testpulse_channels]) ):
+        raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {stream.tp_keys}")
 
     if testpulse_channels is not None:
         if len(trigger_channels) + (0 if slave_channels is None else len(slave_channels)) != len(testpulse_channels):

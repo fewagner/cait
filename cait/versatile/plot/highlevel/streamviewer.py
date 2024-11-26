@@ -26,6 +26,8 @@ class StreamViewer(Viewer):
     :type mark_timestamps: Union[List[int], int], optional
     :param of: If provided, a preview of the optimum filtered stream is shown. Only works for single-channel filters in which case also the 'keys' argument has to be set to exactly one channel (the one you want to filter).
     :type of: np.ndarray, optional
+    :param start_timestamp: The timestamp at which to start the StreamViewer. Defaults to the first timestamp in the stream.
+    :type start_timestamp: int, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
@@ -45,6 +47,7 @@ class StreamViewer(Viewer):
                  downsample_factor: int = 100,
                  mark_timestamps: Union[List[int], dict] = None,
                  of: np.ndarray = None,
+                 start_timestamp: int = None,
                  **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
@@ -103,7 +106,7 @@ class StreamViewer(Viewer):
 
         # Initializing plot
         self.n_points = n_points
-        self.current_start = 0
+        self.current_start = 0 if start_timestamp is None else self.stream.time.timestamp_to_ind(start_timestamp)
         self.downsample_factor = downsample_factor
 
         self.update_frame()

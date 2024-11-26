@@ -63,6 +63,17 @@ class StreamBaseClass(DataSourceBaseClass):
 
     @property
     @abstractmethod
+    def tp_keys(self):
+        """
+        Available testpulse keys in ``self.tpas`` and ``self.tp_timestamps``.
+        
+        :return: List of keys.
+        :rtype: list
+        """
+        ...
+
+    @property
+    @abstractmethod
     def tpas(self):
         """
         Dictionary of testpulse amplitudes in the stream. For hardware 'csmpl' this is read from a '.test_stamps' file. For hardware 'vdaq2' this is obtained from triggering the DAC channels first.
@@ -84,7 +95,7 @@ class StreamBaseClass(DataSourceBaseClass):
         ...
 
     def __repr__(self):
-        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, measuring_time_h={self.__len__()*int(self.dt_us)/1e6/3600:.2f})'
+        return f'{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, tp_keys={self.tp_keys}, measuring_time_h={self.__len__()*int(self.dt_us)/1e6/3600:.2f})'
 
     def __getitem__(self, val: Union[str, Tuple[str, Union[int, slice, list, np.ndarray]], Tuple[str, Union[int, slice, list, np.ndarray], str]]):
         # Only names and tuples are supported for slicing (no int)
@@ -300,6 +311,8 @@ class StreamTime:
     
     def timestamp_to_ind(self, timestamps: Union[int, List[int]]):
         """Function to convert timestamps to indices."""
+        if np.array(timestamps).size == 0: return np.array([], dtype=int)
+
         out = (np.array(timestamps)-self._start)//self._dt
         if np.min(out) < 0 or np.max(out) >= self._n:
             raise IndexError("Requested timestamp is out of range.")
