@@ -620,7 +620,9 @@ def get_test_stamps(path,
 
     # take only the channels we want
     if channels is not None:
-        cond = np.in1d(testpulse_channels, channels)
+        # Deprecated since numpy 2.0
+        # cond = np.in1d(testpulse_channels, channels)
+        cond = np.isin(testpulse_channels, channels)
         hours = hours[cond]
         tpas = tpas[cond]
         testpulse_channels = testpulse_channels[cond]

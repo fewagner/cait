@@ -8,11 +8,11 @@ development
 
 - Added dcache file reading support (dcap, WebDAV and XRootD protocol; recommended protocol: XRootD)
 - Added pipeline to build containers for released versions and development branch (on CERN gitlab)
-- Added `dh.trigger_coincidence` for CRESST doubleTES analysis
 - Added `dh.trigger_zscore` and `dh.trigger_of` for triggering independent of hardware
 - Added short-cut notation for `dh.get`: Now you can slice a DataHandler object using `dh['<group>/<dataset>']`. Additionally, this syntax supports iPython's TAB-completion, i.e. you can start typing `dh[` and hit 'TAB' to preview a list of possible datasets.
 - Moved functions to combine/merge hdf5 files to `cait.data.combine_h5` and `cait.data.merge_h5`. The previous implementation `ai.data.merge_h5_sets` has been deprecated.
 - Minor improvements
+- Minor fixes (including OverflowError in `numpy>=2`)
 - New features in `cait.versatile`
 
 v.1.2.2
