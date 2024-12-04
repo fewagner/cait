@@ -2,12 +2,33 @@
 Tips and Tricks
 ****************
 
-Here we put together some tips for usage and development of Cait, that we found useful. We hope they help you in you work!
+Here we put together some tips for usage and development of Cait, that we found useful. We hope they help you in your work!
 
-Singularity Containers
-========================
+Containers
+==========
 
-If you work on a server without sudo rights, you might not be able to install packages properly. In this case we often use Singularity containers, which are faster than virtual environments, and run our software inside. To do so, you typically create the container on our local linux system and copy it then ("scp ...") to the server. We suggest to copy the container is a compressed file format, e.g. `*.tar`, we experienced problems with scp command and uncompressed containers in the past.
+If you work on a server without sudo rights, you might not be able to install packages properly. In this case we often use Singularity containers, which are faster than virtual environments, and run our software inside.
+
+Pre-built Docker Containers
+---------------------------
+For people who have access to the CERN GitLab, the easiest way to get a container is
+
+.. code:: console
+
+    $ singularity pull --docker-login docker://gitlab-registry.cern.ch/cryocluster/cait:<tag>
+
+where ``tag`` could be ``develop`` or any (tagged) release.
+If you do not have access to the CERN GitLab, the docker container can be built with this dockerfile `Dockerfile <https://github.com/fewagner/cait/blob/develop/Dockerfile>`_. Refer to the `Docker Documentation <https://docs.docker.com/build/concepts/dockerfile/>`_ on how to use it. Note that we use singularity to pull and run the container, even though it has been built using Docker. This works and is just a matter of preference.
+
+You can use this container e.g. for cluster jobs (see e.g. :ref:`slurm-example-section`) or you can simply run a python session inside the container
+
+.. code:: console
+
+    $ singularity run cait_develop.sif
+
+Building your own Singularity container
+---------------------------------------
+You typically create the container on our local linux system and copy it then ("scp ...") to the server. We suggest to copy the container is a compressed file format, e.g. `*.tar`, we experienced problems with scp command and uncompressed containers in the past.
 
 First you need a singularity installation on your machine, you can find instructions on their documentation page: https://sylabs.io/guides/3.0/user-guide/installation.html
 
@@ -67,8 +88,102 @@ your system. E.g. with the -B flag, you can bin directories from the server with
 In this example, the data we want to access is in /mnt/ and /remote/. However, sometimes the binding is incompatible with the --writeable
 flag, which makes the installation of additional packages possible. In this case, you need to start either with --writeable or with the mounted folder.
 
+.. _slurm-example-section:
+
+SLURM job example
+=================
+You will not do large scale analysis in jupyter. Rather, you would write a small script, let's call it ``analyse_one_file.py``, which performs the analysis on one file. It takes three command line arguments: the file name, the file directory, and an output directory, then it performs some analysis:
+
+.. code:: python
+
+    import sys 
+
+    f_name, f_dir, out_dir = sys.argv[1:]
+    # do something with file
+
+Then you have a text file ``filelist.txt`` with a list of files to process:
+
+.. code::
+
+    file1.bin
+    file2.bin
+    file3.bin
+
+Finally, you define a script ``analysis_job.sh`` which is used to submit a job for each file to the cluster: 
+
+.. code:: bash
+
+    #!/bin/bash
+
+    # here, we use the cait develop container described above
+    CONTAINER_NAME="cait_develop"
+    # path of the container
+    SINGULARITY_PATH="/path/to/container"
+
+    SIF_CONTAINER=${SINGULARITY_PATH}/${CONTAINER_NAME}".sif"
+
+    # mail notifications
+    SLURM_SBATCH_MAIL=" --mail-type=ALL"
+    SLURM_SBATCH_MAIL+=" --mail-user=my.email@address.at"
+
+    # bind directories to container (otherwise files cannot be accessed)
+    BIND_STORAGE="${HOME}"
+    
+    # script name and directories
+    SCRIPT=${HOME}/analyse_one_file.py
+    DATA_IN_DIR=${HOME}/path/to/input/files
+    DATA_OUT_DIR=${HOME}/path/where/results/should/be/saved
+
+    # directory where log/error files are written
+    JOB_DIR=${HOME}/analysis_job_files
+
+    # the text file with the files to process
+    FILE_LIST=$1
+
+    # --------------------------------------
+    for file in $(cat $FILE_LIST)
+    do
+        SLURM_OPTIONS_SBATCH=" "
+        SLURM_OPTIONS_SBATCH+=" --job-name=cait-analysis"
+        SLURM_OPTIONS_SBATCH+=" --chdir=${JOB_DIR}"
+        SLURM_OPTIONS_SBATCH+=" --output=log_${file}.out"
+        SLURM_OPTIONS_SBATCH+=" --error=log_${file}.err"
+        SLURM_OPTIONS_SBATCH+=" --partition=c"
+        SLURM_OPTIONS_SBATCH+=" --time=6:00:00"
+        SLURM_OPTIONS_SBATCH+=" --qos=c_medium"
+        SLURM_OPTIONS_SBATCH+=" --parsable"
+        SLURM_OPTIONS_SBATCH+=" --cpus-per-task=8"
+        #SLURM_OPTIONS_SBATCH+=" --kill-on-invalid-dep=yes"
+        SLURM_OPTIONS_SBATCH+=" --mem=16G"   
+
+        # depending on your script, you have to change the following
+        ARGS_SCRIPT="${file} ${DATA_IN_DIR} ${DATA_OUT_DIR}" 
+
+        # put everything together for the cluster to process
+        RUN_COMMAND="singularity run ${SIF_CONTAINER} python ${SCRIPT} ${ARGS_SCRIPT}"
+        SBATCH_WRAP=${SBATCH_WRAP_OPTIONS}" srun "${RUN_COMMAND}
+        
+        printf "\n\n-----------------------------\n SLURM batch jobs: run command \n"
+        echo " sbatch ${SLURM_OPTIONS_SBATCH} --wrap=\"${SBATCH_WRAP}\""
+        
+        jobID_analysis=$(sbatch ${SLURM_OPTIONS_SBATCH} --wrap="${SBATCH_WRAP}")
+
+    done
+
+    printf "\n\nExit script $0 \n"
+
+    exit 0
+
+To submit the job, you run 
+
+.. code:: console
+
+    $ source analysis_job.sh filelist.txt
+
+To see running jobs, use ``squeue -u <your>.<username>``. To attach to a running job, use ``sattach <jobID>.0`` (you can exit after attaching using ``CTRL+C``).
+
 Notebooks on a Server
-=========================
+=====================
 
 Large scale data processing is typically not done locally but on a remote server. In case we have no X forwarding available
 for the remote server, we can still use Jupyter Notebooks for easily accessible visualizations. A very simple, 3-step description
