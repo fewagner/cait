@@ -19,7 +19,3 @@ class EmptyRep:
     # Helper Class that generates empty cell output
     def __repr__(self):
         return ""
-
-#####################
-# Plot Base Classes #
-#####################
