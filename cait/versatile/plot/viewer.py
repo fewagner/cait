@@ -52,6 +52,10 @@ class Viewer():
                     "hist1": [bin_data1, hist_data1],
                     "hist2": [bin_data2, hist_data2]
                     },
+                "heatmap": {
+                    "heat1": [bin_data1, xdata1, ydata1],
+                    "heat2": [bin_data2, xdata2, ydata2]
+                    },
                 "axes": {
                     "xaxis": {
                         "label": "xlabel",
@@ -206,6 +210,21 @@ class Viewer():
         """
         self.fig_widget._add_histogram(bins, data, name)
 
+    def add_heatmap(self, x: List[float], y: List[float], bins: Union[int, tuple, list], name: str = None):
+        """
+        Add a heatmap to the figure. If a name is provided, it is registered and can later be updated.
+
+        :param x: The x-data to bin and plot.
+        :type x: List[float]
+        :param y: The y-data to bin and plot.
+        :type y: List[float]
+        :param bins: The binning data to use. If None, the binning is done automatically. An integer is interpreted as the desired total number of bins on both axes. You can also parse a tuple of the form `(start, end, nbins)` to bin the data between `start` and `end` into a total of `nbins` bins. A numpy array is interpreted as the desired bin edges. If you pass a tuple of length two, you can specify either of the aforementioned arguments for both axes separately.
+        :type bins: Union[None, int, tuple, np.ndarray], optional
+        :param name: The name of the heatmap in the legend and its unique identifier for later updates. If None, the heatmap does not show up in the legend and is not registered for later update.
+        :type name: str, optional
+        """
+        self.fig_widget._add_heatmap(x, y, bins, name)
+
     def add_vmarker(self, marker_pos: Union[float, List[float]], y_int: Tuple[float], name: str = None):
         """
         
@@ -232,6 +251,13 @@ class Viewer():
         See `func:add_histogram` for an explanation of the arguments.
         """
         self.fig_widget._update_histogram(name, bins, data)
+
+    def update_heatmap(self, name: str, x: List[float], y: List[float], bins: Union[int, tuple, list]):
+        """
+        Update the heatmap called `name` with data `x`, `y` and bins `bins`.
+        See `func:add_heatmap` for an explanation of the arguments.
+        """
+        self.fig_widget._update_histogram(name, x, y, bins)
 
     def update_vmarker(self, name: str, marker_pos: Union[float, List[float]], y_int: Tuple[float]):
         """
@@ -300,6 +326,14 @@ class Viewer():
                         self.update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
                     else:
                         self.add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
+            
+            if key == "heatmap":
+                for heatmap_name, heatmap_data in value.items():
+                    assert 3==len(heatmap_data), "Heatmap data has to be a tuple/list of length 3 containing bins/x/y data respectively"
+                    if heatmap_name in self.fig_widget.heatmap_names:
+                        self.update_heatmap(name=heatmap_name, bins=heatmap_data[0], x=heatmap_data[1], y=heatmap_data[2])
+                    else:
+                        self.add_heatmap(bins=heatmap_data[0], x=heatmap_data[1], y=heatmap_data[2], name=heatmap_name)
 
             if key == "axes":
                 self.fig_widget._set_axes(value)

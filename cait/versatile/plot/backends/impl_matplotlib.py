@@ -41,6 +41,10 @@ class BaseClassMPL(BackendBaseClass):
                     "hist1": [bin_data1, hist_data1],
                     "hist2": [bin_data2, hist_data2]
                     },
+                "heatmap": {
+                    "heat1": [bin_data1, xdata1, ydata1],
+                    "heat2": [bin_data2, xdata2, ydata2]
+                    },
                 "axes": {
                     "xaxis": {
                         "label": "xlabel",
@@ -74,7 +78,7 @@ class BaseClassMPL(BackendBaseClass):
         self._line_names = list()
         self._scatter_names = list()
         self._histogram_names = list()
-        self.heatmap_names = list()
+        self._heatmap_names = list()
 
         # To catch the missing seaborn styles in newer matplotlib versions
         if type(template) is str:
@@ -189,6 +193,45 @@ class BaseClassMPL(BackendBaseClass):
         #if len([k for k in self.fig.select_traces(selector="histogram")]) > 1:
         #    self.fig.update_traces(selector="histogram", patch=dict(opacity=0.8))
 
+    def _add_heatmap(self, x, y, bins, name=None):
+        # use numpy default bins
+        if bins is None:
+            arg = dict()
+        # use single integer for number of bins on both axes
+        elif isinstance(bins, int):
+            arg = dict(bins=[bins, bins])
+        # use tuple of length 3 as linspace for both axes
+        elif isinstance(bins, tuple) and len(bins) == 3:
+            arg = dict(bins=[np.linspace(*bins), np.linspace(*bins)])
+        # use tuple of length two with default numpy behaviour
+        elif (isinstance(bins, tuple) 
+              and len(bins) == 2 
+              and all([isinstance(x, (int, list, np.ndarray)) for x in bins])):
+            arg = dict(bins=bins)
+        # use tuple of length two, which contains tuples of length 3,
+        # as start/end/N to create bins from linspace
+        elif (isinstance(bins, tuple) 
+              and len(bins) == 2
+              and all([isinstance(x, tuple) for x in bins])
+              and all([len(x)==3 for x in bins])):
+            arg = dict(bins=[np.linspace(*bins[0]), np.linspace(*bins[1])])
+        # use single np.array or list as bins for both axes
+        elif isinstance(bins, (list, np.ndarray)):
+            arg = dict(bins=[np.array(bins), np.array(bins)])
+        else:
+            raise TypeError("Bin info has to be either None, an integer (number of bins), a tuple of length 3 (start, end, number of bins), or a numpy array of bin edges. To pass information for both axes separately, use tuples of length 2 whose elements are integers, tuples, numpy arrays, as mentioned before.")
+        
+        if name is not None: self._heatmap_names.append(name)
+
+        counts, x_edges, y_edges = np.histogram2d(x, y, **arg)
+        z = counts.T.copy()
+        
+        with plt.style.context(self.template):
+            c = self.fig.axes[0].pcolormesh(x_edges, y_edges, z, label=name)
+            self.fig.colorbar(c, ax=self.fig.axes[0])
+
+        self._draw()
+
     def _add_vmarker(self, marker_pos, y_int, name=None):
         if marker_pos is None or y_int is None: 
             x, y = np.nan, np.nan
@@ -236,7 +279,10 @@ class BaseClassMPL(BackendBaseClass):
         #self._draw()
 
     def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
-        ...
+        print("Matplotlib backend does not (yet) support updating histograms.")
+
+    def _update_heatmap(self, name: str, x: List[float], y: List[float], bins: Union[int, tuple]):
+        print("Matplotlib backend does not (yet) support updating heatmaps.")
 
     def _update_vmarker(self, name, marker_pos, y_int):
         if marker_pos is None or y_int is None: 
@@ -371,3 +417,7 @@ class BaseClassMPL(BackendBaseClass):
     @property
     def histogram_names(self):
         return self._histogram_names
+    
+    @property
+    def heatmap_names(self):
+        return self._heatmap_names

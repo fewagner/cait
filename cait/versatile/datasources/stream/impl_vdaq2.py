@@ -130,7 +130,7 @@ class VDAQ2_TPAS:
         if not key in self.keys():
             raise KeyError(f"Invalid testpulse key '{key}'. Valid keys: {self.keys()}")
     
-        if key not in self._stream.tp_keys:
+        if key not in self._stream._tpas.keys():
             print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
             timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
                                                          self._stream._dac_trig_thr,
@@ -156,7 +156,7 @@ class VDAQ2_TP_TS:
         if not key in self.keys():
             raise KeyError(f"Invalid testpulse key '{key}'. Valid keys: {self.keys()}")
         
-        if key not in self._stream.tp_keys:
+        if key not in self._stream._tp_timestamps.keys():
             print(f"Triggering {key} to obtain testpulse timestamps and testpulse amplitudes ...")
             timestamps, tpas = vdaq2_dac_channel_trigger(self._stream, key, 
                                                          self._stream._dac_trig_thr,
