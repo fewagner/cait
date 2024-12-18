@@ -45,6 +45,12 @@ class BaseClassPlotly(BackendBaseClass):
                         "label": "ylabel",
                         "scale": "log",
                         "range": (0, 10)
+                        },
+                    "caxis": {
+                        "label": "clabel",
+                        "scale": "linear",
+                        "range": (0, 10),
+                        "cmap": "plasma"
                         }
                     }
                 }
@@ -69,10 +75,8 @@ class BaseClassPlotly(BackendBaseClass):
         self._scatter_names = list()
         self._histogram_names = list()
         self._heatmap_names = list()
-        #self.x_marker_names = list()
-        #self.y_marker_names = list()
-
-        #self.colors = cycle(px.colors.qualitative.Plotly)
+        
+        self._color_log = False
 
         self.show_controls = show_controls
         self.buttons_initialized = False
@@ -216,15 +220,27 @@ class BaseClassPlotly(BackendBaseClass):
         x_centers = (x_edges[:-1] + x_edges[1:])/2
         y_centers = (y_edges[:-1] + y_edges[1:])/2
 
-        z = counts.T.copy()
-        
+        counts_new = counts.T.copy()
+        mask = counts_new == 0
+
+        if self._color_log:
+            z = np.log10(counts_new, where=~mask)
+        else:
+            z = counts_new
+
+        # json doesn't support np.nan which is why we have to convert to object dtype
+        z = np.asarray(z, dtype=object)
+        z[mask] = None
+
         hm = go.Heatmap()
         hm.update({"x": x_centers, 
                    "y": y_centers, 
                    "z": z, 
-                   "customdata": z, 
+                   "customdata": counts_new, 
                    "name": name,
-                   "showlegend": name is not None})
+                   "showlegend": name is not None,
+                   "hovertemplate": '(%{x}, %{y})<br>counts: %{customdata}',
+                   "coloraxis": "coloraxis"})
         self.fig.add_trace(hm)
 
         if name is not None: self._heatmap_names.append(name)
@@ -309,9 +325,19 @@ class BaseClassPlotly(BackendBaseClass):
         x_centers = (x_edges[:-1] + x_edges[1:])/2
         y_centers = (y_edges[:-1] + y_edges[1:])/2
 
-        z = counts.T.copy()
+        counts_new = counts.T.copy()
+        mask = counts_new == 0
 
-        self.fig.update_traces({ "x": x_centers, "y": y_centers, "z": z, "customdata": z}, 
+        if self._color_log:
+            z = np.log10(counts_new, where=~mask)
+        else:
+            z = counts_new
+
+        # json doesn't support np.nan which is why we have to convert to object dtype
+        z = np.asarray(z, dtype=object)
+        z[mask] = None
+
+        self.fig.update_traces({ "x": x_centers, "y": y_centers, "z": z, "customdata": counts_new}, 
                                selector=dict(name=name))
 
     def _update_vmarker(self, name, marker_pos, y_int):
@@ -346,6 +372,44 @@ class BaseClassPlotly(BackendBaseClass):
                 self.fig.layout.yaxis.type = data["yaxis"]["scale"]
             if "range" in data["yaxis"].keys():
                 self.fig.update_yaxes(range=data["yaxis"]["range"])
+
+        if "caxis" in data.keys():
+            if "label" in data["caxis"].keys():
+                self.fig.update_coloraxes(
+                    showscale=True,
+                    colorbar_title_text=data["caxis"]["label"],
+                    colorbar_title_side="right",
+                )
+            if "scale" in data["caxis"].keys():
+                if data["caxis"]["scale"] == "log":
+                    self._color_log = True
+                    self.fig.update_coloraxes(
+                        showscale=True,
+                        colorbar_tickprefix="1e",
+                        colorbar_tickformat=",d",
+                        colorbar_dtick=1
+                    )
+                else:
+                    self._color_log = False
+                    self.fig.update_coloraxes(
+                        showscale=True,
+                        colorbar_tickprefix="",
+                        colorbar_tickformat="",
+                        colorbar_dtick=None
+                    )
+                
+            if "range" in data["caxis"].keys():
+                self.fig.update_coloraxes(
+                    showscale=True,
+                    cmin=data["caxis"]["range"][0],
+                    cmax=data["caxis"]["range"][1]
+                )
+            if "cmap" in data["caxis"].keys():
+                if data["caxis"]["cmap"] is not None:
+                    self.fig.update_coloraxes(
+                        showscale=True,
+                        colorscale=data["caxis"]["cmap"],
+                    )
 
     def _get_info(self, b):
         xmin, xmax = self.fig.layout.xaxis.range

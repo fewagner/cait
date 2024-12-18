@@ -16,9 +16,24 @@ class Preview(Viewer):
     :param events: An iterable of events. Can be e.g. :class:`IteratorBaseClass`, a 2d :class:`numpy.ndarray` or a list of List[float].
     :type events: IteratorBaseClass
     :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Defaults to Unity (which means that just the events of the iterable will be displayed)
-    :type f: :class:`abstract_functions.FncBaseClass`
+    :type f: :class:`cait.versatile.eventfunctions.functionbase.FncBaseClass`
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
+
+    **Example Preview:**
+
+    .. code-block:: python
+    
+        import cait.versatile as vai
+
+        # Get events from mock data (and remove baseline)
+        it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())[0]
+
+        # View pulses
+        vai.Preview(it)
+
+        # View pulses starting from index 37
+        vai.Preview(it[:, 37:])
     """
     def __init__(self, events: IteratorBaseClass, f: Callable = None, **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
@@ -28,16 +43,32 @@ class Preview(Viewer):
         if isinstance(events, IteratorBaseClass) and events.uses_batches:
             raise NotImplementedError("Iterators that return batches are not supported by Preview.")
 
-        self._add_button("Next", self._update_plot, "Show next event.", key="n")
+        self._add_button("❮", self._prev, "Show previous event.", key="b")
+        self._add_button("❯", self._next, "Show next event.", key="n")
 
         self._f = f if f is not None else Unity(events.t)
-        self._events = iter(enumerate(zip(events, events.timestamps)))
+        self._current_ind = 0
+        self._events = events
         
         self.start()
+
+    def _next(self, b=None):
+        if self._current_ind > len(self._events)-2:
+            self.close()
+        else:
+            self._current_ind += 1
+            self._update_plot()
+
+    def _prev(self, b=None):
+        if self._current_ind > 0:
+            self._current_ind -= 1
+            self._update_plot()
     
-    def _update_plot(self, b=None):
+    def _update_plot(self):
         try:
-            ind, (ev, ts) = next(self._events)
+            ev = self._events.grab(self._current_ind)
+            ts = self._events.timestamps[self._current_ind]
+
             d = self._f.preview(ev)
             tsstr = np.array(ts, dtype="datetime64[us]").astype(datetime.datetime)[()].strftime('%d-%b-%Y, %H:%M:%S')
 
@@ -49,13 +80,10 @@ class Preview(Viewer):
             else:
                 d["axes"]["yaxis"]["label"] += ", "
             
-            d["axes"]["yaxis"]["label"] += f"event {ind}, {tsstr}"
+            d["axes"]["yaxis"]["label"] += f"event {self._current_ind}, {tsstr}"
 
             # Plot
             self.plot(d)
-
-        except StopIteration: 
-            self.close()
         except:
             self.close()
             raise

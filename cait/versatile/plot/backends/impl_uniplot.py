@@ -40,6 +40,11 @@ class BaseClassUniplot(BackendBaseClass):
                         "label": "ylabel",
                         "scale": "log",
                         "range": (0, 10)
+                        },
+                    "caxis": {
+                        "label": "clabel",
+                        "scale": "linear",
+                        "range": (0, 10)
                         }
                     }
                 }
