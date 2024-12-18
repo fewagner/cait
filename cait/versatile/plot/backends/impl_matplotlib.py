@@ -55,6 +55,12 @@ class BaseClassMPL(BackendBaseClass):
                         "label": "ylabel",
                         "scale": "log",
                         "range": (0, 10)
+                        },
+                    "caxis": {
+                        "label": "clabel",
+                        "scale": "linear",
+                        "range": (0, 10),
+                        "cmap": "plasma"
                         }
                     }
                 }
@@ -79,6 +85,8 @@ class BaseClassMPL(BackendBaseClass):
         self._scatter_names = list()
         self._histogram_names = list()
         self._heatmap_names = list()
+
+        self._color_log = False
 
         # To catch the missing seaborn styles in newer matplotlib versions
         if type(template) is str:
@@ -224,7 +232,16 @@ class BaseClassMPL(BackendBaseClass):
         if name is not None: self._heatmap_names.append(name)
 
         counts, x_edges, y_edges = np.histogram2d(x, y, **arg)
-        z = counts.T.copy()
+        
+        counts_new = counts.T.copy()
+        mask = counts_new == 0
+
+        if self._color_log:
+            z = np.log10(counts_new, where=~mask)
+        else:
+            z = counts_new
+
+        z[mask] = None
         
         with plt.style.context(self.template):
             c = self.fig.axes[0].pcolormesh(x_edges, y_edges, z, label=name)
@@ -328,6 +345,19 @@ class BaseClassMPL(BackendBaseClass):
                     r = data["yaxis"]["range"]
                     self.fig.axes[0].set_ylim(r)
                     self._y_lim_auto = r is None
+
+            if "caxis" in data.keys():
+                if "label" in data["caxis"].keys():
+                    print("matplotlib backend does not (yet) support color axis labels.")
+                if "scale" in data["caxis"].keys():
+                    if data["caxis"]["scale"] == "log":
+                        self._color_log = True
+                    else:
+                        self._color_log = False
+                if "range" in data["caxis"].keys():
+                    print("matplotlib backend does not (yet) support color axis range.")
+                if "cmap" in data["caxis"].keys():
+                    print("matplotlib backend does not (yet) support color axis colormap.")
 
         self._draw()
 
