@@ -28,6 +28,8 @@ class StreamViewer(Viewer):
     :type of: np.ndarray, optional
     :param start_timestamp: The timestamp at which to start the StreamViewer. Defaults to the first timestamp in the stream.
     :type start_timestamp: int, optional
+    :param subtract_bl: If set to True, the median of the currently displayed channels are subtracted before plotting. Defaults to True.
+    :type subtract_bl: bool, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
@@ -48,12 +50,13 @@ class StreamViewer(Viewer):
                  mark_timestamps: Union[List[int], dict] = None,
                  of: np.ndarray = None,
                  start_timestamp: int = None,
+                 subtract_bl: bool = True,
                  **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
         # Adding buttons for navigating back and forth in the stream
-        self._add_button("←", self._move_left, "Move backwards in time.", -1, "b")
-        self._add_button("→", self._move_right, "Move forward in time.", -1, "n")
+        self._add_button("❮", self._move_left, "Move backwards in time.", -1, "b")
+        self._add_button("❯", self._move_right, "Move forward in time.", -1, "n")
 
         if len(args) == 1 and isinstance(args[0], StreamBaseClass):
             self.stream = args[0]
@@ -105,6 +108,7 @@ class StreamViewer(Viewer):
             self._marks_timestamps = False
 
         # Initializing plot
+        self.subtract_bl = subtract_bl
         self.n_points = n_points
         self.current_start = 0 if start_timestamp is None else self.stream.time.timestamp_to_ind(start_timestamp)
         self.downsample_factor = downsample_factor
@@ -132,6 +136,8 @@ class StreamViewer(Viewer):
         
         for name in self._keys:
             y = self.stream[name, where, "as_voltage"]
+            if self.subtract_bl: y = y-np.median(y)
+
             self.update_line(name=name, x=t_ms, y=y)
 
             if self._marks_timestamps:

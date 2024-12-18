@@ -43,7 +43,7 @@ class Preview(Viewer):
         if isinstance(events, IteratorBaseClass) and events.uses_batches:
             raise NotImplementedError("Iterators that return batches are not supported by Preview.")
 
-        self._add_button("❮", self._prev, "Show previous event.", key="p")
+        self._add_button("❮", self._prev, "Show previous event.", key="b")
         self._add_button("❯", self._next, "Show next event.", key="n")
 
         self._f = f if f is not None else Unity(events.t)
