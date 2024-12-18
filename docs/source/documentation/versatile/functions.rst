@@ -34,7 +34,7 @@ Processing functions
 .. autoclass:: BoxCarSmoothing
    :member-order: bysource
    :exclude-members: batch_support
-.. autoclass:: TukeyFiltering
+.. autoclass:: TukeyWindow
    :member-order: bysource
    :exclude-members: batch_support
 .. autoclass:: OptimumFiltering

@@ -13,7 +13,8 @@ development
 - Moved functions to combine/merge hdf5 files to `cait.data.combine_h5` and `cait.data.merge_h5`. The previous implementation `ai.data.merge_h5_sets` has been deprecated.
 - Minor improvements
 - Minor fixes (including OverflowError in `numpy>=2`)
-- New features in `cait.versatile`
+- New features in `cait.versatile` (notably vai.Heatmap, back-button in vai.Preview)
+- Changes to `cait.versatile` (notably 'TukeyFiltering' -> 'TukeyWindow')
 
 v.1.2.2
 ~~~~~~~

@@ -3,7 +3,7 @@ from scipy.signal.windows import tukey
 
 from ..functionbase import FncBaseClass
 
-class TukeyFiltering(FncBaseClass):
+class TukeyWindow(FncBaseClass):
     """
     Apply the Tukey window function to a voltage trace. 
     Also works for multiple channels simultaneously.
@@ -25,9 +25,9 @@ class TukeyFiltering(FncBaseClass):
         it = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
 
         # View effect of filtering on events
-        vai.Preview(it, vai.TukeyFiltering())
+        vai.Preview(it, vai.TukeyWindow())
 
-    .. image:: media/TukeyFiltering_preview.png
+    .. image:: media/TukeyWindow_preview.png
     """
     def __init__(self, alpha: float = 0.25):
         self._alpha = alpha
@@ -46,8 +46,8 @@ class TukeyFiltering(FncBaseClass):
             d = dict()
             for i in range(np.ndim(event)):
                 d[f'channel {i}'] = [None, event[i]]
-                d[f'filtered channel {i}'] = [None, self._new_event[i]]
+                d[f'windowed channel {i}'] = [None, self._new_event[i]]
         else:
             d = {'event': [None, event],
-                 'filtered event': [None, self._new_event]}
+                 'windowed event': [None, self._new_event]}
         return dict(line = d)

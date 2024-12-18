@@ -1,6 +1,6 @@
 import pytest
 
-from cait.versatile import apply, MockData, BoxCarSmoothing, Downsample, OptimumFiltering, RemoveBaseline, TukeyFiltering, CalcMP, FitBaseline
+from cait.versatile import apply, MockData, BoxCarSmoothing, Downsample, OptimumFiltering, RemoveBaseline, TukeyWindow, CalcMP, FitBaseline
 
 RECORD_LENGTH = 2**14
 N_EVENTS = 100
@@ -13,7 +13,7 @@ it3 = mock.get_event_iterator(batch_size=N_EVENTS-1)
 bcs = BoxCarSmoothing()
 ds = Downsample(2)
 rmbl = RemoveBaseline()
-tf = TukeyFiltering()
+tf = TukeyWindow()
 calcmp = CalcMP()
 
 calcmp_scalar = CalcMP(dt_us=mock.dt_us)
