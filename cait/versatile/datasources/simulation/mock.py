@@ -90,17 +90,17 @@ class MockData(DataSourceBaseClass):
     
     @property
     def sev(self):
-        return SEV(self._template)
+        return SEV(self._template, dt_us=self.dt_us)
 
     @property
     def nps(self):
         rand = np.random.normal(size=(100, 2, self._record_length))
         nps = np.mean(np.abs(np.fft.rfft(rand))**2, axis=0)
-        return NPS(nps)
+        return NPS(nps, dt_us=self.dt_us)
     
     @property
     def of(self):
-        return OF(self.sev, self.nps)
+        return OF(self.sev, self.nps, dt_us=self.dt_us)
 
     @property
     def n_events(self):

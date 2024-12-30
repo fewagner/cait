@@ -84,7 +84,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
-    vai.OF(np.ones(int(dh.record_length/2+1), dtype=complex)).to_dh(dh, overwrite_existing=True)
+    vai.OF(np.ones(int(dh.record_length/2+1), dtype=complex), dt_us=dh.dt_us).to_dh(dh, overwrite_existing=True)
 
     # thresholds and channels don't match
     with pytest.raises(ValueError): 
@@ -126,7 +126,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
                       thresholds=[1],
                       testpulse_channels=["0"])
         
-    vai.OF(np.ones((2, int(dh.record_length/2+1)), dtype=complex)).to_dh(dh, overwrite_existing=True)
+    vai.OF(np.ones((2, int(dh.record_length/2+1)), dtype=complex), dt_us=dh.dt_us).to_dh(dh, overwrite_existing=True)
 
     # wrong OF shape
     with pytest.raises(ValueError): 
@@ -142,7 +142,7 @@ def test_trigger_of(tempdir, stream_csmpl):
     dh.set_filepath(tempdir.name, "test_trigger_of", appendix=False)
     dh.init_empty()
 
-    vai.OF(np.ones(int(dh.record_length/2+1), dtype=complex)).to_dh(dh, overwrite_existing=True)
+    vai.OF(np.ones(int(dh.record_length/2+1), dtype=complex), dt_us=dh.dt_us).to_dh(dh, overwrite_existing=True)
 
     dh.trigger_of(stream_csmpl,
                   trigger_channels="Ch0",

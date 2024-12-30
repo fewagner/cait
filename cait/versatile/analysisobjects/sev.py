@@ -1,16 +1,17 @@
 from typing import Union
 import os
+import json
+import re
 
 import numpy as np
 from tqdm.auto import tqdm
 
+import cait as ai
 from .arraywithbenefits import ArrayWithBenefits
 from .helper import is_array_like
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..eventfunctions.processing.removebaseline import RemoveBaseline
 from ..plot.basic.line import Line
-
-from ...data import write_xy_file
 
 class SEV(ArrayWithBenefits):
     """
@@ -20,12 +21,16 @@ class SEV(ArrayWithBenefits):
 
     :param data: The data to use for the SEV. If None, an empty SEV is created. If `np.ndarray` (or a list that can be converted to an array), each row in the array is interpreted as a SEV for separate channels. If iterator (possibly from multiple channels) a SEV is calculated by averaging the events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
+    :param dt_us: The microsecond timebase used in the recording. Only necessary if the input is an array (because it can be automatically inferred if constructed from an EventIterator, a file, or a DataHandler). Defaults to None (i.e. automatic detection if possible).
+    :type dt_us: int
     """
-    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None):
+    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None, dt_us: int = None):
         if data is None:
             self._sev = np.empty(0)
             self._n_ch = 0
+            self._dt_us = dt_us
         elif isinstance(data, IteratorBaseClass):
+            self._dt_us = data.dt_us
             data = data.flatten().with_processing(RemoveBaseline())
             if len(data) > 1000:
                 mean_pulse = np.zeros_like(data.grab(0))
@@ -48,6 +53,9 @@ class SEV(ArrayWithBenefits):
             else:
                 self._n_ch = 1
         elif isinstance(data, np.ndarray) or is_array_like(data):
+            if dt_us is None:
+                raise ValueError("If SEV is constructed from array(-like) input, the microsecond timebase of the recording (dt_us) has to be specified.")
+            self._dt_us = dt_us
             self._sev = np.array(data)
             if self._sev.ndim > 1:
                 self._n_ch = self._sev.shape[0]
@@ -72,7 +80,7 @@ class SEV(ArrayWithBenefits):
         :return: Instance of SEV.
         :rtype: SEV
         """
-        return cls(dh.get(group, dataset))
+        return cls(dh.get(group, dataset), dt_us=dh.dt_us)
         
     def to_dh(self, dh, group: str = "stdevent", dataset: str = "event", **kwargs):
         """
@@ -87,6 +95,8 @@ class SEV(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
+        if self._dt_us != dh.dt_us:
+            raise ValueError(f"Timebase of SEV ({self._dt_us}) does not match the one of DataHandler ({dh.dt_us}).")
         data = self._sev[None,:] if self._n_channels == 1 else self._sev
         dh.set(group, **{dataset: data}, **kwargs)
         
@@ -97,30 +107,29 @@ class SEV(ArrayWithBenefits):
 
         :param fname: Filename to look for (without file-extension)
         :type fname: str
-        :param out_dir: Directory to look in. Defaults to '' which means searching current directory. Optional
-        :type out_dir: str
+        :param src_dir: Directory to look in. Defaults to '' which means searching current directory. Optional
+        :type src_dir: str
 
         :return: Instance of SEV.
         :rtype: SEV
         """
-        fpath = os.path.join(src_dir, fname + ".txt")
-
+        fpath = os.path.join(src_dir, fname + ".xy")
+        
         # We read the file to find out how many header lines it has
-        # The number found is the number of axis + title.
         with open(fpath, "r") as f:
-            line_nr = 0
-            for l in f.readlines():
-                # Try converting to float (will fail for strings)
-                try: 
-                    float(l.split("\n")[0].split("\t")[0])
-                    # Once we found a line which can be converted to float, we stop
-                    break
-                except ValueError: 
-                    line_nr += 1
+            first_line = f.readline()
+        
+        header = re.findall(r"\{.*\}", first_line)
+        if header and all([x in json.loads(header[0]) for x in ["dt_us", "n_ch"]]):
+            info = json.loads(header[0])
+            arr = np.loadtxt(fpath, skiprows=info["n_ch"]+3)[:,1:].T
+            dt_us = info["dt_us"]
+        else:
+            content = np.loadtxt(fpath)
+            arr = content[:,1:].T
+            dt_us = int(np.round(np.diff(content[:,0])[0]*1000))
 
-        arr = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
-
-        return cls(arr)
+        return cls(arr, dt_us=dt_us)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """
@@ -134,24 +143,25 @@ class SEV(ArrayWithBenefits):
         if np.array_equal(self._array, np.empty(0)):
             raise Exception("Empty SEV cannot be saved.")
 
-        fpath = os.path.join(out_dir, fname + ".txt")
+        fpath = os.path.join(out_dir, fname + ".xy")
 
         if self._n_ch > 1:
-            data = [self._array[k] for k in range(self._n_ch)]
+            data = [self.t] + [self._array[k] for k in range(self._n_ch)]
         else:
-            data = [self._array]
+            data = [self.t, self._array]
+            
+        header = "SEV " + json.dumps({"cait": ai.__version__, 
+                                      "dt_us": self.dt_us, 
+                                      "record_length": len(self.t), 
+                                      "n_ch": self._n_channels}) + "\n"
+        header += "\n".join(["Time (ms)"] + [f"Trace {k} (V)" for k in range(self._n_ch)] + [f"{len(self.t)}"])
+        
+        np.savetxt(fpath, np.array(data).T, header=header)
 
-        write_xy_file(fpath, 
-                      data=data, 
-                      title="Standard Event", 
-                      axis=[f"Channel {k}" for k in range(self._n_ch)])
-
-    def show(self, dt_us: int = None, **kwargs):
+    def show(self, **kwargs):
         """
         Plot SEV for all channels. To inspect just one channel, you can index SEV first and call `.show` on the slice.
 
-        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a microsecond axis. Otherwise it's the sample index.
-        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -159,16 +169,10 @@ class SEV(ArrayWithBenefits):
             raise Exception("Nothing to plot.")
         
         if 'x' not in kwargs.keys():
-            if dt_us is not None:
-                kwargs['x'] = dt_us/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
-            else:
-                kwargs['x'] = np.arange(self.shape[-1])
+            kwargs['x'] = self.t
             
         if 'xlabel' not in kwargs.keys():
-            if dt_us is not None: 
-                kwargs['xlabel'] = "Time (ms)"
-            else:
-                kwargs['xlabel'] = "Data Index"
+            kwargs['xlabel'] = "Time (ms)"
 
         if self._n_channels > 1:
             y = dict()
@@ -233,3 +237,12 @@ class SEV(ArrayWithBenefits):
     @property
     def _n_channels(self):
         return self._n_ch
+    
+    @property
+    def dt_us(self):
+        return self._dt_us
+    
+    @property
+    def t(self):
+        if self.dt_us is not None:
+            return self.dt_us/1000*(np.arange(self.shape[-1]) - int(self.shape[-1]/4))
