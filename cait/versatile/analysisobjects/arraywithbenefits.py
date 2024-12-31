@@ -26,6 +26,7 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
         if method == "__call__":
             out = self.__class__()
             out._array = f[method](*args, **kwargs)
+            out._dt_us = self.dt_us
         else:
             out = f[method](*args, **kwargs)
         
