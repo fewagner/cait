@@ -26,6 +26,7 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
         if method == "__call__":
             out = self.__class__()
             out._array = f[method](*args, **kwargs)
+            out._dt_us = self.dt_us
         else:
             out = f[method](*args, **kwargs)
         
@@ -34,6 +35,7 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     def __getitem__(self, key):
         out = self.__class__()
         out._array = self._array.__getitem__(key)
+        out._dt_us = self.dt_us
         return out
     
     def __setitem__(self, key, val):
@@ -60,4 +62,9 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     @property
     @abstractmethod
     def _n_channels(self):
+        ...
+        
+    @property
+    @abstractmethod
+    def dt_us(self):
         ...
