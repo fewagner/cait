@@ -87,6 +87,8 @@ class BaseClassMPL(BackendBaseClass):
         self._heatmap_names = list()
 
         self._color_log = False
+        self._color_label = ""
+        self._color_map = "viridis"
 
         # To catch the missing seaborn styles in newer matplotlib versions
         if type(template) is str:
@@ -244,8 +246,8 @@ class BaseClassMPL(BackendBaseClass):
         z[mask] = None
         
         with plt.style.context(self.template):
-            c = self.fig.axes[0].pcolormesh(x_edges, y_edges, z, label=name)
-            self.fig.colorbar(c, ax=self.fig.axes[0])
+            c = self.fig.axes[0].pcolormesh(x_edges, y_edges, z, label=name, cmap=self._color_map)
+            self.fig.colorbar(c, ax=self.fig.axes[0], label=self._color_label)
 
             # add dummy artist to adjust x- and y-lim automatically
             # (adding pcolormesh does not do this automatically)
@@ -353,7 +355,7 @@ class BaseClassMPL(BackendBaseClass):
 
             if "caxis" in data.keys():
                 if "label" in data["caxis"].keys():
-                    print("matplotlib backend does not (yet) support color axis labels.")
+                    self._color_label = data["caxis"]["label"]
                 if "scale" in data["caxis"].keys():
                     if data["caxis"]["scale"] == "log":
                         self._color_log = True
@@ -362,7 +364,7 @@ class BaseClassMPL(BackendBaseClass):
                 if "range" in data["caxis"].keys():
                     print("matplotlib backend does not (yet) support color axis range.")
                 if "cmap" in data["caxis"].keys():
-                    print("matplotlib backend does not (yet) support color axis colormap.")
+                    self._color_map = data["caxis"]["cmap"]
 
         self._draw()
 
