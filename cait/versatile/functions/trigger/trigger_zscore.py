@@ -104,15 +104,20 @@ def trigger_zscore(stream: ArrayLike,
     after = int(3*record_length/4)
 
     # Slice to search peak in the interval (1/5, 2/5) of the record window
-    sl = slice(int(record_length/5), int(2*record_length/5))
+    a, b = int(record_length/5), int(2*record_length/5)
+    sl = slice(a, b)
 
     phs = np.zeros(len(inds), dtype=np.float32)
+    corrected_inds = np.zeros(len(inds), dtype=np.int64)
     processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
 
     for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
         trace = stream[ind-before:ind+after]
         for p in processing: trace = p(trace)
 
-        phs[i] = np.max(trace[sl])
+        # re-calculate maximum and peak position
+        peak_pos = np.argmax(trace[sl])
+        corrected_inds[i] = ind - before + a + peak_pos
+        phs[i] = trace[sl][peak_pos]
 
-    return inds, phs
+    return corrected_inds, phs
