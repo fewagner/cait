@@ -247,6 +247,11 @@ class BaseClassMPL(BackendBaseClass):
             c = self.fig.axes[0].pcolormesh(x_edges, y_edges, z, label=name)
             self.fig.colorbar(c, ax=self.fig.axes[0])
 
+            # add dummy artist to adjust x- and y-lim automatically
+            # (adding pcolormesh does not do this automatically)
+            xmin, ymin, xmax, ymax = np.min(x_edges), np.min(y_edges), np.max(x_edges), np.max(y_edges)
+            self.fig.axes[0].plot([xmin, xmax, xmax, xmin], [ymin, ymin, ymax, ymax], linestyle="none", alpha=0)
+
         self._draw()
 
     def _add_vmarker(self, marker_pos, y_int, name=None):
