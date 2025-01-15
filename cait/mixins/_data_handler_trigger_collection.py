@@ -1,6 +1,7 @@
 import os
 from functools import partial
 from typing import List, Union, Tuple
+import warnings
 
 import numpy as np
 
@@ -13,6 +14,7 @@ def _trigger_helper(dh,
                     trigger_channels,
                     passive_channels, 
                     testpulse_channels, 
+                    controlpulses_above,
                     copy_events, 
                     reuse_triggers,
                     interval,
@@ -97,6 +99,22 @@ def _trigger_helper(dh,
                                                                 n_passive_ch=0 if passive_channels is None else len(passive_channels),
                                                                 interval=interval)
 
+    if controlpulses_above is not None:
+        # due to the input validation in the top-level functions 
+        # we can be sure that all lists/arrays have consistent 
+        # sizes for this loop
+        cp_flag = np.zeros(all_tp_ts.shape[-1], dtype=bool)
+        for i in range(len(controlpulses_above)):
+            cp_flag += final_tpas[i] > controlpulses_above[i]
+
+        all_cp_ts = all_tp_ts[cp_flag]
+        final_cpas = final_tpas[:, cp_flag]
+        all_tp_ts = all_tp_ts[~cp_flag]
+        final_tpas = final_tpas[:, ~cp_flag]
+    else:
+        all_cp_ts = final_cpas = None
+        
+
     # save final timestamps and trigger flag after event building
     dh.set(f"event_building-{name_appendix}", event_timestamps=event_ts, dtype=np.int64, overwrite_existing=True)
     dh.set(f"event_building-{name_appendix}", trigger_flag=trig_flag, dtype=bool, overwrite_existing=True)
@@ -107,6 +125,10 @@ def _trigger_helper(dh,
     if testpulse_channels is not None:
         dh.set(f"event_building-{name_appendix}", tp_ts=all_tp_ts, dtype=np.int64, overwrite_existing=True)
         dh.set(f"event_building-{name_appendix}", tpas=final_tpas, dtype=np.float32, overwrite_existing=True)
+
+    if controlpulses_above is not None:
+        dh.set(f"event_building-{name_appendix}", cp_ts=all_cp_ts, dtype=np.int64, overwrite_existing=True)
+        dh.set(f"event_building-{name_appendix}", cpas=final_cpas, dtype=np.float32, overwrite_existing=True)
         
     if n_noise > 0:
         inds = stream.time.timestamp_to_ind(dh.get(f"event_building-{name_appendix}", "event_timestamps"))
@@ -116,54 +138,87 @@ def _trigger_helper(dh,
     if copy_events:
         # save events in events group
         if dh.exists("events"): 
-            raise Exception("Could not copy events to DataHandler because the group 'events' already exists. To delete it, use 'dh.drop('events')'.")
-
-        print("Writing events to DataHandler ...")
-        if len(event_ts)>0:
-            dh.include_event_iterator("events", 
-                                      stream.get_event_iterator(
-                                          all_channels, 
-                                          dh.record_length, 
-                                          timestamps=event_ts
-                                      ))
+            warnings.warn("Could not copy events to DataHandler because the group 'events' already exists. To delete it, use 'dh.drop('events')'.")
         else:
-            print("No events found to write to DataHandler.")
+            print("Writing events to DataHandler ...")
+            if len(event_ts)>0:
+                dh.include_event_iterator("events", 
+                                          stream.get_event_iterator(
+                                              all_channels, 
+                                              dh.record_length, 
+                                              timestamps=event_ts
+                                          ))
+                # Also copy the raw trigger information to the 'events' group
+                dh.set("events", trigger_flag=trig_flag, dtype=bool, overwrite_existing=True)
+                dh.set("events", trigger_timestamps=orig_ts, dtype=np.int64, overwrite_existing=True)
+                dh.set("events", trigger_phs=orig_ph, dtype=np.float32, overwrite_existing=True)
+            else:
+                print("No events found to write to DataHandler.")
 
         # do the same for testpulses if respective information is provided
         if testpulse_channels is not None:
             if dh.exists("testpulses"): 
-                raise Exception("Could not copy events to DataHandler because the group 'testpulses' already exists. To delete it, use 'dh.drop('testpulses')'.")
-            # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
-            valid_tp_flag = all_tp_ts < stream.time[-3*dh.record_length//4]
-            if not all(valid_tp_flag): 
-                print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
-
-            # save testpulses and tpas
-            print("Writing testpulses to DataHandler ...")
-            tp_ts = all_tp_ts[valid_tp_flag]
-            if len(tp_ts)>0:
-                dh.include_event_iterator("testpulses", 
-                                          stream.get_event_iterator(
-                                              all_channels, 
-                                              dh.record_length, 
-                                              timestamps=tp_ts
-                                          ))
-                dh.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag])
+                warnings.warn("Could not copy events to DataHandler because the group 'testpulses' already exists. To delete it, use 'dh.drop('testpulses')'.")
             else:
-                print("No testpulses found to write to DataHandler.")
+                # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
+                valid_tp_flag = all_tp_ts < stream.time[-3*dh.record_length//4]
+                if not all(valid_tp_flag): 
+                    print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
+    
+                # save testpulses and tpas
+                print("Writing testpulses to DataHandler ...")
+                tp_ts = all_tp_ts[valid_tp_flag]
+                if len(tp_ts)>0:
+                    dh.include_event_iterator("testpulses", 
+                                              stream.get_event_iterator(
+                                                  all_channels, 
+                                                  dh.record_length, 
+                                                  timestamps=tp_ts
+                                              ))
+                    dh.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag])
+                else:
+                    print("No testpulses found to write to DataHandler.")
+
+        if controlpulses_above is not None:
+            if dh.exists("controlpulses"): 
+                warnings.warn("Could not copy controlpulses to DataHandler because the group 'controlpulses' already exists. To delete it, use 'dh.drop('controlpulses')'.")
+            elif len(all_cp_ts)>0:
+                # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
+                valid_cp_flag = all_cp_ts < stream.time[-3*dh.record_length//4]
+                if not all(valid_cp_flag): 
+                    print("One or more controlpulses could not be included because they fall (partially) outside the stream's range!!")
+    
+                # save controlpulses and cpas
+                print("Writing controlpulses to DataHandler ...")
+                cp_ts = all_cp_ts[valid_cp_flag]
+                if len(cp_ts)>0:
+                    dh.include_event_iterator("controlpulses", 
+                                              stream.get_event_iterator(
+                                                  all_channels, 
+                                                  dh.record_length, 
+                                                  timestamps=cp_ts
+                                              ))
+                    dh.set("controlpulses", testpulseamplitude=final_cpas[..., valid_cp_flag])
+                else:
+                    print("No controlpulses found to write to DataHandler.")
+            else:
+                print("No controlpulses found to write to DataHandler.")
             
         if n_noise>0:
-            print("Writing noise to DataHandler ...")
-            noise_ts = dh.get(f"event_building-{name_appendix}", "noise_ts")
-            if len(noise_ts)>0:
-                dh.include_event_iterator("noise", 
-                                          stream.get_event_iterator(
-                                              all_channels, 
-                                              dh.record_length, 
-                                              timestamps=noise_ts
-                                          ))
+            if dh.exists("noise"): 
+                warnings.warn("Could not copy noise to DataHandler because the group 'noise' already exists. To delete it, use 'dh.drop('noise')'.")
             else:
-                print("No noise found to write to DataHandler.")
+                print("Writing noise to DataHandler ...")
+                noise_ts = dh.get(f"event_building-{name_appendix}", "noise_ts")
+                if len(noise_ts)>0:
+                    dh.include_event_iterator("noise", 
+                                              stream.get_event_iterator(
+                                                  all_channels, 
+                                                  dh.record_length, 
+                                                  timestamps=noise_ts
+                                              ))
+                else:
+                    print("No noise found to write to DataHandler.")
 
 class TriggerCollectionMixin:
     """
@@ -175,6 +230,7 @@ class TriggerCollectionMixin:
                        thresholds: Union[float, List[float]] = 5,
                        passive_channels: List[str] = None,
                        testpulse_channels: List[str] = None,
+                       controlpulses_above: List[float] = None,
                        copy_events: bool = False,
                        reuse_triggers: bool = False,
                        interval: Tuple[float] = None,
@@ -200,6 +256,8 @@ class TriggerCollectionMixin:
         :type passive_channels: List[str], optional
         :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
         :type testpulse_channels: List[str], optional
+        :param constrolpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels'. If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. Defaults to None
+        :type constrolpulses_above: List[float], optional
         :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
         :type copy_events: bool, optional
         :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
@@ -243,7 +301,19 @@ class TriggerCollectionMixin:
         
         # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
         thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
-        
+
+        # Make sure that controlpulses_above is a list (allow scalar input, to be used for all channels)
+        # Also check if it is specified for all testpulse channels
+        if controlpulses_above is not None:
+            if testpulse_channels is None:
+                raise ValueError("If you specify 'controlpulses_above', you also have to specify 'testpulse_channels'.")
+            else:
+                controlpulses_above = [controlpulses_above]*len(testpulse_channels) if isinstance(controlpulses_above, (int, float)) else controlpulses_above
+
+            if not (len(testpulse_channels) == len(controlpulses_above)):
+                raise ValueError(f"The length of 'controlpulses_above' and 'testpulse_channels' has to match. Got {len(controlpulses_above)} and {len(testpulse_channels)}.")
+            
+
         if len(thresholds) != len(trigger_channels):
             raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
         
@@ -253,7 +323,7 @@ class TriggerCollectionMixin:
                                **kwargs) 
                        for thresh in thresholds]
         
-        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, copy_events, reuse_triggers,
+        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, copy_events, reuse_triggers,
                         interval, trigger_fncs, n_noise, "z-score")
         
     def trigger_of(self,
@@ -262,6 +332,7 @@ class TriggerCollectionMixin:
                    thresholds: List[float],
                    passive_channels: List[str] = None,
                    testpulse_channels: List[str] = None,
+                   controlpulses_above: List[float] = None,
                    copy_events: bool = False,
                    reuse_triggers: bool = False,
                    interval: Tuple[float] = None,
@@ -288,6 +359,8 @@ class TriggerCollectionMixin:
         :type passive_channels: List[str], optional
         :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
         :type testpulse_channels: List[str], optional
+        :param constrolpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels'. If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. Defaults to None
+        :type constrolpulses_above: List[float], optional
         :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
         :type copy_events: bool, optional
         :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
@@ -336,6 +409,17 @@ class TriggerCollectionMixin:
         
         # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
         thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
+
+        # Make sure that controlpulses_above is a list (allow scalar input, to be used for all channels)
+        # Also check if it is specified for all testpulse channels
+        if controlpulses_above is not None:
+            if testpulse_channels is None:
+                raise ValueError("If you specify 'controlpulses_above', you also have to specify 'testpulse_channels'.")
+            else:
+                controlpulses_above = [controlpulses_above]*len(testpulse_channels) if isinstance(controlpulses_above, (int, float)) else controlpulses_above
+
+            if not (len(testpulse_channels) == len(controlpulses_above)):
+                raise ValueError(f"The length of 'controlpulses_above' and 'testpulse_channels' has to match. Got {len(controlpulses_above)} and {len(testpulse_channels)}.")
         
         if len(thresholds) != len(trigger_channels):
             raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
@@ -359,7 +443,7 @@ class TriggerCollectionMixin:
                                **kwargs) 
                        for of, thresh in zip(ofs, thresholds)]
         
-        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, copy_events, reuse_triggers,
+        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, copy_events, reuse_triggers,
                         interval, trigger_fncs, n_noise, "of")
         
     def trigger_coincidence(self,
