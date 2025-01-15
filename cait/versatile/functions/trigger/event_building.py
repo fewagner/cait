@@ -8,7 +8,7 @@ def event_building(trigger_ts: List[List[int]],
                    trigger_phs: List[List[float]],
                    record_length: int,
                    dt_us: int,
-                   n_slave_ch: int = 0,
+                   n_passive_ch: int = 0,
                    tp_ts: List[List[int]] = None,
                    tpas: List[List[float]] = None,
                    interval: Tuple[float] = None,
@@ -16,11 +16,11 @@ def event_building(trigger_ts: List[List[int]],
     """
     Build events from trigger timestamps (of multiple channels) and exclude testpulses if the respective information is provided.
 
-    'trigger_ts' is a list of trigger timestamp lists for each channel that was triggered and 'trigger_phs' are the corresponding trigger pulse heights (with identical structure). If some channels are not triggered but read out in coincidence (i.e. as 'slave' channels), you can specify the number of such channels using 'n_slave_ch'. 
+    'trigger_ts' is a list of trigger timestamp lists for each channel that was triggered and 'trigger_phs' are the corresponding trigger pulse heights (with identical structure). If some channels are not triggered but read out in coincidence (i.e. as 'passive' channels), you can specify the number of such channels using 'n_passive_ch'. 
 
     Events are build as follows: Starting from the first list of timestamps in 'trigger_ts', the remaining lists are checked to be in coincidence with already existing timestamps. The default coincidence window (if ``interval=None``), is ``-+dt_us*record_length//4`` but can be adapted as needed.
 
-    If you provide 'tp_ts' and 'tpas' (have to be both specified or left None), triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'slave' channels, i.e. 'tp_ts' has to have length ``len(trigger_ts) + n_slave_ch``.
+    If you provide 'tp_ts' and 'tpas' (have to be both specified or left None), triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'passive' channels, i.e. 'tp_ts' has to have length ``len(trigger_ts) + n_passive_ch``.
 
     :param trigger_ts: A list of lists of timestamps of the channels that were triggered.
     :type trigger_ts: List[List[int]]
@@ -30,18 +30,18 @@ def event_building(trigger_ts: List[List[int]],
     :type record_length: int
     :param dt_us: The microsecond timebase that was used in the recording.
     :type dt_us: int
-    :param n_slave_ch: The number of 'slave' channels, i.e. such that were not triggered but are merely read out in coincidence with other channels' triggers. Defaults to 0, i.e. all channels that are considered were triggered.
-    :type n_slave_ch: int, optional
-    :param tp_ts: A list of lists of timestamps of the testpulses corresponding to all channels. This includes 'slave' channels! I.e. you need a testpulse list for all triggered AND slave channels. If you don't have this information for the 'slave' channels, just put an empty list. Defaults to None, i.e. no pulses are counted as testpulses in the event building.
+    :param n_passive_ch: The number of 'passive' channels, i.e. such that were not triggered but are merely read out in coincidence with other channels' triggers. Defaults to 0, i.e. all channels that are considered were triggered.
+    :type n_passive_ch: int, optional
+    :param tp_ts: A list of lists of timestamps of the testpulses corresponding to all channels. This includes 'passive' channels! I.e. you need a testpulse list for all triggered AND passive channels. If you don't have this information for the 'passive' channels, just put an empty list. Defaults to None, i.e. no pulses are counted as testpulses in the event building.
     :type tp_ts: List[List[int]], optional
-    :param tpas: A list of lists of testpulse amplitudes of the testpulses corresponding to all channels. This includes 'slave' channels! I.e. you need a testpulse list for all triggered AND slave channels. If you don't have this information for the 'slave' channels, just put an empty list. Defaults to None, i.e. no pulses are counted as testpulses in the event building.
+    :param tpas: A list of lists of testpulse amplitudes of the testpulses corresponding to all channels. This includes 'passive' channels! I.e. you need a testpulse list for all triggered AND passive channels. If you don't have this information for the 'passive' channels, just put an empty list. Defaults to None, i.e. no pulses are counted as testpulses in the event building.
     :type tpas: List[List[float]], optional
     :param interval: The coincidence interval for event building in microseconds, i.e. if a trigger lies within the specified interval around a trigger of another channel, they are collected to represent one event. Defaults to ``-+dt_us*record_length//4``.
     :type interval: Tuple[float], optional
 
     :return:
         - ``event_ts`` - The timestamps of the events after event building, i.e. checking coincidences with other channels and excluding testpulses (if testpulse information was provided). Has shape ``(N,)``.
-        - ``trigger_flag`` - A boolean flag of dimension ``(M, N)`` where ``M`` is the number of channels (including 'slave' channels). It is True for whichever event the respective channel triggered. For 'slave' channels, this is of course always False.
+        - ``trigger_flag`` - A boolean flag of dimension ``(M, N)`` where ``M`` is the number of channels (including 'passive' channels). It is True for whichever event the respective channel triggered. For 'passive' channels, this is of course always False.
         - ``original_ts`` - Array of dimension ``(M, N)`` which stores the original trigger timestamps (before event building). It is set to ``-1`` wherever a channel did not trigger.
         - ``original_ph`` - Array of dimension ``(M, N)`` which stores the original trigger pulse heights (before event building). It is set to ``-1`` wherever a channel did not trigger.
         - ``all_tp_ts`` - The timestamps of all testpulses of all channels (after event building). Has shape ``(K,)``.
@@ -99,8 +99,8 @@ def event_building(trigger_ts: List[List[int]],
         if not all([len(ts) == len(tpa) for ts, tpa in zip(tp_ts, tpas)]):
             raise ValueError(f"All lists in 'tp_ts' and 'tpas' must have the same length (number of testpulses). Received {[len(x) for x in tp_ts]} and {[len(x) for x in tpas]}.")
         
-        if not len(tp_ts) == len(trigger_ts) + n_slave_ch:
-            raise ValueError(f"The length of 'tp_ts' must match 'len(trigger_ts)+n_slave_ch', i.e. if specified, testpulse information is required for all triggered AND slave channels. Received {len(tp_ts)} and {len(trigger_ts)}+{n_slave_ch}.")
+        if not len(tp_ts) == len(trigger_ts) + n_passive_ch:
+            raise ValueError(f"The length of 'tp_ts' must match 'len(trigger_ts)+n_passive_ch', i.e. if specified, testpulse information is required for all triggered AND passive channels. Received {len(tp_ts)} and {len(trigger_ts)}+{n_passive_ch}.")
 
     # default coincidence window is just within the same record window (given by record_length and dt_us)
     rec_window_coinc = (-dt_us*record_length//4, dt_us*record_length//4)
@@ -188,9 +188,9 @@ def event_building(trigger_ts: List[List[int]],
         for j in range(i+2):
             trigger_flag[j] = np.array(trigger_flag[j])[sortind].tolist()
 
-    # Add False for slave channels to indicate that they did (of course) not trigger
+    # Add False for passive channels to indicate that they did (of course) not trigger
     len_trigger_flags = len(trigger_flag[-1])
-    for _ in range(n_slave_ch):
+    for _ in range(n_passive_ch):
         trigger_flag.append([False]*len_trigger_flags)
 
     # also save the original trigger timestamps exactly like the trigger flag array

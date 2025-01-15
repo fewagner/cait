@@ -11,7 +11,7 @@ import cait.versatile as vai
 def _trigger_helper(dh, 
                     stream, 
                     trigger_channels,
-                    slave_channels, 
+                    passive_channels, 
                     testpulse_channels, 
                     copy_events, 
                     reuse_triggers,
@@ -25,17 +25,17 @@ def _trigger_helper(dh,
     if not all([x in stream.keys for x in trigger_channels]):
             raise KeyError(f"All 'trigger_channels' have to be valid channel names. Available: {stream.keys}")
             
-    if ( slave_channels is not None ) and ( not all([x in stream.keys for x in slave_channels]) ):
-        raise KeyError(f"All 'slave_channels' have to be valid channel names. Available: {stream.keys}")
+    if ( passive_channels is not None ) and ( not all([x in stream.keys for x in passive_channels]) ):
+        raise KeyError(f"All 'passive_channels' have to be valid channel names. Available: {stream.keys}")
 
     if ( testpulse_channels is not None ) and ( not all([x in stream.tp_keys for x in testpulse_channels]) ):
         raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {stream.tp_keys}")
 
     if testpulse_channels is not None:
-        if len(trigger_channels) + (0 if slave_channels is None else len(slave_channels)) != len(testpulse_channels):
-            raise ValueError(f"Testpulse channels are required for all channels (including slave channels). I.e. len(testpulse_channels)' must match 'len(trigger_channels)+len(slave_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels)}+{0 if slave_channels is None else len(slave_channels)}")
+        if len(trigger_channels) + (0 if passive_channels is None else len(passive_channels)) != len(testpulse_channels):
+            raise ValueError(f"Testpulse channels are required for all channels (including passive channels). I.e. len(testpulse_channels)' must match 'len(trigger_channels)+len(passive_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels)}+{0 if passive_channels is None else len(passive_channels)}")
 
-    all_channels = trigger_channels + ([] if slave_channels is None else slave_channels)
+    all_channels = trigger_channels + ([] if passive_channels is None else passive_channels)
 
     # Triggering channels
     for i, key in enumerate(trigger_channels):
@@ -94,7 +94,7 @@ def _trigger_helper(dh,
                                                                 dt_us=stream.dt_us,
                                                                 tp_ts=tp_ts,
                                                                 tpas=tpas,
-                                                                n_slave_ch=0 if slave_channels is None else len(slave_channels),
+                                                                n_passive_ch=0 if passive_channels is None else len(passive_channels),
                                                                 interval=interval)
 
     # save final timestamps and trigger flag after event building
@@ -173,7 +173,7 @@ class TriggerCollectionMixin:
                        stream: vai.datasources.stream.streambase.StreamBaseClass,
                        trigger_channels: List[str],
                        thresholds: Union[float, List[float]] = 5,
-                       slave_channels: List[str] = None,
+                       passive_channels: List[str] = None,
                        testpulse_channels: List[str] = None,
                        copy_events: bool = False,
                        reuse_triggers: bool = False,
@@ -184,11 +184,11 @@ class TriggerCollectionMixin:
         """
         Trigger stream channels from arbitrary hardware using a moving z-score trigger and build events from trigger timestamps (of multiple channels) and exclude testpulses if the respective information is provided.
 
-        The stream channels specified by ``trigger_channels`` are triggered. If some channels are not triggered but read out in coincidence (i.e. as 'slave' channels), you can specify their channel names using ``slave_channels``. 
+        The stream channels specified by ``trigger_channels`` are triggered. If some channels are not triggered but read out in coincidence (i.e. as 'passive' channels), you can specify their channel names using ``passive_channels``. 
 
         Events are built as follows: Starting from the first channel's trigger timestamps, the remaining channels' triggers are checked to be in coincidence with already existing timestamps. The default coincidence window (if ``interval=None``), is ``-+dt_us*record_length//4`` but can be adapted as needed.
 
-        If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'slave' channels.
+        If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'passive' channels.
 
         :param stream: The stream object including the channels that you want to trigger.
         :type stream: vai.datasources.stream.streambase.StreamBaseClass
@@ -196,8 +196,8 @@ class TriggerCollectionMixin:
         :type trigger_channels: List[str]
         :param thresholds: A list of trigger thresholds (in sigmas) for each channel. If only a float is provided, it is used for all channels. Defaults to 5 sigmas
         :type thresholds: Union[float, List[float]], optional
-        :param slave_channels: A list of channel names to be read out as 'slaves'. Have to be present in ``stream.keys``. Defaults to None
-        :type slave_channels: List[str], optional
+        :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
+        :type passive_channels: List[str], optional
         :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
         :type testpulse_channels: List[str], optional
         :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
@@ -238,7 +238,7 @@ class TriggerCollectionMixin:
         
         # Allow string input if only one channel
         trigger_channels = [trigger_channels] if isinstance(trigger_channels, str) else trigger_channels
-        slave_channels = [slave_channels] if isinstance(slave_channels, str) else slave_channels
+        passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
         testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
         
         # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
@@ -253,14 +253,14 @@ class TriggerCollectionMixin:
                                **kwargs) 
                        for thresh in thresholds]
         
-        _trigger_helper(self, stream, trigger_channels, slave_channels, testpulse_channels, copy_events, reuse_triggers,
+        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, copy_events, reuse_triggers,
                         interval, trigger_fncs, n_noise, "z-score")
         
     def trigger_of(self,
                    stream: vai.datasources.stream.streambase.StreamBaseClass,
                    trigger_channels: List[str],
                    thresholds: List[float],
-                   slave_channels: List[str] = None,
+                   passive_channels: List[str] = None,
                    testpulse_channels: List[str] = None,
                    copy_events: bool = False,
                    reuse_triggers: bool = False,
@@ -272,11 +272,11 @@ class TriggerCollectionMixin:
         """
         Trigger stream channels from arbitrary hardware using a moving optimum filter trigger and build events from trigger timestamps (of multiple channels) and exclude testpulses if the respective information is provided.
 
-        The stream channels specified by ``trigger_channels`` are triggered. If some channels are not triggered but read out in coincidence (i.e. as 'slave' channels), you can specify their channel names using ``slave_channels``. 
+        The stream channels specified by ``trigger_channels`` are triggered. If some channels are not triggered but read out in coincidence (i.e. as 'passive' channels), you can specify their channel names using ``passive_channels``. 
 
         Events are built as follows: Starting from the first channel's trigger timestamps, the remaining channels' triggers are checked to be in coincidence with already existing timestamps. The default coincidence window (if ``interval=None``), is ``-+dt_us*record_length//4`` but can be adapted as needed.
 
-        If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'slave' channels.
+        If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'passive' channels.
 
         :param stream: The stream object including the channels that you want to trigger.
         :type stream: vai.datasources.stream.streambase.StreamBaseClass
@@ -284,8 +284,8 @@ class TriggerCollectionMixin:
         :type trigger_channels: List[str]
         :param thresholds: A list of trigger thresholds (in V) for each channel.
         :type thresholds: Union[float, List[float]]
-        :param slave_channels: A list of channel names to be read out as 'slaves'. Have to be present in ``stream.keys``. Defaults to None
-        :type slave_channels: List[str], optional
+        :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
+        :type passive_channels: List[str], optional
         :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
         :type testpulse_channels: List[str], optional
         :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
@@ -331,7 +331,7 @@ class TriggerCollectionMixin:
         """
         # Allow string input if only one channel
         trigger_channels = [trigger_channels] if isinstance(trigger_channels, str) else trigger_channels
-        slave_channels = [slave_channels] if isinstance(slave_channels, str) else slave_channels
+        passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
         testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
         
         # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
@@ -359,7 +359,7 @@ class TriggerCollectionMixin:
                                **kwargs) 
                        for of, thresh in zip(ofs, thresholds)]
         
-        _trigger_helper(self, stream, trigger_channels, slave_channels, testpulse_channels, copy_events, reuse_triggers,
+        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, copy_events, reuse_triggers,
                         interval, trigger_fncs, n_noise, "of")
         
     def trigger_coincidence(self,
