@@ -84,6 +84,7 @@ class Preview(Viewer):
 
             # Plot
             self.plot(d)
+            self.show_legend()
         except:
             self.close()
             raise
