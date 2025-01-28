@@ -33,29 +33,42 @@ def test_trigger_zscore_errors(tempdir, stream_csmpl):
     with pytest.raises(KeyError): 
         dh.trigger_zscore(stream_csmpl, 
                           trigger_channels="Ch2",
-                          slave_channels="Ch1",
+                          passive_channels="Ch1",
                           testpulse_channels=["0", "0"])
         
-    # slave_channel unavailable
+    # passive_channel unavailable
     with pytest.raises(KeyError): 
         dh.trigger_zscore(stream_csmpl, 
                           trigger_channels="Ch1",
-                          slave_channels="Ch2",
+                          passive_channels="Ch2",
                           testpulse_channels=["0", "0"])
         
     # tp_channel unavailable
     with pytest.raises(KeyError): 
         dh.trigger_zscore(stream_csmpl, 
                           trigger_channels="Ch1",
-                          slave_channels="Ch0",
+                          passive_channels="Ch0",
                           testpulse_channels=["0", "2"])
         
     # tp_channel don't add up
     with pytest.raises(ValueError): 
         dh.trigger_zscore(stream_csmpl, 
                           trigger_channels="Ch1",
-                          slave_channels="Ch0",
+                          passive_channels="Ch0",
                           testpulse_channels=["0"])
+
+    # controlpulses_above don't add up
+    with pytest.raises(ValueError): 
+        dh.trigger_zscore(stream_csmpl,
+                      trigger_channels="Ch1",
+                      passive_channels="Ch0",
+                      controlpulses_above=[1,2,3],
+                      testpulse_channels=["0", "0"])
+    with pytest.raises(ValueError): 
+        dh.trigger_zscore(stream_csmpl,
+                      trigger_channels="Ch1",
+                      controlpulses_above=[1,2],
+                      testpulse_channels="0")
         
 
 def test_trigger_zscore(tempdir, stream_csmpl):
@@ -65,8 +78,17 @@ def test_trigger_zscore(tempdir, stream_csmpl):
 
     dh.trigger_zscore(stream_csmpl, 
                       trigger_channels="Ch0",
-                      slave_channels="Ch1",
+                      passive_channels="Ch1",
                       testpulse_channels=["0", "0"],
+                      copy_events=True,
+                      reuse_triggers=False,
+                      n_noise=100)
+
+    dh.trigger_zscore(stream_csmpl, 
+                      trigger_channels="Ch0",
+                      passive_channels="Ch1",
+                      testpulse_channels=["0", "0"],
+                      controlpulses_above=[0.5, 0.5],
                       copy_events=True,
                       reuse_triggers=False,
                       n_noise=100)
@@ -80,7 +102,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     with pytest.raises(ValueError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch0",
-                      slave_channels="Ch1",
+                      passive_channels="Ch1",
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
@@ -90,7 +112,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     with pytest.raises(ValueError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch0",
-                      slave_channels="Ch1",
+                      passive_channels="Ch1",
                       thresholds=[1, 2, 3],
                       testpulse_channels=["0", "0"])
         
@@ -98,15 +120,15 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     with pytest.raises(KeyError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch2",
-                      slave_channels="Ch0",
+                      passive_channels="Ch0",
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
-    # slave_channel unavailable
+    # passive_channel unavailable
     with pytest.raises(KeyError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch1",
-                      slave_channels="Ch2",
+                      passive_channels="Ch2",
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
@@ -114,7 +136,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     with pytest.raises(KeyError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch1",
-                      slave_channels="Ch0",
+                      passive_channels="Ch0",
                       thresholds=[1],
                       testpulse_channels=["0", "2"])
         
@@ -122,9 +144,24 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     with pytest.raises(ValueError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch1",
-                      slave_channels="Ch0",
+                      passive_channels="Ch0",
                       thresholds=[1],
                       testpulse_channels=["0"])
+
+    # controlpulses_above don't add up
+    with pytest.raises(ValueError): 
+        dh.trigger_of(stream_csmpl,
+                      trigger_channels="Ch1",
+                      passive_channels="Ch0",
+                      thresholds=[1],
+                      controlpulses_above=[1,2,3],
+                      testpulse_channels=["0", "0"])
+    with pytest.raises(ValueError): 
+        dh.trigger_of(stream_csmpl,
+                      trigger_channels="Ch1",
+                      thresholds=1,
+                      controlpulses_above=[1,2],
+                      testpulse_channels="0")
         
     vai.OF(np.ones((2, int(dh.record_length/2+1)), dtype=complex), dt_us=dh.dt_us).to_dh(dh, overwrite_existing=True)
 
@@ -132,7 +169,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     with pytest.raises(ValueError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch0",
-                      slave_channels="Ch1",
+                      passive_channels="Ch1",
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
@@ -146,8 +183,18 @@ def test_trigger_of(tempdir, stream_csmpl):
 
     dh.trigger_of(stream_csmpl,
                   trigger_channels="Ch0",
-                  slave_channels="Ch1",
+                  passive_channels="Ch1",
                   testpulse_channels=["0", "0"],
+                  thresholds=[0.1],
+                  copy_events=True,
+                  reuse_triggers=False,
+                  n_noise=100)
+
+    dh.trigger_of(stream_csmpl,
+                  trigger_channels="Ch0",
+                  passive_channels="Ch1",
+                  testpulse_channels=["0", "0"],
+                  controlpulses_above=[0.5, 0.5],
                   thresholds=[0.1],
                   copy_events=True,
                   reuse_triggers=False,

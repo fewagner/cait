@@ -50,8 +50,8 @@ constructed. See documentation of class **Viewer** for details.
 Basic Plotting Classes
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The three basic plotting classes are **Line**, **Scatter**, and
-**Histogram**. Their working principle is identical. You can either pass
+The four basic plotting classes are **Line**, **Scatter**,
+**Histogram**, and **Heatmap**. Their working principle is identical. You can either pass
 a list (or ``numpy.ndarray``) to the constructor, or a dictionary whose
 keys and values will turn into legend entries and plotted
 lines/scatters/histograms. Additionally, you can specify ``xlabel``,
@@ -155,5 +155,5 @@ Documentation
 ~~~~~~~~~~~~~
 
 .. automodule:: cait.versatile
-   :members: Line, Scatter, Histogram, StreamViewer, Preview, Viewer, ScatterPreview
+   :members: Line, Scatter, Histogram, Heatmap, StreamViewer, Preview, Viewer, ScatterPreview
    :show-inheritance:

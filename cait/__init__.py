@@ -5,6 +5,7 @@ from .evaluation_tools import EvaluationTools
 from .viztool import VizTool
 from .limit import *
 from .resources import *
+from . import styles
 
 from ._version import __version__
 

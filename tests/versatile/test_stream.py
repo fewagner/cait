@@ -98,7 +98,8 @@ def test_trigger_single_samples():
     of = np.ones(record_length//2+1)
 
     for trigger in [lambda d: vai.trigger_zscore(d, record_length=record_length),
-                    lambda d: vai.trigger_of(d, threshold=0.5, of=of)]:
+                    lambda d: vai.trigger_of(d, threshold=0.5, of=of)
+                   ]:
 
         # should not find the peak (outside of search area)
         data = np.zeros(record_length*13)
@@ -108,9 +109,11 @@ def test_trigger_single_samples():
 
         # should find the peak on first searched sample
         data = np.zeros(record_length*13)
-        data[record_length] = 1
+        peakpos = record_length
+        data[peakpos-50:peakpos] = np.linspace(0,1,50)
+        data[peakpos:peakpos+50] = np.linspace(1,0,50)
         i, _ = trigger(data)
-        assert len(i)==1 and i[0]==record_length 
+        assert len(i)==1 and i[0]==peakpos 
 
         # should not find the peak (outside of search area)
         data = np.zeros(record_length*13)
@@ -120,20 +123,32 @@ def test_trigger_single_samples():
 
         # should find the peak on first sample (from back) that is searched
         data = np.zeros(record_length*13)
-        data[-2*record_length-1] = 1
+        peakpos = -2*record_length
+        data[peakpos-49:peakpos+1] = np.linspace(0,1,50)
+        data[peakpos:peakpos+50] = np.linspace(1,0,50)
         i, _ = trigger(data)
-        assert len(i)==1 and i[0]==(len(data) - 2*record_length - 1)
+        assert len(i)==1 and i[0]==(len(data) + peakpos)
 
         # should find the peak on first searched sample but not the second one (within record_length/2 and smaller)
         data = np.zeros(record_length*13)
-        data[record_length] = 1
-        data[record_length+record_length//2] = 0.9
+        peakpos = record_length
+        peakpos2 = record_length + 1000
+        data[peakpos-50:peakpos] = np.linspace(0,1,50)
+        data[peakpos:peakpos+50] = np.linspace(1,0,50)
+        data[peakpos2-50:peakpos2] = 0.9*np.linspace(0,1,50)
+        data[peakpos2:peakpos2+50] = 0.9*np.linspace(1,0,50)
+        
         i, _ = trigger(data)
-        assert len(i)==1 and i[0]==record_length
+        assert len(i)==1 and i[0]==peakpos
 
         # should find both peaks (outside record_length/2 and smaller)
         data = np.zeros(record_length*13)
-        data[record_length] = 1
-        data[record_length+record_length//2+1] = 0.9
+        peakpos = record_length
+        peakpos2 = record_length + record_length//2 + 1
+        data[peakpos-50:peakpos] = np.linspace(0,1,50)
+        data[peakpos:peakpos+50] = np.linspace(1,0,50)
+        data[peakpos2-50:peakpos2] = 0.9*np.linspace(0,1,50)
+        data[peakpos2:peakpos2+50] = 0.9*np.linspace(1,0,50)
+        
         i, _ = trigger(data)
         assert len(i)==2 and i[1]==(record_length+record_length//2+1)

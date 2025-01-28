@@ -11,6 +11,13 @@ from ...eventfunctions.processing.removebaseline import RemoveBaseline
 from ....readers import BinaryFile
 
 # Helper Function to get testpulse information from VDAQ2 files
+def _square(x): 
+    return x**2
+    
+def _max_and_argmax(x):
+    ind = np.argmax(x)
+    return ind, x[ind]
+    
 def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
     with stream:
         inds, _ =  trigger_base(stream=stream[key],
@@ -24,12 +31,16 @@ def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
     else:
         out_timestamps = stream.time[inds]
         it = stream.get_event_iterator(keys=key,
-                                       record_length=record_length//5,
+                                       record_length=record_length,
                                        timestamps=out_timestamps,
-                                       alignment=1/2)
-        out_tpas = apply(np.max,
-                         it.with_processing([partial(np.power, 2), RemoveBaseline()]),
-                         n_processes=ai._available_workers)
+                                       alignment=1/4)
+
+        # we also want argmax to correct timestamps such that they mark the maximum
+        argmaxs, out_tpas = apply(_max_and_argmax,
+                             it.with_processing([_square, RemoveBaseline()]),
+                             n_processes=ai._available_workers)
+
+        out_timestamps = stream.time[inds + argmaxs - record_length//4] 
 
     return out_timestamps, out_tpas
 

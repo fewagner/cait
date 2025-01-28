@@ -31,7 +31,9 @@ class Heatmap(Viewer):
                     ydata, 
                     bins=(np.linspace(-5, 5, 30), np.linspace(2, 20, 30)), 
                     xlabel="xdata", 
-                    ylabel="ydata")
+                    ylabel="ydata",
+                    cscale="log",
+                    cmap="jet")
     """
     def __init__(self, x: List[float], y: List[float], bins: Union[tuple, int] = None, **kwargs):
 
