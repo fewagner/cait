@@ -23,7 +23,7 @@ pytest:
     - pytest --junitxml=report.xml
   parallel:
     matrix:
-      - VERSION: ['3.8', '3.9', '3.10', '3.11', '3.12']
+      - VERSION: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
   artifacts:
     when: always
     reports:
@@ -37,7 +37,7 @@ build_kaniko_command:
   variables:
     IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
   image:
-    name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
+    name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   script:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
