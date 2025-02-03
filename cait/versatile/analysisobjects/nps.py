@@ -50,15 +50,18 @@ class NPS(ArrayWithBenefits):
             else:
                 self._n_ch = 1
                 
-            # Normalise (according to Teukolsky, + timebase normalisation)
+            # Normalise (according to Teukolsky, + time normalisation to "per Hz", i.e. divide by record time)
             N = 2*(self._nps.shape[-1]-1)
             w = np.ones(N)
             for f in data[:].pop_processing():
                 if isinstance(f, TukeyWindow):
                     w = f(w)
             W = N*np.sum(w**2)
+
+            # 1/(record time (in seconds)) = frequency bin size in Hz
+            delta_f = 1/(N*data.dt_us*1e-6)
             
-            self._nps = self._nps/W/int(1e6/data.dt_us)
+            self._nps = self._nps/W/delta_f
             
         elif isinstance(data, np.ndarray) or is_array_like(data):
             if dt_us is None:
