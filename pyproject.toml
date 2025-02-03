@@ -26,6 +26,7 @@ dependencies = [
     "uproot>=4.1",
     "ipywidgets>=7.5",
     "dash>=2.0",
+    "plotly<6.0",
     "matplotlib>=3.4",
     "numba>=0.54",
     "tqdm>=4.62",
