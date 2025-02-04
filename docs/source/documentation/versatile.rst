@@ -87,8 +87,8 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
         # (usually, you would clean it first)
         sev = vai.SEV(it)
 
-        # Plot the standard event (optional: extract microsecond timestamp from iterator to also show the correct time axis)
-        sev.show(dt_us=it.dt_us)   
+        # Plot the standard event
+        sev.show()   
 
 *  **plotting** (:ref:`docs <plotting>`)
     Often needed plotting tasks are simplified by classes like ``Line``, ``Scatter`` and ``Histogram`` which make having a quick look at your data simple. More sophisticated classes include ``StreamViewer``, which lets you interactively view the contents of the data source ``Stream``, and ``Preview``, which shows a preview of the application of a function to an event iterator. Alternatively, the latter can just be used to view the events in an iterator. 
