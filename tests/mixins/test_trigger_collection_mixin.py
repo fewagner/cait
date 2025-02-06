@@ -72,11 +72,11 @@ def test_trigger_zscore_errors(tempdir, stream_csmpl):
         
 
 def test_trigger_zscore(tempdir, stream_csmpl):
-    dh = ai.DataHandler(nmbr_channels=2)
-    dh.set_filepath(tempdir.name, "test_trigger_zscore", appendix=False)
-    dh.init_empty()
+    dh1 = ai.DataHandler(nmbr_channels=2)
+    dh1.set_filepath(tempdir.name, "test_trigger_zscore_1", appendix=False)
+    dh1.init_empty()
 
-    dh.trigger_zscore(stream_csmpl, 
+    dh1.trigger_zscore(stream_csmpl, 
                       trigger_channels="Ch0",
                       passive_channels="Ch1",
                       testpulse_channels=["0", "0"],
@@ -84,7 +84,12 @@ def test_trigger_zscore(tempdir, stream_csmpl):
                       reuse_triggers=False,
                       n_noise=100)
 
-    dh.trigger_zscore(stream_csmpl, 
+    # Have to create a separate datahandler because otherwise events cannot be included (gives warning)
+    dh2 = ai.DataHandler(nmbr_channels=2)
+    dh2.set_filepath(tempdir.name, "test_trigger_zscore_2", appendix=False)
+    dh2.init_empty()
+    
+    dh2.trigger_zscore(stream_csmpl, 
                       trigger_channels="Ch0",
                       passive_channels="Ch1",
                       testpulse_channels=["0", "0"],
@@ -175,13 +180,13 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
         
 
 def test_trigger_of(tempdir, stream_csmpl):
-    dh = ai.DataHandler(nmbr_channels=2)
-    dh.set_filepath(tempdir.name, "test_trigger_of", appendix=False)
-    dh.init_empty()
+    dh1 = ai.DataHandler(nmbr_channels=2)
+    dh1.set_filepath(tempdir.name, "test_trigger_of_1", appendix=False)
+    dh1.init_empty()
 
-    vai.OF(np.ones(int(dh.record_length/2+1), dtype=complex), dt_us=dh.dt_us).to_dh(dh, overwrite_existing=True)
+    vai.OF(np.ones(int(dh1.record_length/2+1), dtype=complex), dt_us=dh1.dt_us).to_dh(dh1, overwrite_existing=True)
 
-    dh.trigger_of(stream_csmpl,
+    dh1.trigger_of(stream_csmpl,
                   trigger_channels="Ch0",
                   passive_channels="Ch1",
                   testpulse_channels=["0", "0"],
@@ -189,8 +194,15 @@ def test_trigger_of(tempdir, stream_csmpl):
                   copy_events=True,
                   reuse_triggers=False,
                   n_noise=100)
+    
+    # Have to create a separate datahandler because otherwise events cannot be included (gives warning)
+    dh2 = ai.DataHandler(nmbr_channels=2)
+    dh2.set_filepath(tempdir.name, "test_trigger_of_2", appendix=False)
+    dh2.init_empty()
 
-    dh.trigger_of(stream_csmpl,
+    vai.OF(np.ones(int(dh2.record_length/2+1), dtype=complex), dt_us=dh2.dt_us).to_dh(dh2, overwrite_existing=True)
+
+    dh2.trigger_of(stream_csmpl,
                   trigger_channels="Ch0",
                   passive_channels="Ch1",
                   testpulse_channels=["0", "0"],
