@@ -206,6 +206,8 @@ class _TemplateCachePoly:
         except ValueError as err:
             if err.args[0] == "array must not contain infs or NaNs":
                 opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
+            elif err.args[0] == "zero-size array to reduction operation maximum which has no identity":
+                opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
             else:
                 raise err
         
