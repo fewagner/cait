@@ -35,24 +35,27 @@ class FQLC(FncBaseClass):
     """
     Correct event for flux quantum loss (FQL). Works only for one channel.
     
-    :param method: One of three methods: "mmd", "slope" or "satv". "mmd" (mininmum-minimum difference) calculates the FQL as difference between the minima before and after the pulse (with some fluctuation mitigation). "slope" calculates the FQL as the slope of the event. "satv" assumes that the true pulse height (without) FQL is known - and given in the argument sat_voltage - and calculates the FQL as the difference between true and apparent pulse height. Defaults to the recommended method, "mmd".
+    :param method: One of three methods: "mmd", "slope" or "satv". "mmd" (mininmum-minimum difference) calculates the FQL as difference between the minima before and after the pulse (with some fluctuation mitigation). "slope" calculates the FQL as the slope of the event. "satv" assumes that the true pulse height (without) FQL is known - and given in the argument sat_v - and calculates the FQL as the difference between true and apparent pulse height. Defaults to the recommended method, "mmd".
     :type method: str
     :param thresh: Minimum shift value to accept and correct for. Smaller or negative values are assumed to not stem from FQLs.
     :type thresh: float
-    :param sat_voltage: The known true pulse height as defined by the saturation level. Necessary for method "satv".
-    :type sat_voltage: float
+    :param sat_v: The known true pulse height as defined by the saturation level. Necessary for method "satv".
+    :type sat_v: float
+    :param known_fql_v: If the voltage drop of a FQL is known and provided here, the correction shift will be an integer multiple of this value, instead of any value. Defaults to None.
+    :type known_fql_v: float
     :param val_not_ev: If True, not the shifted event but the shift value is returned. Defaults to False.
     :type val_not_ev: bool
 
     :return: Event with FQL corrected or value of shift (if val_not_ev is set to True)
     :rtype: Union[numpy.ndarray, float]
     """
-    def __init__(self, method: str = "mmd", thresh: float = 0.5, sat_voltage: float = 4.00, val_not_ev=False):
+    def __init__(self, method: str = "mmd", thresh: float = 0.5, sat_v: float = 4.00, known_fql_v: float=None, val_not_ev=False):
         self._remove_baseline = RemoveBaseline_new()
         self._mp = CalcMP()
         self._method = method
         self._thresh = thresh
-        self._sat = sat_voltage
+        self._sat_v = sat_v
+        self._known_fql_v = known_fql_v
         self._val_not_ev = val_not_ev
 
     def __call__(self, event):
@@ -72,13 +75,15 @@ class FQLC(FncBaseClass):
             self.slope = self._lin_drift * event.shape[-1] # lin_drift times length
             flux_loss = -self.slope # slope
         elif self._method == "satv":
-            flux_loss = self._sat - self._ph # known satV
+            flux_loss = self._sat_v - self._ph # known satV
         else:
             print("Choose method from \"mmd\" (minmindiff), \"slope\" or \"satv\"")
             flux_loss = self._blavg1-self._blavg2 #minmindiff approach
         
         self._shifted_event = self._event_nobl.copy()
         if flux_loss >= self._thresh: #only correct actual fql, not baseline drifts or the like
+            if self._known_fql_v is not None: # known fql voltage is provided -> only correct in integer multiples of it.
+                flux_loss = np.ceil(flux_loss/self._known_fql_v)*self._known_fql_v
             self._mp = CalcMP(box_car_smoothing={'length': 1}) # recalculate t0 without smoothing to be more precise
             _, self._t0, _, _, _, _, _, _, _ = self._mp(event) 
             self._shifted_event[int(self._t0)+1:] += flux_loss
