@@ -4,6 +4,8 @@ from .processing.downsample import Downsample
 from .processing.optimumfiltering import OptimumFiltering
 from .processing.removebaseline import RemoveBaseline
 from .processing.tukey import TukeyWindow
+from .processing.fqlc import RemoveBaseline_new
+from .processing.fqlc import FQLC
 
 from .scalarfunctions.calcmp import CalcMP
 from .scalarfunctions.fitbaseline import FitBaseline
