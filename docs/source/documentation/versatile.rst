@@ -4,6 +4,7 @@ cait.versatile - the flexible cait
 ==================================
 
 While ``cait`` provides excellent methods for raw data analysis, it is a very rigid framework mostly developed with the needs of the `CRESST` experiment in mind, and if one needs anything out of the ordinary, individualizing the workflow can be cumbersome. The sub-package ``cait.versatile`` aims to streamline this process and provide clear entry points to the existing framework. Moreover, it introduces convenience features for as-fast-as-possible data quality assessment.
+On the other hand, ``cait.versatile`` can be seen as a 'tool kit' of 'building blocks' that can (should) be used for function prototyping and eventually also implementing new ``cait`` core features as efficiently as possible.
 
 The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
