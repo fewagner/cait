@@ -9,7 +9,9 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     def __len__(self):
         return len(self._array)
     
-    def __array__(self, dtype=None):
+    def __array__(self, *args, **kwargs):
+        # we do not handle additional arguments that might be provided
+        # by numpy calls
         return self._array
     
     def __array_ufunc__(self, ufunc, method, *args, **kwargs):

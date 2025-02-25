@@ -139,6 +139,24 @@ class Viewer():
     def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
         self.fig_widget._add_button(text, callback, tooltip, where, key)
 
+    def add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
+        """
+        Add a button and callback to be activated by clicking it to the figure. Note that for this, you need to set `show_controls=True`.
+
+        :param text: The text on the button.
+        :type text: str
+        :param callback: The function to call when it is pressed.
+        :type callback: Callable
+        :param tooltip: The tooltip for the button.
+        :type tooltip: str, optional
+        :param where: The spot in the list of buttons where to place the new button. Defaults to -1, i.e. append to the end of the list.
+        :type where: int, optional
+        :param key: This is relevant for `backend='uniplot'` only. With that backend, there are no buttons, so the 'button' is pressed by pressing the specified key.
+        :type key: str, optional
+        """
+        self.fig_widget._add_button(text, callback, tooltip, where, key)
+        self.fig_widget._show()
+
     def show_legend(self, show: bool = True):
         """
         Show/hide legend.

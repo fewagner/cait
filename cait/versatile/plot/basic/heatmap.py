@@ -27,13 +27,16 @@ class Heatmap(Viewer):
         xdata = np.random.normal(size=10000)
         ydata = np.random.normal(loc=10, scale=3, size=10000)
 
-        vai.Heatmap(xdata, 
-                    ydata, 
-                    bins=(np.linspace(-5, 5, 30), np.linspace(2, 20, 30)), 
-                    xlabel="xdata", 
+        vai.Heatmap(xdata,
+                    ydata,
+                    bins=(np.linspace(-5, 5, 100), np.linspace(2, 20, 100)),
+                    xlabel="xdata",
                     ylabel="ydata",
                     cscale="log",
-                    cmap="jet")
+                    cmap="jet",
+                    clabel="counts")
+
+    .. image:: media/HeatmapExample.png
     """
     def __init__(self, x: List[float], y: List[float], bins: Union[tuple, int] = None, **kwargs):
 

@@ -57,6 +57,8 @@ class TestViewerPlotly:
         v.update_histogram(name="histogram1", data=DATA["scatter"]["scatter2"][1], bins=10)
         v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
 
+        v.add_button(text="some button", callback=lambda x: None, tooltip="some tooltip", key="K")
+
     def test_getter_setter(self):
         v = vai.Viewer(backend=self.BACKEND, 
                             show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
