@@ -120,12 +120,6 @@ The class has an initialization stage, a ``__call__`` function which is the actu
 
 .. code:: python 
 
-    import numpy as np
-    import cait.versatile as vai
-
-    # This is the base class for new functions
-    from cait.versatile.eventfunctions.functionbase import FncBaseClass
-
     # This is the 'function' that we want to define.
     # Note that it has a docstring with parameter descriptions and an example, 
     # comments and type hints!
@@ -245,11 +239,152 @@ Finally, you can apply your function to all events in your ``DataHandler`` using
 
 Including it in the repository and writing a ``DataHandler`` mixin
 ------------------------------------------------------------------
+If your goal was to have an on-the-fly solution for a highly specific issue, you are probably happy with applying your function to all events and be done.
+However, if you implemented something that could be relevant for many users, adding it to the repository and also adding a plug-and-play wrapper for the ``DataHandler`` should be considered. E.g. ``DataHandler.calc_mp()`` is such a 'plug-and-play' function. 
 
+    - To add ``MyFirstCaitFunction`` from above to the repository, you would copy its code to the (new) file ``cait/versatile/eventfunctions/scalarfunctions/myfirstcaitfunction.py``. If you are unsure in which directory it should go, reach out to us. To make your function available to users, you also have to add its name to the respective ``__init__.py`` file. In our case, you would add 
+
+       .. code:: python
+
+           from .scalarfunctions.myfirstcaitfunction import MyFirstCaitFunction
+    
+     to ``cait/versatile/eventfunctions/__init__.py``. Again, if you're unsure about this, just ask. Users can now access your function using ``cait.versatile.MyFirstCaitFunction``. Congrats! You contributed to ``cait``!
+
+    - Implementing a 'plug-and-play' function for the ``DataHandler`` is not much more complicated than that but it requires some more explanations:
+
+Additions to the ``DataHandler`` are done via *mixins* which you find in the repository tree under ``cait/mixins``. If your function fits any of the existing mixins (e.g. if it is some pulse shape parameter calculation, it would fit the ``_data_handler_features.py`` mixin), you can add it to the respective file. But you can also create a new file entirely if it fits nowhere.
+
+The structure of such a file is as follows (example here is some lines of ``_data_handler_features.py``):
+
+.. code:: python
+
+    class FeaturesMixin:
+    """
+    A Mixin Class to the DataHandler Class with methods for the calculation of features of the data.
+    """
+
+        def calc_mp(self, 
+                    type: str = 'events', 
+                    path_h5: str = None, 
+                    processes: int = -1, 
+                    down: int = 1,
+                    max_bounds: Tuple[int] = None):
+            ...
+
+        def calc_additional_mp(self, 
+                            type: str = 'events', 
+                            path_h5: str = None, 
+                            down: int = 1, 
+                            no_of: bool = False, 
+                            processes: int = -1):
+            ...
+
+I.e. the mixin is defined as a class. Its methods will later be the ones called through ``DataHandler.calc_mp()``, etc. 
+To let the ``DataHandler`` know about the mixin class, it has to show up in its inheritance list. Currently, the definition of ``DataHandler`` (in ``cait/data_handler.py``) starts with 
+
+.. code:: python 
+
+    class DataHandler(SimulateMixin,
+                      RdtMixin,
+                      PlotMixin,
+                      FeaturesMixin,
+                      AnalysisMixin,
+                      FitMixin,
+                      CsmplMixin,
+                      MachineLearningMixin,
+                      BinMixin,
+                      TriggerCollectionMixin
+                      ):
+
+Therefore, if we implement our new function in the ``FeaturesMixin``, we do not have to change anything in the ``DataHandler`` class. But if we create a new mixin, we have to extend the list accordingly.
+
+Finally, writing a wrapper for our ``MyFirstCaitFunction`` implementation above is easily achieved using :func:`~cait.DataHandler.get_event_iterator`, :func:`~cait.versatile.apply`, and :func:`~cait.DataHandler.set`:
+
+.. code:: python
+
+    import cait as ai
+    from cait.versatile import MyFirstCaitFunction
+
+    class FeaturesMixin:
+        
+        def my_first_cait_function(self, 
+                                   group: str = 'events', 
+                                   n_baseline: int = 100, 
+                                   search_int: tuple = (0,1)):
+            """Please write a docstring here, too. We will skip it to keep the tutorial short."""
+
+            # Load events (of the correct group) from DataHandler (which is now 'self')
+            events = self.get_event_iterator(group=group)
+
+            # Initialize your function
+            f = MyFirstCaitFunction(n_baseline=n_baseline, search_int=search_int)
+
+            # Apply it to all events (using all available cores)
+            phs = vai.apply(f, events, n_processes=ai._available_workers)
+            
+            # Save the results to the same group in a dataset called 'my_pulse_heights'
+            # We recommend to use overwrite_existing=True such that the user can call
+            # your function multiple times without getting an error that the dataset
+            # that they are trying to create already exists.
+            self.set(group=group, my_pulse_heights=phs, overwrite_existing=True)
+        
+That's it! You can now use your function as
+
+.. code:: python 
+
+    import cait as ai
+
+    dh = ai.DataHandler(nmbr_channels=1)
+    dh.set_filepath(path_h5="", fname=f"new_feature_example", appendix=False)
+
+    dh.my_first_cait_function(group="events", n_baseline=100, search_int=(0.2, 0.5))
+
+and it will create a *my_pulse_heights* dataset in the *events* group.
+
+.. note::
+
+    Now is probably a good time to commit your changes and push them to *GitLab*:
+
+    .. code:: console
+
+        $ git pull
+        $ git add .
+        $ git commit -m "implement vai.my_first_cait_function and dh.my_first_cait_function"
+        $ git push
 
 Implementing test case and running tests
 ----------------------------------------
+Every new feature should come with unit tests that test its behavior. This might not seem relevant at first but those tests will be run automatically on *GitLab* with the latest versions of ``cait``'s dependencies and for different Python versions. If, e.g., a deprecation warning of some dependency is raised sometime in the future, or if someone changes a function that your feature relies on and suddenly your feature breaks unexpectedly, the automated tests will catch it and prevent merging to the develop branch. 
 
+Therefore, it is **important** and **in your own interest** to write test cases for your features.
+
+Test cases can check if your function behaves as expected by e.g. giving it an input for which you know the output. A test would compare the actual output against the expected output. Tests can also target exceptions: Say your function does input validation (which you should always do btw) and raises a ``ValueError`` if the user inputs an inappropriate value. A test could now check if your function correctly raises a ``ValueError`` if provided inappropriate input. 
+
+Tests are implemented in the ``cait/tests`` folder and their folder structure loosely mimics the main code's structure. All files including tests must start with ``test_``. Inside of those files, you define functions (again prefixed with ``test_``) that call your function and test its behavior using ``assert`` to check against known behavior. To check if certain errors are (correctly) raised, you use ``with pytest.raises(ValueError)``. More details can be found in the `pytest docs <https://docs.pytest.org/en/stable/contents.html>`_.
+
+With our minimal example of ``MyFirstCaitFunction`` it is not so easy to think of meaningful test cases. But something like the following should give you an idea of how it's done:
+
+.. code:: python
+
+    from cait.versatile import MyFirstCaitFunction
+    
+    def test_my_first_cait_function():
+        # Initialize your function (would also be good to do this for 
+        # multiple arguments etc.)
+        f = MyFirstCaitFunction(100, (0.2, 0.5))
+
+        # Somehow create an array that could be a pulse.
+        # Here we just create an array of ones and a single
+        # sample gets the value 2. 
+        event = np.ones(1000)
+        event[300] = 2
+
+        # Now we know that our function should return the pulse height 1.
+        # Therefore we check for that (yes, there are probably better ways
+        # to do that ...)
+        assert np.array_equal(f(event), 1)
+
+If you stick to the ``test_`` prefixes correctly, ``pytest`` will automatically find and run your test.
 To run all tests, use 
 
 .. code:: console 
@@ -268,7 +403,25 @@ If some tests failed, and you think you fixed their causes, you can re-run just 
 
     $ pytest --lf
 
-If all tests pass, your feature is ready to go and you can create a request for merging your feature branch into the develop branch.
+Thank you (in every user's and developer's name) for writing tests!
+
+Opening merge request
+---------------------
+If all tests pass, your feature is ready to go and you can create a request for merging your feature branch into the develop branch. Before you do that, you should pull the latest changes of the 'develop' branch and locally merge them into your feature branch (resolving any potential conflicts). Afterwards, you push to *GitLab* a last time.
+
+.. code:: console
+
+    $ git checkout develop
+    $ git pull
+    $ git checkout my_new_feature
+    $ git merge develop
+    $ git push
+
+Then you go to ``cryocluster/cait/Merge requests`` on *GitLab* and click **New merge request**. Select your feature branch (in our case it was called 'my_new_feature') as the source and 'develop' as the target, then click **Compare branches and continue**. Write a description of what the feature is about and check 'delete source branch after merge' if it was just a feature branch that is not needed anymore afterwards. 
+
+After creating the merge request, all tests will run again for multiple Python versions. If they pass, the main developers of ``cait`` will accept the merge request (if you had the required permissions to do it yourself, you would probably not be reading this guide).
+
+Congratulations! Your feature is now on the develop branch and will be included in the next released version of ``cait``! Thank you so much for contributing :)
 
 Releasing
 ~~~~~~~~~
