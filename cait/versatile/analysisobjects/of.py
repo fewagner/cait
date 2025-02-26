@@ -90,7 +90,8 @@ class OF(ArrayWithBenefits):
                     s1, s2 = (slice(None, None), slice(None, None)), slice(None, None)
             
             H = np.zeros(nps.shape, dtype=complex)
-            H[s1] = np.fft.rfft(sev[s1]).conjugate()*np.exp(-1j*t_m*omega[s2])/nps[s1]
+            #H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
+            H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
 
             # In any case, we force the 0 component of the filter kernel to 0
             # (this shifts the signal to 0)
