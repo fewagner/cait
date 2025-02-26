@@ -17,7 +17,6 @@ You want to contribute? Read the following
 
 Cait long-term plan
 ~~~~~~~~~~~~~~~~~~~
-
 ``Cait`` has started as a more-or-less one-person project and is now slowly attracting more developers/contributors. To make further development as efficient, easy, and maintainable as possible, we ask all developers to stick to the following design philosophy:
 
 Eventually, most features should be plug-and-play for users to access through ``DataHandler`` mixin methods (see :ref:`DataHandler class <thedatahandlerclass>`). However, we realized that starting to write a mixin directly can produce quite a lot of duplicate and hard to maintain code. We consider it more desirable to abstract the problem as far as possible (or reasonable), write a function that solves this problem, and then use this/these function(s) in mixin methods. There is a high chance that some other developer in the future will have the same (abstract) problem and can use the function you already implemented. This way, we save time and in case we discover a problem with this (abstract) function in the future, we only have to fix the problem in one spot in the code.
@@ -44,7 +43,6 @@ We close this section with a list of things that might be worth discussing or ev
 
 New feature getting started
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 This section serves as a starting point for people implementing their first feature in ``cait``. What you will need is a local copy of the ``cait`` repository and install it in *editable* mode. I.e. every time you make a change in the repository, the change is reflected in the python package. We always advice to install ``cait`` in a fresh virtual environment to avoid version conflicts.
 We will then walk you through an example of how to implement a simple function using already existing building blocks (in the spirit of `Cait long-term plan`_).
 
@@ -188,7 +186,7 @@ The class has an initialization stage, a ``__call__`` function which is the actu
         def preview(self, event: np.ndarray) -> dict:
             # This method is called when you use vai.Preview together with an event 
             # iterator and the function you are currently implementing. 
-            # It is a convenient way to to watch what your function does for both 
+            # It is a convenient way to watch what your function does for both 
             # troubleshooting and developing.
             # This method returns a dictionary which includes instructions on what 
             # vai.Preview should plot. Have a look at the documentation of
@@ -422,6 +420,14 @@ Then you go to ``cryocluster/cait/Merge requests`` on *GitLab* and click **New m
 After creating the merge request, all tests will run again for multiple Python versions. If they pass, the main developers of ``cait`` will accept the merge request (if you had the required permissions to do it yourself, you would probably not be reading this guide).
 
 Congratulations! Your feature is now on the develop branch and will be included in the next released version of ``cait``! Thank you so much for contributing :)
+
+Fixing bug getting started
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you come across a bug in ``cait``, it would be fantastic if you tried to fix it yourself. For that, you would go to your (local) ``cait`` repository, pull the latest changes from the develop branch, and create a new branch **from develop** (give it a name that is connected to the bug). On this branch, the best course of actions is to go to the ``cait/tests/`` folder and write a **test that reproduces** the bug/error you want to fix **before** attempting to **fix** it (see also `Implementing test case and running tests`_). Run the test to confirm that it indeed *fails*. Afterwards, go to the main ``cait/cait/`` folder, locate and fix the bug. Run the tests again to confirm that the (previously failed) test now *passes*. Once it does, commit your changes and push them to GitLab. Go to the ``cait`` GitLab repository and open a merge request from your bug fix branch to the **develop** (!) branch. We will review your changes and accept the request if everything is okay. 
+
+Below, the process is illustrated with some screenshots. Thank you so much for fixing bugs in ``cait``! :)
+
+.. image:: documentation/pics/fix_bug_guide.png
 
 Releasing
 ~~~~~~~~~

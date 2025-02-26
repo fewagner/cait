@@ -3,7 +3,7 @@ import tempfile
 
 import numpy as np
 import cait as ai
-from cait.versatile import SEV, NPS, OF
+from cait.versatile import SEV, NPS, OF, TukeyWindow
 
 from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus
 
@@ -153,3 +153,17 @@ def test_OF(dh, testdata_1D_2D_3D_s_mus):
     basic_checks(dh, of2[0], 9)
     basic_checks(dh, of5[0], 10)
     basic_checks(dh, of8[0], 11)
+
+    # Check consistency with OF CREATED by vanilla cait
+    # For that we create the NPS and OF with the respective
+    # DataHandler functions (cait automatically applies
+    # a windowing function for both the NPS and OF calculation,
+    # which we have to correct for when creating the same OF
+    # with cait.versatile)
+    sev_vanilla = SEV.from_dh(dh)
+    nps_vanilla = NPS.from_dh(dh)
+    of_vanilla = OF.from_dh(dh)
+
+    of_vai = OF(TukeyWindow()(sev_vanilla), nps_vanilla, dt_us=of_vanilla.dt_us)
+
+    assert np.all( np.abs(of_vanilla-of_vai) < 1e-2 )
