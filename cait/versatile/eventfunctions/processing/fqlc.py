@@ -22,7 +22,7 @@ class RemoveBaseline_new(FncBaseClass):
     
     @property
     def batch_support(self):
-        return 'no'
+        return 'none'
         
     def preview(self, event) -> dict:
         self(event)
@@ -104,4 +104,4 @@ class FQLC(FncBaseClass):
         return dict(line = d)
         
     def batch_support(self):
-        return "sorry, no support yet ¯\_(ツ)_/¯"
+        return 'none'
