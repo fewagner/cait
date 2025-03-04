@@ -6,6 +6,10 @@ from scipy.linalg import solve, LinAlgError
 
 from ..functionbase import FncBaseClass
 from ..processing.removebaseline import RemoveBaseline
+from typing import List
+
+import warnings
+warnings.filterwarnings('ignore', r'Ill-conditioned matrix')
 
 ########################
 ### HELPER FUNCTIONS ###
@@ -91,16 +95,22 @@ class _TemplateCacheSimple:
                         args=(ev, flag), 
                         method="Powell", 
                         bounds=[(-self._max_shift, self._max_shift)])
-            opt_shift = int(res.x)
+            opt_shift = int(res.x[0])
         else:
             opt_shift = 0
-
-        s, y = shift_arrays(self._sev, ev, j=opt_shift, flag=flag)
-        opt_param = np.sum(y*s)/self._norm2(j=opt_shift, flag=flag)
-        rms = np.sqrt(self._chij2(opt_shift, ev, flag))
+            
+        opt_param, rms = self._solve(j=opt_shift, ev=ev, flag=flag)
         
         return opt_param, opt_shift, rms
     
+    ### GIVEN A SHIFT, SOLVE EQUATION ###
+    def _solve(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        s, y = shift_arrays(self._sev, ev, j=j, flag=flag)
+        opt_param = np.sum(y*s)/self._norm2(j=j, flag=flag)
+        rms = np.sqrt(self._chij2(j, ev, flag))
+        
+        return opt_param, rms
+        
     ### CHI SQUARED EQUATIONS FOR ONSET FIT ###
     def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -117,7 +127,9 @@ class _TemplateCacheSimple:
         :return: The chi-squared value.
         :rtype: float
         """
-        j = int(np.round(j))
+        # this ensures that it works for both integers as well as the
+        # minimizer's output (length-1 array)
+        j = int(np.round(np.array(j)[None].flatten()[0]))
         s, y = shift_arrays(self._sev, ev, j=j, flag=flag)
 
         return np.mean( ( y - np.sum(y*s)/self._norm2(j=j, flag=flag)*s )**2 )
@@ -173,6 +185,10 @@ class _TemplateCachePoly:
         self._cache = dict()
         for i in range(-max_shift, max_shift+1):
             self._cache[i] = self._A_uncached(i, flag=None)
+            
+        # Define error outputs (if fit fails, these will be the
+        # fit results that tell you that the fit failed)
+        self._error_output = (np.zeros(self._order+2), 0, -404)
 
     def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -194,24 +210,29 @@ class _TemplateCachePoly:
                             args=(ev, flag), 
                             method="Powell", 
                             bounds=[(-self._max_shift, self._max_shift)])
-                opt_shift = int(res.x)
+                opt_shift = int(res.x[0])
             else:
                 opt_shift = 0
 
-            opt_param = solve(self._A(opt_shift, flag), self._b(opt_shift, ev, flag), assume_a="sym")
-            rms = np.sqrt(self._chij2(opt_shift, ev, flag))
+            opt_param, rms = self._solve(j=opt_shift, ev=ev, flag=flag)
 
         except LinAlgError:
-            opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
+            opt_param, opt_shift, rms = self._error_output
         except ValueError as err:
             if err.args[0] == "array must not contain infs or NaNs":
-                opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
+                opt_param, opt_shift, rms = self._error_output
             elif err.args[0] == "zero-size array to reduction operation maximum which has no identity":
-                opt_param, opt_shift, rms = np.zeros(self._order+2), 0, -404
+                opt_param, opt_shift, rms = self._error_output
             else:
                 raise err
         
         return opt_param, opt_shift, rms
+    
+    def _solve(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        opt_param = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
+        rms = np.sqrt(self._chij2(j, ev, flag))
+        
+        return opt_param, rms
     
     def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -227,7 +248,9 @@ class _TemplateCachePoly:
         :return: The chi-squared value.
         :rtype: float
         """
-        j = int(np.round(j))
+        # this ensures that it works for both integers as well as the
+        # minimizer's output (length-1 array)
+        j = int(np.round(np.array(j)[None].flatten()[0]))
         s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
             
         sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
@@ -335,7 +358,7 @@ class TemplateFit(FncBaseClass):
                  max_shift: int = 50
                  ):
         if np.array(sev).ndim>1:
-            raise ValueError(f"{self.__class__.__name__} can only process single-channel data. Multi-dimensional templates are not supported.")
+            raise ValueError(f"{self.__class__.__name__} can only process single-channel data. Multi-dimensional templates are not supported. For correlated template fits (multi-dimensional), use {TemplateFitCorrelated.__name__}")
         if not (isinstance(bl_poly_order, int) or bl_poly_order is None):
             raise TypeError(f"'bl_poly_order' has to be a non-zero integer or None, not {type(bl_poly_order)}.")
         elif isinstance(bl_poly_order, int) and bl_poly_order<0:
