@@ -5,10 +5,11 @@ stages:
 pytest:
   stage: test
   rules:
-    # Only run tests when merge request to develop or master is created
+    # Only run tests when merge request to develop or master is created (or manually from web interface)
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
-  image: "python:$VERSION"
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  image: "gitlab-registry.cern.ch/cryocluster/python-container-prebuild:mirror-python$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
     - apt-get update -qq && apt-get install -y -qq hdf5-tools
