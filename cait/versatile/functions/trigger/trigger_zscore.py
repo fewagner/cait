@@ -31,7 +31,7 @@ def zscore_chunk(data: np.ndarray, record_length: int):
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
 
-    return np.array((data-m)/s)[record_length:]
+    return np.array((data-m)/s)[record_length:-record_length]
 
 def trigger_zscore(stream: ArrayLike,
                    record_length: int,
@@ -120,4 +120,9 @@ def trigger_zscore(stream: ArrayLike,
         corrected_inds[i] = ind - before + a + peak_pos
         phs[i] = trace[sl][peak_pos]
 
+    # By correcting the trigger indices using the maximum search, it is possible to find triggers that happened
+    # before 'record_length' samples into the stream. We want to explicitly discard those.
+    if len(inds)>0 and corrected_inds[0]<record_length:
+        corrected_inds, phs = corrected_inds[1:], phs[1:]
+        
     return corrected_inds, phs
