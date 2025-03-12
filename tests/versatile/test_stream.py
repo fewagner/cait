@@ -117,13 +117,13 @@ def test_trigger_single_samples():
 
         # should not find the peak (outside of search area)
         data = np.zeros(record_length*13)
-        data[-2*record_length] = 1
+        data[-record_length] = 1
         i, _ = trigger(data)
         assert len(i)==0 
 
         # should find the peak on first sample (from back) that is searched
         data = np.zeros(record_length*13)
-        peakpos = -2*record_length
+        peakpos = -record_length
         data[peakpos-49:peakpos+1] = np.linspace(0,1,50)
         data[peakpos:peakpos+50] = np.linspace(1,0,50)
         i, _ = trigger(data)

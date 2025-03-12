@@ -124,12 +124,14 @@ def trigger_base(stream: ArrayLike,
     search_length = chunk_size*record_length
 
     # number of such search chunks (the first and last record window is not
-    # searched because it cannot be filtered correctly, the second to last is implicitly
-    # searched because the chunks are expanded by one record length both at the beginning
-    # and at the end, and the last record window shouldn't be searched because then
-    # potential events cannot be completely read from the streams data)
-    n_search_areas = (stream_length - 3*record_length)//search_length
-    remainder = (stream_length - 3*record_length)%search_length
+    # searched because the first one cannot be filtered correctly, and the last one
+    # could lead to event traces which extend outside the stream.
+    # HOWEVER, the very last record window of the stream is implicitly searched 
+    # because the chunks are expanded by one record length both at the beginning
+    # and at the end. If a trigger is found in the very last window, it is 
+    # discarded in the end of this function
+    n_search_areas = (stream_length - 2*record_length)//search_length
+    remainder = (stream_length - 2*record_length)%search_length
 
     search_area_sizes = [search_length]*n_search_areas
     if remainder!=0: search_area_sizes += [remainder]
@@ -179,4 +181,10 @@ def trigger_base(stream: ArrayLike,
             else:
                 skip_first = 0
         
+    # check if a trigger was found in the very last record window of the 
+    # stream and discard it if needed (triggers are in order, i.e. it is
+    # enough to check the last entry)
+    if trigger_inds and trigger_inds[-1]>stream_length-record_length:
+        trigger_inds, trigger_vals = trigger_inds[:-1], trigger_vals[-1]
+
     return trigger_inds, trigger_vals
