@@ -1,73 +1,68 @@
 from typing import Union
 import os
-import json
-import re
 
 import numpy as np
 from tqdm.auto import tqdm
 
-import cait as ai
 from .arraywithbenefits import ArrayWithBenefits
 from .helper import is_array_like
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..eventfunctions.processing.removebaseline import RemoveBaseline
-from ..eventfunctions.processing.tukey import TukeyWindow
 from ..plot.basic.line import Line
+
+from ...data import write_xy_file
 
 class NPS(ArrayWithBenefits):
     """
-    Object representing a Noise Power Spectrum (NPS). It can either be created by averaging the Fourier transformed events from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file. If created from an `EventIterator`, a proper normalisation to physical units (V²/Hz) is performed automatically.
+    Object representing a Noise Power Spectrum (NPS) and Cross Power Spectrum (CPS). It can either be created by averaging the Fourier transformed events from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file.
 
     If created from an `EventIterator`, the (constant) baseline is removed automatically.
-    To improve the quality of the NPS, a window function is often applied to the noise traces before performing the Fourier transform and averaging (see Numerical Recipes by Press, Teukolsky, Vetterling, Flannery chapter 13.4.1). This can only be achieved when we still have the original noise traces, i.e. when we construct the NPS from an iterator. Instead of just a bare iterator ``it`` you can pass the iterator ``it.with_processing([vai.RemoveBaseline(), vai.TukeyWindow()])`` to ``NPS``. 
+    To improve the quality of the NPS, a window function is often applied to the noise traces before performing the Fourier transform and averaging (see Numerical Recipes by Press, Teukolsky, Vetterling, Flannery chapter 13.4.1). This can only be achieved when we still have the original noise traces, i.e. when we construct the NPS from an iterator. Instead of just a bare iterator ``it`` you can pass the iterator ``it.with_processing([vai.RemoveBaseline(), vai.TukeyFiltering()])`` to ``NPS``. 
 
     :param data: The data to use for the NPS. If None, an empty NPS is created. If `np.ndarray`, each row in the array is interpreted as an NPS for separate channels. If iterator (possibly from multiple channels) an NPS is calculated by averaging the Fourier transformed events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
-    :param dt_us: The microsecond timebase used in the recording. Only necessary if the input is an array (because it can be automatically inferred if constructed from an EventIterator, a file, or a DataHandler). Defaults to None (i.e. automatic detection if possible).
-    :type dt_us: int
     """
-    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None, dt_us: int = None):
+    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None):
         if data is None:
             self._nps = np.empty(0)
+            self._cps = np.empty(0)
             self._n_ch = 0
-            self._dt_us = dt_us
         elif isinstance(data, IteratorBaseClass):
-            self._dt_us = data.dt_us
             data = data.flatten().with_processing([RemoveBaseline(), 
-                                                lambda x: np.abs(np.fft.rfft(x))**2])
+                                                lambda x: np.abs(np.fft.rfft(x))])
+            cor_id = [(0, 1), (1, 2), (2, 0)]
             if len(data) > 1000:
                 self._nps = np.zeros_like(data.grab(0))
+                self._cps = np.zeros_like(data.grab(0))
+                self._cor = np.zeros_like(data.grab(0))
                 with data:
                     for ev in tqdm(data, delay=5):
-                        self._nps+=ev
+                        self._nps+=ev**2
+                        if self._nps.ndim > 1:
+                            for i in range(self._nps.shape[0]):
+                                self._cps[i]+=ev[cor_id[i][0]]*ev[cor_id[i][1]]
                 self._nps/=len(data)
+                self._cps/=len(data)
+                if self._nps.ndim > 1:
+                    for i in range(self._nps.shape[0]):
+                        self._cor[i] = self._cps[i]**2/(self._nps[cor_id[i][0]]*self._nps[cor_id[i][1]])
             else:
                 with data:
-                    self._nps = np.mean(data, axis=0)
+                    self._nps = np.mean(data**2, axis=0)
+                    for ev in tqdm(data, delay=5):
+                        if self._nps.ndim > 1:
+                            for i in range(self.n_ch):
+                                self._cps[i]+=ev[cor_id[i][0]]*ev[cor_id[i][1]]
+                self._cps/=len(data)
+                if self._nps.ndim > 1:
+                    for i in range(self._nps.shape[0]):
+                        self._cor[i] = self._cps[i]**2/(self._nps[cor_id[i][0]]*self._nps[cor_id[i][1]])
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()
             else:
                 self._n_ch = 1
-                
-            # Normalise (according to Teukolsky, + time normalisation to "per Hz", i.e. divide by record time)
-            N = 2*(self._nps.shape[-1]-1)
-            w = np.ones(N)
-            for f in data[:].pop_processing():
-                if isinstance(f, TukeyWindow):
-                    w = f(w)
-            W = N*np.sum(w**2)
-
-            # 1/(record time (in seconds)) = frequency bin size in Hz
-            delta_f = 1/(N*data.dt_us*1e-6)
-            
-            # factor 2 for rFFT
-            self._nps = 2*self._nps/W/delta_f
-            
         elif isinstance(data, np.ndarray) or is_array_like(data):
-            if dt_us is None:
-                raise ValueError("If NPS is constructed from array(-like) input, the microsecond timebase of the recording (dt_us) has to be specified.")
-            self._dt_us = dt_us
             self._nps = np.array(data)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
@@ -78,7 +73,7 @@ class NPS(ArrayWithBenefits):
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
     @classmethod
-    def from_dh(cls, dh, group: str = "noise", dataset: str = "nps"):
+    def from_dh(cls, dh, group: str = "noise", dataset: list = ["nps", "cps"]):
         """
         Construct NPS from DataHandler. 
 
@@ -92,11 +87,11 @@ class NPS(ArrayWithBenefits):
         :return: Instance of NPS.
         :rtype: NPS
         """
-        return cls(dh.get(group, dataset), dt_us=dh.dt_us)
+        return cls(dh.get(group, dataset[0])), cls(dh.get(group, dataset[1]))
         
-    def to_dh(self, dh, group: str = "noise", dataset: str = "nps", **kwargs):
+    def to_dh(self, dh, group: str = "noise", dataset: str = 'nps', **kwargs):
         """
-        Save NPS to DataHandler. 
+        Save NPS and CSD to DataHandler. 
 
         :param dh: The DataHandler instance to write to.
         :type dh: DataHandler
@@ -107,10 +102,13 @@ class NPS(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
-        if self._dt_us != dh.dt_us:
-            raise ValueError(f"Timebase of NPS ({self._dt_us}) does not match the one of DataHandler ({dh.dt_us}).")
-        data = self._nps[None,:] if self._n_channels == 1 else self._nps
-        dh.set(group, **{dataset: data}, **kwargs)
+        data_nps = self._nps[None,:] if self._n_channels == 1 else self._nps
+        data_cps = self._cps[None,:] if self._n_channels == 1 else self._cps
+        if dataset == 'both':
+            dh.set(group, **{'nps': data_nps}, **kwargs)
+            dh.set(group, **{'cps': data_cps}, **kwargs)
+        else:
+            dh.set(group, **{dataset: data_nps}, **kwargs)
         
     @classmethod
     def from_file(cls, fname: str, src_dir: str = ''):
@@ -125,23 +123,24 @@ class NPS(ArrayWithBenefits):
         :return: Instance of NPS.
         :rtype: NPS
         """
-        fpath = os.path.join(src_dir, fname + ".xy")
-        
-        # We read the file to find out how many header lines it has
-        with open(fpath, "r") as f:
-            first_line = f.readline()
-            
-        header = re.findall(r"\{.*\}", first_line)
-        if header and all([x in json.loads(header[0]) for x in ["dt_us", "n_ch"]]):
-            info = json.loads(header[0])
-            arr = np.loadtxt(fpath, skiprows=info["n_ch"]+3)[:,1:].T
-            dt_us = info["dt_us"]
-        else:
-            content = np.loadtxt(fpath)
-            arr = content[:,1:].T
-            dt_us = int(np.round(1/np.diff(content[:,0])[0]/(2*(arr.shape[-1]-1))*1e6))
+        fpath = os.path.join(src_dir, fname + ".txt")
 
-        return cls(arr, dt_us=dt_us)
+        # We read the file to find out how many header lines it has
+        # The number found is the number of axis + title.
+        with open(fpath, "r") as f:
+            line_nr = 0
+            for l in f.readlines():
+                # Try converting to float (will fail for strings)
+                try: 
+                    float(l.split("\n")[0].split("\t")[0])
+                    # Once we found a line which can be converted to float, we stop
+                    break
+                except ValueError: 
+                    line_nr += 1
+
+        arr = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
+
+        return cls(arr)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """
@@ -155,25 +154,24 @@ class NPS(ArrayWithBenefits):
         if np.array_equal(self._array, np.empty(0)):
             raise Exception("Empty NPS cannot be saved.")
 
-        fpath = os.path.join(out_dir, fname + ".xy")
+        fpath = os.path.join(out_dir, fname + ".txt")
 
         if self._n_ch > 1:
-            data = [self.freq] + [self._array[k] for k in range(self._n_ch)]
+            data = [self._array[k] for k in range(self._n_ch)]
         else:
-            data = [self.freq, self._array]
-            
-        header = "NPS " + json.dumps({"cait": ai.__version__, 
-                                      "dt_us": self.dt_us, 
-                                      "record_length": 2*(self._nps.shape[-1]-1), 
-                                      "n_ch": self._n_channels}) + "\n"
-        header += "\n".join(["Frequency (Hz)"] + [f"Power Density {k} (V²/Hz)" for k in range(self._n_ch)] + [f"{len(self.freq)}"])
-        
-        np.savetxt(fpath, np.array(data).T, header=header)
+            data = [self._array]
 
-    def show(self, **kwargs):
+        write_xy_file(fpath, 
+                      data=data, 
+                      title="Noise Power Spectrum", 
+                      axis=[f"Channel {k}" for k in range(self._n_ch)])
+
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot NPS for all channels. To inspect just one channel, you can index NPS first and call `.show` on the slice.
 
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -183,21 +181,34 @@ class NPS(ArrayWithBenefits):
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
-        if 'x' not in kwargs.keys():
-            kwargs['x'] = self.freq
+        if dt_us is not None:
+            if 'x' not in kwargs.keys():
+                n = 2*(self.shape[-1]-1)
+                kwargs['x'] = np.fft.rfftfreq(n, dt_us/1e6)
 
         if 'xlabel' not in kwargs.keys():
-            kwargs['xlabel'] = "Frequency (Hz)" 
+            if dt_us is not None: 
+                kwargs['xlabel'] = "Frequency (Hz)"
+            else:
+                kwargs['xlabel'] = "Data Index"   
 
         if 'ylabel' not in kwargs.keys():
-            kwargs['ylabel'] = "Noise Power Density (V²/Hz)"
+            if dt_us is not None: 
+                kwargs['ylabel'] = "Noise Power Density (V²/Hz)"
+            else:
+                kwargs['ylabel'] = "Noise Power Density (a.u.)"
+
+        if dt_us is not None:
+            _array = self._array/int(1e6/dt_us)/self._array.shape[-1]
+        else:
+            _array = self._array
         
         if self._n_channels > 1:
             y = dict()
-            for i, channel in enumerate(self._nps):
+            for i, channel in enumerate(_array):
                 y[f'channel {i}'] = channel
         else:
-            y = self._nps
+            y = _array
 
         return Line(y, **kwargs)
     
@@ -216,13 +227,3 @@ class NPS(ArrayWithBenefits):
     @property
     def _n_channels(self):
         return self._n_ch
-    
-    @property
-    def dt_us(self):
-        return self._dt_us
-    
-    @property
-    def freq(self):
-        if self.dt_us is not None:
-            n = 2*(self.shape[-1]-1)
-            return np.fft.rfftfreq(n, self.dt_us/1e6)
