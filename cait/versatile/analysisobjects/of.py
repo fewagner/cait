@@ -1,12 +1,9 @@
 from typing import Any
 import itertools
 import os
-import json
-import re
 
 import numpy as np
 
-import cait as ai
 from .arraywithbenefits import ArrayWithBenefits
 from .helper import is_array_like
 from .sev import SEV
@@ -14,26 +11,23 @@ from .nps import NPS
 from ..plot.basic.line import Line
 from ..eventfunctions.processing.optimumfiltering import OptimumFiltering
 
+from ...data import write_xy_file
+
 class OF(ArrayWithBenefits):
     """
     Object representing an Optimum Filter (OF). It can either be created from a Standard Event (SEV) and a Noise Power Spectrum (NPS), from an `np.ndarray` or read from a DataHandler or xy-file.
 
     :param args: The data to use for the OF. If None, an empty OF is created. If `np.ndarray`, each row in the array is interpreted as an OF for separate channels. If instances of :class:`SEV` and :class:`NPS`, the OF is calculated from them. Defaults to None.
     :type data: Any
-    :param dt_us: The microsecond timebase used in the recording. Only necessary if the input is an array (because it can be automatically inferred if constructed from NPS and SEV, a file, or a DataHandler). Defaults to None (i.e. automatic detection if possible).
-    :type dt_us: int
 
     .. code-block:: python
     
-        sev = vai.SEV.from_dh(dh)
-        nps = vai.NPS.from_dh(dh)
+        sev = vai.SEV().from_dh(dh)
+        nps = vai.NPS().from_dh(dh)
         of = vai.OF(sev, nps)
     """
-    def __init__(self, *args: Any, dt_us: int = None):
+    def __init__(self, *args: Any, phonon_dominant: bool = False, alpha: float = 1.0):
         if len(args) == 1 and (isinstance(args[0], np.ndarray) or is_array_like(args[0])):
-            if dt_us is None:
-                raise ValueError("If OF is constructed from array(-like) input, the microsecond timebase of the recording (dt_us) has to be specified.")
-            self._dt_us = dt_us
             self._of = np.array(args[0])
             if self._of.ndim > 1:
                 self._n_ch = self._of.shape[0]
@@ -41,27 +35,50 @@ class OF(ArrayWithBenefits):
             else:
                 self._n_ch = 1
 
-        elif len(args) == 2:
-            bool_sev = [isinstance(k, SEV) for k in args]
-            bool_nps = [isinstance(k, NPS) for k in args]
+        elif len(args) in [2, 3]:
 
-            if not any(bool_sev) or not any(bool_nps):
-                raise TypeError(f"If 2 arguments are parsed, one of them has to be of class 'NPS' and one of class 'SEV', not {type(args[0])} and {type(args[1])}.")
-            
-            sev, nps = args[bool_sev.index(True)], args[bool_nps.index(True)]
+            if len(args) == 2:
+                bool_sev = [isinstance(k, SEV) for k in args]
+                bool_nps = [isinstance(k, NPS) for k in args]
 
-            if sev._n_channels != nps._n_channels:
-                raise Exception(f"SEV and NPS must have the same number of channels. Numbers received: ({sev._n_channels},{nps._n_channels})")
+                if not any(bool_sev) or not any(bool_nps):
+                    raise TypeError(f"If 3 arguments are parsed, one of them has to be of class 'NPS' and one of class 'SEV', not {type(args[0])} and {type(args[1])}.")
                 
-            if sev.dt_us != nps.dt_us:
-                raise Exception(f"SEV and NPS must have the same timebase. Numbers received: ({sev.dt_us}, {nps.dt_us})")
+                sev, nps = args[bool_sev.index(True)], args[bool_nps.index(True)]
+
+                if sev._n_channels != nps._n_channels:
+                    raise Exception(f"SEV and NPS must have the same number of channels. Numbers received: ({sev._n_channels},{nps._n_channels})")
                 
-            self._dt_us = sev.dt_us
-            self._n_ch = sev._n_channels
+                self._n_ch = sev._n_channels
 
-            # Cast to numpy array here (this will get rid of the SEV and NPS character)
-            sev, nps = np.array(sev), np.array(nps)
+                # Cast to numpy array here (this will get rid of the SEV and NPS character)
+                sev, nps = np.array(sev), np.array(nps)
+                flag = 0
 
+            elif len(args) == 3:
+                bool_sev = [isinstance(k, SEV) for k in args] 
+                bool_nps = [isinstance(k, NPS) for k in args]
+
+                if not any(bool_sev) or not any(bool_nps):
+                    raise TypeError(f"If 3 arguments are parsed, one of them has to be of class 'NPS' (and 'CSD') and one of class 'SEV', not {type(args[0])} and {type(args[1])}.")
+                
+                # Always pass in CPS after NPS
+                sev, nps, cps = args[bool_sev.index(True)], args[np.where(bool_nps)[0][0]], args[np.where(bool_nps)[0][1]]
+
+                if sev._n_channels != nps._n_channels:
+                    raise Exception(f"SEV and NPS must have the same number of channels. Numbers received: ({sev._n_channels},{nps._n_channels})")
+                
+                self._n_ch = sev._n_channels
+
+                # Cast to numpy array here (this will get rid of the SEV and NPS character)
+                sev, nps, cps = np.array(sev), np.array(nps), np.array(cps)
+                cps = alpha*cps
+                if phonon_dominant:
+                    cps[1:,:] = 0
+                flag = 1
+
+            # flag indicates if CPS is used to make the optimum filter or not
+            if flag == 0: cps = np.zeros_like(nps)
             # Maximum time in samples
             t_m = np.argmax(sev, axis=-1)
             # Cast t_m into a column vector such that vectorization works
@@ -88,16 +105,37 @@ class OF(ArrayWithBenefits):
                     s1, s2 = (slice(None, None), slice(1, None)), slice(1, None)
                 else: 
                     s1, s2 = (slice(None, None), slice(None, None)), slice(None, None)
-            
+
+            if np.any(nps[:,0] == 0): 
+                s1, s2 = (slice(None, None), slice(1, None)), slice(1, None)
+            else: 
+                s1, s2 = (slice(None, None), slice(None, None)), slice(None, None)
+
             H = np.zeros(nps.shape, dtype=complex)
-            #H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
-            H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
+            stdevent_fft = np.fft.rfft(sev[s1])
+            # Construct noise covariance matrix from NPS and CPS
+            for w in range(1, len(stdevent_fft[0])):
+                noise_cov = np.zeros((self._n_ch, self._n_ch), dtype=complex)
+
+                for i in range(self._n_ch):
+                    for j in range(self._n_ch):
+                        if i == j:
+                            noise_cov[i, j] = nps[i, w]  # Diagonal elements are NPS
+                        elif (i + 1) % self._n_ch == j:
+                            noise_cov[i, j] = cps[i, w]  # Off-diagonal elements are CPS
+                        elif (j + 1) % self._n_ch == i:
+                            noise_cov[i, j] = cps[j, w]  # Symmetric elements
+
+                    d = stdevent_fft[:, w].conjugate() * np.exp(-1j * w * omega[s2][w])
+                    try:
+                        H[s1][:, w] = np.linalg.solve(noise_cov, d)
+                    except np.linalg.LinAlgError:
+                        H[s1][:, w] = np.linalg.pinv(noise_cov) @ d
 
             # In any case, we force the 0 component of the filter kernel to 0
             # (this shifts the signal to 0)
             H[...,0] = 0
 
-            # Normalize to height of SEV
             maxima = np.max(OptimumFiltering(H)(sev), axis=-1)
             # Cast maxima into a column vector such that vectorization works
             if maxima.ndim > 0: maxima = maxima[:, None]
@@ -107,7 +145,6 @@ class OF(ArrayWithBenefits):
         elif len(args) == 0:
             self._of = np.empty(0)
             self._n_ch = 0
-            self._dt_us = dt_us
         else:
             raise TypeError(f"Unsupported input arguments {args}")
     
@@ -131,7 +168,7 @@ class OF(ArrayWithBenefits):
 
         arr = dh.get(group, ds_prefix+'_real'+ds_suffix) + 1j*dh.get(group, ds_prefix+'_imag'+ds_suffix)
             
-        return cls(arr, dt_us=dh.dt_us)
+        return cls(arr)
         
     def to_dh(self, dh, group: str = "optimumfilter", dataset: str = "optimumfilter*", **kwargs):
         """
@@ -146,9 +183,6 @@ class OF(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
-        if self._dt_us != dh.dt_us:
-            raise ValueError(f"Timebase of OF ({self._dt_us}) does not match the one of DataHandler ({dh.dt_us}).")
-            
         if "*" not in dataset: dataset += "*"
         ds_prefix, ds_suffix = dataset.split("*")
 
@@ -171,28 +205,29 @@ class OF(ArrayWithBenefits):
         :return: Instance of OF.
         :rtype: OF
         """
-        fpath = os.path.join(src_dir, fname + ".xy")
-        
+        fpath = os.path.join(src_dir, fname + ".txt")
+
         # We read the file to find out how many header lines it has
+        # The number found is the number of axis + title.
         with open(fpath, "r") as f:
-            first_line = f.readline()
-            
-        header = re.findall(r"\{.*\}", first_line)
-        if header and all([x in json.loads(header[0]) for x in ["dt_us", "n_ch"]]):
-            info = json.loads(header[0])
-            data = np.loadtxt(fpath, skiprows=2*info["n_ch"]+3)[:,1:].T
-            dt_us = info["dt_us"]
-        else:
-            content = np.loadtxt(fpath)
-            data = content[:,1:].T
-            dt_us = int(np.round(1/np.diff(content[:,0])[0]/(2*(data.shape[-1]-1))*1e6))
+            line_nr = 0
+            for l in f.readlines():
+                # Try converting to float (will fail for strings)
+                try: 
+                    float(l.split("\n")[0].split("\t")[0])
+                    # Once we found a line which can be converted to float, we stop
+                    break
+                except ValueError: 
+                    line_nr += 1
+
+        data = np.genfromtxt(fpath, skip_header=line_nr, delimiter="\t").T
 
         if not (data.ndim%2)==0 or data.ndim==0:
             raise Exception("Compatible files must have an even number of data columns (containing real and imaginary part of the OF, respectively)")
 
         arr = data[::2] + 1j*data[1::2]
         
-        return cls(arr, dt_us=dt_us)
+        return cls(arr)
         
     def to_file(self, fname: str, out_dir: str = ''):
         """
@@ -206,29 +241,25 @@ class OF(ArrayWithBenefits):
         if np.array_equal(self._array, np.empty(0)):
             raise Exception("Empty OF cannot be saved.")
 
-        fpath = os.path.join(out_dir, fname + ".xy")
+        fpath = os.path.join(out_dir, fname + ".txt")
 
         if self._n_ch > 1:
             data = [[self._array[k].real, self._array[k].imag] for k in range(self._n_ch)]
-            data = [self.freq] + list(itertools.chain.from_iterable(data))
+            data = list(itertools.chain.from_iterable(data))
             names = [[f"Real Channel {k}", f"Imag Channel {k}"] for k in range(self._n_ch)]
-            names = ["Frequency (Hz)"] + list(itertools.chain.from_iterable(names))
+            names = list(itertools.chain.from_iterable(names))
         else:
-            data = [self.freq, self._array.real, self._array.imag]
-            names = ["Frequency (Hz)", "Real", "Imag"]
-        
-        header = "OF " +  json.dumps({"cait": ai.__version__, 
-                                      "dt_us": self.dt_us, 
-                                      "record_length": 2*(self._of.shape[-1]-1), 
-                                      "n_ch": self._n_channels}) + "\n"
-        header += "\n".join(names + [f"{len(self.freq)}"])
-        
-        np.savetxt(fpath, np.array(data).T, header=header)
+            data = [self._array.real, self._array.imag]
+            names = ["Real", "Imag"]
 
-    def show(self, **kwargs):
+        write_xy_file(fpath, data=data, title="Optimum Filter", axis=names)
+
+    def show(self, dt_us: int = None, **kwargs):
         """
         Plot OF for all channels. To inspect just one channel, you can index OF first and call `.show` on the slice.
 
+        :param dt_us: Length of a sample in microseconds. If provided, the x-axis is a frequency axis. Otherwise it's the sample index.
+        :type dt_us: int
         :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
         :type kwargs: Any
         """
@@ -238,11 +269,16 @@ class OF(ArrayWithBenefits):
         if 'xscale' not in kwargs.keys(): kwargs['xscale'] = 'log'
         if 'yscale' not in kwargs.keys(): kwargs['yscale'] = 'log'
 
-        if 'x' not in kwargs.keys():
-            kwargs['x'] = self.freq
+        if dt_us is not None:
+            if 'x' not in kwargs.keys():
+                n = 2*(self.shape[-1]-1)
+                kwargs['x'] = np.fft.rfftfreq(n, dt_us/1e6)
 
         if 'xlabel' not in kwargs.keys():
-            kwargs['xlabel'] = "Frequency (Hz)"
+            if dt_us is not None: 
+                kwargs['xlabel'] = "Frequency (Hz)"
+            else:
+                kwargs['xlabel'] = "Data Index"
 
         if self._n_channels > 1:
             y = dict()
@@ -268,13 +304,3 @@ class OF(ArrayWithBenefits):
     @property
     def _n_channels(self):
         return self._n_ch
-    
-    @property
-    def dt_us(self):
-        return self._dt_us
-    
-    @property
-    def freq(self):
-        if self.dt_us is not None:
-            n = 2*(self.shape[-1]-1)
-            return np.fft.rfftfreq(n, self.dt_us/1e6)
