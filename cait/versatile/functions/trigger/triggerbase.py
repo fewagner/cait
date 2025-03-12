@@ -87,7 +87,7 @@ def trigger_base(stream: ArrayLike,
 
     The stream is split into (not necessarily equally sized) chunks which are processed at once. This reduces file access and larger chunks are generally preferred if sufficient memory is available. To correctly filter a chunk (optimum filtering or moving z-score), an additional record window *before* the chunk is needed (because the filter length is one record length). For this reason, the very first record window of the stream is discarded, i.e. not searched for triggers. Additionally, one record window *after* the chunk ends is required to not miss any edge cases as marked with numbers 1-3 in the figure (see later). We call the start of a chunk :math:`s`, the end :math:`e` and the record length :math:`N`. The triggering now proceeds as follows:
 
-    1. A chunk is selected and the part of the stream from :math:`s-N` to :math:`e+N` is continuously filtered. The first record window of the filter output is discarded. The valid samples (:math:`s` to :math:`e+N`) to be searched for triggers are shown in the figure.
+    1. A chunk is selected and the part of the stream from :math:`s-N` to :math:`e+2N` is continuously filtered. The first and last record window of the filter output is discarded. The valid samples (:math:`s` to :math:`e+N`) to be searched for triggers are shown in the figure.
     2. The cursor is placed on the first sample, :math:`s`, and progresses through the chunk until a sample above threshold is found.
     3. If a sample exceeding the threshold is found, the maximum position of the :math:`N` samples *after* that sample is considered the trigger sample :math:`j`. The cursor is moved to :math:`j+N/2`, i.e. the trigger is blinded for half a record window. The process finishes if :math:`j+N/2` falls outside the chunk (i.e. :math:`j+N/2\\ge e`), or if the cursor reaches the end of the chunk, :math:`e`.
     4. After finishing a chunk, the next one is loaded. We have to be careful not to double count triggers, though: If the last chunk had a trigger later than :math:`e-N/2`, the blinding process affects the following chunk. This is visualised by triggers 1-3 in the figure: 1 is fine, because more than half a record window remains in the chunk and blinding in the following chunk is not required. 2 and 3 on the other hand require blinding of the first :math:`j+N/2-e` samples of the following chunk.
@@ -99,6 +99,8 @@ def trigger_base(stream: ArrayLike,
     - One could be lead to believe that the additional record window *after* the end of the chunk is unnecessary, but this would introduce a subtle issue in the triggering process: If we find a sample above threshold at position 1 or 2, we cannot search the following :math:`N` samples for a maximum, and if we just stopped the search :math:`N` samples before the end of the chunk, we could miss triggers because those samples are not searched in the subsequent chunk either. Therefore, we have to search until we reach :math:`e`. If we find a sample above threshold just before (or at) :math:`e`, we still have enough samples left to correctly determine the maximum of the upcoming :math:`N` samples. 
     
     - In the end of the stream we have to discard 2 (!) record windows even though one appears to be sufficient at first glance. As discussed in the previous bullet point, the algorithm described above could lead to a trigger index as late as :math:`e+N`. To leave enough samples to read the voltage trace of the triggered event in the analysis, an additional record window is kept (even though in the common convention - that the trigger is placed at :math:`N/4` in the record window - :math:`3N/4` samples would technically be sufficient).
+    
+    - Given the previous two points we want to point out that a trigger can be found in the second to last record window *only* if the threshold is exceeded before this window starts. Otherwise, a pulse completely located after the beginning of the second to last window is lost. This is a design choice (see previous points).
     """
 
     if apply_first is not None:
@@ -126,12 +128,12 @@ def trigger_base(stream: ArrayLike,
     # number of such search chunks (the first and last record window is not
     # searched because the first one cannot be filtered correctly, and the last one
     # could lead to event traces which extend outside the stream.
-    # HOWEVER, the very last record window of the stream is implicitly searched 
+    # HOWEVER, the second to last record window of the stream is implicitly searched 
     # because the chunks are expanded by one record length both at the beginning
     # and at the end. If a trigger is found in the very last window, it is 
     # discarded in the end of this function
-    n_search_areas = (stream_length - 2*record_length)//search_length
-    remainder = (stream_length - 2*record_length)%search_length
+    n_search_areas = (stream_length - 3*record_length)//search_length
+    remainder = (stream_length - 3*record_length)%search_length
 
     search_area_sizes = [search_length]*n_search_areas
     if remainder!=0: search_area_sizes += [remainder]
@@ -157,8 +159,9 @@ def trigger_base(stream: ArrayLike,
     with Pool(n_processes) if n_processes>1 else nullcontext(None) as pool:
         mapping = pool.imap if n_processes>1 else map
         
-        # chunk iterator
-        chunk_it = (stream[s-record_length:e+record_length] for s,e in zip(starts, ends))
+        # Chunk iterator (Chunks extend one record window to the left and two to the right.
+        # They are sliced inside the filter function to remove the first and last record window.)
+        chunk_it = (stream[s-record_length:e+2*record_length] for s,e in zip(starts, ends))
         # chunk iterator mapped through all apply_first functions and the filter function
         processed_chunk_it = mapping(Compose(apply_first+[filter_fnc]), chunk_it)
 
@@ -185,6 +188,6 @@ def trigger_base(stream: ArrayLike,
     # stream and discard it if needed (triggers are in order, i.e. it is
     # enough to check the last entry)
     if trigger_inds and trigger_inds[-1]>stream_length-record_length:
-        trigger_inds, trigger_vals = trigger_inds[:-1], trigger_vals[-1]
+        trigger_inds, trigger_vals = trigger_inds[:-1], trigger_vals[:-1]
 
     return trigger_inds, trigger_vals
