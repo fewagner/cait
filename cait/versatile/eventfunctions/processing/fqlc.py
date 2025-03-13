@@ -79,8 +79,6 @@ class FQLC(FncBaseClass):
         else:
             print("Choose method from \"mmd\" (minmindiff), \"slope\" or \"satv\"")
             flux_loss = self._blavg1-self._blavg2 #minmindiff approach
-        
-
 
         self._shifted_event = self._event_nobl.copy()
         
