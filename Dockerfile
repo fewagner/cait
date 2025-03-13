@@ -1,7 +1,6 @@
 ARG FLAVOUR=-slim
-# Need to copy to environment because ARGs are cleared after FROM
-ENV CONTAINER_FLAVOUR=${FLAVOUR}
 FROM gitlab-registry.cern.ch/cryocluster/python-container-prebuild:jupyter_hub_base_image
+ARG FLAVOUR
 
 ENV VIRTUAL_ENV=/opt/venv_container
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
