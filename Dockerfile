@@ -1,4 +1,6 @@
 ARG FLAVOUR=-slim
+# Need to copy to environment because ARGs are cleared after FROM
+ENV CONTAINER_FLAVOUR=${FLAVOUR}
 FROM gitlab-registry.cern.ch/cryocluster/python-container-prebuild:jupyter_hub_base_image
 
 ENV VIRTUAL_ENV=/opt/venv_container
@@ -13,8 +15,8 @@ RUN python -m pip install --upgrade pip
 
 # Install cait (including optional dependencies)
 # The 'nn' optional dependency (including torch) is not installed in the 'slim' version
-RUN echo "FLAVOR=$FLAVOUR"
-RUN if [ "$FLAVOUR" = "-slim" ] ; then \
+RUN echo "CONTAINER_FLAVOUR=${CONTAINER_FLAVOUR}"
+RUN if [ "${CONTAINER_FLAVOUR}" = "-slim" ] ; then \
         echo "Building slim container"; \
         python -m pip install -e /opt/programs/cait[clplot,remfiles]; \
     else \
