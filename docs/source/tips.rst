@@ -17,7 +17,7 @@ For people who have access to the CERN GitLab, the easiest way to get a containe
 
     $ singularity pull --docker-login docker://gitlab-registry.cern.ch/cryocluster/cait:<tag>
 
-where ``tag`` could be ``develop`` or any (tagged) release.
+where ``tag`` could be ``develop`` or any (tagged) release. For each tag, there is a regular and a ``-slim`` version, where ``-slim`` does not include 'heavy' dependencies like ``torch`` and is therefore smaller in size.
 If you do not have access to the CERN GitLab, the docker container can be built with this dockerfile `Dockerfile <https://github.com/fewagner/cait/blob/develop/Dockerfile>`_. Refer to the `Docker Documentation <https://docs.docker.com/build/concepts/dockerfile/>`_ on how to use it. Note that we use singularity to pull and run the container, even though it has been built using Docker. This works and is just a matter of preference.
 
 You can use this container e.g. for cluster jobs (see e.g. :ref:`slurm-example-section`) or you can simply run a python session inside the container
