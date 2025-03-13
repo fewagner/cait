@@ -1,11 +1,15 @@
 from typing import Callable, List
 from inspect import signature, _empty
-from multiprocessing import Pool
+# Note that multiprocessing.Pool cannot handle lambdas
+# which is why we use multiprocess here. The Pool interface
+# os otherwise identical
+from multiprocess import Pool
 import itertools
 
 import numpy as np
 from tqdm.auto import tqdm
 
+import cait as ai
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..iterators.batchresolver import BatchResolver
 
@@ -17,24 +21,22 @@ class Compose:
         for f in self._fncs[1:]: out = f(out)
         return out
     
-def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1, pb_prefix: str = ""):
+def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = None, pb_prefix: str = ""):
     """
     Apply a function to events provided by an EventIterator. 
 
-    Multiprocessing and resolving batches as returned by the iterator is done automatically. The function returns a numpy array where the first dimension corresponds to the events returned by the iterator. Higher dimensions are as returned by the function that is applied. Batches are resolved, i.e. calls with an `EventIterator(..., batch_size=1)` and `EventIterator(..., batch_size=100)` yield identical results. 
+    Multiprocessing and resolving batches as returned by the iterator is done automatically. The function returns a numpy array where the first dimension corresponds to the events returned by the iterator. Higher dimensions are as returned by the function that is applied. Batches are resolved, i.e. calls with an ``EventIterator(..., batch_size=1)`` and ``EventIterator(..., batch_size=100)`` yield identical results. 
 
-    *Important*: Since `apply` uses multiprocessing, it is best not to use functions that are defined locally within jupyter lab, but rather to define them in a separate `.py` file and load them from the notebook. This is only relevant if you are trying to define your own function and not if you are just using already existing `cait` functions.
-
-    :param f: Function to be applied to events. Note the restriction above.
+    :param f: Function to be applied to events.
     :type f: Callable
     :param ev_iter: Events for which the function should be applied.
-    :type ev_iter: `~class:cait.versatile.file.EventIterator`
-    :param n_processes: Number of processes to use for multiprocessing.
-    :type n_processes: int
+    :type ev_iter: :class:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass`
+    :param n_processes: Number of processes to use for multiprocessing. If None, ``cait._available_workers`` is used. Defaults to None.
+    :type n_processes: int, optional
     :param pb_prefix: An optional prefix for the progress bar.
     :type pb_prefix: str
 
-    :return: Results of `f` for all events in `ev_iter`. Has same structure as output of `f` (just with an additional event dimension).
+    :return: Results of ``f`` for all events in ``ev_iter``. Has same structure as output of ``f`` (just with an additional event dimension).
     :rtype: Any
 
     **Example:**
@@ -54,6 +56,10 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1, pb_pref
         # Example when func has two outputs
         it = vai.MockData().get_event_iterator(batch_size=42)
         out1, out2 = vai.apply(func2, it)
+
+        # Example using a function defined inline
+        it = vai.MockData().get_event_iterator()[0]
+        out = vai.apply(lambda x: np.max(x), it)
     """
     # Check if 'ev_iter' is a cait.versatile iterator object
     if not isinstance(ev_iter, IteratorBaseClass):
@@ -66,6 +72,9 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1, pb_pref
     # Check if 'f' is indeed a function
     if not callable(f):
         raise TypeError(f"Input argument 'f' must be callable.")
+    
+    # Use all available workers if no number of processes is provided
+    if n_processes is None: n_processes = ai._available_workers
     
     # Check if 'f' takes exactly one required argument (the event)
     n_req_args = np.sum([x.default is _empty for x in signature(f).parameters.values()])

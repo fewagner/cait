@@ -114,3 +114,10 @@ def test_apply_event_size_output(dh):
     assert out3.shape == out4.shape
     assert out1.shape == (100, 2, dh.record_length)
     assert out3.shape == (100, dh.record_length)
+
+def test_apply_lambda_function(dh):
+    it = dh.get_event_iterator("events")[0]
+
+    # Gives error with Python's own multiprocessing library.
+    # Works with 3rd party multiprocess library (fork of multiprocessing)
+    out = vai.apply(lambda x: x**2, it, n_processes=2)
