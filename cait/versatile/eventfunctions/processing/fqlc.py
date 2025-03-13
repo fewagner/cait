@@ -49,7 +49,7 @@ class FQLC(FncBaseClass):
     :return: Event with FQL corrected or value of shift (if val_not_ev is set to True)
     :rtype: Union[numpy.ndarray, float]
     """
-    def __init__(self, method: str = "mmd", thresh: float = 0.5, sat_v: float = 4.00, known_fql_V: float=None, val_not_ev=False):
+    def __init__(self, method: str = "mmd", thresh: float = 0.2, sat_v: float = 4.00, known_fql_V: float=None, val_not_ev=False):
         self._remove_baseline = RemoveBaseline_new()
         self._mp = CalcMP()
         self._method = method
@@ -83,7 +83,7 @@ class FQLC(FncBaseClass):
         self._shifted_event = self._event_nobl.copy()
         
         if self._known_fql_V is not None: # FQL voltage is known and provided -> correct only for integer multiples
-            flux_loss = self._known_fql_V * np.ceil(flux_loss/self._known_fql_V - self._thresh)
+            flux_loss = self._known_fql_V * np.ceil((flux_loss - self._thresh)/self._known_fql_V)
         
         if self._val_not_ev:
             return flux_loss
