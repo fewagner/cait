@@ -13,7 +13,7 @@ RUN python -m pip install --upgrade pip
 
 # Install cait (including optional dependencies)
 # The 'nn' optional dependency (including torch) is not installed in the 'slim' version
-RUN echo $FLAVOUR
+RUN echo "FLAVOR=$FLAVOUR"
 RUN if [ "$FLAVOUR" = "-slim" ] ; then \
         echo "Building slim container"; \
         python -m pip install -e /opt/programs/cait[clplot,remfiles]; \
