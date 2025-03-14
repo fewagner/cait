@@ -126,11 +126,11 @@ class OF(ArrayWithBenefits):
                         elif (j + 1) % self._n_ch == i:
                             noise_cov[i, j] = cps[j, w]  # Symmetric elements
 
-                    d = stdevent_fft[:, w].conjugate() * np.exp(-1j * w * omega[s2][w])
-                    try:
-                        H[s1][:, w] = np.linalg.solve(noise_cov, d)
-                    except np.linalg.LinAlgError:
-                        H[s1][:, w] = np.linalg.pinv(noise_cov) @ d
+                d = stdevent_fft[:, w].conjugate() * np.exp(-1j * w * omega[s2][w])
+                try:
+                    H[s1][:, w] = d @ np.linalg.inv(noise_cov)
+                except np.linalg.LinAlgError:
+                    H[s1][:, w] = d @ np.linalg.pinv(noise_cov)
 
             # In any case, we force the 0 component of the filter kernel to 0
             # (this shifts the signal to 0)
