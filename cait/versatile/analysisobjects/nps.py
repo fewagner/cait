@@ -73,7 +73,7 @@ class NPS(ArrayWithBenefits):
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
     @classmethod
-    def from_dh(cls, dh, group: str = "noise", dataset: list = ["nps", "cps"]):
+    def from_dh(cls, dh, group: str = "noise", dataset: str = 'nps'):   
         """
         Construct NPS from DataHandler. 
 
@@ -81,13 +81,21 @@ class NPS(ArrayWithBenefits):
         :type dh: DataHandler
         :param group: The HDF5 group where the NPS is stored.
         :type group: str
-        :param dataset: The HDF5 dataset where the NPS is stored.
+        :param dataset: The HDF5 dataset where the NPS/CPS is stored.
         :type dataset: str
 
         :return: Instance of NPS.
         :rtype: NPS
         """
-        return cls(dh.get(group, dataset[0])), cls(dh.get(group, dataset[1]))
+        if dataset == 'both':
+            sets = ['nps', 'cps']
+            bools = [dh.exists('noise', sets[i]) for i in range(2)]
+            if bools[0]*bools[1]:
+                return cls(dh.get(group, sets[0])), cls(dh.get(group, sets[1]))
+            else:
+                raise KeyError(f"Unable to synchronously open object (object '{sets[bools.index(False)]}' doesn't exist)")
+        else:
+            return cls(dh.get(group, dataset))
         
     def to_dh(self, dh, group: str = "noise", dataset: str = 'nps', **kwargs):
         """
