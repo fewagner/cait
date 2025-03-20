@@ -7,6 +7,7 @@ from cait.versatile.iterators.impl_h5 import H5Iterator
 from cait.versatile.iterators.impl_rdt import RDTIterator
 from cait.versatile.iterators.impl_stream import StreamIterator
 from cait.versatile.iterators.impl_mock import MockIterator
+from cait.versatile.iterators.impl_pulsesim import PulseSimIterator
 
 from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus, RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY
 
@@ -436,3 +437,130 @@ class TestMockIterator:
                 assert i.shape == (len(it)%13, 2, it.record_length)
 
         assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+class TestPulseSimIterator:
+    def test_basic(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        basic_checks(PulseSimIterator(
+            mock_it, 
+            mock.sev, 
+            np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            mock_it, 
+            mock.sev, 
+            np.ones((mock_it.n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            mock_it, 
+            mock.sev, 
+            np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+
+    def test_batches_singleCh(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        basic_checks(PulseSimIterator(
+            mock_it, 
+            mock.sev, 
+            np.ones((mock_it.n_channels, len(mock_it))),
+            batch_size=13
+            )[0]
+        )
+        
+        it = PulseSimIterator(
+                    mock_it, 
+                    mock.sev, 
+                    np.ones((mock_it.n_channels, len(mock_it))),
+                    batch_size=13
+                    )[0]
+        it2 = PulseSimIterator(
+                    mock_it, 
+                    mock.sev, 
+                    np.ones((mock_it.n_channels, len(mock_it)))
+                    )[0]
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_batches_multiCh(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        basic_checks(PulseSimIterator(
+            mock_it, 
+            mock.sev, 
+            np.ones((mock_it.n_channels, len(mock_it))),
+            batch_size=13
+            )
+        )
+        
+        it = PulseSimIterator(
+                    mock_it, 
+                    mock.sev, 
+                    np.ones((mock_it.n_channels, len(mock_it))),
+                    batch_size=13
+                    )
+        it2 = PulseSimIterator(
+                    mock_it, 
+                    mock.sev, 
+                    np.ones((mock_it.n_channels, len(mock_it)))
+                    )
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, 2, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, 2, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_raises(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        # wrong number of channels of pulse_heights
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                mock_it, 
+                mock.sev, 
+                np.ones((mock_it.n_channels+1, len(mock_it))) 
+            ) 
+
+        # wrong number of channels of sev
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                mock_it, 
+                mock.sev[0], 
+                np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+
+        # wrong number of events of pulse_heights
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                mock_it, 
+                mock.sev, 
+                np.ones((mock_it.n_channels, len(mock_it)+1)) 
+            ) 
+
+        # wrong record_length of sev
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                mock_it, 
+                mock.sev[...,:-1], 
+                np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        
