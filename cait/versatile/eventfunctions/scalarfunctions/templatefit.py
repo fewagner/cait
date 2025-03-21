@@ -121,7 +121,7 @@ class _TemplateCacheSimple:
         opt_param = np.sum(y*s)/self._norm2(j=j, flag=flag)
         rms = np.sqrt(self._chij2(j, ev, flag))
         
-        return opt_param, rms
+        return np.atleast_1d(opt_param), rms
         
     ### CHI SQUARED EQUATIONS FOR ONSET FIT ###
     def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):

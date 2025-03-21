@@ -378,7 +378,7 @@ class FitMixin(object):
         
         _ds_to_be_written = ['templatefit_pars', 'templatefit_rms', 'templatefit_shift']
         if any([self.exists(group, ds) for ds in _ds_to_be_written]):
-            raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop({group}, 'dataset')'.")
+            raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')'.")
         
         events = self.get_event_iterator(group)
 
@@ -437,13 +437,14 @@ class FitMixin(object):
                     **kwargs)
             fitpar, opt_shift, rms = vai.apply(tf, events_used)
 
-            output_pars[channels_used, event_flag, :] = np.transpose(fitpar, [1,0,2])
-            output_shift[channels_used, event_flag] = opt_shift.T
-            output_rms[channels_used, event_flag] = rms.T
+            output_pars[np.ix_(channels_used, event_flag)] = np.transpose(fitpar, [1,0,2])
+            output_shift[np.ix_(channels_used, event_flag)] = opt_shift[None, :]
+            output_rms[np.ix_(channels_used, event_flag)] = rms.T
 
         else:
             for i in range(n_channels_used):
                 ch = channels_used[i]
+                n_pars = 1 if bl_poly_order[i] is None else bl_poly_order[i] + 2
                 tf = vai.TemplateFit(
                         sev=sev[i],
                         bl_poly_order=bl_poly_order[i],
@@ -454,7 +455,7 @@ class FitMixin(object):
 
                 fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
 
-                output_pars[ch, event_flag, :] = np.transpose(fitpar, [1,0,2])
+                output_pars[ch, event_flag, :n_pars] = fitpar
                 output_shift[ch, event_flag] = opt_shift
                 output_rms[ch, event_flag] = rms
 
