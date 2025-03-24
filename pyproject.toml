@@ -28,6 +28,7 @@ dependencies = [
     "plotly<6.0",
     "dash>=2.0",
     "matplotlib>=3.4",
+    "multiprocess", # fork of Python's multiprocessing standard library that allows, e.g., to use lambdas in Pool
     "numba>=0.54",
     "tqdm>=4.62",
     "scikit-learn>=0.24",

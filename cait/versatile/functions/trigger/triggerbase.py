@@ -1,7 +1,10 @@
 import os
 from typing import Union, List
 from contextlib import nullcontext
-from multiprocessing import Pool
+# Note that multiprocessing.Pool cannot handle lambdas
+# which is why we use multiprocess here. The Pool interface
+# os otherwise identical
+from multiprocess import Pool
 
 import numpy as np
 from numpy.typing import ArrayLike
@@ -9,6 +12,7 @@ import numba as nb
 
 from tqdm.auto import tqdm
 
+import cait as ai
 from ..apply import Compose
 
 ####################################################
@@ -77,7 +81,7 @@ def trigger_base(stream: ArrayLike,
     :type chunk_size: int
     :param apply_first: A function or list of functions to be applied to the stream data BEFORE the filter function is applied. E.g. ``lambda x: -x`` to trigger on the inverted stream.
     :type apply_first: Union[callable, List[callable]], optional
-    :param n_processes: The number of processes to use to process chunks. If None, all available cores are utilized. Defaults to None
+    :param n_processes: The number of processes to use to process chunks. If None, ``cait._available_workers`` is used. Defaults to None
     :type n_processes: int, optional
 
     :return: Tuple of trigger indices and trigger heights.
@@ -117,8 +121,7 @@ def trigger_base(stream: ArrayLike,
     if len(stream) <= 3*record_length:
         raise Exception(f"Length of data to trigger ({len(stream)}) has to be larger than three record windows (3*{record_length}). See docstring about the trigger algorithm.")
 
-    if n_processes is None: 
-        n_processes = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()
+    if n_processes is None: n_processes = ai._available_workers
 
     # total number of samples in the stream
     stream_length = len(stream)

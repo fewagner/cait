@@ -10,7 +10,7 @@ from . import styles
 from ._version import __version__
 
 import os
-# The total number of workers available for multiprocessing.Pool
+# The total number of workers available for multiprocess.Pool
 _available_workers = len(os.sched_getaffinity(0)) if hasattr(os, "sched_getaffinity") else os.cpu_count()
 
 __all__ = ['EventInterface',
