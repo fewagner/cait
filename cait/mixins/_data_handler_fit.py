@@ -343,6 +343,7 @@ class FitMixin(object):
                            max_shift: int = 50,
                            only_channels: Union[int, List[int]] = None,
                            event_flag: np.ndarray = None,
+                           preview: bool = False,
                            **kwargs
                            ):
         """
@@ -358,7 +359,7 @@ class FitMixin(object):
         :type bl_poly_order: Union[int, List[int]], optional
         :param truncation_limit: List with as many entries as there are channels to fit. For each entry that is not None, a truncated fit is performed: all samples between the first and the last sample above 'truncation_limit' are ignored in the fit. To determine these samples, the baseline of the event is removed by fitting a linear polynomial to the beginning of the record window. If only None or a float is provided, this value is used for all fitted channels. Defaults to None, i.e. not performing a truncated fit in any channel.
         :type truncation_limit: Union[float, List[float]], optional
-        :param correlated: If True, a correlated fit is performed, i.e. the SEV is shifted for all channels simultaneously. Depending on 'fit_onset' (see below), different behavior can be achieved. If False, each channel is fitted independently of the others, defaults to False. 
+        :param correlated: If True, a correlated fit is performed, i.e. the SEV is shifted for all channels simultaneously. Depending on 'fit_onset' (see below and also examples), different behavior can be achieved. If False, each channel is fitted independently of the others, defaults to False. 
         :type correlated: bool, optional
         :param fit_onset: List with as many entries as there are channels to fit. For each entry that is True, the onset value of the respective channel is fitted. If ``correlated=False``, the onsets are fitted independently. If ``correlated=True``, all channels for which ``fit_onset=True`` participate in the onset fit (common minimization): If only one of the entries is True, this channel is the 'dominant' one, i.e. its onset is fitted and all other channels are moved (passively) in unison (and only their pulse height + baseline is fitted). If multiple are True, their chi-squared for the fit is combined, i.e. the template is still moved in unison, but the minimizer considers all channels. If only one boolean is provided, it is used for all fitted channels. Defaults to True, i.e. fit onset in all channels
         :type fit_onset: Union[bool, List[bool]], optional
@@ -369,8 +370,82 @@ class FitMixin(object):
         :type only_channels: Union[int, List[int]], optional
         :param event_flag: A boolean flag. If you don't want to fit all events in 'group', you can specify a flag for which to fit here. Events that were not fit, receive an RMS value of -404 in the output dataset. Has to have the same length as there are events in 'group' and applies to all channels. Defaults to None, i.e. fit all events.
         :type event_flag: np.ndarray, optional
+        :param preview: If True, an interactive preview illustrating the fit using the current input arguments on the event traces opens up. Defaults to False
+        :type preview: bool, optional
         :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.TemplateFit` or :class:`cait.versatile.TemplateFitCorrelated` (depending on the 'correlated' keyword).
         :type kwargs: any, optional
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait as ai
+            import cait.versatile as vai
+
+            # You should have a DataHandler (dh) and a SEV by now.
+            # If you saved your SEV in a file, load it using 
+            # sev = vai.SEV.from_file('path/to/sev')
+            # if you saved it in the dh, use 
+            # sev = vai.SEV.from_dh(dh)
+            # if you want to use a numpy array 'sev', that is also fine.
+
+            # Example 0: Do not fit anything yet, only show what it would look like
+            dh.apply_template_fit(
+                "events", # 'events' group has two channels
+                sev, # must have two channels
+                bl_poly_order=[1, 3], # separate baseline polynomial orders for each channel
+                correlated=False, # do NOT correlate the channels
+                preview=True # No fit is performed but it is shown what it would look like
+            )
+
+            # Example 1: Fit all channels separately with their respective SEV.
+            # In this case, we assume two channels, but it works with arbitrarily many.
+            dh.apply_template_fit(
+                "events", # 'events' group has two channels
+                sev, # must have two channels, too
+                bl_poly_order=[1, 3], # separate baseline polynomial orders for each channel
+                correlated=False, # do NOT correlate the channels
+            )
+
+            # To run a new fit, we have to delete the old results:
+            def drop_tf_ds():
+                dh.drop("events", "templatefit_pars")
+                dh.drop("events", "templatefit_rms")
+                dh.drop("events", "templatefit_shift")
+            drop_tf_ds()
+            # Alternatively, you could also rename them:
+            dh.rename("events_new", templatefit_pars="tf_pars_old", templatefit_rms="tf_rms_old", templatefit_shift="tf_shift_old")
+
+            # Example 2: Fit only one of the two channels (the results of the other channel will
+            # be padded)
+            dh.apply_template_fit(
+                "events", 
+                sev[0], # select only one of the SEV (corresponding to chosen channel)
+                bl_poly_order=3, # specify only one
+                only_channel=0, # choose one of the channels
+            )
+
+            drop_tf_ds()
+
+            # Example 3: Correlated template fit with first channel being the 'dominant' one
+            dh.apply_template_fit(
+                "events",
+                sev, # use all channels again
+                bl_poly_order=3, # if we just say '3' here, it is used for both channels
+                correlated=True, # here we activate the correlated fit
+                fit_onset=[True, False] # Onset of channel 1 is fitted, but the one for 0 is passively moved along
+            )
+
+            drop_tf_ds()
+
+            # Example 4: Correlated template fit with common minimization in onset fit
+            dh.apply_template_fit(
+                "events",
+                sev,
+                bl_poly_order=3, 
+                correlated=True,
+                fit_onset=[True, True] # Onset of both channels is fitted together
+            )
         """
         
         if not self.exists(group):
@@ -435,11 +510,15 @@ class FitMixin(object):
                     fit_onset=fit_onset,
                     max_shift=max_shift, 
                     **kwargs)
-            fitpar, opt_shift, rms = vai.apply(tf, events_used)
+            
+            if preview: 
+                vai.Preview(events_used, tf)
+            else:
+                fitpar, opt_shift, rms = vai.apply(tf, events_used)
 
-            output_pars[np.ix_(channels_used, event_flag)] = np.transpose(fitpar, [1,0,2])
-            output_shift[np.ix_(channels_used, event_flag)] = opt_shift[None, :]
-            output_rms[np.ix_(channels_used, event_flag)] = rms.T
+                output_pars[np.ix_(channels_used, event_flag)] = np.transpose(fitpar, [1,0,2])
+                output_shift[np.ix_(channels_used, event_flag)] = opt_shift[None, :]
+                output_rms[np.ix_(channels_used, event_flag)] = rms.T
 
         else:
             for i in range(n_channels_used):
@@ -453,20 +532,24 @@ class FitMixin(object):
                         max_shift=max_shift, 
                         **kwargs)
 
-                fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
+                if preview:
+                    vai.Preview(events_used[i], tf)
+                else:
+                    fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
 
-                output_pars[ch, event_flag, :n_pars] = fitpar
-                output_shift[ch, event_flag] = opt_shift
-                output_rms[ch, event_flag] = rms
+                    output_pars[ch, event_flag, :n_pars] = fitpar
+                    output_shift[ch, event_flag] = opt_shift
+                    output_rms[ch, event_flag] = rms
 
-        self.set(group, 
-                 templatefit_pars=output_pars, 
-                 templatefit_rms=output_rms, 
-                 dtype=np.float32)
-        self.set(group, templatefit_shift=output_shift, dtype=np.int16)
+        if not preview:
+            self.set(group, 
+                    templatefit_pars=output_pars, 
+                    templatefit_rms=output_rms, 
+                    dtype=np.float32)
+            self.set(group, templatefit_shift=output_shift, dtype=np.int16)
 
-        if np.any(output_rms == -404):
-            print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding fit values should not be trusted! If you provided an 'event_flag', the events which were excluded from the fit received an RMS value of -404. Likewise, if you chose only to fit a subset of channels using the 'only_channels' argument, channels which were not fitted had their RMS values set to -404. Finally, if the fit failed for any of the fitted events, the respective RMS was also set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
+            if np.any(output_rms == -404):
+                print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding fit values should not be trusted! If you provided an 'event_flag', the events which were excluded from the fit received an RMS value of -404. Likewise, if you chose only to fit a subset of channels using the 'only_channels' argument, channels which were not fitted had their RMS values set to -404. Finally, if the fit failed for any of the fitted events, the respective RMS was also set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
 
     def calc_bl_coefficients(self, type='noise', down=1):
         """
@@ -718,4 +801,4 @@ class FitMixin(object):
                                      ylog=ylog,
                                      only_histogram=False,
                                      save_path=save_path,
-                                     )
+                                     ) 
