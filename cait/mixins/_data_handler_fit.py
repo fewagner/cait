@@ -378,7 +378,7 @@ class FitMixin(object):
         
         _ds_to_be_written = ['templatefit_pars', 'templatefit_rms', 'templatefit_shift']
         if any([self.exists(group, ds) for ds in _ds_to_be_written]):
-            raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')'.")
+            raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')', or rename them using the 'dh.rename' function.")
         
         events = self.get_event_iterator(group)
 
