@@ -42,14 +42,14 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     
     def __setitem__(self, key, val):
         self._array[key] = val
-    
-    @property
-    def shape(self):
-        return self._array.shape
-    
-    @property
-    def ndim(self):
-        return self._array.ndim
+
+    # redirect all attribute calls to underlying numpy object
+    # (if not explicitly defined by ArrayWithBenefits)
+    def __getattr__(self, name):
+        if hasattr(np.ndarray, name):
+            return np.array(self._array).__getattribute__(name)
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
     
     @property
     @abstractmethod

@@ -8,6 +8,7 @@ from ..fixtures import datahandler, tempdir
 # Tests for input validation and no errors with 
 # various combinations of input arguments.
 # Does NOT (yet) test for correct functioning
+@pytest.mark.filterwarnings("ignore:Ill-conditioned matrix")
 class TestApplyTemplateFit:
     def test_one_channel(self, datahandler):
         mock_data = vai.MockData()

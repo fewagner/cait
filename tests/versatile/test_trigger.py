@@ -150,28 +150,27 @@ def test_trigger_different_chunk_sizes():
     # If tests work on this one, we should be good ;)
     # I manually checked the data and the trigger for it and the
     # trigger indices below should be regarded as correct.
-    data1 = np.loadtxt(os.path.join(filepath, "testdata", "stream_test_19_11.txt"))
-    data2 = np.loadtxt(os.path.join(filepath, "testdata", "stream_test_20_12.txt"))
-    
-    # Test all chunk sizes from 1 to 200 for OF trigger (trigger inds should be the same)
+    data = np.loadtxt(os.path.join(filepath, "testdata", "stream_test_19_11.txt"))
+
+    # Test all chunk sizes from 1 to 100 (data has length ~66 record lengths) for OF trigger 
+    # (trigger inds should be the same)
     assert all([
                 np.array_equal(
-                        np.array(vai.trigger_of(data1, 0.001, of, chunk_size=cs)[0]),
+                        np.array(vai.trigger_of(data, 0.001, of, chunk_size=cs)[0]),
                         np.array([ 8192, 51364, 84780, 112808, 148103, 201451, 207502, 240854, 
                                    250365, 256341, 321179, 358152, 364750, 371700, 380828, 416178, 
                                    451448, 457506, 483314 ])
                 )
-                for cs in range(1, 200)
+                for cs in range(1, 100)
             ])
     
-    
-    
-    # Test all chunk sizes from 1 to 200 for OF trigger (trigger inds should be the same)
+    # Test all chunk sizes from 1 to 100 (data has length ~66 record lengths) for OF trigger 
+    # (trigger inds should be the same)
     assert all([
                 np.array_equal(
-                        np.array(vai.trigger_zscore(data1, chunk_size=cs, threshold=3, record_length=record_length)[0]),
+                        np.array(vai.trigger_zscore(data, chunk_size=cs, threshold=3, record_length=record_length)[0]),
                         np.array([ 51356, 84796, 112783, 148110, 201443, 240906, 256345, 
                                    321167, 358153, 451442, 483320])
                 )
-                for cs in range(1, 200)
+                for cs in range(1, 100)
             ])
