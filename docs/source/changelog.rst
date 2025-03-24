@@ -10,10 +10,11 @@ development
 - Added pipeline to build containers for released versions and development branch (on CERN gitlab)
 - Added `dh.trigger_zscore` and `dh.trigger_of` for triggering independent of hardware
 - Added short-cut notation for `dh.get`: Now you can slice a DataHandler object using `dh['<group>/<dataset>']`. Additionally, this syntax supports iPython's TAB-completion, i.e. you can start typing `dh[` and hit 'TAB' to preview a list of possible datasets.
+- Added `dh.apply_template_fit` which replaces `dh.apply_array_fit` (now deprecated). In the new method, you have more control over the level of correlation between multiple channels, you can provide flags (for only fitting a subset), and you can preview the effect of the fit before applying it.
 - Moved functions to combine/merge hdf5 files to `cait.data.combine_h5` and `cait.data.merge_h5`. The previous implementation `ai.data.merge_h5_sets` has been deprecated.
 - Minor improvements
 - Minor fixes (including OverflowError in `numpy>=2`)
-- New features in `cait.versatile` (notably vai.Heatmap, back-button in vai.Preview)
+- New features in `cait.versatile` (notably `vai.Heatmap`, back-button in vai.Preview)
 - Changes to `cait.versatile` (notably 'TukeyFiltering' -> 'TukeyWindow')
 
 v.1.2.2
