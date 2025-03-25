@@ -82,7 +82,7 @@ def test_trigger_zscore(tempdir, stream_csmpl):
                       testpulse_channels=["0", "0"],
                       copy_events=True,
                       reuse_triggers=False,
-                      n_noise=100)
+                      f_noise=100)
 
     # Have to create a separate datahandler because otherwise events cannot be included (gives warning)
     dh2 = ai.DataHandler(nmbr_channels=2)
@@ -96,7 +96,22 @@ def test_trigger_zscore(tempdir, stream_csmpl):
                       controlpulses_above=[0.5, 0.5],
                       copy_events=True,
                       reuse_triggers=False,
-                      n_noise=100)
+                      f_noise=100)
+    
+    # Test for controlpulses_above with tuple
+    # Have to create a separate datahandler because otherwise events cannot be included (gives warning)
+    dh3 = ai.DataHandler(nmbr_channels=2)
+    dh3.set_filepath(tempdir.name, "test_trigger_zscore_3", appendix=False)
+    dh3.init_empty()
+    
+    dh3.trigger_zscore(stream_csmpl, 
+                      trigger_channels="Ch0",
+                      passive_channels="Ch1",
+                      testpulse_channels=["0", "0"],
+                      controlpulses_above=[(15, 25), 0.5],
+                      copy_events=True,
+                      reuse_triggers=False,
+                      f_noise=100)
     
 def test_trigger_of_errors(tempdir, stream_csmpl):
     dh = ai.DataHandler(nmbr_channels=2)
@@ -193,7 +208,7 @@ def test_trigger_of(tempdir, stream_csmpl):
                   thresholds=[0.1],
                   copy_events=True,
                   reuse_triggers=False,
-                  n_noise=100)
+                  f_noise=100)
     
     # Have to create a separate datahandler because otherwise events cannot be included (gives warning)
     dh2 = ai.DataHandler(nmbr_channels=2)
@@ -210,4 +225,4 @@ def test_trigger_of(tempdir, stream_csmpl):
                   thresholds=[0.1],
                   copy_events=True,
                   reuse_triggers=False,
-                  n_noise=100)
+                  f_noise=100)

@@ -428,14 +428,52 @@ Below, the process is illustrated with some screenshots. Thank you so much for f
 
 .. image:: documentation/pics/fix_bug_guide.png
 
+Tags
+~~~~
+Tags are created when releasing a new version (see below) and follow the format ``v1.2.3`` where 
+
+- ``1`` denotes a major version (i.e. increasing this implies non-downwards-compatible changes), 
+- ``2`` denotes a minor version or feature release (i.e. increasing it implies the implementation of new features which are downwards-compatible), and 
+- ``3`` denotes a patch or bug fix (i.e. increasing it implies that it is equivalent to the previous version but with some bugs fixed). 
+
+When a release tag is created, it should always come together with a release of the respective version (``1.2.3`` in this example) such that people can install this version using 
+
+.. code:: console
+
+    $ python3 -m pip install cait==1.2.3
+
+from PyPI. 
+
+Furthermore, development versions of ``cait`` are also tagged if there was a noteworthy change. This is important to track which version (specified by the tag) was used for an analysis (for people who use the develop branch for their analysis). The development tags follow the format ``v1.2.3.dev1`` where the first part represents the most current release tag of ``cait``, and the last part denotes the develop version (``0``, ``1``, ...). If a new version is released, we start counting from 0 again, e.g. ``v.1.3.0.dev0``. Note that even though we create tags for development versions, we do not make any development releases. However, we **do update** the ``__version__`` in ``_version.py`` accordingly. If you want to install a specific develop version, use 
+
+.. code:: console
+
+    $ python3 -m pip install git+https://gitlab.cern.ch/cryocluster/cait.git@v1.2.3.dev1
+
+Docs
+~~~~
+If you make changes/additions to the docs (always appreciated), you might want to compile the docs locally. To do so, you can install all docs build dependencies by calling (we assume that you are in the ``cait`` repository)
+
+.. code:: console
+
+    $ python3 -m pip install -e .[docs]
+
+Afterwards, you can run 
+
+.. code:: console
+
+    $ sphinx-build -M html ./docs/source ~/Desktop/docs_build
+
+which builds the docs on your desktop. Open the ``~/Desktop/docs_build/html/index.html`` in your browser to see the docs.
+
 Releasing
 ~~~~~~~~~
 
-If a new version of cait is to be released, follow these steps (probably not relevant to you reading this, rather meant as a reference for the core developers):
+If a new version of ``cait`` is to be released, follow these steps (probably not relevant to you reading this, rather meant as a reference for the core developers):
 
 You probably want to have a separate (clean) python environment for building the package. You need to have ``build`` and ``twine`` installed (``python -m pip install build twine``) and be in the cait repository.
 
-    - Create new version branch (either locally or on *GitLab*, NOT *GitHub*)
+    - Create new version branch (either locally or on *GitLab*, **NOT** *GitHub*)
     - Update version number in ``cait._version``! This will automatically propagate into ``pyproject.toml`` and into the docs via ``conf.py`` and ``.readthedocs.yaml``.
     - Make sure that all tests succeed (run ``pytest``)
     - Delete the old ``build/`` folder that you might still have locally from previous builds
@@ -445,7 +483,7 @@ You probably want to have a separate (clean) python environment for building the
     - Do a test upload to **testpypi** using ``twine upload -r testpypi dist/<correct-version>.whl`` (username: '__token__', password: your testpypi-token)
     - Install cait from testpypi (possibly into a fresh environment) using ``python -m pip install -i https://test.pypi.org/simple/ cait --no-dependencies`` to see if any issues occur while pulling.
     - If everything is okay, git commit the wheel file 
-    - Create a new tag/release on *GitLab*
+    - Create a new tag/release on *GitLab*, following the format ``v1.2.3``
     - Merge version branch into master
     - Upload the wheel also to the actual PyPI using ``twine upload dist/<correct-version>.whl`` (username: '__token__', password: your pypi-token)
     - Tags are synched to *GitHub* (!) but release also has to be created (from tag) on *GitHub*
