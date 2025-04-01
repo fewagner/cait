@@ -300,9 +300,10 @@ class TriggerCollectionMixin:
             dh.set_filepath(path_h5="folder_name/", fname="z-score-triggered", appendix=False)
             dh.init_empty()
 
-            # Trigger
+            # Trigger ADC1 (phonon channel) and read ADC2 in coincidence (light channel)
             dh.trigger_zscore(stream, 
-                              trigger_channels=["ADC1", "ADC2"],
+                              trigger_channels=["ADC1"],
+                              passive_channels=["ADC2"],
                               testpulse_channels=["DAC1", "DAC3"],
                               copy_events=True)
         """
@@ -342,6 +343,7 @@ class TriggerCollectionMixin:
     def trigger_of(self,
                    stream: vai.datasources.stream.streambase.StreamBaseClass,
                    trigger_channels: List[str],
+                   of: np.ndarray,
                    thresholds: List[float],
                    passive_channels: List[str] = None,
                    testpulse_channels: List[str] = None,
@@ -349,7 +351,6 @@ class TriggerCollectionMixin:
                    copy_events: bool = False,
                    reuse_triggers: bool = False,
                    interval: Tuple[float] = None,
-                   of: np.ndarray = None,
                    f_noise: float = 0,
                    **kwargs
                    ):
@@ -366,6 +367,8 @@ class TriggerCollectionMixin:
         :type stream: vai.datasources.stream.streambase.StreamBaseClass
         :param trigger_channels: The list of channel names to be triggered. Have to be present in ``stream.keys``.
         :type trigger_channels: List[str]
+        :param of: The optimum filter to use for triggering (has to have one for each channel in 'trigger_channels').
+        :type of: np.ndarray
         :param thresholds: A list of trigger thresholds (in V) for each channel.
         :type thresholds: Union[float, List[float]]
         :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
@@ -380,8 +383,6 @@ class TriggerCollectionMixin:
         :type reuse_triggers: bool, optional
         :param interval: The coincidence interval for event building in microseconds, i.e. if a trigger lies within the specified interval around a trigger of another channel, they are collected to represent one event. Defaults to ``-+dt_us*record_length//4``.
         :type interval: Tuple[float], optional
-        :param of: The optimum filter to use for triggering (has to have one for each channel in 'trigger_channels'). If none is specified (default), the optimum filter is read from the DataHandler.
-        :type of: np.ndarray, optional
         :param f_noise: The frequency (in events per hour) of empty noise traces to include. Defaults to 0, i.e. no noise is included.
         :type f_noise: float, optional
         :param kwargs: Additional keyword arguments forwarded to :func:`cait.versatile.trigger_of`.
@@ -405,14 +406,17 @@ class TriggerCollectionMixin:
             dh.set_filepath(path_h5="folder_name/", fname="z-score-triggered", appendix=False)
             dh.init_empty()
 
-            # Copy OF (a two-dimensional OF was previously saved)
-            vai.OF.from_file("path/to/OF_file").to_dh(dh)
+            # Load OF (saved in text file), has one channel
+            # If you have some other DataHandler with the OF saved, you can use .from_dh instead
+            of = vai.OF.from_file("path/to/OF_file")
 
-            # Trigger
+            # Trigger ADC1 (phonon channel) and read ADC2 in coincidence (light channel)
             dh.trigger_zscore(stream, 
-                              trigger_channels=["ADC1", "ADC2"],
+                              trigger_channels=["ADC1"],
+                              of=of,
+                              thresholds=[1e-3],
+                              passive_channels=["ADC2"],
                               testpulse_channels=["DAC1", "DAC3"],
-                              thresholds=[1e-3, 1.5e-3],
                               copy_events=True)
         """
         # Allow string input if only one channel
@@ -437,15 +441,7 @@ class TriggerCollectionMixin:
         if len(thresholds) != len(trigger_channels):
             raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
             
-        if of is not None:
-            ofs = of
-        elif self.exists("optimumfilter"):
-            ofs = vai.OF.from_dh(self)
-        else:
-            raise ValueError("No OF provided when calling trigger function and no group 'optimumfilter' found in DataHandler. Provide an optimum filter!")
-        
-        if ofs.ndim == 1:
-            ofs = np.array([ofs])
+        ofs = np.atleast_2d(of)
             
         if len(ofs) != len(trigger_channels):
             raise ValueError(f"Optimum filter has to have as many channels as channels to trigger, i.e. len(of) must be len(trigger_channels). Received {len(ofs)} and {len(trigger_channels)}.")
