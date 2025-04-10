@@ -26,7 +26,7 @@ class OF(ArrayWithBenefits):
         nps = vai.NPS().from_dh(dh)
         of = vai.OF(sev, nps)
     """
-    def __init__(self, *args: Any, phonon_dominant: bool = False, alpha: float = 1.0):
+    def __init__(self, *args: Any, only_channels: list = [0, 1, 2], alpha: float = 1.0):
         if len(args) == 1 and (isinstance(args[0], np.ndarray) or is_array_like(args[0])):
             self._of = np.array(args[0])
             if self._of.ndim > 1:
@@ -56,6 +56,7 @@ class OF(ArrayWithBenefits):
                 flag = 0
 
             elif len(args) == 3:
+                flag = 1
                 bool_sev = [isinstance(k, SEV) for k in args] 
                 bool_nps = [isinstance(k, NPS) for k in args]
 
@@ -73,9 +74,8 @@ class OF(ArrayWithBenefits):
                 # Cast to numpy array here (this will get rid of the SEV and NPS character)
                 sev, nps, cps = np.array(sev), np.array(nps), np.array(cps)
                 cps = alpha*cps
-                if phonon_dominant:
-                    cps[1:,:] = 0
-                flag = 1
+                if len(only_channels) == 2:
+                    cps[np.arange(cps.shape[0]) != [[0, 1], [1, 2], [0, 2]].index(sorted(only_channels)), :] = 0
 
             # flag indicates if CPS is used to make the optimum filter or not
             if flag == 0: cps = np.zeros_like(nps)
@@ -117,16 +117,18 @@ class OF(ArrayWithBenefits):
             for w in range(1, len(stdevent_fft[0])):
                 noise_cov = np.zeros((self._n_ch, self._n_ch), dtype=complex)
 
-                for i in range(self._n_ch):
-                    for j in range(self._n_ch):
-                        if i == j:
-                            noise_cov[i, j] = nps[i, w]  # Diagonal elements are NPS
-                        elif (i + 1) % self._n_ch == j:
-                            noise_cov[i, j] = cps[i, w]  # Off-diagonal elements are CPS
-                        elif (j + 1) % self._n_ch == i:
-                            noise_cov[i, j] = cps[j, w]  # Symmetric elements
-
-                d = stdevent_fft[:, w].conjugate() * np.exp(-1j * w * omega[s2][w])
+                noise_cov[0, 0] = nps[0, w]
+                noise_cov[1, 1] = nps[1, w]
+                noise_cov[2, 2] = nps[2, w]
+                noise_cov[0, 1] = cps[0, w]               # ch0 - ch1
+                noise_cov[1, 0] = cps[0, w].conjugate()
+                noise_cov[1, 2] = cps[1, w]               # ch1 - ch2
+                noise_cov[2, 1] = cps[1, w].conjugate()
+                noise_cov[2, 0] = cps[2, w]               # ch2 - ch0
+                noise_cov[0, 2] = cps[2, w].conjugate()
+            
+                phase = np.exp(-1j * omega[s2][w] * t_m.flatten())
+                d = stdevent_fft[:, w].conjugate() * phase
                 try:
                     H[s1][:, w] = d @ np.linalg.inv(noise_cov)
                 except np.linalg.LinAlgError:

@@ -29,7 +29,7 @@ class NPS(ArrayWithBenefits):
             self._n_ch = 0
         elif isinstance(data, IteratorBaseClass):
             data = data.flatten().with_processing([RemoveBaseline(), 
-                                                lambda x: np.abs(np.fft.rfft(x))])
+                                                lambda x: np.fft.rfft(x)])
             cor_id = [(0, 1), (1, 2), (2, 0)]
             if len(data) > 1000:
                 self._nps = np.zeros_like(data.grab(0))
@@ -37,10 +37,10 @@ class NPS(ArrayWithBenefits):
                 self._cor = np.zeros_like(data.grab(0))
                 with data:
                     for ev in tqdm(data, delay=5):
-                        self._nps+=ev**2
+                        self._nps+=ev*ev.conjugate()
                         if self._nps.ndim > 1:
                             for i in range(self._nps.shape[0]):
-                                self._cps[i]+=ev[cor_id[i][0]]*ev[cor_id[i][1]]
+                                self._cps[i]+=ev[cor_id[i][0]]*ev[cor_id[i][1]].conjugate()
                 self._nps/=len(data)
                 self._cps/=len(data)
                 if self._nps.ndim > 1:
@@ -110,14 +110,14 @@ class NPS(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
-        data_nps = self._nps[None,:] if self._n_channels == 1 else self._nps
-        data_cps = self._cps[None,:] if self._n_channels == 1 else self._cps
-        if dataset == 'both':
-            dh.set(group, **{'nps': data_nps}, **kwargs)
-            dh.set(group, **{'cps': data_cps}, **kwargs)
-        else:
+        if dataset == 'nps':
+            data_nps = self._nps[None,:] if self._n_channels == 1 else self._nps
             dh.set(group, **{dataset: data_nps}, **kwargs)
+        elif dataset == 'cps':
+            data_cps = self._nps[None,:] if self._n_channels == 1 else self._nps
+            dh.set(group, **{'cps': data_cps}, dtype=complex, **kwargs)
         
+
     @classmethod
     def from_file(cls, fname: str, src_dir: str = ''):
         """
