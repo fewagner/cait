@@ -46,18 +46,7 @@ class NPS(ArrayWithBenefits):
             if self._nps.ndim > 1:
                 for i in range(self._nps.shape[0]):
                     self._cor[i] = self._cps[i]**2/(self._nps[cor_id[i][0]]*self._nps[cor_id[i][1]])
-            # else:
-            #     with data:
-            #         self._nps = np.mean(data**2, axis=0)
-            #         for ev in tqdm(data, delay=5):
-            #             if self._nps.ndim > 1:
-            #                 for i in range(self.n_ch):
-            #                     self._cps[i]+=ev[cor_id[i][0]]*ev[cor_id[i][1]]
-            #     self._cps/=len(data)
-            #     if self._nps.ndim > 1:
-            #         for i in range(self._nps.shape[0]):
-            #             self._cor[i] = self._cps[i]**2/(self._nps[cor_id[i][0]]*self._nps[cor_id[i][1]])
-            if self._nps.ndim > 1:
+             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()
             else:
