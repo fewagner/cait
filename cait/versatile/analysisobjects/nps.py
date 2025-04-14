@@ -46,7 +46,7 @@ class NPS(ArrayWithBenefits):
             if self._nps.ndim > 1:
                 for i in range(self._nps.shape[0]):
                     self._cor[i] = self._cps[i]**2/(self._nps[cor_id[i][0]]*self._nps[cor_id[i][1]])
-             if self._nps.ndim > 1:
+            if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
                 if self._n_ch == 1: self._nps = self._nps.flatten()
             else:
