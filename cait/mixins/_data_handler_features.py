@@ -453,7 +453,7 @@ class FeaturesMixin(object):
             print('OF updated.')
 
     # apply the optimum filter
-     def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '', of_appendix: str = '',
+    def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '', of_appendix: str = '',
                  chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
                  baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None,
                  flexibility=1, calc_rms=False):
