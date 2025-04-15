@@ -22,12 +22,14 @@ class NPS(ArrayWithBenefits):
     :param data: The data to use for the NPS. If None, an empty NPS is created. If `np.ndarray`, each row in the array is interpreted as an NPS for separate channels. If iterator (possibly from multiple channels) an NPS is calculated by averaging the Fourier transformed events returned by the iterator. Defaults to None.
     :type data: Union[np.array, Type[IteratorBaseClass]]
     """
-    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None):
+    def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None, dt_us: int = None):
         if data is None:
             self._nps = np.empty(0)
             self._cps = np.empty(0)
             self._n_ch = 0
+            self._dt_us = dt_us
         elif isinstance(data, IteratorBaseClass):
+            self._dt_us = data.dt_us
             data = data.flatten().with_processing([RemoveBaseline(), 
                                                 lambda x: np.fft.rfft(x)])
             cor_id = [(0, 1), (1, 2), (2, 0)]
@@ -52,6 +54,9 @@ class NPS(ArrayWithBenefits):
             else:
                 self._n_ch = 1
         elif isinstance(data, np.ndarray) or is_array_like(data):
+            #if dt_us is None:
+            #    raise ValueError("If NPS is constructed from array(-like) input, the microsecond timebase of the recording (dt_us) has to be specified.")
+            self._dt_us = dt_us
             self._nps = np.array(data)
             if self._nps.ndim > 1:
                 self._n_ch = self._nps.shape[0]
@@ -99,6 +104,8 @@ class NPS(ArrayWithBenefits):
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
+        if self._dt_us != dh.dt_us:
+            raise ValueError(f"Timebase of NPS ({self._dt_us}) does not match the one of DataHandler ({dh.dt_us}).")
         if dataset == 'nps':
             data_nps = self._nps[None,:] if self._n_channels == 1 else self._nps
             dh.set(group, **{dataset: data_nps}, **kwargs)
@@ -224,3 +231,13 @@ class NPS(ArrayWithBenefits):
     @property
     def _n_channels(self):
         return self._n_ch
+    
+    @property
+    def dt_us(self):
+        return self._dt_us
+
+    @property
+    def freq(self):
+        if self.dt_us is not None:
+            n = 2*(self.shape[-1]-1)
+            return np.fft.rfftfreq(n, self.dt_us/1e6)
