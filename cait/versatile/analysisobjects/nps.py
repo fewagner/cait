@@ -89,7 +89,7 @@ class NPS(ArrayWithBenefits):
             else:
                 raise KeyError(f"Unable to synchronously open object (object '{sets[bools.index(False)]}' doesn't exist)")
         else:
-            return cls(dh.get(group, dataset))
+            return cls(dh.get(group, dataset), dt_us=dh.dt_us)
         
     def to_dh(self, dh, group: str = "noise", dataset: str = 'nps', **kwargs):
         """

@@ -23,7 +23,7 @@ class OF(ArrayWithBenefits):
     >>> nps = vai.NPS().from_dh(dh)
     >>> of = vai.OF(sev, nps)
     """
-    def __init__(self, *args: Any, only_channels: list = [0, 1, 2], alpha: float = 1.0, dt_us: int = None):
+    def __init__(self, *args: Any, only_channels: list = [0, 1, 2], alpha: float = 1.0, dt_us: int = None, multi_filter: bool = False):
         self._dt_us = dt_us
         if len(args) == 1 and isinstance(args[0], np.ndarray):
             self._of = args[0]
@@ -103,40 +103,54 @@ class OF(ArrayWithBenefits):
                     s1, s2 = (slice(None, None), slice(1, None)), slice(1, None)
                 else: 
                     s1, s2 = (slice(None, None), slice(None, None)), slice(None, None)
-            
+
             H = np.zeros(nps.shape, dtype=complex)
-            stdevent_fft = np.fft.rfft(sev[s1])
-            # Construct noise covariance matrix from NPS and CPS
-            for w in range(1, len(stdevent_fft[0])):
-                noise_cov = np.zeros((self._n_ch, self._n_ch), dtype=complex)
-
-                noise_cov[0, 0] = nps[0, w]
-                noise_cov[1, 1] = nps[1, w]
-                noise_cov[2, 2] = nps[2, w]
-                noise_cov[0, 1] = cps[0, w]               # ch0 - ch1
-                noise_cov[1, 0] = cps[0, w].conjugate()
-                noise_cov[1, 2] = cps[1, w]               # ch1 - ch2
-                noise_cov[2, 1] = cps[1, w].conjugate()
-                noise_cov[2, 0] = cps[2, w]               # ch2 - ch0
-                noise_cov[0, 2] = cps[2, w].conjugate()
             
-                phase = np.exp(-1j * omega[s2][w] * t_m.flatten())
-                d = stdevent_fft[:, w].conjugate() * phase
-                try:
-                    H[s1][:, w] = d @ np.linalg.inv(noise_cov)
-                except np.linalg.LinAlgError:
-                    H[s1][:, w] = d @ np.linalg.pinv(noise_cov)
+            if  multi_filter:
+                
+                stdevent_fft = np.fft.rfft(sev[s1])
+                # Construct noise covariance matrix from NPS and CPS
+                for w in range(1, len(stdevent_fft[0])):
+                    noise_cov = np.zeros((self._n_ch, self._n_ch), dtype=complex)
 
-            # In any case, we force the 0 component of the filter kernel to 0
-            # (this shifts the signal to 0)
-            H[...,0] = 0
+                    for i in range(self._n_ch):
+                        noise_cov[i, i] = nps[i, w]
 
-            # Normalize to height of SEV
-            maxima = np.max(OptimumFiltering(H)(sev), axis=-1)
-            # Cast maxima into a column vector such that vectorization works
-            if maxima.ndim > 0: maxima = maxima[:, None]
+                        j = (i + 1) % self._n_ch
+                        noise_cov[i, j] = cps[i, w]
+                        noise_cov[j, i] = cps[i, w].conjugate()
+                
+                    phase = np.exp(-1j * omega[s2][w] * t_m.flatten())
+                    d = stdevent_fft[:, w].conjugate() * phase
+                    try:
+                        H[s1][:, w] = d @ np.linalg.inv(noise_cov)
+                    except np.linalg.LinAlgError:
+                        H[s1][:, w] = d @ np.linalg.pinv(noise_cov)
+
+                # In any case, we force the 0 component of the filter kernel to 0
+                # (this shifts the signal to 0)
+                H[...,0] = 0
+
+                filtered_template = np.sum(OptimumFiltering(H)(sev), axis=0)        
+                maxima = np.max(filtered_template)
+                
+                self._of = H/maxima
             
-            self._of = H/maxima
+            if not multi_filter:       
+
+                #H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
+                H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
+
+                # In any case, we force the 0 component of the filter kernel to 0
+                # (this shifts the signal to 0)
+                H[...,0] = 0
+
+                # Normalize to height of SEV
+                maxima = np.max(OptimumFiltering(H)(sev), axis=-1)
+                # Cast maxima into a column vector such that vectorization works
+                if maxima.ndim > 0: maxima = maxima[:, None]
+                
+                self._of = H/maxima          
 
         elif len(args) == 0:
             self._of = np.empty(0)
