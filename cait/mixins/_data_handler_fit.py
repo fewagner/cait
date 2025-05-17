@@ -417,7 +417,7 @@ class FitMixin(object):
             sat = h5f.require_group('saturation')
             sat.require_dataset(name='fitpar',
                                 shape=(self.nmbr_channels, len(par) + 1),
-                                dtype=np.float)
+                                dtype=float)
             sat['fitpar'][channel, 0] = A
             sat['fitpar'][channel, 1:] = par
 
@@ -450,6 +450,7 @@ class FitMixin(object):
                                    model='gauss',
                                    ylog=False,
                                    save_path=None,
+                                   return_plotting_data=False
                                    ):
         """
         Estimate the trigger threshold to obtain a given number of noise triggers per exposure.
@@ -508,6 +509,8 @@ class FitMixin(object):
         :type ylog: bool
         :param save_path: A path to save the plots.
         :type save_path: string
+        :param return_plotting_data: Instead of plotting, the data for plotting can be returned, allowing for custom plots.
+        :type return_plotting_data: bool
         """
 
         if sample_length is None:
@@ -579,3 +582,5 @@ class FitMixin(object):
                                      only_histogram=False,
                                      save_path=save_path,
                                      )
+        if return_plotting_data:
+            return bins_hist, counts_hist, x_grid, trigger_window, ph_distribution, model, polluted_ph_distribution, title, xran_hist, noise_trigger_rate, polluted_trigger_rate, threshold, yran, allowed_noise_triggers, nmbr_pollution_triggers, xran, ylog, False, save_path
