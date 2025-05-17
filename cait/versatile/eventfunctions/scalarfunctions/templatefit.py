@@ -137,7 +137,7 @@ class _TemplateCacheSimple:
         return self._norm2_cached(j) if flag is None else self._norm2_uncached(j, flag)
     
     def _norm2_uncached(self, j: int, flag: np.ndarray):
-        return np.sum( shift_arrays(self._sev, j=j, flag=flag)[0]**2 )
+        return np.sum( list(shift_arrays(self._sev, j=j, flag=flag))[0]**2 )
     
     def _norm2_cached(self, j: int):
         return self._cache[j]
