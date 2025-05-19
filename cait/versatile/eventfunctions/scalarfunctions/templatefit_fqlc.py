@@ -1,21 +1,20 @@
-from typing import List
+from typing import List, Union
 from functools import partial
 
 import numpy as np
 import cait.versatile as vai
 
-from ..functionbase import FncBaseClass
 from ..processing.fluxquantumlosscorrection import FluxQuantumLossCorrection
-from ..processing.fluxquantumlosscorrection import RemoveBaseline_VoltageMinimum
+from ..processing.removebaseline import RemoveBaseline
 from .calcmp import CalcMP
-from .templatefit import shift_arrays, _TemplateCacheSimple, _TemplateCachePoly
+from .templatefit import shift_arrays, TemplateFit
 
 ########################
 ### CLASS DEFINITION ###
 ########################
-class TemplateFit_FQLC(FncBaseClass):
+class TemplateFit_FQLC(TemplateFit):
     """
-    This is an extended copy of the class "TemplateFit". Perform a template fit for single-channel data, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model and a truncation limit. Additionally allows for correction of flux quantum losses (FQLs) and for auto-detection of post-pulse-pileups, excluding pileup-affected parts of the voltage trace from the fit.
+    This class extends "TemplateFit". Perform a template fit for single-channel data, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model and a truncation limit. Additionally allows for correction of flux quantum losses (FQLs) and for auto-detection of post-pulse-pileups, excluding pileup-affected parts of the voltage trace from the fit.
     See https://edoc.ub.uni-muenchen.de/23762/ for details.
 
     :param sev: The template (SEV) to use in the fit.
@@ -57,54 +56,44 @@ class TemplateFit_FQLC(FncBaseClass):
                  fit_onset: bool = True,
                  max_shift: int = 50,
                  fqlc_method: str = "mmd",
-                 fql_voltage=None,
-                 fqlc_thresh=None,
+                 fql_voltage: float = None,
+                 fqlc_thresh: float = None,
                  true_pulseheight: float = None,
-                 pileup_trigger_rms=8,
-                 pileup_trigger_window_size=1/20,
-                 pileup_buffer_samples=50):
+                 pileup_trigger_rms: float = 8,
+                 pileup_trigger_window_size: Union[int, float] = 1/20,
+                 pileup_buffer_samples: int = 50):
         if np.array(sev).ndim>1:
             raise ValueError(f"{self.__class__.__name__} can only process single-channel data. Multi-dimensional templates are not supported.")
-        if not (isinstance(bl_poly_order, int) or bl_poly_order is None):
-            raise TypeError(f"'bl_poly_order' has to be a non-zero integer or None, not {type(bl_poly_order)}.")
-        elif isinstance(bl_poly_order, int) and bl_poly_order<0:
-            raise TypeError(f"'bl_poly_order' has to be a non-negative integer, not {bl_poly_order}.")
         
-        self._sev = np.array(sev)
+        # Handle as much as possible in existing TemplateFit
+        super().__init__(sev=sev, 
+                         bl_poly_order=bl_poly_order, 
+                         truncation_limit=truncation_limit, 
+                         xdata=xdata, 
+                         fit_onset=fit_onset, 
+                         max_shift=max_shift)
+        
+        # Values needed in addition to those defined by the superclass
         self._bl_poly_order = bl_poly_order
-        self._truncation_limit = truncation_limit
-        self._xdata = np.linspace(0, 1, self._sev.shape[-1]) if xdata is None else xdata
         self._max_shift = max_shift
-        self._fqlc_method = fqlc_method
-        self._fql_voltage = fql_voltage
-        self._fqlc_thresh = fqlc_thresh
-        self._true_pulseheight=true_pulseheight
         self._pileup_trigger_rms = pileup_trigger_rms
         self._pileup_buffer_samples = pileup_buffer_samples
         self._pileup_trigger_window_size = pileup_trigger_window_size
-        
-        self._rm_bl = RemoveBaseline_VoltageMinimum()
         self._mp = CalcMP()
-
-        if bl_poly_order is None:
-            self._mode = 'simple'
-            self._solver = _TemplateCacheSimple(sev=self._sev, 
-                                                fit_onset=fit_onset, 
-                                                max_shift=self._max_shift)
-        else:
-            self._mode = 'poly'
-            self._solver = _TemplateCachePoly(sev=self._sev, 
-                                              xdata=self._xdata, 
-                                              order=bl_poly_order, 
-                                              fit_onset=fit_onset, 
-                                              max_shift=self._max_shift)
-
-        if self._fqlc_thresh is None:
-            if self._fql_voltage is not None:
-                self._fqlc_thresh = self._fql_voltage/3
+        
+        if fqlc_thresh is None:
+            if fql_voltage is not None:
+                fqlc_thresh = fql_voltage/3
             else:
-                self._fqlc_thresh = 0.2
-        self._fqlc = FluxQuantumLossCorrection(method=self._fqlc_method, fql_voltage=self._fql_voltage, thresh=self._fqlc_thresh, true_pulseheight=self._true_pulseheight)
+                fqlc_thresh = 0.2
+
+        self._fqlc = FluxQuantumLossCorrection(method=fqlc_method, 
+                                               fql_voltage=fql_voltage, 
+                                               thresh=fqlc_thresh, 
+                                               true_pulseheight=true_pulseheight)
+        
+        # Override the baseline subtraction defined in the superclass
+        self._rm_bl = RemoveBaseline(dict(model="voltage_minimum"))
 
     def __call__(self, event):
         self._ev_fqlc = self._fqlc(event) # flux quantum loss corrected event
@@ -112,7 +101,9 @@ class TemplateFit_FQLC(FncBaseClass):
         self._fitpar_length = 1
         if self._bl_poly_order is not None:
             self._fitpar_length = self._bl_poly_order+2
-        if event.shape != self._sev.shape: # Return empty results of correct dimensions and a discard flag. Not raising an error, because it can happen that events have irregular lengths and this treatment still allows for bulk processing of large amounts of data.
+
+        # Return empty results of correct dimensions and a discard flag. Not raising an error, because it can happen that events have irregular lengths and this treatment still allows for bulk processing of large amounts of data.
+        if event.shape != self._sev.shape: 
             if self._fitpar_length == 1:
                 return 0, 0, 0, True
             else:
@@ -137,19 +128,21 @@ class TemplateFit_FQLC(FncBaseClass):
             else:
                 window_size = int(event.shape[-1]*self._pileup_trigger_window_size)
 
-            find_peaks = partial(vai.trigger_zscore, 
-                                 record_length=window_size,
-                                 threshold=self._pileup_trigger_rms)
-            
-            self._peak_pos = self._find_peaks(self._ev_fqlc)[0]
+            self._peak_pos = vai.trigger_zscore(self._ev_fqlc, 
+                                                window_size, 
+                                                self._pileup_trigger_rms)[0]
+
             if len(self._peak_pos)>=2:
-                if self._peak_pos[1] > self._ev_fqlc.shape[0]/4 + self._max_shift: # could be that a peak is found before the actual event, then the event peak would be second, in that case we don't want to incluse the event pulse from the fit.
+                # Could be that a peak is found before the actual event, then the event peak would be second, in that case we don't want to incluse the event pulse from the fit.
+                if self._peak_pos[1] > self._ev_fqlc.shape[0]/4 + self._max_shift: 
                     self._no_pileup[self._peak_pos[1]-self._pileup_buffer_samples:] = False # pulse starts earlier than it is above 5 sigma
                 else: # pileup before the event pulse, discard fit
                     discard = True
 
-        if not np.any(self._below_truncation_limit*self._no_pileup): # nothing left to fit to
-            if self._fitpar_length == 1: # return empty results of correct dimensions and a discard flag
+        # Nothing left to fit to
+        if not np.any(self._below_truncation_limit*self._no_pileup): 
+            # Return empty results of correct dimensions and a discard flag
+            if self._fitpar_length == 1: 
                 return 0, 0, 0, True
             else:
                 return [0,]*self._fitpar_length, 0, 0, True
