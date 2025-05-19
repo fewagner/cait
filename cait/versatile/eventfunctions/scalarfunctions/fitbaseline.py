@@ -17,7 +17,7 @@ class FitBaseline(FitFncBaseClass):
     Fit voltage traces with a polynomial or decaying exponential and return the fit parameters as well as the RMS.
     Also works for multiple channels simultaneously.
 
-    :param model: Order of the polynomial or 'exponential'/'exp', defaults to 0, i.e. a constant baseline.
+    :param model: Order of the polynomial, 'exponential'/'exp' (exponential baseline model), or 'voltage_minimum' (subtracting a constant value, which is close to the minimum of the voltage trace before the pulse -- with some fluctuation mitigation. This works better than the standard method when there is a pileup in the pre-trigger region), defaults to 0, i.e. a constant baseline.
     :type model: Union[int, str]
     :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where)*record_length` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None)`.  
     :type where: Union[List[bool], slice, int]
@@ -46,17 +46,23 @@ class FitBaseline(FitFncBaseClass):
     .. image:: media/FitBaseline_preview.png
     """
     def __init__(self, model: Union[int, str] = 0, where: Union[List[bool], slice, float] = slice(None, None, None), xdata: List[float] = None):
-        if type(model) not in [str, int]:
+        if not isinstance(model, (str, int)):
             raise NotImplementedError(f"Unsupported type '{type(model)}' for input 'order'.")
-        elif type(model) is str and model not in ['exponential', 'exp']:
+        elif isinstance(model, str) and model not in ['exponential', 
+                                                      'exp', 
+                                                      'voltage_minimum']:
             raise NotImplementedError(f"Unrecognized baseline model '{model}'.")
-        elif type(model) is int and model < 0:
+        elif isinstance(model, int) and model < 0:
             raise NotImplementedError(f"Polynomial order '{model}' is not supported, only non-zero integers are.")
         
         self._model = model
         self._where = where
         self._xdata = xdata
         self._A = None
+
+        if isinstance(model, str) and model == 'voltage_minimum':
+            from .calcmp import CalcMP
+            self._mp = CalcMP()
 
     def __call__(self, event):
         # ATTENTION: this is set only once
@@ -67,6 +73,34 @@ class FitBaseline(FitFncBaseClass):
         if self._model == 0:
             self._fitpar =  np.mean(event[..., self._where], axis=-1)
             self._rms = np.std(event[..., self._where], axis=-1)
+
+        # Adapted model which is more stable in case of pre-trigger pile-up    
+        elif self._model == 'voltage_minimum':
+            # Get onset
+            t0s = np.atleast_1d(np.astype(self._mp(event)[1], np.int32))
+            # Easily handle multiple channels
+            events = np.atleast_2d(event)
+            # Model was developed for a fixed record length. Here, the indices
+            # 600 and 100 were found to work well. Consequently, we scale the
+            # indices now for an arbitrary record length.
+            k1, k2 = int(600/2**14*event.shape[-1]), int(100/2**14*event.shape[-1])
+
+            self._fitpar = np.zeros(events.shape[0])
+            self._rms = np.zeros(events.shape[0])
+            
+            # If anyone finds a way to do this more elegantly, feel free to change!
+            for i, (t0, event) in enumerate(zip(t0s, events)):
+                t_min = k1
+                if int(t0) > k1:
+                    # Get baseline value as average of samples before the minimum. Minimum likely to sit at negative noise fluctuation, so do not include in average. Average before and not after to not average over part of the pulse.
+                    t_min += np.argmin(event[k1:t0])
+                
+                self._fitpar[i] = np.mean(event[t_min-k1:t_min-k2])
+                self._rms[i] = np.std(event[t_min-k1:t_min-k2])
+
+            self._fitpar = np.squeeze(self._fitpar)
+            self._rms = np.squeeze(self._rms)
+
         else:
             # ATTENTION: This is only set once, i.e. data has to have same length 
             if self._xdata is None: 
@@ -129,6 +163,11 @@ class FitBaseline(FitFncBaseClass):
                 return np.array([exponential_decay(x, *par[k]) for k in range(par.shape[0])])
             else:
                 return exponential_decay(x, *par)
+        elif self._model == "voltage_minimum":
+            if par.ndim > 1: # i.e. we have multiple channels
+                return np.array([np.ones_like(x)*par[k] for k in range(par.shape[0])])
+            else:
+                return np.ones_like(x)*par
         else:
             if par.shape[-1] != self._model+1:
                 raise ValueError(f"{self._model+1} parameter(s) are required to fully describe this model.")
@@ -147,10 +186,13 @@ class FitBaseline(FitFncBaseClass):
         # This happens for constant baseline fit (self._xdata is never needed and therefore never
         # computed)
         if self._xdata is None: 
-                self._xdata = np.arange(np.array(event).shape[-1])
+            self._xdata = np.arange(np.array(event).shape[-1])
                 
-        # self._fitpar is not an array for self._model = 0
-        par = np.array([self._fitpar]).T if self._model == 0 else self._fitpar
+        # self._fitpar is not an array for self._model = 0 or 'voltage_minimum'
+        if self._model in [0, 'voltage_minimum']:
+            par = np.array([self._fitpar]).T
+        else:
+            par = self._fitpar
             
         # Reconstruct fit function
         fit = self.model(self._xdata, par)

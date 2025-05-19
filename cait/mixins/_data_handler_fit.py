@@ -640,7 +640,7 @@ class FitMixin(object):
             sat = h5f.require_group('saturation')
             sat.require_dataset(name='fitpar',
                                 shape=(self.nmbr_channels, len(par) + 1),
-                                dtype=np.float)
+                                dtype=float)
             sat['fitpar'][channel, 0] = A
             sat['fitpar'][channel, 1:] = par
 
@@ -673,6 +673,7 @@ class FitMixin(object):
                                    model='gauss',
                                    ylog=False,
                                    save_path=None,
+                                   return_plotting_data=False
                                    ):
         """
         Estimate the trigger threshold to obtain a given number of noise triggers per exposure.
@@ -731,6 +732,8 @@ class FitMixin(object):
         :type ylog: bool
         :param save_path: A path to save the plots.
         :type save_path: string
+        :param return_plotting_data: Instead of plotting, the data for plotting can be returned, allowing for custom plots.
+        :type return_plotting_data: bool
         """
 
         if sample_length is None:
@@ -781,24 +784,31 @@ class FitMixin(object):
                                                  ll, model,
                                                  pars, allowed_noise_triggers)
 
+        # Arguments used for plotting. Can also be returned if 'return_plotting_data=True'
+        plot_dict = dict(
+            bins_hist=bins_hist,
+            counts_hist=counts_hist,
+            x_grid=x_grid,
+            trigger_window=trigger_window,
+            ph_distribution=ph_distribution,
+            model=model,
+            polluted_ph_distribution=polluted_ph_distribution,
+            title=title,
+            xran_hist=xran_hist,
+            noise_trigger_rate=noise_trigger_rate,
+            polluted_trigger_rate=polluted_trigger_rate,
+            threshold=threshold,
+            yran=yran,
+            allowed_noise_triggers=allowed_noise_triggers,
+            nmbr_pollution_triggers=nmbr_pollution_triggers,
+            xran=xran,
+            ylog=ylog,
+            only_histogram=False,
+            save_path=save_path
+        )
+
         if plot:
-            plot_noise_trigger_model(bins_hist=bins_hist,
-                                     counts_hist=counts_hist,
-                                     x_grid=x_grid,
-                                     trigger_window=trigger_window,
-                                     ph_distribution=ph_distribution,
-                                     model=model,
-                                     polluted_ph_distribution=polluted_ph_distribution,
-                                     title=title,
-                                     xran_hist=xran_hist,
-                                     noise_trigger_rate=noise_trigger_rate,
-                                     polluted_trigger_rate=polluted_trigger_rate,
-                                     threshold=threshold,
-                                     yran=yran,
-                                     allowed_noise_triggers=allowed_noise_triggers,
-                                     nmbr_pollution_triggers=nmbr_pollution_triggers,
-                                     xran=xran,
-                                     ylog=ylog,
-                                     only_histogram=False,
-                                     save_path=save_path,
-                                     ) 
+            plot_noise_trigger_model(**plot_dict)
+
+        if return_plotting_data:
+            return plot_dict

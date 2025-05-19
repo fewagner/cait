@@ -17,6 +17,8 @@ class Preview(Viewer):
     :type events: IteratorBaseClass
     :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Defaults to Unity (which means that just the events of the iterable will be displayed)
     :type f: :class:`cait.versatile.eventfunctions.functionbase.FncBaseClass`
+    :param show_ev_time: If True, event number and time are shown in the y-axis label. Defaults to True.
+    :type show_ev_time: bool, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
@@ -35,7 +37,7 @@ class Preview(Viewer):
         # View pulses starting from index 37
         vai.Preview(it[:, 37:])
     """
-    def __init__(self, events: IteratorBaseClass, f: Callable = None, **kwargs):
+    def __init__(self, events: IteratorBaseClass, f: Callable = None, show_ev_time = True, **kwargs):
         #viewer_kwargs = {k:v for k,v in kwargs.items() if k in ["backend","template","width","height"]}
         #for k in ["backend","template","width","height"]: kwargs.pop(k, None)
         super().__init__(data=None, show_controls=True, **kwargs)
@@ -49,6 +51,7 @@ class Preview(Viewer):
         self._f = f if f is not None else Unity(events.t)
         self._current_ind = 0
         self._events = events
+        self._show_ev_time = show_ev_time
         
         self.start()
 
@@ -77,17 +80,18 @@ class Preview(Viewer):
             if d["axes"].get("yaxis") is None: d["axes"]["yaxis"] = dict()
             if d["axes"]["yaxis"].get("label") is None: 
                 d["axes"]["yaxis"]["label"] = ""
-            else:
+            elif self._show_ev_time:
                 d["axes"]["yaxis"]["label"] += ", "
-            
-            d["axes"]["yaxis"]["label"] += f"event {self._current_ind}, {tsstr}"
+            if self._show_ev_time:
+                d["axes"]["yaxis"]["label"] += f"event {self._current_ind}, {tsstr}"
 
             # Plot
             self.plot(d)
+            self.show_legend()
         except:
             self.close()
             raise
-    
+        
     def start(self):
         """
         Show the plot and start iterating over the events.

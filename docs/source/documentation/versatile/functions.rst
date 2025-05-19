@@ -40,6 +40,9 @@ Processing functions
 .. autoclass:: OptimumFiltering
    :member-order: bysource
    :exclude-members: batch_support
+.. autoclass:: FluxQuantumLossCorrection
+   :member-order: bysource
+   :exclude-members: batch_support
 
 Scalar functions
 ~~~~~~~~~~~~~~~~
@@ -52,6 +55,15 @@ Scalar functions
    :member-order: bysource
    :exclude-members: batch_support
 .. autoclass:: TemplateFit
+   :member-order: bysource
+   :exclude-members: batch_support
+.. autoclass:: TemplateFitCorrelated
+   :member-order: bysource
+   :exclude-members: batch_support
+.. autoclass:: TemplateFit_FQLC
+   :member-order: bysource
+   :exclude-members: batch_support
+.. autoclass:: SaturationTime
    :member-order: bysource
    :exclude-members: batch_support
 .. autoclass:: NPeaks
