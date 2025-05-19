@@ -1,5 +1,4 @@
 from typing import List, Union
-from functools import partial
 
 import numpy as np
 import cait.versatile as vai
@@ -14,8 +13,7 @@ from .templatefit import shift_arrays, TemplateFit
 ########################
 class TemplateFit_FQLC(TemplateFit):
     """
-    This class extends "TemplateFit". Perform a template fit for single-channel data, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model and a truncation limit. Additionally allows for correction of flux quantum losses (FQLs) and for auto-detection of post-pulse-pileups, excluding pileup-affected parts of the voltage trace from the fit.
-    See https://edoc.ub.uni-muenchen.de/23762/ for details.
+    This class extends :class:`cait.versatile.TemplateFit`. Perform a template fit for single-channel data, i.e. fit a numeric SEV to data and additionally allow for correction of flux quantum losses (FQLs) and for auto-detection of post-pulse-pileups, excluding pileup-affected parts of the voltage trace from the fit.
 
     :param sev: The template (SEV) to use in the fit.
     :type sev: np.ndarray
@@ -47,6 +45,50 @@ class TemplateFit_FQLC(TemplateFit):
     :return: Tuple of fit result, optimal shift, RMS value and a flag indicating whether the result should be discarded due to problems in the fitting procedure ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0. If the fit fails, the discard flag is set to True.
     :rtype: Tuple[np.ndarray, int, float, bool]
 
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import cait.versatile as vai
+
+        # Get events and SEV from mock data (and select first channel)
+        md = vai.MockData()
+        sev = md.sev[0]
+        events = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+
+        # Define a function that (roughly) mimics events with FQL.
+        # (This is of course only needed to make this example 
+        # self-contained. You would have actual data for such events.)
+        SHIFT = 3
+        def mock_fql(event):
+            fake_event = event.copy()
+            ph = np.max(fake_event)
+            flag = fake_event > ph - SHIFT
+            fake_event[flag] = ph - SHIFT
+            k = np.argmax(flag[::-1])
+            fake_event[-k:] += ph*sev[-k:]/np.max(sev[-k:]) - vai.BoxCarSmoothing()(fake_event)[-k:] - SHIFT
+            
+            return fake_event
+
+        # Add this function as processing (to fake FQL events).
+        # Again, you don't need this because you have FQL data.
+        events = events.with_processing(mock_fql)
+
+        # The template fit function
+        f = vai.TemplateFit_FQLC(sev, truncation_limit=SHIFT)
+
+        # Preview the working of the FQL corrected TemplateFit
+        vai.Preview(events, f)
+
+        # Or calculate the fit values.
+        # Make sure to use the 'discard' flag to exclude invalid results!
+        fitpars, shift, rms, discard = vai.apply(f, events)
+
+        # Check the distribution of pulse heights
+        vai.Histogram(fitpars[~discard])
+
+    .. image:: media/TemplateFit_FQLC_preview.png
     """
     def __init__(self, 
                  sev: np.ndarray,

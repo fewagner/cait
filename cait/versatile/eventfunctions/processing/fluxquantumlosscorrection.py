@@ -21,6 +21,48 @@ class FluxQuantumLossCorrection(FncBaseClass):
 
     :return: Event with FQL corrected, or value of shift if return_shift_value is set to True.
     :rtype: Union[numpy.ndarray, float]
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import cait.versatile as vai
+
+        # Get events and SEV from mock data (and select first channel)
+        md = vai.MockData()
+        sev = md.sev[0]
+        events = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+
+        # Define a function that (roughly) mimics events with FQL.
+        # (This is of course only needed to make this example 
+        # self-contained. You would have actual data for such events.)
+        SHIFT = 3
+        def mock_fql(event):
+            fake_event = event.copy()
+            ph = np.max(fake_event)
+            flag = fake_event > ph - SHIFT
+            fake_event[flag] = ph - SHIFT
+            k = np.argmax(flag[::-1])
+            fake_event[-k:] += ph*sev[-k:]/np.max(sev[-k:]) - vai.BoxCarSmoothing()(fake_event)[-k:] - SHIFT
+            
+            return fake_event
+
+        # Add this function as processing (to fake FQL events).
+        # Again, you don't need this because you have FQL data.
+        events = events.with_processing(mock_fql)
+
+        # Preview the working of the FQL correction
+        vai.Preview(events, vai.FluxQuantumLossCorrection())
+
+        # Or calculate the shift value by setting 'return_shift_value=True'.
+        # The result are values close to 3, i.e. the one we 'simulated'
+        shift_values = vai.apply(vai.FluxQuantumLossCorrection(return_shift_value=True), events)
+
+        # Check the distribution of shift values
+        vai.Histogram(shift_values)
+
+    .. image:: media/FQLC_preview.png
     """
     def __init__(self, 
                  method: str = "mmd", 

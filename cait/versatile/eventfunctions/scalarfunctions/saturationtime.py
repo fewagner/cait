@@ -29,6 +29,47 @@ class SaturationTime(FncBaseClass):
     
     :return: Saturation time in ms.
     :rtype: float
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import cait.versatile as vai
+
+        # Get events and SEV from mock data (and select first channel)
+        md = vai.MockData()
+        sev = md.sev[0]
+        events = md.get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+
+        # Define a function that (roughly) mimics events with FQL.
+        # (This is of course only needed to make this example 
+        # self-contained. You would have actual data for such events.)
+        SHIFT = 3
+        def mock_fql(event):
+            fake_event = event.copy()
+            ph = np.max(fake_event)
+            flag = fake_event > ph - SHIFT
+            fake_event[flag] = ph - SHIFT
+            k = np.argmax(flag[::-1])
+            fake_event[-k:] += ph*sev[-k:]/np.max(sev[-k:]) - vai.BoxCarSmoothing()(fake_event)[-k:] - SHIFT
+            
+            return fake_event
+
+        # Add this function as processing (to fake FQL events).
+        # Again, you don't need this because you have FQL data.
+        events = events.with_processing(mock_fql)
+
+        # Preview the working of the SaturationTime calculation
+        vai.Preview(events, vai.SaturationTime())
+
+        # Or calculate it for all events.
+        sat_times = vai.apply(vai.SaturationTime(), events)
+
+        # Check the distribution of saturation time values
+        vai.Histogram(sat_times)
+
+    .. image:: media/SaturationTime_preview.png
     """
     def __init__(self, 
                  saturation_level_mode: str = "relative", 
@@ -103,14 +144,14 @@ class SaturationTime(FncBaseClass):
     def preview(self, event):
         self(event)
         self._tax = np.arange(0,len(event)*0.04, 0.04)-len(event)/4*0.04
-        if self._smoothing_length > 0:
+        if self._smoothing_length is not None and self._smoothing_length > 0:
             d = {'Event': [self._tax, event],
                  'Shifted, smoothed event': [self._tax, self._ev_fqlc],
                  'Saturation time': [[self._tax[int(self._t_start)], self._tax[self._t_dec]], [self._absolute_saturation_level, self._absolute_saturation_level]]}
         else:
             d = {'Event': [self._tax, event],
                  'Shifted event': [self._tax, self._ev_fqlc],
-                 'Saturation time': [[self._tax[self._t_start], self._tax[self._t_dec]], [self._absolute_saturation_level, self._absolute_saturation_level]]}
+                 'Saturation time': [[self._tax[int(self._t_start)], self._tax[self._t_dec]], [self._absolute_saturation_level, self._absolute_saturation_level]]}
         ax = {'xaxis': {'label': "Time [ms]"}, 'yaxis': {'label': "Voltage [V]"}}
     
         return dict(line = d, scatter = {'Saturation level': [[self._tax[self._t_dec], self._tax[int(self._t_start)]], [self._absolute_saturation_level, self._absolute_saturation_level]], 'ph': [[self._tax[int(self._t_max)]], [self._ph]]}, axes=ax)
