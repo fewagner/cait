@@ -30,7 +30,15 @@ class SaturationTime(FncBaseClass):
     :return: Saturation time in ms.
     :rtype: float
     """
-    def __init__(self, saturation_level_mode: str = "relative", saturation_level: float = 0.9, smoothing_length: int = None, peak_bounds: tuple = (.23, .29), fqlc_method: str = "mmd", fql_voltage: float=None, fqlc_thresh: float = None, true_pulseheight: float = None):
+    def __init__(self, 
+                 saturation_level_mode: str = "relative", 
+                 saturation_level: float = 0.9, 
+                 smoothing_length: int = None, 
+                 peak_bounds: tuple = (.23, .29), 
+                 fqlc_method: str = "mmd", 
+                 fql_voltage: float = None, 
+                 fqlc_thresh: float = None, 
+                 true_pulseheight: float = None):
         self._mp = CalcMP(peak_bounds=peak_bounds)
         self._rm_bl_standard = RemoveBaseline()
         self._saturation_level_mode = saturation_level_mode
@@ -39,18 +47,20 @@ class SaturationTime(FncBaseClass):
         self._fqlc_method = fqlc_method
         self._fql_voltage = fql_voltage
         self._fqlc_thresh = fqlc_thresh
-        self._true_pulseheight=true_pulseheight
+        self._true_pulseheight = true_pulseheight
 
-        if self._saturation_level_mode != "relative" and self._saturation_level_mode != "absolute":
-            raise ValueError("Choose saturation level mode from \"relative\" or \"absolute\".")
-            return None
+        if self._saturation_level_mode not in ["relative", "absolute"]:
+            raise ValueError('Choose saturation level mode from "relative" or "absolute".')
         
         if self._fqlc_thresh is None:
             if self._fql_voltage is not None:
                 self._fqlc_thresh = self._fql_voltage/3
             else:
                 self._fqlc_thresh = 0.2
-        self._fqlc = FluxQuantumLossCorrection(method=self._fqlc_method, fql_voltage=self._fql_voltage, thresh=self._fqlc_thresh, true_pulseheight=self._true_pulseheight)
+        self._fqlc = FluxQuantumLossCorrection(method=self._fqlc_method, 
+                                               fql_voltage=self._fql_voltage, 
+                                               thresh=self._fqlc_thresh, 
+                                               true_pulseheight=self._true_pulseheight)
 
         if self._smoothing_length is not None:
             self._BCSmoothing = BoxCarSmoothing(length=self._smoothing_length)
@@ -59,29 +69,35 @@ class SaturationTime(FncBaseClass):
         event = self._rm_bl_standard(event)
         self._ev_fqlc = self._fqlc(event)
         self._shift = self._ev_fqlc[-1] - event[-1]
-        self._ph, self._t0, _, self._t_max, _, _, self._t_end, _, _ = self._mp(event) # Not calculated using self._ev_fqlc, as the standard baseline removal in CalcMP can lead to the wrong pulseheight if there are pre-trigger pileups.
+        # Not calculated using self._ev_fqlc, as the standard baseline removal in CalcMP can lead to the wrong pulseheight if there are pre-trigger pileups.
+        self._ph, self._t0, _, self._t_max, _, _, self._t_end, _, _ = self._mp(event) 
         self._ph += self._shift
 
-        if self._saturation_level_mode == "relative": # if the saturation level mode is "relative", multiply by the ph to get an absolute value
+        # If the saturation level mode is "relative", multiply by the ph to get an absolute value
+        if self._saturation_level_mode == "relative": 
             self._absolute_saturation_level = self._saturation_level * self._ph
         else:
             self._absolute_saturation_level = self._saturation_level
         
         if np.any(np.flip(self._ev_fqlc[:int(self._t_max)]) < self._absolute_saturation_level):
             self._t_start = self._t_max - np.argmax(np.flip(self._ev_fqlc[:int(self._t_max)]) < self._absolute_saturation_level)
+        # Pulse does not go below saturation level before t_max
         else:
-            return -1 # pulse does not go below saturation level before t_max
+            return -1 
         
         if self._smoothing_length is not None:
             self._ev_fqlc_presmoothing = np.copy(self._ev_fqlc)
             self._ev_fqlc = self._BCSmoothing(self._ev_fqlc_presmoothing)
         
-        if np.any(self._ev_fqlc[int(self._t_start):] < self._absolute_saturation_level): # catches cases where the pulse does not fall below the saturation level
+        # Catches cases where the pulse does not fall below the saturation level
+        if np.any(self._ev_fqlc[int(self._t_start):] < self._absolute_saturation_level): 
             self._t_dec = np.argmax(self._ev_fqlc[int(self._t_max):] < self._absolute_saturation_level) + int(self._t_max)
+        # Pulse does not decay below saturation level (within record window)
         else:
-            return -1 # pulse does not decay below saturation level (within record window)
-       
-        return 0.04 * (self._t_dec - self._t_start) # converts array indices to ms for a sampling rate of 25kHz
+            return -1 
+        
+        # Converts array indices to ms for a sampling rate of 25kHz
+        return 0.04 * (self._t_dec - self._t_start) 
 
         
     def preview(self, event):

@@ -39,7 +39,7 @@ class RemoveBaseline(FncBaseClass):
 
     def __call__(self, event):
         par, *_ = self._fit_baseline(event)
-        if self._fit_baseline._model == 0:
+        if self._fit_baseline._model in [0, 'voltage_minimum']:
             if np.ndim(event) > 1:
                 self._shifted_event = event - np.array(par)[:, None]
             else:

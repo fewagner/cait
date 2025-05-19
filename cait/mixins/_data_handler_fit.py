@@ -784,26 +784,31 @@ class FitMixin(object):
                                                  ll, model,
                                                  pars, allowed_noise_triggers)
 
+        # Arguments used for plotting. Can also be returned if 'return_plotting_data=True'
+        plot_dict = dict(
+            bins_hist=bins_hist,
+            counts_hist=counts_hist,
+            x_grid=x_grid,
+            trigger_window=trigger_window,
+            ph_distribution=ph_distribution,
+            model=model,
+            polluted_ph_distribution=polluted_ph_distribution,
+            title=title,
+            xran_hist=xran_hist,
+            noise_trigger_rate=noise_trigger_rate,
+            polluted_trigger_rate=polluted_trigger_rate,
+            threshold=threshold,
+            yran=yran,
+            allowed_noise_triggers=allowed_noise_triggers,
+            nmbr_pollution_triggers=nmbr_pollution_triggers,
+            xran=xran,
+            ylog=ylog,
+            only_histogram=False,
+            save_path=save_path
+        )
+
         if plot:
-            plot_noise_trigger_model(bins_hist=bins_hist,
-                                     counts_hist=counts_hist,
-                                     x_grid=x_grid,
-                                     trigger_window=trigger_window,
-                                     ph_distribution=ph_distribution,
-                                     model=model,
-                                     polluted_ph_distribution=polluted_ph_distribution,
-                                     title=title,
-                                     xran_hist=xran_hist,
-                                     noise_trigger_rate=noise_trigger_rate,
-                                     polluted_trigger_rate=polluted_trigger_rate,
-                                     threshold=threshold,
-                                     yran=yran,
-                                     allowed_noise_triggers=allowed_noise_triggers,
-                                     nmbr_pollution_triggers=nmbr_pollution_triggers,
-                                     xran=xran,
-                                     ylog=ylog,
-                                     only_histogram=False,
-                                     save_path=save_path,
-                                     )
+            plot_noise_trigger_model(**plot_dict)
+
         if return_plotting_data:
-            return bins_hist, counts_hist, x_grid, trigger_window, ph_distribution, model, polluted_ph_distribution, title, xran_hist, noise_trigger_rate, polluted_trigger_rate, threshold, yran, allowed_noise_triggers, nmbr_pollution_triggers, xran, ylog, False, save_path
+            return plot_dict

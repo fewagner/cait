@@ -1,5 +1,4 @@
 from typing import List
-from typing import Union
 from functools import partial
 
 import numpy as np
@@ -10,59 +9,6 @@ from ..processing.fluxquantumlosscorrection import FluxQuantumLossCorrection
 from ..processing.fluxquantumlosscorrection import RemoveBaseline_VoltageMinimum
 from .calcmp import CalcMP
 from .templatefit import shift_arrays, _TemplateCacheSimple, _TemplateCachePoly
-
-
-class All_Peak_Positions(FncBaseClass):
-    """
-    This is a copy-paste of the class "NPeaks", which calculates the number of peaks found, but it instead returns the indices of the peaks found. The peaks are found in an event by applying a moving z-score trigger to the trace.
-
-    :param window_size: The size of the sliding window for the z-score trigger. If it's an integer, this will be the number of samples in the window, if it's a float, the number will be scaled to the record_length of the events (e.g. if 1/20, the window will be 1/20th of the record_length). The larger the window, the more robust the trigger is. However, you will miss potential triggers in the beginning of the event because the first sample that can reliably searched after applying the moving z-score is at ``window_size``. Defaults to 1/20
-    :type window_size: Union[int, float], optional
-    :param threshold: The threshold (in sigmas) for the trigger, defaults to 3.5
-    :type threshold: float, optional
-
-    :return: Indices of peaks found.
-    :rtype: numpy.ndarray
-    """
-    def __init__(self, window_size: Union[int, float] = 1/20, threshold: float = 3.5):
-        self._window_size = window_size
-        self._threshold = threshold
-
-        if isinstance(window_size, int):
-            self._trigger = partial(vai.trigger_zscore, 
-                                    record_length=window_size,
-                                    threshold=threshold)
-        else:
-            self._trigger = None
-
-        self._trigger_inds = list()
-
-    def __call__(self, event):
-        if np.array(event).ndim > 1:
-            raise NotImplementedError(f"Multi-channel events are not supported by {self.__class__.__name__}")
-        if self._trigger is None:
-            record_length = np.array(event).shape[-1]
-            window_size = int(record_length*self._window_size)
-            self._trigger = partial(vai.trigger_zscore, 
-                                    record_length=window_size,
-                                    threshold=self._threshold)
-            
-        self._trigger_inds, _ = self._trigger(event)
-        return self._trigger_inds
-    
-    @property
-    def batch_support(self):
-        return 'none'
-    
-    def preview(self, event):
-        n = len(self(event))
-        x = np.arange(event.shape[-1])
-        
-        l = {'event': [x, event]}
-        s = {'triggers': [x[self._trigger_inds] if n>0 else [],
-                             event[self._trigger_inds] if n>0 else []]}
-        return dict(line=l, scatter=s)
-
 
 ########################
 ### CLASS DEFINITION ###
@@ -135,12 +81,10 @@ class TemplateFit_FQLC(FncBaseClass):
         self._true_pulseheight=true_pulseheight
         self._pileup_trigger_rms = pileup_trigger_rms
         self._pileup_buffer_samples = pileup_buffer_samples
+        self._pileup_trigger_window_size = pileup_trigger_window_size
         
         self._rm_bl = RemoveBaseline_VoltageMinimum()
         self._mp = CalcMP()
-
-        if self._pileup_trigger_rms is not None:
-            self._find_peaks = All_Peak_Positions(threshold=pileup_trigger_rms, window_size=pileup_trigger_window_size)
 
         if bl_poly_order is None:
             self._mode = 'simple'
@@ -188,7 +132,16 @@ class TemplateFit_FQLC(FncBaseClass):
         discard = False
 
         if self._pileup_trigger_rms is not None:
-            self._peak_pos = self._find_peaks(self._ev_fqlc)
+            if isinstance(self._pileup_trigger_window_size, int):
+                window_size = self._pileup_trigger_window_size
+            else:
+                window_size = int(event.shape[-1]*self._pileup_trigger_window_size)
+
+            find_peaks = partial(vai.trigger_zscore, 
+                                 record_length=window_size,
+                                 threshold=self._pileup_trigger_rms)
+            
+            self._peak_pos = self._find_peaks(self._ev_fqlc)[0]
             if len(self._peak_pos)>=2:
                 if self._peak_pos[1] > self._ev_fqlc.shape[0]/4 + self._max_shift: # could be that a peak is found before the actual event, then the event peak would be second, in that case we don't want to incluse the event pulse from the fit.
                     self._no_pileup[self._peak_pos[1]-self._pileup_buffer_samples:] = False # pulse starts earlier than it is above 5 sigma
