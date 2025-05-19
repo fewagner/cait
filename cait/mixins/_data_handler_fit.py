@@ -2,6 +2,7 @@ import warnings
 from functools import partial
 from multiprocessing import Pool
 from deprecation import deprecated
+from typing import Union, List
 
 import numpy as np
 import h5py
@@ -15,6 +16,9 @@ from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbin
     plot_noise_trigger_model, calc_threshold
 from ..fit._saturation import logistic_curve_zero, A_zero
 from ..fit._numerical_fit import array_fit, arr_fit_rms
+from ..styles._print_styles import txt_fmt
+
+import cait.versatile as vai
 
 # -----------------------------------------------------------
 # CLASS
@@ -84,7 +88,7 @@ class FitMixin(object):
             h5f[type]['fitpar'][:, :, :] = fitpar_event
 
     # apply sev fit
-    @deprecated(details="This method is deprecated. Use DataHandler.apply_array_fit() instead.")
+    @deprecated(deprecated_in='1.1.0', details="Use DataHandler.apply_template_fit() instead.")
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
                       verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
@@ -221,6 +225,7 @@ class FitMixin(object):
             print('Done.')
 
     # apply array fit
+    @deprecated(deprecated_in='1.3.0', details="Use DataHandler.apply_template_fit() instead.")
     def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
                         max_shift=20,
                         truncation_level=None,
@@ -327,6 +332,224 @@ class FitMixin(object):
                                                        sevs[c], bound_samples)
 
             print('Done.')
+
+    def apply_template_fit(self,
+                           group: str,
+                           sev: np.ndarray,
+                           bl_poly_order: Union[int, List[int]] = 3,
+                           truncation_limit: Union[float, List[float]] = None,
+                           correlated: bool = False,
+                           fit_onset: Union[bool, List[bool]] = True,
+                           max_shift: int = 50,
+                           only_channels: Union[int, List[int]] = None,
+                           event_flag: np.ndarray = None,
+                           preview: bool = False,
+                           **kwargs
+                           ):
+        """
+        Perform a (correlated) template fit for for events of a specified group, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model (for each channel individually) and a truncation limit (for each channel individually).
+        The 'correlated' in this context means that you can choose which of the channel's onset should be fitted (possibly multiple, see below).
+        See https://edoc.ub.uni-muenchen.de/23762/ and https://mediatum.ub.tum.de/?id=1294132 for details.
+
+        :param group: The DataHandler group with the events that should be fitted. The fit parameters will be saved to this group, too.
+        :type group: str
+        :param sev: The template (SEV) to use in the fit (with as many channels as you want to fit).
+        :type sev: np.ndarray
+        :param bl_poly_order: List of the baseline models to use in the fit (one entry for each channel that you want to fit). Has to be a non-zero integer or None. If 0, a constant offset is fitted, if 1, a linear baseline is assumed, etc. If None, the baseline is assumed to be constantly 0 (here, it's the users responsibility to remove the baseline accordingly). If only None or an integer is provided, this value is used for all fitted channels, defaults to 3, i.e. fitting a cubic baseline for all channels.
+        :type bl_poly_order: Union[int, List[int]], optional
+        :param truncation_limit: List with as many entries as there are channels to fit. For each entry that is not None, a truncated fit is performed: all samples between the first and the last sample above 'truncation_limit' are ignored in the fit. To determine these samples, the baseline of the event is removed by fitting a linear polynomial to the beginning of the record window. If only None or a float is provided, this value is used for all fitted channels. Defaults to None, i.e. not performing a truncated fit in any channel.
+        :type truncation_limit: Union[float, List[float]], optional
+        :param correlated: If True, a correlated fit is performed, i.e. the SEV is shifted for all channels simultaneously. Depending on 'fit_onset' (see below and also examples), different behavior can be achieved. If False, each channel is fitted independently of the others, defaults to False. 
+        :type correlated: bool, optional
+        :param fit_onset: List with as many entries as there are channels to fit. For each entry that is True, the onset value of the respective channel is fitted. If ``correlated=False``, the onsets are fitted independently. If ``correlated=True``, all channels for which ``fit_onset=True`` participate in the onset fit (common minimization): If only one of the entries is True, this channel is the 'dominant' one, i.e. its onset is fitted and all other channels are moved (passively) in unison (and only their pulse height + baseline is fitted). If multiple are True, their chi-squared for the fit is combined, i.e. the template is still moved in unison, but the minimizer considers all channels. If only one boolean is provided, it is used for all fitted channels. Defaults to True, i.e. fit onset in all channels
+        :type fit_onset: Union[bool, List[bool]], optional
+        :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``.
+        :type max_shift: int, optional
+
+        :param only_channels: If you only want to fit some of the channels in 'group', you can specify the channel index/indices here. Note that the size of 'sev', 'bl_poly_order', 'truncation_limit', and 'fit_onset' have to match the number of channels to be fitted, i.e. if you fit two channels, the 'sev' also has to have two channels. Defaults to None, i.e. fitting all channels in 'group'.
+        :type only_channels: Union[int, List[int]], optional
+        :param event_flag: A boolean flag. If you don't want to fit all events in 'group', you can specify a flag for which to fit here. Events that were not fit, receive an RMS value of -404 in the output dataset. Has to have the same length as there are events in 'group' and applies to all channels. Defaults to None, i.e. fit all events.
+        :type event_flag: np.ndarray, optional
+        :param preview: If True, an interactive preview illustrating the fit using the current input arguments on the event traces opens up. Defaults to False
+        :type preview: bool, optional
+        :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.TemplateFit` or :class:`cait.versatile.TemplateFitCorrelated` (depending on the 'correlated' keyword).
+        :type kwargs: any, optional
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait as ai
+            import cait.versatile as vai
+
+            # You should have a DataHandler (dh) and a SEV by now.
+            # If you saved your SEV in a file, load it using 
+            # sev = vai.SEV.from_file('path/to/sev')
+            # if you saved it in the dh, use 
+            # sev = vai.SEV.from_dh(dh)
+            # if you want to use a numpy array 'sev', that is also fine.
+
+            # Example 0: Do not fit anything yet, only show what it would look like
+            dh.apply_template_fit(
+                "events", # 'events' group has two channels
+                sev, # must have two channels
+                bl_poly_order=[1, 3], # separate baseline polynomial orders for each channel
+                correlated=False, # do NOT correlate the channels
+                preview=True # No fit is performed but it is shown what it would look like
+            )
+
+            # Example 1: Fit all channels separately with their respective SEV.
+            # In this case, we assume two channels, but it works with arbitrarily many.
+            dh.apply_template_fit(
+                "events", # 'events' group has two channels
+                sev, # must have two channels, too
+                bl_poly_order=[1, 3], # separate baseline polynomial orders for each channel
+                correlated=False, # do NOT correlate the channels
+            )
+
+            # To run a new fit, we have to delete the old results:
+            def drop_tf_ds():
+                dh.drop("events", "templatefit_pars")
+                dh.drop("events", "templatefit_rms")
+                dh.drop("events", "templatefit_shift")
+            drop_tf_ds()
+            # Alternatively, you could also rename them:
+            dh.rename("events_new", templatefit_pars="tf_pars_old", templatefit_rms="tf_rms_old", templatefit_shift="tf_shift_old")
+
+            # Example 2: Fit only one of the two channels (the results of the other channel will
+            # be padded)
+            dh.apply_template_fit(
+                "events", 
+                sev[0], # select only one of the SEV (corresponding to chosen channel)
+                bl_poly_order=3, # specify only one
+                only_channel=0, # choose one of the channels
+            )
+
+            drop_tf_ds()
+
+            # Example 3: Correlated template fit with first channel being the 'dominant' one
+            dh.apply_template_fit(
+                "events",
+                sev, # use all channels again
+                bl_poly_order=3, # if we just say '3' here, it is used for both channels
+                correlated=True, # here we activate the correlated fit
+                fit_onset=[True, False] # Onset of channel 1 is fitted, but the one for 0 is passively moved along
+            )
+
+            drop_tf_ds()
+
+            # Example 4: Correlated template fit with common minimization in onset fit
+            dh.apply_template_fit(
+                "events",
+                sev,
+                bl_poly_order=3, 
+                correlated=True,
+                fit_onset=[True, True] # Onset of both channels is fitted together
+            )
+        """
+        
+        if not self.exists(group):
+            raise KeyError(f"Group '{group}' is not available in this DataHandler.")
+        
+        _ds_to_be_written = ['templatefit_pars', 'templatefit_rms', 'templatefit_shift']
+        if any([self.exists(group, ds) for ds in _ds_to_be_written]):
+            raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')', or rename them using the 'dh.rename' function.")
+        
+        events = self.get_event_iterator(group)
+
+        if only_channels is None: only_channels = slice(None, None, None)
+        if event_flag is None: event_flag = np.ones(len(events), dtype=bool)
+        
+        n_channels = events.n_channels
+        n_channels_used = events[only_channels].n_channels
+        channels_used = np.atleast_1d(np.arange(n_channels)[only_channels])
+        events_used = events[:, event_flag]
+
+        if correlated and n_channels_used<2:
+            raise ValueError("The 'correlated' fit is only available for >=2 channels.")
+
+        # Make sure all (relevant) inputs are lists
+        if bl_poly_order is None or isinstance(bl_poly_order, int):
+            bl_poly_order = [bl_poly_order]*n_channels_used
+
+        if truncation_limit is None or isinstance(truncation_limit, float):
+            truncation_limit = [truncation_limit]*n_channels_used
+
+        if fit_onset is None or isinstance(fit_onset, bool):
+            fit_onset = [fit_onset]*n_channels_used
+
+        # Make sure all lists have the same length as the number of used channels.
+        if len(bl_poly_order) != n_channels_used:
+            raise ValueError(f"Length of 'bl_poly_order' has to match the number of fitted channels. Got {len(bl_poly_order)} and {n_channels_used}.")
+        if len(truncation_limit) != n_channels_used:
+            raise ValueError(f"Length of 'truncation_limit' has to match the number of fitted channels. Got {len(truncation_limit)} and {n_channels_used}.")
+        if len(fit_onset) != n_channels_used:
+            raise ValueError(f"Length of 'fit_onset' has to match the number of fitted channels. Got {len(fit_onset)} and {n_channels_used}.")
+
+        sev = np.atleast_2d(np.array(sev))
+
+        if sev.shape[0] != n_channels_used:
+            raise ValueError(f"'sev' must have as many channels as you want to fit. Got {sev.shape[0]} and {n_channels_used}.")
+        
+        # Construct the output array (to be filled later)
+        non_none_orders = [x for x in bl_poly_order if x is not None]
+        max_order = np.max(non_none_orders) if len(non_none_orders)>0 else -1
+        output_shape = (n_channels, len(events), 2+max_order)
+
+        # For unused channels, the RMS is set to -404 and the 
+        # fit parameters are all 0
+        output_pars = np.zeros(output_shape)
+        output_shift = np.zeros((n_channels, len(events)), dtype=np.int16)
+        output_rms = -404*np.ones((n_channels, len(events)))
+
+        if correlated:
+            tf = vai.TemplateFitCorrelated(
+                    sev=sev,
+                    bl_poly_order=bl_poly_order,
+                    truncation_limit=truncation_limit,
+                    fit_onset=fit_onset,
+                    max_shift=max_shift, 
+                    **kwargs)
+            
+            if preview: 
+                vai.Preview(events_used, tf)
+            else:
+                fitpar, opt_shift, rms = vai.apply(tf, events_used)
+
+                output_pars[np.ix_(channels_used, event_flag)] = np.transpose(fitpar, [1,0,2])
+                output_shift[np.ix_(channels_used, event_flag)] = opt_shift[None, :]
+                output_rms[np.ix_(channels_used, event_flag)] = rms.T
+
+        else:
+            for i in range(n_channels_used):
+                ch = channels_used[i]
+                n_pars = 1 if bl_poly_order[i] is None else bl_poly_order[i] + 2
+                tf = vai.TemplateFit(
+                        sev=sev[i],
+                        bl_poly_order=bl_poly_order[i],
+                        truncation_limit=truncation_limit[i],
+                        fit_onset=fit_onset[i],
+                        max_shift=max_shift, 
+                        **kwargs)
+
+                if preview:
+                    vai.Preview(events_used[i], tf)
+                else:
+                    fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
+
+                    output_pars[ch, event_flag, :n_pars] = fitpar
+                    output_shift[ch, event_flag] = opt_shift
+                    output_rms[ch, event_flag] = rms
+
+        if not preview:
+            self.set(group, 
+                    templatefit_pars=output_pars, 
+                    templatefit_rms=output_rms, 
+                    dtype=np.float32)
+            self.set(group, templatefit_shift=output_shift, dtype=np.int16)
+
+            if np.any(output_rms == -404):
+                print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding fit values should not be trusted! If you provided an 'event_flag', the events which were excluded from the fit received an RMS value of -404. Likewise, if you chose only to fit a subset of channels using the 'only_channels' argument, channels which were not fitted had their RMS values set to -404. Finally, if the fit failed for any of the fitted events, the respective RMS was also set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
 
     def calc_bl_coefficients(self, type='noise', down=1):
         """

@@ -9,7 +9,7 @@ All of them have a number of keyword-arguments which can be used to
 style them. Those keyword arguments are:
 
 *  **backend** (str, optional): The backend to use for the plot. Either
-   of ``['plotly', 'mpl', 'uniplot', 'auto'``, i.e. plotly, matplotlib
+   of ``['plotly', 'mpl', 'uniplot', 'auto'``, i.e. plotly, matplotlib
    or uniplot (command-line based; has to be installed separately as
    this is probably not relevant for all users), defaults to ``'auto'``
    in which case ``'plotly'`` is used in notebooks and ``'uniplot'`` on
@@ -37,21 +37,23 @@ style them. Those keyword arguments are:
 *  **show_controls** (bool): Show button controls to interact with the
    figure. The available buttons depend on the plotting backend. The
    default depends on which higher-level plotting routine is used.
-   Available options when ``show_controls=True`` are e.g. ``.png`` and
+   Available options when ``show_controls=True`` are e.g. ``.png`` and
    ``.pdf`` download of matplotlib figures or the calculation of data
    means/stds of plotly figures.
 
-Furthermore, they provide functions **set_xlabel**, **set_ylabel**,
-**set_xscale**, **set_yscale**, **add_line**, **add_scatter**,
-**add_histogram**, **update_line**, **update_scatter**,
-**update_histogram** to change the appareance of plots after they were
-constructed. See documentation of class **Viewer** for details.
+.. note::
+
+   Furthermore, they provide functions **set_xlabel**, **set_ylabel**,
+   **set_xscale**, **set_yscale**, **add_line**, **add_scatter**,
+   **add_histogram**, **update_line**, **update_scatter**,
+   **update_histogram** to change the appareance of plots after they were
+   constructed. See documentation of class :class:`cait.versatile.plot.viewer.Viewer` for details.
 
 Basic Plotting Classes
 ~~~~~~~~~~~~~~~~~~~~~~
 
-The three basic plotting classes are **Line**, **Scatter**, and
-**Histogram**. Their working principle is identical. You can either pass
+The four basic plotting classes are **Line**, **Scatter**,
+**Histogram**, and **Heatmap**. Their working principle is identical. You can either pass
 a list (or ``numpy.ndarray``) to the constructor, or a dictionary whose
 keys and values will turn into legend entries and plotted
 lines/scatters/histograms. Additionally, you can specify ``xlabel``,
@@ -151,9 +153,85 @@ You can use the lasso tool to select a number of events. These events are then d
 
 .. image:: media/ScatterPreview_SEV.png
 
+Advanced examples
+~~~~~~~~~~~~~~~~~
+
+This section is a collection of previously asked solutions to more advanced plotting problems:
+
+**Basic plot with button to click through data:**
+
+To preview events or a function's effect on events, you would usually use :class:`cait.versatile.Preview`.
+If you just want to add some line on top of the plot, you can use the `.add_line` (or `.add_scatter`, etc.) on `Preview` (see :class:`cait.versatile.plot.viewer.Viewer` for all available methods). 
+
+.. code-block:: python
+
+   import cait.versatile as vai
+
+   # normal usage
+   ev_it = vai.MockData().get_event_iterator()[0].with_processing(vai.RemoveBaseline())
+   vai.Preview(ev_it, vai.CalcMP())
+
+   # with static line added
+   vai.Preview(ev_it).add_line(x=ev_it.t, y=np.ones_like(ev_it.t), name="some line")
+
+However, if you need something more involved, and especially if you want to click through data which are **not events**, you can create a callback function and a button on any figure widget (here shown with `Histogram`). Whenever you click 'draw random', a new set of random numbers will be drawn and the histogram will be re-populated.
+
+.. code-block:: python
+
+   import scipy as sp
+   import numpy as np
+   import cait.versatile as vai
+
+   N = 1000
+   bins = np.linspace(-4, 4, 100)
+
+   fig = vai.Histogram({
+         "data": sp.stats.norm.rvs(size=N)
+      },
+      bins=bins,
+      show_controls=True
+   )
+
+   def draw_random(*args, **kwargs):
+      fig.update_histogram("data", data=sp.stats.norm.rvs(size=N), bins=bins)
+      # needed for backend='mpl'
+      # fig.update()
+
+   fig.add_line(x=bins, y=sp.stats.norm.pdf(bins)*N*np.diff(bins)[0], name="distribution")
+   fig.add_button("draw random", draw_random)
+
+.. image:: media/AddButtonExample.png
+
+**Normalize histograms with `plotly` backend:**
+
+Of course, you can produce normalized histograms easily with `matplotlib` but sometimes, for doing quick analysis, directly normalizing spectra with the interactive `plotly` backend can be useful. This can be achieved as follows:
+
+.. code-block:: python
+
+   some_bck_data, bck_record_time = ..., ...
+   some_57Co_data, 57Co_record_time = ..., ...
+
+   bins = np.linspace(0, 200, 1000)
+
+   spectrum = vai.Histogram(
+      {
+         "Co57": some_57Co_data,
+         "bck": some_bck_data
+      },
+      bins=bins,
+      xlabel="Energy (keV)",
+      ylabel="counts/keV/h"
+   )
+
+   # This scales the histograms relative to the record time
+   spectrum.get_artist("Co57").histfunc = 'sum'
+   spectrum.get_artist("Co57").y = np.ones(len(some_57Co_data))/57Co_record_time
+   spectrum.get_artist("bck").histfunc = 'sum'
+   spectrum.get_artist("bck").y = np.ones(len(some_bck_data))/bck_record_time
+
 Documentation
 ~~~~~~~~~~~~~
 
 .. automodule:: cait.versatile
-   :members: Line, Scatter, Histogram, StreamViewer, Preview, Viewer, ScatterPreview
+   :members: Line, Scatter, Histogram, Heatmap, StreamViewer, Preview, Viewer, ScatterPreview
    :show-inheritance:

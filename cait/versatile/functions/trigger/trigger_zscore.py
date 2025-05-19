@@ -31,7 +31,7 @@ def zscore_chunk(data: np.ndarray, record_length: int):
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
 
-    return np.array((data-m)/s)[record_length:]
+    return np.array((data-m)/s)[record_length:-record_length]
 
 def trigger_zscore(stream: ArrayLike,
                    record_length: int,
@@ -104,15 +104,25 @@ def trigger_zscore(stream: ArrayLike,
     after = int(3*record_length/4)
 
     # Slice to search peak in the interval (1/5, 2/5) of the record window
-    sl = slice(int(record_length/5), int(2*record_length/5))
+    a, b = int(record_length/5), int(2*record_length/5)
+    sl = slice(a, b)
 
     phs = np.zeros(len(inds), dtype=np.float32)
+    corrected_inds = np.zeros(len(inds), dtype=np.int64)
     processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
 
     for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
         trace = stream[ind-before:ind+after]
         for p in processing: trace = p(trace)
 
-        phs[i] = np.max(trace[sl])
+        # re-calculate maximum and peak position
+        peak_pos = np.argmax(trace[sl])
+        corrected_inds[i] = ind - before + a + peak_pos
+        phs[i] = trace[sl][peak_pos]
 
-    return inds, phs
+    # By correcting the trigger indices using the maximum search, it is possible to find triggers that happened
+    # before 'record_length' samples into the stream. We want to explicitly discard those.
+    if len(inds)>0 and corrected_inds[0]<record_length:
+        corrected_inds, phs = corrected_inds[1:], phs[1:]
+        
+    return corrected_inds, phs

@@ -4,6 +4,7 @@ cait.versatile - the flexible cait
 ==================================
 
 While ``cait`` provides excellent methods for raw data analysis, it is a very rigid framework mostly developed with the needs of the `CRESST` experiment in mind, and if one needs anything out of the ordinary, individualizing the workflow can be cumbersome. The sub-package ``cait.versatile`` aims to streamline this process and provide clear entry points to the existing framework. Moreover, it introduces convenience features for as-fast-as-possible data quality assessment.
+On the other hand, ``cait.versatile`` can be seen as a 'tool kit' of 'building blocks' that can (should) be used for function prototyping and eventually also implementing new ``cait`` core features as efficiently as possible.
 
 The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
@@ -87,8 +88,8 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
         # (usually, you would clean it first)
         sev = vai.SEV(it)
 
-        # Plot the standard event (optional: extract microsecond timestamp from iterator to also show the correct time axis)
-        sev.show(dt_us=it.dt_us)   
+        # Plot the standard event
+        sev.show()   
 
 *  **plotting** (:ref:`docs <plotting>`)
     Often needed plotting tasks are simplified by classes like ``Line``, ``Scatter`` and ``Histogram`` which make having a quick look at your data simple. More sophisticated classes include ``StreamViewer``, which lets you interactively view the contents of the data source ``Stream``, and ``Preview``, which shows a preview of the application of a function to an event iterator. Alternatively, the latter can just be used to view the events in an iterator. 

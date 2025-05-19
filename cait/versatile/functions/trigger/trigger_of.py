@@ -29,7 +29,7 @@ def filter_chunk(data: np.ndarray, of: np.ndarray, record_length: int):
     # Therefore, we have to shift it such that the maximum position is again at 1/4 of the record window
     offset = record_length//4
     return sp.signal.oaconvolve(np.roll(np.fft.irfft(of), offset),
-                                data)[record_length+offset:-record_length+offset+1]
+                                data, mode='full')[record_length+offset:-2*record_length+offset+1]
 
 def trigger_of(stream: ArrayLike,
                threshold: float, 

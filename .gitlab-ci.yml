@@ -5,10 +5,11 @@ stages:
 pytest:
   stage: test
   rules:
-    # Only run tests when merge request to develop or master is created
+    # Only run tests when merge request to develop or master is created (or manually from web interface)
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
     - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
-  image: "python:$VERSION"
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  image: "gitlab-registry.cern.ch/cryocluster/python-container-prebuild:mirror-python$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
     - apt-get update -qq && apt-get install -y -qq hdf5-tools
@@ -23,7 +24,7 @@ pytest:
     - pytest --junitxml=report.xml
   parallel:
     matrix:
-      - VERSION: ['3.8', '3.9', '3.10', '3.11', '3.12']
+      - VERSION: ['3.8', '3.9', '3.10', '3.11', '3.12', '3.13']
   artifacts:
     when: always
     reports:
@@ -35,11 +36,16 @@ build_kaniko_command:
     - develop
     - tags
   variables:
-    IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}
+    IMAGE_DESTINATION: ${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}${FLAVOUR}
   image:
-    name: gitlab-registry.cern.ch/ci-tools/docker-image-builder
+    name: gcr.io/kaniko-project/executor:debug
     entrypoint: [""]
   script:
     - echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --destination $IMAGE_DESTINATION 
+    - /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/Dockerfile --build-arg "FLAVOUR=$FLAVOUR" --destination $IMAGE_DESTINATION 
     - echo "Image pushed successfully to ${IMAGE_DESTINATION}"
+  parallel:
+    # build a container including all optional dependencies and one without torch
+    matrix:
+      - FLAVOUR: ['', '-slim']
+

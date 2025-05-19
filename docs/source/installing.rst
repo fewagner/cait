@@ -70,6 +70,7 @@ There are some additional dependencies which can be installed together with cait
 - ``nn``: Install neural network dependencies which are not installed by default to keep Cait more light-weight.
 - ``clplot``: If you are one of the few people who want to get the 'uniplot' backend for 'cait.versatile' plotting classes, use this optional dependency to unlock command line plotting.
 - ``test``: Install 'pytest' to run tests.
+- ``docs``: Install dependencies for building docs with ``sphinx``.
 
 Options for Developers
 ======================

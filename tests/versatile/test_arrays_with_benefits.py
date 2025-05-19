@@ -3,7 +3,7 @@ import tempfile
 
 import numpy as np
 import cait as ai
-from cait.versatile import SEV, NPS, OF
+from cait.versatile import SEV, NPS, OF, TukeyWindow
 
 from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus
 
@@ -40,12 +40,15 @@ def basic_checks(dh, obj, k):
 
     # Methods
     obj.show(backend="plotly")
-    obj.show(dt_us=5, backend="plotly")
     appendix = f"_{obj.__class__.__name__}_{k}"
     obj.to_file(fname="test"+appendix, out_dir=dh.get_filedirectory())
     obj.__class__.from_file(fname="test"+appendix, src_dir=dh.get_filedirectory())
     obj.to_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
     obj.__class__.from_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
+    
+    # check if errors work
+    with pytest.raises(ValueError):
+        obj.__class__([1,2,3,4], dt_us=dh.dt_us*2).to_dh(dh, group="test_raise"+appendix)
 
 def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     d1, d2, *_ = testdata_1D_2D_3D_s_mus
@@ -53,9 +56,9 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     sev1 = SEV()
 
     # Creation from arrays
-    sev2 = SEV(d2.copy())
-    sev3 = SEV(d1.copy())
-    sev4 = SEV(d1.flatten().copy())
+    sev2 = SEV(d2.copy(), dt_us=dh.dt_us)
+    sev3 = SEV(d1.copy(), dt_us=dh.dt_us)
+    sev4 = SEV(d1.flatten().copy(), dt_us=dh.dt_us)
     assert np.array_equal(sev3, sev4)
 
     # Check consistency with vanilla cait
@@ -66,6 +69,7 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     sev6 = SEV(it)
     sev7 = SEV(it[0])
     assert np.array_equal(sev6[0], sev7)
+    assert sev6.dt_us == sev6[0].dt_us
 
     it = dh.get_event_iterator("events", batch_size=13)
     sev8 = SEV(it)
@@ -88,9 +92,9 @@ def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     nps1 = NPS()
 
     # Creation from arrays
-    nps2 = NPS(d2.copy())
-    nps3 = NPS(d1.copy())
-    nps4 = NPS(d1.flatten().copy())
+    nps2 = NPS(d2.copy(), dt_us=dh.dt_us)
+    nps3 = NPS(d1.copy(), dt_us=dh.dt_us)
+    nps4 = NPS(d1.flatten().copy(), dt_us=dh.dt_us)
     assert np.array_equal(nps3, nps4)
 
     # Check consistency with vanilla cait
@@ -101,6 +105,7 @@ def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     nps6 = NPS(it)
     nps7 = NPS(it[0])
     assert np.array_equal(nps6[0], nps7)
+    assert nps6.dt_us == nps6[0].dt_us
 
     it = dh.get_event_iterator("noise", batch_size=13)
     nps8 = NPS(it)
@@ -123,10 +128,11 @@ def test_OF(dh, testdata_1D_2D_3D_s_mus):
     of1 = OF()
 
     # Creation from arrays
-    of2 = OF(d2.copy())
-    of3 = OF(d1.copy())
-    of4 = OF(d1.flatten().copy())
+    of2 = OF(d2.copy(), dt_us=dh.dt_us)
+    of3 = OF(d1.copy(), dt_us=dh.dt_us)
+    of4 = OF(d1.flatten().copy(), dt_us=dh.dt_us)
     assert np.array_equal(of3, of4)
+    assert of2.dt_us == of2[0].dt_us
 
     # Check consistency with vanilla cait
     of5 = OF.from_dh(dh)
@@ -147,3 +153,17 @@ def test_OF(dh, testdata_1D_2D_3D_s_mus):
     basic_checks(dh, of2[0], 9)
     basic_checks(dh, of5[0], 10)
     basic_checks(dh, of8[0], 11)
+
+    # Check consistency with OF CREATED by vanilla cait
+    # For that we create the NPS and OF with the respective
+    # DataHandler functions (cait automatically applies
+    # a windowing function for both the NPS and OF calculation,
+    # which we have to correct for when creating the same OF
+    # with cait.versatile)
+    sev_vanilla = SEV.from_dh(dh)
+    nps_vanilla = NPS.from_dh(dh)
+    of_vanilla = OF.from_dh(dh)
+
+    of_vai = OF(TukeyWindow()(sev_vanilla), nps_vanilla, dt_us=of_vanilla.dt_us)
+
+    assert np.all( np.abs(of_vanilla-of_vai) < 1e-2 )
