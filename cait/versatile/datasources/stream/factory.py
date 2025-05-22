@@ -4,6 +4,7 @@ from .streambase import StreamBaseClass
 from .impl_csmpl import Stream_CSMPL
 from .impl_vdaq2 import Stream_VDAQ2
 from .impl_vdaq3 import Stream_VDAQ3
+from .impl_mpp import Stream_MPP
 
 class Stream(StreamBaseClass):
     """
@@ -67,6 +68,8 @@ class Stream(StreamBaseClass):
             self._stream = Stream_CSMPL(src, *args, **kwargs)
         elif hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src, *args, **kwargs)
+        elif hardware.lower() == "mpp":
+            self._stream = Stream_MPP(src, *args, **kwargs)
         #elif hardware.lower() == "vdaq3":
         #    self._stream = Stream_VDAQ3(src)
         else:

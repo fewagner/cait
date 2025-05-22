@@ -1,0 +1,122 @@
+import os
+import json
+from typing import List
+
+import numpy as np
+import cait as ai
+
+from .streambase import StreamBaseClass
+from ....readers import BinaryFile
+
+class Stream_MPP(StreamBaseClass):
+    """
+    Implementation of StreamBaseClass for hardware 'MPP'.  Uses JSON instead of .par for configuration.
+    The data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
+    """
+    def __init__(self, files: List[str]):
+        if not any([x.endswith('.json') for x in files]):
+            raise ValueError("You have to provide a '.json' file to construct this class.")
+        if not any([x.endswith('.bin') or x.endswith('.csmpl') for x in files]):
+            raise ValueError("You have to provide at least one '.csmpl' file to construct this class.")
+        if any([os.path.splitext(x)[-1] not in [".csmpl", ".bin", ".json", ".test_stamps", ".dig_stamps"] for x in files]):
+            raise ValueError("Only file extensions ['.csmpl', '.bin', '.json', '.test_stamps', and '.dig_stamps'] are supported.")
+
+        json_path = [x for x in files if x.endswith('.json')][0]
+        csmpl_paths = [x for x in files if x.endswith('.csmpl') or x.endswith('.bin')]
+        test_path = [x for x in files if x.endswith('.test_stamps')]
+        dig_path = [x for x in files if x.endswith('.dig_stamps')]
+
+        # Offset from the dig_stamps file (assuming a 10 MHz clock)
+        offset = 0 if not dig_path else int(ai.trigger._csmpl.get_offset(dig_path[0])/10)
+
+        with open(json_path, 'r') as f:
+            self._config = json.load(f)
+
+        if "start_ts" in self._config:
+            # Start time is Unix timestamp
+            self._start = int(1e6*self._config["start_ts"] - offset)
+        elif "start_s" in self._config and "start_us" in self._config:
+            # Timestamp is separated into seconds and microseconds, a la .par files
+            self._start = int(1e6*self._config["start_s"] + self._config["start_us"] - offset)
+        else:
+            # Improperly formatted config file
+            raise ValueError(
+                    "Config (.json) file must contain either "
+                    "\"start_ts\", or \"start_s\" and \"start_us\"."
+                    )
+
+        if "time_base_us" not in self._config:
+            raise ValueError("Config (.json) file must contain \"time_base_us\".")
+        self._dt = self._config["time_base_us"]
+
+        self._data = dict()
+
+        for fname in csmpl_paths:
+            name = os.path.splitext(os.path.basename(fname))[0]
+            if name.split("_")[-1].lower().startswith("ch"):
+                name = name.split("_")[-1]
+            elif name.split("_")[0].lower().startswith("ch"):
+                name = name.split("_")[0]
+            self._data[name] = BinaryFile(path=fname, dtype=np.dtype(np.int16))
+
+        if test_path:
+            if not dig_path:
+                raise Exception("When including testpulse information using a '.test_stamps' file, you also have to provide the corresponding '.dig_stamps' file.")
+            test_path = test_path[0]
+            test_h, tpas, test_chs = ai.trigger._csmpl.get_test_stamps(test_path)
+
+            self._tpas = dict()
+            self._tp_timestamps = dict()
+
+            for k in list(set(test_chs)):
+                mask = test_chs == k
+                self._tpas[str(k)] = tpas[mask]
+                # assuming 10 MHz clock
+                self._tp_timestamps[str(k)] = self.start_us + np.array(test_h[mask]*3600*1e6, dtype=np.int64) + offset
+
+        self._keys = list(self._data.keys())
+
+    def __len__(self):
+        return len(self._data[self.keys[0]])
+
+    def __enter__(self):
+        for bin_file in self._data.values(): bin_file.__enter__()
+        return self
+
+    def __exit__(self, typ, val, tb):
+        for bin_file in self._data.values(): bin_file.__exit__(typ, val, tb)
+
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
+       data = self._data[key][where]
+       return ai.data.convert_to_V(data, bits=16, min=-10, max=10) if voltage else data
+
+    @property
+    def start_us(self):
+        return self._start
+
+    @property
+    def dt_us(self):
+        return self._dt
+
+    @property
+    def keys(self):
+        return self._keys
+
+    @property
+    def tp_keys(self):
+        if not hasattr(self, '_tpas'):
+            return []
+        else:
+            return list(self._tpas.keys())
+
+    @property
+    def tpas(self):
+        if not hasattr(self, '_tpas'):
+            raise KeyError("Testpulse amplitudes not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
+        return self._tpas
+
+    @property
+    def tp_timestamps(self):
+        if not hasattr(self, '_tp_timestamps'):
+            raise KeyError("Testpulse timestamps not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
+        return self._tp_timestamps
