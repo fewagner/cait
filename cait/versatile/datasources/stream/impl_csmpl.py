@@ -1,4 +1,5 @@
 import os
+import json
 from typing import List
 
 import numpy as np
@@ -14,14 +15,15 @@ class Stream_CSMPL(StreamBaseClass):
     The data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
     """
     def __init__(self, files: List[str]):
-        if not any([x.endswith('.par') for x in files]):
-            raise ValueError("You have to provide a '.par' file to construct this class.")
+        if not any([x.endswith('.par') or x.endswith('.json') for x in files]):
+            raise ValueError("You have to provide either a '.par' or '.json' file to construct this class.")
+        if any([x.endswith('.par') for x in files]) and any([x.endswith('.json') for x in files]):
+            raise ValueError("You may only provide one of a '.par' and a '.json' file, not both.")
         if not any([x.endswith('.csmpl') for x in files]):
             raise ValueError("You have to provide at least one '.csmpl' file to construct this class.")
-        if any([os.path.splitext(x)[-1] not in [".csmpl", ".par", ".test_stamps", ".dig_stamps"] for x in files]):
+        if any([os.path.splitext(x)[-1] not in [".csmpl", ".par", ".json", ".test_stamps", ".dig_stamps"] for x in files]):
             raise ValueError("Only file extensions ['.csmpl', '.par'] are supported.")
 
-        par_path = [x for x in files if x.endswith('.par')][0]
         csmpl_paths = [x for x in files if x.endswith('.csmpl')]
         test_path = [x for x in files if x.endswith('.test_stamps')]
         dig_path = [x for x in files if x.endswith('.dig_stamps')]
@@ -29,9 +31,32 @@ class Stream_CSMPL(StreamBaseClass):
         # Offset from the dig_stamps file (assuming a 10 MHz clock)
         offset = 0 if not dig_path else int(ai.trigger._csmpl.get_offset(dig_path[0])/10)
 
-        self._par_file = PARFile(par_path)
-        self._start = int(1e6*self._par_file.start_s + self._par_file.start_us - offset)
-        self._dt = self._par_file.time_base_us
+        if any([x.endswith('.par') for x in files]):
+            par_path = [x for x in files if x.endswith('.par')][0]
+            self._par_file = PARFile(par_path)
+            self._start = int(1e6*self._par_file.start_s + self._par_file.start_us - offset)
+            self._dt = self._par_file.time_base_us
+        elif any([x.endswith('.json') for x in files]):
+            json_path = [x for x in files if x.endswith('.json')][0]
+            with open(json_path, 'r') as f:
+                self._config = json.load(f)
+
+            if "start_ts" in self._config:
+                # Start time is Unix timestamp
+                self._start = int(1e6*self._config["start_ts"] - offset)
+            elif "start_s" in self._config and "start_us" in self._config:
+                # Timestamp is separated into seconds and microseconds, a la .par files
+                self._start = int(1e6*self._config["start_s"] + self._config["start_us"] - offset)
+            else:
+                # Improperly formatted config file
+                raise ValueError(
+                        "Config (.json) file must contain either "
+                        "\"start_ts\", or \"start_s\" and \"start_us\"."
+                        )
+
+            if "time_base_us" not in self._config:
+                raise ValueError("Config (.json) file must contain \"time_base_us\".")
+            self._dt = self._config["time_base_us"]
 
         self._data = dict()
 
