@@ -20,7 +20,7 @@ class Stream_CSMPL(StreamBaseClass):
             raise ValueError("You have to provide at least one '.csmpl' file to construct this class.")
         if any([os.path.splitext(x)[-1] not in [".csmpl", ".par", ".test_stamps", ".dig_stamps"] for x in files]):
             raise ValueError("Only file extensions ['.csmpl', '.par'] are supported.")
-        
+
         par_path = [x for x in files if x.endswith('.par')][0]
         csmpl_paths = [x for x in files if x.endswith('.csmpl')]
         test_path = [x for x in files if x.endswith('.test_stamps')]
@@ -59,37 +59,37 @@ class Stream_CSMPL(StreamBaseClass):
 
     def __len__(self):
         return len(self._data[self.keys[0]])
-    
+
     def __enter__(self):
         for bin_file in self._data.values(): bin_file.__enter__()
         return self
-    
+
     def __exit__(self, typ, val, tb):
         for bin_file in self._data.values(): bin_file.__exit__(typ, val, tb)
 
     def get_trace(self, key: str, where: slice, voltage: bool = True):
        data = self._data[key][where]
        return ai.data.convert_to_V(data, bits=16, min=-10, max=10) if voltage else data
-    
+
     @property
     def start_us(self):
         return self._start
-    
+
     @property
     def dt_us(self):
         return self._dt
-    
+
     @property
     def keys(self):
         return self._keys
-    
+
     @property
     def tp_keys(self):
         if not hasattr(self, '_tpas'):
             return []
         else:
             return list(self._tpas.keys())
-    
+
     @property
     def tpas(self):
         if not hasattr(self, '_tpas'):
