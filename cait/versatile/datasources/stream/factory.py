@@ -1,9 +1,11 @@
-from typing import Union, List
+from typing import List, Union
 
-from .streambase import StreamBaseClass
 from .impl_csmpl import Stream_CSMPL
 from .impl_vdaq2 import Stream_VDAQ2
-from .impl_vdaq3 import Stream_VDAQ3
+from .streambase import StreamBaseClass
+
+# from .impl_vdaq3 import Stream_VDAQ3
+
 
 class Stream(StreamBaseClass):
     """
@@ -30,7 +32,7 @@ class Stream(StreamBaseClass):
     :type args, kwargs: Any
 
     **Usage for different hardware:**
-    
+
     CSMPL:
     Files are .csmpl files which contain one channel each. Additionally, we need a .par file to read the start timestamp of the stream data from.
 
@@ -42,7 +44,7 @@ class Stream(StreamBaseClass):
     Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
 
     .. code-block:: python
-    
+
         s = Stream(hardware='vdaq2', src='file.bin')
 
     **Usage slicing:**
@@ -51,40 +53,54 @@ class Stream(StreamBaseClass):
 
     .. code-block:: python
 
-        # Get data for one channel
-        s['ADC1']
+        # Get voltage data for one channel (this does NOT load it
+        # into memory but you can use the resulting object, more or
+        # less, like a numpy-array).
+        ch1 = s['ADC1']
+        ch2 = s['ADC2']
 
-        # Get data for one channel and slice it (two equivalent ways)
+        # This also works for multiple channels. Note, however, that
+        # you still slice it as if it was 1d, i.e. if you slice the
+        # first 10 elements of the object, you will get the first 10
+        # for BOTH channels.
+        chs = s[['ADC1', 'ADC2']]
+        chs[:10] # equivalent to np.array([ch1[:10], ch2[:10]])
+
+        # Get ADC data for one channel and slice it (two equivalent ways)
         s['ADC1', 10:20]
         s['ADC1'][10:20]
 
-        # Get data for one channel, slice it, and return the voltage 
-        # values instead of the ADC values
+        # Get voltage data for one channel, slice it, and return the
+        # voltage values instead of the ADC values. The cleaner way
+        # to do this would be to use the first syntax above.
         s['ADC1', 10:20, 'as_voltage']
     """
+
     def __init__(self, hardware: str, src: Union[str, List[str]], *args, **kwargs):
         if hardware.lower() == "csmpl":
             self._stream = Stream_CSMPL(src, *args, **kwargs)
         elif hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src, *args, **kwargs)
-        #elif hardware.lower() == "vdaq3":
+        # elif hardware.lower() == "vdaq3":
         #    self._stream = Stream_VDAQ3(src)
         else:
-            raise NotImplementedError('Only csmpl and vdaq2 files are supported at the moment.')
+            raise NotImplementedError(
+                "Only csmpl and vdaq2 files are supported at the moment."
+            )
 
     def __repr__(self):
         return repr(self._stream)
-    
+
     def __len__(self):
         return len(self._stream)
-    
+
     def __enter__(self):
         self._stream.__enter__()
         return self
-    
+
     def __exit__(self, typ, val, tb):
         self._stream.__exit__(typ, val, tb)
-        
+
     def get_trace(self, key: str, where: slice, voltage: bool = True):
         return self._stream.get_trace(key, where, voltage=voltage)
 
@@ -99,11 +115,11 @@ class Stream(StreamBaseClass):
     @property
     def dt_us(self):
         return self._stream.dt_us
-    
+
     @property
     def tp_keys(self):
         return self._stream.tp_keys
-    
+
     @property
     def tpas(self):
         return self._stream.tpas
