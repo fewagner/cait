@@ -64,6 +64,37 @@ class SEV(ArrayWithBenefits):
                 self._n_ch = 1
         else:
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
+        
+    @classmethod
+    def unscaled(cls, it: IteratorBaseClass):
+        """
+        Construct SEV from event iterator WITHOUT scaling amplitudes to unity.
+
+        :param it: Events from which to construct the SEV.
+        :type it: IteratorBaseClass
+
+        :return: Instance of SEV and relative amplitudes of all channels.
+        :rtype: Tuple[SEV, np.ndarray]
+        """
+        it = it.flatten().with_processing(RemoveBaseline())
+        if len(it) > 1000:
+            mean_pulse = np.zeros_like(it.grab(0))
+            with it:
+                for ev in tqdm(it, delay=5):
+                    mean_pulse += ev
+            mean_pulse /= len(it)
+        else:
+            with it:
+                mean_pulse = np.mean(it, axis=0)
+
+        # Normalization
+        maxima = np.max(mean_pulse, axis=-1)
+        # Cast maxima into a column vector such that vectorization works
+        if maxima.ndim > 0: 
+            maxima = maxima[:, None]
+
+        return cls(mean_pulse, dt_us=it.dt_us), maxima
+
     
     @classmethod
     def from_dh(cls, dh, group: str = "stdevent", dataset: str = "event"):
