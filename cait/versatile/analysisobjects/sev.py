@@ -50,6 +50,7 @@ class SEV(ArrayWithBenefits):
             if self._sev.ndim > 1:
                 self._n_ch = self._sev.shape[0]
                 if self._n_ch == 1: self._sev = self._sev.flatten()
+                # if data is not None: self._share_factor = maxima[1]/maxima[0]
             else:
                 self._n_ch = 1
         elif isinstance(data, np.ndarray) or is_array_like(data):
@@ -60,6 +61,7 @@ class SEV(ArrayWithBenefits):
             if self._sev.ndim > 1:
                 self._n_ch = self._sev.shape[0]
                 if self._n_ch == 1: self._sev = self._sev.flatten()
+                # if data is not None: self._share_factor = maxima[1]/maxima[0]
             else:
                 self._n_ch = 1
         else:

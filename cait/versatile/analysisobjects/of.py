@@ -23,7 +23,7 @@ class OF(ArrayWithBenefits):
     >>> nps = vai.NPS().from_dh(dh)
     >>> of = vai.OF(sev, nps)
     """
-    def __init__(self, *args: Any, only_channels: list = [0, 1, 2], alpha: float = 1.0, dt_us: int = None, multi_filter: bool = False):
+    def __init__(self, *args: Any, only_channels: list = [0, 1], dt_us: int = None, multi_filter: bool = False):
         self._dt_us = dt_us
         if len(args) == 1 and isinstance(args[0], np.ndarray):
             self._of = args[0]
@@ -51,10 +51,8 @@ class OF(ArrayWithBenefits):
 
                 # Cast to numpy array here (this will get rid of the SEV and NPS character)
                 sev, nps = np.array(sev), np.array(nps)
-                flag = 0
             
             elif len(args) == 3:
-                flag = 1
                 bool_sev = [isinstance(k, SEV) for k in args] 
                 bool_nps = [isinstance(k, NPS) for k in args]
 
@@ -69,14 +67,14 @@ class OF(ArrayWithBenefits):
                 
                 self._n_ch = sev._n_channels
 
+                if multi_filter:
+                    # Get channel share factor before they're casted to numpy arrays
+                    share_factor = sev._share_factor
+                    sev = sev[0:2]
+
                 # Cast to numpy array here (this will get rid of the SEV and NPS character)
                 sev, nps, cps = np.array(sev), np.array(nps), np.array(cps)
-                cps = alpha*cps
-                if len(only_channels) == 2:
-                    cps[np.arange(cps.shape[0]) != [[0, 1], [1, 2], [0, 2]].index(sorted(only_channels)), :] = 0
 
-            # flag indicates if CPS is used to make the optimum filter or not
-            if flag == 0: cps = np.zeros_like(nps)
             # Maximum time in samples
             t_m = np.argmax(sev, axis=-1)
             # Cast t_m into a column vector such that vectorization works
@@ -104,24 +102,25 @@ class OF(ArrayWithBenefits):
                 else: 
                     s1, s2 = (slice(None, None), slice(None, None)), slice(None, None)
 
-            H = np.zeros(nps.shape, dtype=complex)
+           
             
             if  multi_filter:
-                
+                H = np.zeros((len(only_channels), nps.shape[1]), dtype=complex)
                 stdevent_fft = np.fft.rfft(sev[s1])
                 # Construct noise covariance matrix from NPS and CPS
                 for w in range(1, len(stdevent_fft[0])):
-                    noise_cov = np.zeros((self._n_ch, self._n_ch), dtype=complex)
+                    noise_cov = np.zeros((len(only_channels), len(only_channels)), dtype=complex)
 
-                    for i in range(self._n_ch):
+                    for i in range(len(only_channels)):
                         noise_cov[i, i] = nps[i, w]
 
-                        j = (i + 1) % self._n_ch
+                        j = (i + 1) % len(only_channels)
                         noise_cov[i, j] = cps[i, w]
                         noise_cov[j, i] = cps[i, w].conjugate()
                 
                     phase = np.exp(-1j * omega[s2][w] * t_m.flatten())
                     d = stdevent_fft[:, w].conjugate() * phase
+                    d = np.array([d[0], share_factor[0]*d[1]])
                     try:
                         H[s1][:, w] = d @ np.linalg.inv(noise_cov)
                     except np.linalg.LinAlgError:
@@ -130,14 +129,15 @@ class OF(ArrayWithBenefits):
                 # In any case, we force the 0 component of the filter kernel to 0
                 # (this shifts the signal to 0)
                 H[...,0] = 0
-
-                filtered_template = np.sum(OptimumFiltering(H)(sev), axis=0)        
+                filtered = OptimumFiltering(H, share_factor=share_factor)(sev)
+                filtered_template = np.sum(filtered, axis=0)        
+                print(filtered_template.shape, filtered.shape)
                 maxima = np.max(filtered_template)
                 
                 self._of = H/maxima
             
             if not multi_filter:       
-
+                H = np.zeros(nps.shape, dtype=complex)
                 #H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
                 H[s1] = np.fft.rfft(sev).conjugate()[s1] * np.exp(-1j*t_m*omega[s2]) / nps[s1]
 

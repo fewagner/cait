@@ -56,7 +56,7 @@ class CryoDataModule(LightningDataModule):
         self.nmbr_events = nmbr_events
         self.double = double
 
-    def prepare_data(self, val_size, test_size, batch_size, nmbr_workers, load_to_memory=False,
+    def prepare_data(self, val_size=0.2, test_size=0.2, batch_size=8, nmbr_workers=8, load_to_memory=False,
                      dataset_size=None, only_idx=None,
                      shuffle_dataset=True, random_seed=None,
                      feature_keys=[], label_keys=[], keys_one_hot=[],
@@ -123,7 +123,7 @@ class CryoDataModule(LightningDataModule):
                                        # feature_dims=self.feature_dims,
                                        )
 
-    def setup(self):
+    def setup(self, stage=None):
         """
         Called on every worker before start of training, here creation of dataset and splits in samplers are done.
         """

@@ -573,6 +573,7 @@ class CsmplMixin(object):
                                                            data=tp_mus[tpas >= min_cpa])
 
                 print('Exclude Testpulses.')
+                print(tp_hours)
                 flag = exclude_testpulses(trigger_hours=trigger_hours,
                                           tp_hours=tp_hours[tpas >= min_tpa],
                                           max_time_diff=max_time_diff)
