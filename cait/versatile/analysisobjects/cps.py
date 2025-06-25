@@ -29,7 +29,7 @@ class CPS(ArrayWithBenefits):
     """
     def __init__(self, data: Union[np.ndarray, IteratorBaseClass] = None, dt_us: int = None):
         if data is None:
-            self._cps = np.empty(0, dtype=complex)
+            self._cps = np.empty(0)
             self._n_ch = 0
             self._dt_us = dt_us
         elif isinstance(data, IteratorBaseClass):
@@ -38,7 +38,7 @@ class CPS(ArrayWithBenefits):
                                                 lambda x: np.fft.rfft(x)])
             
             cor_id = [(0, 1), (1, 2), (2, 0)]
-            self._cps = np.zeros((comb(data.grab(0).shape[0], 2), data.grab(0).shape[-1]), dtype=complex)
+            self._cps = np.zeros((comb(data.grab(0).shape[0], 2), data.grab(0).shape[-1]), dtype=np.complex128)
             
             with data:
                 for ev in tqdm(data, delay=5):
@@ -72,7 +72,7 @@ class CPS(ArrayWithBenefits):
             if dt_us is None:
                 raise ValueError("If CPS is constructed from array(-like) input, the microsecond timebase of the recording (dt_us) has to be specified.")
             self._dt_us = dt_us
-            self._ncov = np.array(data)
+            self._cps = np.array(data)
             if self._cps.ndim > 1:
                 self._n_ch = self._cps.shape[0]
                 if self._n_ch == 1: self._cps = self._cps.flatten()
@@ -82,39 +82,39 @@ class CPS(ArrayWithBenefits):
             raise ValueError(f"Unsupported datatype '{type(data)}' for input argument 'data'.")
     
     @classmethod
-    def from_dh(cls, dh, group: str = "noise", dataset: str = "nps"):
+    def from_dh(cls, dh, group: str = "noise", dataset: str = "cps"):
         """
-        Construct NPS from DataHandler. 
+        Construct CPS from DataHandler. 
 
         :param dh: The DataHandler instance to read from.
         :type dh: DataHandler
-        :param group: The HDF5 group where the NPS is stored.
+        :param group: The HDF5 group where the CPS is stored.
         :type group: str
-        :param dataset: The HDF5 dataset where the NPS is stored.
+        :param dataset: The HDF5 dataset where the CPS is stored.
         :type dataset: str
 
-        :return: Instance of NPS.
-        :rtype: NPS
+        :return: Instance of CPS.
+        :rtype: CPS
         """
         return cls(dh.get(group, dataset), dt_us=dh.dt_us)
         
-    def to_dh(self, dh, group: str = "noise", dataset: str = "nps", **kwargs):
+    def to_dh(self, dh, group: str = "noise", dataset: str = "cps", **kwargs):
         """
-        Save NPS to DataHandler. 
+        Save CPS to DataHandler. 
 
         :param dh: The DataHandler instance to write to.
         :type dh: DataHandler
-        :param group: The HDF5 group where the NPS should be stored.
+        :param group: The HDF5 group where the CPS should be stored.
         :type group: str
-        :param dataset: The HDF5 dataset where the NPS should be stored.
+        :param dataset: The HDF5 dataset where the CPS should be stored.
         :type dataset: str
         :param kwargs: Keyword arguments for `DataHandler.set`.
         :type kwargs: Any
         """
         if self._dt_us != dh.dt_us:
-            raise ValueError(f"Timebase of NPS ({self._dt_us}) does not match the one of DataHandler ({dh.dt_us}).")
+            raise ValueError(f"Timebase of CPS ({self._dt_us}) does not match the one of DataHandler ({dh.dt_us}).")
         data = self._cps[None,:] if self._n_channels == 1 else self._cps
-        dh.set(group, **{dataset: data}, **kwargs)
+        dh.set(group, **{dataset: data}, **kwargs, dtype=np.complex128)
         
     @classmethod
     def from_file(cls, fname: str, src_dir: str = ''):
