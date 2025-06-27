@@ -262,7 +262,7 @@ class NPS(ArrayWithBenefits):
 
 class NCM(ArrayWithBenefits):
     """
-    Object representing a Noise Correlation Matrix (NCM). The diagonal elements are Noise Power Spectra (NPS) of all channels, while the off-diagonal elements represent the Cross Power Spectra (CPS). The NCM is either constructed from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file. If created from an `EventIterator`, a proper normalisation to physical units (V²/Hz) is performed automatically.
+    Object representing a Noise Covariance Matrix (NCM). The diagonal elements are Noise Power Spectra (NPS) of all channels, while the off-diagonal elements represent the Cross Power Spectra (CPS). The NCM is either constructed from an `EventIterator`, from an `np.ndarray` or read from a DataHandler or xy-file. If created from an `EventIterator`, a proper normalisation to physical units (V²/Hz) is performed automatically.
 
     If created from an `EventIterator`, the (constant) baseline is removed automatically.
     To improve the quality of the NCM, a window function is often applied to the noise traces before performing the Fourier transform and averaging (see Numerical Recipes by Press, Teukolsky, Vetterling, Flannery chapter 13.4.1). This can only be achieved when we still have the original noise traces, i.e. when we construct the NCM from an iterator. Instead of just a bare iterator ``it`` you can pass the iterator ``it.with_processing([vai.RemoveBaseline(), vai.TukeyWindow()])`` to ``NCM``.
