@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 import numpy as np
@@ -5,6 +7,7 @@ import cait as ai
 import cait.versatile as vai
 
 from ..fixtures import tempdir
+from cait.versatile.datasources import PARFile
 
 LENGTH = 100
 
@@ -77,6 +80,34 @@ def test_csmpl_basic(tempdir, stream_csmpl): # stream_csmpl needed for file init
     
     basic_checks(s1)
     basic_checks(s2)
+
+def test_par_json(tempdir):
+    # Write json file to tempdir
+    parfile = PARFile(tempdir.name+"/mock_001.par")
+    json_data = {
+            "start_s": parfile.start_s,
+            "start_us": parfile.start_us,
+            "time_base_us": parfile.time_base_us,
+            }
+    with open(tempdir.name+"/mock_001.json", "w") as f:
+        json.dump(json_data, f)
+
+    stream_json = vai.Stream("csmpl", [tempdir.name+'/mock_001_Ch0.csmpl',
+                               tempdir.name+'/mock_001_Ch1.csmpl',
+                               tempdir.name+'/mock_001.test_stamps',
+                               tempdir.name+'/mock_001.dig_stamps',
+                               tempdir.name+'/mock_001.json'])
+
+    stream_par = vai.Stream("csmpl", [tempdir.name+'/mock_001_Ch0.csmpl',
+                               tempdir.name+'/mock_001_Ch1.csmpl',
+                               tempdir.name+'/mock_001.test_stamps',
+                               tempdir.name+'/mock_001.dig_stamps',
+                               tempdir.name+'/mock_001.par'])
+
+    assert len(stream_json) == len(stream_par)
+    assert stream_json.start_us == stream_par.start_us
+    assert stream_json.dt_us == stream_par.dt_us
+
 
 # TODO
 def test_VDAQ2():
