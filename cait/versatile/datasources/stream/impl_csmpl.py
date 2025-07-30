@@ -1,13 +1,15 @@
-import os
 import json
+import os
 from typing import List
 
 import numpy as np
+
 import cait as ai
 
-from .streambase import StreamBaseClass
-from ..hardwaretriggered.par_file import PARFile
 from ....readers import BinaryFile
+from ..hardwaretriggered.par_file import PARFile
+from .streambase import StreamBaseClass
+
 
 class Stream_CSMPL(StreamBaseClass):
     """
@@ -15,6 +17,8 @@ class Stream_CSMPL(StreamBaseClass):
     The data is stored in `*.csmpl` files (for each channel separately). Additionally, we need a `*.par` file to read the start timestamp of the stream data from.
     """
     def __init__(self, files: List[str]):
+        super().__init__(files=files)
+        
         if not any([x.endswith('.par') or x.endswith('.json') for x in files]):
             raise ValueError("You have to provide either a '.par' or '.json' file to construct this class.")
         if any([x.endswith('.par') for x in files]) and any([x.endswith('.json') for x in files]):

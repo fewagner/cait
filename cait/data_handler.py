@@ -1,25 +1,27 @@
+import fnmatch
 import os
 import subprocess
 import warnings
 from typing import List, Union
-import fnmatch
 
-import numpy as np
 import h5py
+import numpy as np
 from tqdm.auto import tqdm
 
-from .mixins._data_handler_simulate import SimulateMixin
-from .mixins._data_handler_rdt import RdtMixin
-from .mixins._data_handler_plot import PlotMixin
-from .mixins._data_handler_features import FeaturesMixin
-from .mixins._data_handler_analysis import AnalysisMixin
-from .mixins._data_handler_fit import FitMixin
-from .mixins._data_handler_csmpl import CsmplMixin
-from .mixins._data_handler_ml import MachineLearningMixin
-from .mixins._data_handler_bin import BinMixin
-from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
-from .styles._print_styles import fmt_gr, fmt_ds, fmt_virt, sizeof_fmt, txt_fmt, datetime_fmt
 from .data._merge_h5 import ds_source_available
+from .mixins._data_handler_analysis import AnalysisMixin
+from .mixins._data_handler_bin import BinMixin
+from .mixins._data_handler_csmpl import CsmplMixin
+from .mixins._data_handler_features import FeaturesMixin
+from .mixins._data_handler_fit import FitMixin
+from .mixins._data_handler_ml import MachineLearningMixin
+from .mixins._data_handler_plot import PlotMixin
+from .mixins._data_handler_rdt import RdtMixin
+from .mixins._data_handler_simulate import SimulateMixin
+from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
+from .serialize import SerializingMixin
+from .styles._print_styles import (datetime_fmt, fmt_ds, fmt_gr, fmt_virt,
+                                   sizeof_fmt, txt_fmt)
 from .versatile.iterators.impl_h5 import H5Iterator
 from .versatile.iterators.iteratorbase import IteratorBaseClass
 
@@ -43,7 +45,8 @@ class DataHandler(SimulateMixin,
                   CsmplMixin,
                   MachineLearningMixin,
                   BinMixin,
-                  TriggerCollectionMixin
+                  TriggerCollectionMixin,
+                  SerializingMixin,
                   ):
     """
     A class for the processing of raw data events.
@@ -108,6 +111,14 @@ class DataHandler(SimulateMixin,
                  run: str = None,
                  module: str = None,
                  ):
+        
+        # Set up serialization
+        super().__init__(record_length=record_length, 
+                         sample_frequency=sample_frequency,
+                         channels=channels,
+                         nmbr_channels=nmbr_channels,
+                         run=run,
+                         module=module)
 
         assert channels is not None or nmbr_channels is not None, 'You need to specify either the channels numbers or the number of channels!'
 
@@ -267,6 +278,11 @@ class DataHandler(SimulateMixin,
 
             dh.set_filepath(path_h5='./', fname='test_001')
         """
+        # Save to (de)serialize later
+        self._set_filepath_kwargs = dict(path_h5=path_h5, 
+                                         fname=fname, 
+                                         appendix=appendix, 
+                                         channels=channels)
 
         if channels is not None: self.channels = channels
 
@@ -1265,3 +1281,27 @@ class DataHandler(SimulateMixin,
         
         os.replace(newFile, oldFile)
         print(f"Successfully repackaged '{oldFile}'. Memory saved: {sizeof_fmt(memorySaved)}")
+
+    # Overrides the SerializingMixin method because DataHandler needs special attention
+    def to_dict(self):
+        if not hasattr(self, "_set_filepath_kwargs"):
+            raise AttributeError("DataHandler can only be converted to a dictionary after setting the filepath.")
+        
+        return {"class": self.__class__.__name__, 
+                "args": self._init_args,     # defined in SerializingMixin
+                "kwargs": self._init_kwargs, # defined in SerializingMixin
+                "set_filepath_kwargs": self._set_filepath_kwargs}
+    
+    # Overrides the SerializingMixin's automatic method to reconstruct classes
+    # (because DataHandler needs special attention due to dh.set_filepath)
+    @classmethod
+    def from_dict(cls, d: dict):
+        if not all([x in d.keys() for x in ["class", "args", "kwargs", "set_filepath_kwargs"]]):
+            raise KeyError("DataHandler can only be constructed from dictionaries containing keys ['class', 'args', 'kwargs', 'set_filepath_kwargs']")
+        if d["class"] != cls.__name__:
+            raise TypeError("Value of field 'class' has to be 'DataHandler'.")
+        
+        dh = cls(*d["args"], **d["kwargs"])
+        dh.set_filepath(**d["set_filepath_kwargs"])
+        
+        return dh

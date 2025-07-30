@@ -1,8 +1,9 @@
-from typing import Union, List
+from typing import List, Union
 
 import numpy as np
 
 from .iteratorbase import IteratorBaseClass
+
 
 class MockIterator(IteratorBaseClass):
     """
@@ -30,7 +31,11 @@ class MockIterator(IteratorBaseClass):
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        # Also sets up serializing.
+        super().__init__(inds=inds, 
+                         batch_size=batch_size, 
+                         mock=mock, 
+                         channels=channels)
 
         self._mock = mock
         
