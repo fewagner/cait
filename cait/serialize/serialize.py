@@ -200,8 +200,8 @@ def loads(s: str):
     """
     try:
         d = json.loads(s)
-    except json.JSONDecodeError:
+    except json.JSONDecodeError as e:
         # Raise an easier to understand exception
-        raise TypeError("String must represent a python dictionary.")
+        raise TypeError("String must represent a python dictionary.") from e
     
     return load(d)

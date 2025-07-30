@@ -6,7 +6,7 @@ import cait.versatile as vai
 from cait.serialize import dump, dumps, load, loads
 
 from .fixtures import (RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY,
-                       datahandler, tempdir, testdata_1D_2D_3D_s_mus)
+                       datahandler, tempdir)
 
 
 def load_unload(obj):
@@ -95,4 +95,29 @@ def test_iterators(testdata):
             assert getattr(obj, attr) == getattr(load(dump(obj)), attr)
             assert getattr(obj, attr) == getattr(loads(dumps(obj)), attr)
         
-    
+def test_externally_store_iterator_in_datahandler(testdata):
+    stream, rdt_file, dh = testdata
+    mock = vai.MockData()
+
+    stream_it = stream.get_event_iterator("Ch0", 100, [1000, 2000, 3000, 4000])
+    rdt_it = rdt_file[(0,1)].get_event_iterator()
+    dh_it = dh.get_event_iterator("events")
+    mock_it = mock.get_event_iterator(batch_size=20)
+
+    # Check if reference remains even after dataset is dropped
+    dh.include_event_iterator("external_storage_test_group1", rdt_it, copy_events=True)
+    dh.get_event_iterator("external_storage_test_group1")
+    dh.drop("external_storage_test_group1", "event")
+    dh.get_event_iterator("external_storage_test_group1")
+
+    # Check if reference is deleted when entire group is dropped
+    dh.include_event_iterator("external_storage_test_group2", rdt_it, copy_events=True)
+    dh.get_event_iterator("external_storage_test_group2")
+    dh.drop("external_storage_test_group2")
+    with pytest.raises(KeyError):
+        dh.get_event_iterator("external_storage_test_group2")
+
+    # Check if reference works if data is not copied for multiple iterators
+    for i, it in enumerate([stream_it, rdt_it, dh_it, mock_it, stream_it+stream_it], start=3):
+        dh.include_event_iterator(f"external_storage_test_group{i}", it, copy_events=False)
+        dh.get_event_iterator(f"external_storage_test_group{i}")
