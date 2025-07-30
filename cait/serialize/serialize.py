@@ -1,5 +1,5 @@
 import json
-from functools import cache
+from functools import lru_cache
 
 
 class SerializingMixin:
@@ -177,7 +177,7 @@ def dumps(obj: SerializingMixin):
     """
     return json.dumps(dump(obj))
 
-@cache
+@lru_cache(maxsize=None)
 def loads(s: str):
     """
     Returns an object constructed from its string representation (e.g. iterator or data source).
