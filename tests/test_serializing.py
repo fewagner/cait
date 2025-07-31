@@ -3,7 +3,9 @@ import pytest
 
 import cait as ai
 import cait.versatile as vai
+from cait.data import combine_h5, merge_h5
 from cait.serialize import dump, dumps, load, loads
+from cait.versatile.iterators.impl_h5 import H5Iterator
 
 from .fixtures import (RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY,
                        datahandler, tempdir)
@@ -106,9 +108,11 @@ def test_externally_store_iterator_in_datahandler(testdata):
 
     # Check if reference remains even after dataset is dropped
     dh.include_event_iterator("external_storage_test_group1", rdt_it, copy_events=True)
-    dh.get_event_iterator("external_storage_test_group1")
+    it = dh.get_event_iterator("external_storage_test_group1")
+    assert isinstance(it, H5Iterator)
     dh.drop("external_storage_test_group1", "event")
-    dh.get_event_iterator("external_storage_test_group1")
+    it = dh.get_event_iterator("external_storage_test_group1")
+    assert isinstance(it, rdt_it.__class__)
 
     # Check if reference is deleted when entire group is dropped
     dh.include_event_iterator("external_storage_test_group2", rdt_it, copy_events=True)
@@ -120,4 +124,151 @@ def test_externally_store_iterator_in_datahandler(testdata):
     # Check if reference works if data is not copied for multiple iterators
     for i, it in enumerate([stream_it, rdt_it, dh_it, mock_it, stream_it+stream_it], start=3):
         dh.include_event_iterator(f"external_storage_test_group{i}", it, copy_events=False)
-        dh.get_event_iterator(f"external_storage_test_group{i}")
+        recovered_it = dh.get_event_iterator(f"external_storage_test_group{i}")
+        assert isinstance(recovered_it, it.__class__)
+
+def test_combine_h5(tempdir):
+    h5_fnames = [
+        "combine_test1", 
+        "combine_test2", 
+        "combine_test3", 
+        "combine_test4",
+        "combine_test5",
+        "combine_test6"]
+    its = [
+        vai.MockData(n_events=113, record_length=RECORD_LENGTH).get_event_iterator(),
+        vai.MockData(n_events=213, record_length=RECORD_LENGTH).get_event_iterator(),
+        vai.MockData(n_events=313, record_length=RECORD_LENGTH).get_event_iterator()[0],
+        vai.MockData(n_events=413, record_length=2*RECORD_LENGTH).get_event_iterator(),
+        vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[0],
+        vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[1]
+    ]
+    for fname, it in zip(h5_fnames, its):
+        dh = ai.DataHandler(channels=[0, 1])
+        dh.set_filepath(tempdir.name, fname, appendix=False)
+        dh.init_empty()
+        dh.include_event_iterator("events", it, copy_events=False)
+
+    # Does 'combining' single file still work?
+    # MockIterator (cannot be checked for 
+    # values because mock data currently is still random every time)
+    combine_h5(
+        fname="combined_test1",
+        files=[h5_fnames[0]],
+        src_dir=tempdir.name,
+        out_dir=tempdir.name,
+        groups_combine=["events"],
+    )
+
+    # Does 'combining' single file still work?
+    # RDTIterator (this can be checked further)
+    combine_h5(
+        fname="combined_test2",
+        files=[h5_fnames[4]],
+        src_dir=tempdir.name,
+        out_dir=tempdir.name,
+        groups_combine=["events"],
+    )
+    # Does it 'combine' correctly?
+    dh = ai.DataHandler(channels=[0])
+    dh.set_filepath(tempdir.name, "combined_test2", appendix=False)
+    it = dh.get_event_iterator("events")
+    assert len(it) == len(its[4]), "Combined iterator has wrong length"
+    for ev1, ev2 in zip(its[4], it):
+        assert np.array_equal(ev1, ev2), "Combined iterator returned wrong events."
+
+    # Does combining consistent files work?
+    # MockIterator
+    combine_h5(
+        fname="combined_test3",
+        files=h5_fnames[:2],
+        src_dir=tempdir.name,
+        out_dir=tempdir.name,
+        groups_combine=["events"],
+    )
+
+    # Does combining consistent files work?
+    # RDTIterator
+    combine_h5(
+        fname="combined_test4",
+        files=h5_fnames[4:6],
+        src_dir=tempdir.name,
+        out_dir=tempdir.name,
+        groups_combine=["events"],
+    )
+    # Does it combine correctly?
+    dh = ai.DataHandler(channels=[0])
+    dh.set_filepath(tempdir.name, "combined_test4", appendix=False)
+    it = dh.get_event_iterator("events")
+    assert len(it) == len(its[4]+its[5]), "Combined iterator has wrong length"
+    for ev1, ev2 in zip(its[4]+its[5], it):
+        assert np.array_equal(ev1, ev2), "Combined iterator returned wrong events."
+
+    # Does combining INconsistent files raise Exception?
+    # (inconsistent number of channels)
+    with pytest.raises(AssertionError):
+        combine_h5(
+            fname="combined_test5",
+            files=h5_fnames[:3],
+            src_dir=tempdir.name,
+            out_dir=tempdir.name,
+            groups_combine=["events"],
+        )
+
+    # Does combining INconsistent files raise Exception?
+    # (inconsistent record length)
+    with pytest.raises(AssertionError):
+        combine_h5(
+            fname="combined_test6",
+            files=h5_fnames[:2] + [h5_fnames[3]],
+            src_dir=tempdir.name,
+            out_dir=tempdir.name,
+            groups_combine=["events"],
+        )
+
+def test_merge_h5(tempdir):
+    h5_fnames = [
+        "merge_test1", 
+        "merge_test2",
+    ]
+    its = [
+        vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[0],
+        vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[1]
+    ]
+    for fname, it in zip(h5_fnames, its):
+        dh = ai.DataHandler(channels=[0, 1])
+        dh.set_filepath(tempdir.name, fname, appendix=False)
+        dh.init_empty()
+        dh.include_event_iterator("events", it, copy_events=False)
+
+    # Does 'merging' single file work?
+    merge_h5(
+        fname="merged_test1",
+        files=[h5_fnames[0]],
+        src_dir=tempdir.name,
+        out_dir=tempdir.name,
+        groups_merge=["events"],
+    )
+    # Does it 'merge' correctly?
+    dh = ai.DataHandler(channels=[0])
+    dh.set_filepath(tempdir.name, "merged_test1", appendix=False)
+    it = dh.get_event_iterator("events")
+    assert len(it) == len(its[0]), "Merged iterator has wrong length"
+    for ev1, ev2 in zip(its[0], it):
+        assert np.array_equal(ev1, ev2), "Merged iterator returned wrong events."
+
+    # Does merging multiple files work?
+    merge_h5(
+        fname="merged_test2",
+        files=h5_fnames[:2],
+        src_dir=tempdir.name,
+        out_dir=tempdir.name,
+        groups_merge=["events"],
+    )
+    # Does it merge correctly?
+    dh = ai.DataHandler(channels=[0])
+    dh.set_filepath(tempdir.name, "merged_test2", appendix=False)
+    it = dh.get_event_iterator("events")
+    assert len(it) == len(its[0]+its[1]), "Combined iterator has wrong length"
+    for ev1, ev2 in zip(its[0]+its[1], it):
+        assert np.array_equal(ev1, ev2), "Combined iterator returned wrong events."

@@ -1,6 +1,8 @@
 import json
 from functools import lru_cache
 
+from .._version import __version__
+
 
 class SerializingMixin:
     """
@@ -59,7 +61,7 @@ class SerializingMixin:
             else:
                 kwargs[k] = v
         
-        return {"class": self.__class__.__name__, "args": args, "kwargs": kwargs}
+        return {"class": self.__class__.__name__, "args": args, "kwargs": kwargs, "cait_version": __version__}
     
     @classmethod
     def from_dict(cls, d: dict):

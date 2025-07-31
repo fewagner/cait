@@ -1,14 +1,17 @@
+import json
 import os
-from typing import List
 import time
 import tracemalloc
+from typing import List
+
+import h5py
+import numpy as np
 from deprecation import deprecated
 
-import numpy as np
-import h5py
 import cait as ai
 
-from ..styles._print_styles import sizeof_fmt, fmt_ds
+from ..styles._print_styles import fmt_ds, sizeof_fmt
+
 
 def ds_source_available(file: h5py.File, group: str, dataset: str):
     """
@@ -117,6 +120,27 @@ def check_file_consistency(files: List[str], src_dir: str, groups_combine: List[
             if len(dtypes) > 0:
                 assert all(dtypes[0] == d for d in dtypes[1:]), f"dtypes of dataset '{ds}' in group '{group}' are not consistent across all files."
 
+    # check if externally stored iterators are consistent (if present)
+    ext_field = ai.data_handler.EXT_STORED_DATA_GROUP+"/"+ai.data_handler.EXT_STORED_ITERATOR_DS
+    for group in groups_combine:
+        # Saves shapes of iterators (if existent, otherwise empty tuple).
+        # Can be used to check consistence.
+        ext_it_shapes = []
+        for f in files:
+            with h5py.File(os.path.join(src_dir, f + ".h5"), 'r') as h5f:
+                if ext_field in h5f.keys():
+                    ext_dict = json.loads(h5f[ext_field].asstr()[0])
+                    if group in ext_dict.keys():
+                        # Save shape[0] (n_channels) and shape[-1] (record_length) to check if they are consistent
+                        ext_it_shapes.append( (ext_dict[group]['shape'][0], ext_dict[group]['shape'][-1]) )
+                    else:
+                        ext_it_shapes.append(tuple())
+                else:
+                    ext_it_shapes.append(tuple())
+
+        # Check if all are the same. Either all empty tuples (= not present in any file) or identical tuples.
+        assert len(set(ext_it_shapes))==1, f"The existence and/or shape of the externally stored events in group '{group}' is inconsistent across files. Got (n_channels, record_length)-shapes {ext_it_shapes}."
+
     # check if groups_include are present in at least one file
     all_groups = set()
     for f in files:
@@ -210,6 +234,42 @@ def combine_h5(fname: str,
                             current_group.create_virtual_dataset(name=ds, layout=layout)
                         
                         break # move on to next g in groups_include
+    
+    # Combine externally stored event iterators for all groups in 'groups_combine'.
+    ext_field = ai.data_handler.EXT_STORED_DATA_GROUP+"/"+ai.data_handler.EXT_STORED_ITERATOR_DS
+    new_dict = dict()
+
+    for group in groups_combine:
+        single_its = []
+        single_shapes = []
+
+        for f in files:
+            with h5py.File(os.path.join(src_dir, f + ".h5"), 'r') as in_file:
+                if ext_field in in_file.keys():
+                    ext_dict = json.loads(in_file[ext_field].asstr()[0])
+                    if group in ext_dict.keys():
+                        single_its.append(ext_dict[group]["iterator"])
+                        single_shapes.append(ext_dict[group]["shape"])
+
+        if single_its:
+            new_dict[group] = {
+                # We already made sure that shapes are consistent.
+                "shape": (single_shapes[0][0], sum([x[1] for x in single_shapes]), single_shapes[0][-1]),
+                "iterator": single_its
+            }
+
+    if new_dict:
+        str_content = np.array(
+            [json.dumps(new_dict)], 
+            dtype=h5py.string_dtype("UTF-8")
+            )
+        with h5py.File(out_path, 'a') as out_file:
+            hdf5group = out_file.require_group(ai.data_handler.EXT_STORED_DATA_GROUP)
+
+            if ai.data_handler.EXT_STORED_ITERATOR_DS in hdf5group.keys():
+                del hdf5group[ai.data_handler.EXT_STORED_ITERATOR_DS]
+
+            hdf5group.create_dataset(name=ai.data_handler.EXT_STORED_ITERATOR_DS, data=str_content)
 
     print(f"Successfully combined files {files} into '{out_path}' ({sizeof_fmt(os.path.getsize(out_path))}).")
 

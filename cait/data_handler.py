@@ -408,10 +408,18 @@ class DataHandler(SimulateMixin,
         # Therefore, the physically stored events are always preferred but if they are missing, we fall back to the externally stored ones.
         if not self.exists(group+"/event") and _events_exist_virtually(self, group):
             try:
-                # We convert to string first because 'loads' features cache (and load doesn't)
-                it = serialize.loads(
-                    json.dumps(self.get_ext_event_dict()[group]["iterator"])
-                    )
+                # If the 'iterator' field contains a list (rather than a simple dictionary),
+                # it is understood to be a collection of iterators, i.e. we deserialize the
+                # list elements separately.
+                iterators = self.get_ext_event_dict()[group]["iterator"]
+                if not isinstance(iterators, list):
+                    iterators = [iterators]
+                
+                # For all iterators in the list (might be just one), we convert to string 
+                # first because 'loads' features cache (and load doesn't). Then, each 
+                # iterator is deserialized and we combine all iterators using sum().
+                it = sum([serialize.loads(json.dumps(i)) for i in iterators])
+
             except FileNotFoundError as e:
                 raise Exception("Event iterator could not be reconstructed from the saved external reference. This probably happened because the path to the original source file changed. Use dh.get_ext_event_dict to access the currently stored references. Locate and correct the broke file paths. Use dh.update_ext_event_dict to restore the reference. If all source files changed folder, e.g., a quick way to change all of them would be\n\ndh.update_ext_event_dict(json.loads(json.dumps(dh.get_ext_event_dict()).replace(wrong_path, correct_path))).") from e
 
@@ -457,7 +465,6 @@ class DataHandler(SimulateMixin,
         # SAVE REFERENCE IN ANY CASE
         new_dict = self.get_ext_event_dict().copy()
         new_dict[group] = {
-            "cait_version": __version__,
             "shape": (it.n_channels, len(it), it.record_length),
             "iterator": it.to_dict()
         }
@@ -1252,9 +1259,10 @@ class DataHandler(SimulateMixin,
 
                 if _events_exist_virtually(self, group) and 'event' not in f[group].keys():
                     shape = str(tuple(self.get_ext_event_dict()[group]['shape']))
+                    width_shape = max(width_shape, len(str(shape)))
                     dtype = fmt_virt('(stored externally)')
                     dataset = 'event'
-                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")}{fmt_virt(virt_str)} {shape:<{width_shape+1}} {dtype}')
+                    print(f'  {fmt_ds(f"{dataset:<{width_dataset+1}}")}{" "*4} {shape:<{width_shape+1}} {dtype}')
 
                 for dataset in f[group].keys():
                     # if dataset is virtual, we include an identifier
@@ -1395,7 +1403,8 @@ class DataHandler(SimulateMixin,
         return {"class": self.__class__.__name__, 
                 "args": self._init_args,     # defined in SerializingMixin
                 "kwargs": self._init_kwargs, # defined in SerializingMixin
-                "set_filepath_kwargs": self._set_filepath_kwargs}
+                "set_filepath_kwargs": self._set_filepath_kwargs, 
+                "cait_version": __version__}
     
     # Overrides the SerializingMixin's automatic method to reconstruct classes
     # (because DataHandler needs special attention due to dh.set_filepath)
