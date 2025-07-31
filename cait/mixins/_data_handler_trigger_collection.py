@@ -1,12 +1,12 @@
-from functools import partial
-from typing import List, Union, Tuple
 import warnings
+from functools import partial
+from typing import List, Tuple, Union
 
 import numpy as np
 
 import cait.versatile as vai
-         
-    
+
+
 # Helper function that is used in both trigger_of and trigger_zscore
 def _trigger_helper(dh, 
                     stream, 
@@ -148,90 +148,102 @@ def _trigger_helper(dh,
         noise_inds = vai.sample_noise(inds.tolist(), dh.record_length, n_samples=n_noise)
         dh.set(f"event_building-{name_appendix}", noise_ts=stream.time[noise_inds], dtype=np.int64, overwrite_existing=True)
 
-    if copy_events:
-        # save events in events group
-        if dh.exists("events"): 
-            warnings.warn("Could not copy events to DataHandler because the group 'events' already exists. To delete it, use 'dh.drop('events')'.")
+    # save events in events group
+    if copy_events and dh.exists("events/event"): 
+        warnings.warn("Could not copy events to DataHandler because dataset 'event' in group 'events' already exists. To delete it, use 'dh.drop('events', 'event')'.")
+        copy_this = False
+    else:
+        copy_this = copy_events
+    
+    if len(event_ts)>0:
+        dh.include_event_iterator("events", 
+                                    stream.get_event_iterator(
+                                        all_channels, 
+                                        dh.record_length, 
+                                        timestamps=event_ts
+                                    ),
+                                    copy_events=copy_this)
+        # Also copy the raw trigger information to the 'events' group
+        dh.set("events", trigger_flag=trig_flag, dtype=bool, overwrite_existing=True)
+        dh.set("events", trigger_timestamps=orig_ts, dtype=np.int64, overwrite_existing=True)
+        dh.set("events", trigger_phs=orig_ph, dtype=np.float32, overwrite_existing=True)
+    else:
+        print("No events found to write to DataHandler.")
+
+    # do the same for testpulses if respective information is provided
+    if testpulse_channels is not None:
+        if copy_events and dh.exists("testpulses/event"): 
+            warnings.warn("Could not copy events to DataHandler because dataset 'event' in group 'testpulses' already exists. To delete it, use 'dh.drop('testpulses', 'event')'.")
+            copy_this = False
         else:
-            print("Writing events to DataHandler ...")
-            if len(event_ts)>0:
-                dh.include_event_iterator("events", 
-                                          stream.get_event_iterator(
-                                              all_channels, 
-                                              dh.record_length, 
-                                              timestamps=event_ts
-                                          ))
-                # Also copy the raw trigger information to the 'events' group
-                dh.set("events", trigger_flag=trig_flag, dtype=bool, overwrite_existing=True)
-                dh.set("events", trigger_timestamps=orig_ts, dtype=np.int64, overwrite_existing=True)
-                dh.set("events", trigger_phs=orig_ph, dtype=np.float32, overwrite_existing=True)
-            else:
-                print("No events found to write to DataHandler.")
+            copy_this = copy_events
 
-        # do the same for testpulses if respective information is provided
-        if testpulse_channels is not None:
-            if dh.exists("testpulses"): 
-                warnings.warn("Could not copy events to DataHandler because the group 'testpulses' already exists. To delete it, use 'dh.drop('testpulses')'.")
-            else:
-                # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
-                valid_tp_flag = all_tp_ts < stream.time[-3*dh.record_length//4]
-                if not all(valid_tp_flag): 
-                    print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
-    
-                # save testpulses and tpas
-                print("Writing testpulses to DataHandler ...")
-                tp_ts = all_tp_ts[valid_tp_flag]
-                if len(tp_ts)>0:
-                    dh.include_event_iterator("testpulses", 
-                                              stream.get_event_iterator(
-                                                  all_channels, 
-                                                  dh.record_length, 
-                                                  timestamps=tp_ts
-                                              ))
-                    dh.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag])
-                else:
-                    print("No testpulses found to write to DataHandler.")
+        # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
+        valid_tp_flag = all_tp_ts < stream.time[-3*dh.record_length//4]
+        if not all(valid_tp_flag): 
+            print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
 
-        if controlpulses_above is not None:
-            if dh.exists("controlpulses"): 
-                warnings.warn("Could not copy controlpulses to DataHandler because the group 'controlpulses' already exists. To delete it, use 'dh.drop('controlpulses')'.")
-            elif len(all_cp_ts)>0:
-                # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
-                valid_cp_flag = all_cp_ts < stream.time[-3*dh.record_length//4]
-                if not all(valid_cp_flag): 
-                    print("One or more controlpulses could not be included because they fall (partially) outside the stream's range!!")
-    
-                # save controlpulses and cpas
-                print("Writing controlpulses to DataHandler ...")
-                cp_ts = all_cp_ts[valid_cp_flag]
-                if len(cp_ts)>0:
-                    dh.include_event_iterator("controlpulses", 
-                                              stream.get_event_iterator(
-                                                  all_channels, 
-                                                  dh.record_length, 
-                                                  timestamps=cp_ts
-                                              ))
-                    dh.set("controlpulses", testpulseamplitude=final_cpas[..., valid_cp_flag])
-                else:
-                    print("No controlpulses found to write to DataHandler.")
+        # save testpulses and tpas
+        tp_ts = all_tp_ts[valid_tp_flag]
+        if len(tp_ts)>0:
+            dh.include_event_iterator("testpulses", 
+                                        stream.get_event_iterator(
+                                            all_channels, 
+                                            dh.record_length, 
+                                            timestamps=tp_ts
+                                        ),
+                                        copy_events=copy_this)
+            dh.set("testpulses", testpulseamplitude=final_tpas[..., valid_tp_flag], overwrite_existing=True)
+        else:
+            print("No testpulses found to write to DataHandler.")
+
+    if controlpulses_above is not None:
+        if copy_events and dh.exists("controlpulses/event"): 
+            warnings.warn("Could not copy controlpulses to DataHandler because dataset 'event' in group 'controlpulses' already exists. To delete it, use 'dh.drop('controlpulses', 'event')'.")
+            copy_this = False
+        else:
+            copy_this = copy_events
+
+        if len(all_cp_ts)>0:
+            # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
+            valid_cp_flag = all_cp_ts < stream.time[-3*dh.record_length//4]
+            if not all(valid_cp_flag): 
+                print("One or more controlpulses could not be included because they fall (partially) outside the stream's range!!")
+
+            # save controlpulses and cpas
+            cp_ts = all_cp_ts[valid_cp_flag]
+            if len(cp_ts)>0:
+                dh.include_event_iterator("controlpulses", 
+                                            stream.get_event_iterator(
+                                                all_channels, 
+                                                dh.record_length, 
+                                                timestamps=cp_ts
+                                            ),
+                                            copy_events=copy_this)
+                dh.set("controlpulses", testpulseamplitude=final_cpas[..., valid_cp_flag], overwrite_existing=True)
             else:
                 print("No controlpulses found to write to DataHandler.")
-            
-        if n_noise>0:
-            if dh.exists("noise"): 
-                warnings.warn("Could not copy noise to DataHandler because the group 'noise' already exists. To delete it, use 'dh.drop('noise')'.")
-            else:
-                print("Writing noise to DataHandler ...")
-                noise_ts = dh.get(f"event_building-{name_appendix}", "noise_ts")
-                if len(noise_ts)>0:
-                    dh.include_event_iterator("noise", 
-                                              stream.get_event_iterator(
-                                                  all_channels, 
-                                                  dh.record_length, 
-                                                  timestamps=noise_ts
-                                              ))
-                else:
-                    print("No noise found to write to DataHandler.")
+        else:
+            print("No controlpulses found to write to DataHandler.")
+        
+    if n_noise>0:
+        if copy_events and dh.exists("noise/event"): 
+            warnings.warn("Could not copy noise to DataHandler because dataset 'event' in group 'noise' already exists. To delete it, use 'dh.drop('noise', 'event')'.")
+            copy_this = False
+        else:
+            copy_this = copy_events
+        
+        noise_ts = dh.get(f"event_building-{name_appendix}", "noise_ts")
+        if len(noise_ts)>0:
+            dh.include_event_iterator("noise", 
+                                        stream.get_event_iterator(
+                                            all_channels, 
+                                            dh.record_length, 
+                                            timestamps=noise_ts
+                                        ),
+                                        copy_events=copy_this)
+        else:
+            print("No noise found to write to DataHandler.")
 
 class TriggerCollectionMixin:
     """
@@ -271,7 +283,7 @@ class TriggerCollectionMixin:
         :type testpulse_channels: List[str], optional
         :param controlpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels' (as a list). If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. If you want to enforce an upper limit as well (i.e. count testpulses as controlpulses for testpulse amplitudes between ``a`` and ``b``), you can do so by passing a tuple ``(a, b)``. Defaults to None, i.e. no testpulse is counted as controlpulse.
         :type controlpulses_above: List[Union[float, Tuple[float]]], optional
-        :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
+        :param copy_events: If True, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). If False, only a reference to the original data is saved. Defaults to False.
         :type copy_events: bool, optional
         :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
         :type reuse_triggers: bool, optional
@@ -377,7 +389,7 @@ class TriggerCollectionMixin:
         :type testpulse_channels: List[str], optional
         :param controlpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels' (as a list). If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. If you want to enforce an upper limit as well (i.e. count testpulses as controlpulses for testpulse amplitudes between ``a`` and ``b``), you can do so by passing a tuple ``(a, b)``. Defaults to None, i.e. no testpulse is counted as controlpulse.
         :type controlpulses_above: List[Union[float, Tuple[float]]], optional
-        :param copy_events: If true, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). Defaults to False.
+        :param copy_events: If True, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). If False, only a reference to the original data is saved. Defaults to False.
         :type copy_events: bool, optional
         :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
         :type reuse_triggers: bool, optional

@@ -1,10 +1,11 @@
-from typing import Union, List
 from contextlib import nullcontext
+from typing import List, Union
 
-import numpy as np
 import h5py
+import numpy as np
 
 from .iteratorbase import IteratorBaseClass
+
 
 class H5Iterator(IteratorBaseClass):
     """
@@ -72,7 +73,12 @@ class H5Iterator(IteratorBaseClass):
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        # Also sets up serializing.
+        super().__init__(inds=inds, 
+                         batch_size=batch_size, 
+                         dh=dh, 
+                         group=group,
+                         channels=channels)
 
         # Save values to reconstruct iterator:
         self._params = {'dh': dh, 
