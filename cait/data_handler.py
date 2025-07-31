@@ -501,7 +501,7 @@ class DataHandler(SimulateMixin,
 
                 ind = 0
                 with it as events:
-                    for ev in tqdm(events, total=it.n_batches, desc="Copying events to DataHandler"):
+                    for ev in tqdm(events, total=it.n_batches, desc=f"Copying events to group '{group}'"):
                         if it.uses_batches:
                             step = len(ev)
                             sl = slice(ind, ind+step)
