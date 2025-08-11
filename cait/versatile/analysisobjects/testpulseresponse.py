@@ -258,7 +258,7 @@ class TPRPoly(TestpulseResponse):
         
         return np.reshape(
             self._fit_poly(self._scale_ts(_sanitize_inputs_call(x))),
-            shape=np.shape(x),
+            np.shape(x),
         )
         
 class TPRCubicSpline(TestpulseResponse):
