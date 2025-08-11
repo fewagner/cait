@@ -100,7 +100,7 @@ class TestpulseResponse(SerializingMixin, ABC):
     Abstract object describing the height of testpulses over x (usually time) for a single testpulse amplitude (TPA).
 
     To add a specific model (e.g. piecewise cubic splines or polynomials), the following things need to be implemented:
-    
+
     - :func:`TestpulseResponse.__init__`: Initialize the object with parameters that it needs (e.g. polynomial order) and call the constructor of the super class with those arguments.
     - :func:`TestpulseResponse.prepare`: Takes a 1-d array of x-values (usually microsecond timestamps) of testpulses of A SINGLE testpulse amplitude and a 1-d array of the corresponding testpulse heights at these x-values (usually timestamps) and performs the fit over x. This method must return the object itself again. Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs_prepare' to perform those checks).
     - :func:`TestpulseResponse.__call__`: Takes a 1-d array of x-values (usually microsecond timestamps) and evaluates the polynomial (which was pre-calculated in :func:`TestpulseResponse.prepare`). Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs_call' to perform those checks).
@@ -226,7 +226,7 @@ class TPRUnity(TestpulseResponse):
     def __call__(self, x: np.ndarray):
         in_shape = np.shape(x)
         x = _sanitize_inputs_call(x)
-        return np.reshape(self._mean_ph*np.ones_like(x), shape=in_shape)
+        return np.reshape(self._mean_ph*np.ones_like(x), in_shape)
     
 class TPRPoly(TestpulseResponse):
     """
@@ -234,8 +234,6 @@ class TPRPoly(TestpulseResponse):
     
     :param poly_order: Order of the polynomial. Defaults to 1 (i.e. a linear polynomial).
     :type poly_order: int, optional
-
-    .. automethod:: __call__
     """
     _PREVIEW_INPUTS = {
         "poly_order": {"dtype": int, "default": 1, "domain": (0, 4)},
@@ -273,8 +271,6 @@ class TPRCubicSpline(TestpulseResponse):
     :type kernel_length: float, optional
     :param param_scale: Conversion factor between the argument ``kernel_length`` and the units of the input x-values. E.g. If the x-values are given in microseconds, but you want to specify the ``kernel_length`` in hours, you can set ``param_scale=1e-6/3600``. Defaults to ``1e-6/3600``.
     :type param_scale: float, optional
-
-    .. automethod:: __call__
     """
     _PREVIEW_INPUTS = {
         "kernel_length": {"dtype": float, "default": 0.5, "domain": (0, 3)},
@@ -312,5 +308,5 @@ class TPRCubicSpline(TestpulseResponse):
         
         return np.reshape(
             self._fit_poly(_sanitize_inputs_call(x)),
-            shape=np.shape(x),
+            np.shape(x),
         )

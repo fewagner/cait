@@ -218,7 +218,7 @@ class EnergyCalibration(SerializingMixin):
                                         tphs[mask_valid, ...], 
                                         tpes[mask_valid, ...])
         
-        return np.reshape(out, shape=in_shape)
+        return np.reshape(out, in_shape)
     
     def inverse(self, x: np.ndarray, phs: np.ndarray):
         """
@@ -242,7 +242,7 @@ class EnergyCalibration(SerializingMixin):
                                                 tphs[mask_valid, ...], 
                                                 phs[mask_valid, ...])
         
-        return np.reshape(out, shape=in_shape)
+        return np.reshape(out, in_shape)
     
     def _update_tpr(self, tpr_obj: TestpulseResponse):
         """Update the currently used TestpulseResponse object. Called by ``.preview`` to dynamically modify fit parameters."""
@@ -292,9 +292,9 @@ class EnergyCalibration(SerializingMixin):
         tpe_start, tpe_stop = 0, np.max(self._unique_tpas)
         tpe_len = tpe_stop - tpe_start
         tpe_fit = np.linspace(tpe_start-0.01*tpe_len, tpe_stop+0.01*tpe_len, n_fit_grid_points)
-        y_fit = np.reshape(self(np.atleast_1d(x), np.atleast_2d(tpe_fit)), shape=np.shape(tpe_fit))
+        y_fit = np.reshape(self(np.atleast_1d(x), np.atleast_2d(tpe_fit)), np.shape(tpe_fit))
 
-        tp_phs = np.reshape(self(x, np.atleast_2d(self._unique_tpas)), shape=np.shape(self._unique_tpas))
+        tp_phs = np.reshape(self(x, np.atleast_2d(self._unique_tpas)), np.shape(self._unique_tpas))
 
         return {
             "line": {

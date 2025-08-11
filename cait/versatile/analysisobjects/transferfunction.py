@@ -285,7 +285,7 @@ class TransferFunction(SerializingMixin, ABC):
                 eps=self._DEFAULT_SECANT_ROOT_FIND_ARGS["eps"],
                 max_iter=self._DEFAULT_SECANT_ROOT_FIND_ARGS["max_iter"],
             ),
-        shape=in_shape,
+        in_shape,
         )
         
     @classmethod
@@ -356,7 +356,7 @@ class TFUnity(TransferFunction):
     def __call__(self, tpas: np.ndarray, tp_phs: np.ndarray, tpes: np.ndarray):
         in_shape = np.shape(tpes)
         tpas, tp_phs, tpes = _sanitize_inputs(tpas, tp_phs, tpes, "tpas", "tp_phs", "tpes")
-        return np.reshape(tpes*np.ones_like(tpes), shape=in_shape)
+        return np.reshape(tpes*np.ones_like(tpes), in_shape)
 
 class TFPchip(TransferFunction):
     """
@@ -366,8 +366,6 @@ class TFPchip(TransferFunction):
     :type fix_at_yaxis: bool
     :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
     :type y_intercept: float
-
-    .. automethod:: __call__
     """
     _PREVIEW_INPUTS = {
         "fix_at_yaxis": {"dtype": bool, "default": True},
@@ -408,7 +406,7 @@ class TFPchip(TransferFunction):
         # slightly differently in _ppolyval.
         return np.reshape(
             _ppolyval(iterp_objects.c, iterp_objects.x, tpes, extrapolate=True),
-            shape=in_shape,
+            in_shape,
         )
     
 class TFPoly(TransferFunction):
@@ -421,8 +419,6 @@ class TFPoly(TransferFunction):
     :type fix_at_yaxis: bool
     :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
     :type y_intercept: float
-
-    .. automethod:: __call__
     """
     _PREVIEW_INPUTS = {
         "fix_at_yaxis": {"dtype": bool, "default": True},
@@ -463,5 +459,5 @@ class TFPoly(TransferFunction):
                 poly_coeffs[:,k][:,None]*tpes**k 
                 for k in range(self._poly_deg+1)
                 ], axis=0),
-            shape=in_shape
+            in_shape
         )
