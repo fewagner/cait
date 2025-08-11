@@ -106,6 +106,36 @@ class TestpulseResponse(SerializingMixin, ABC):
     - :func:`TestpulseResponse.__call__`: Takes a 1-d array of x-values (usually microsecond timestamps) and evaluates the polynomial (which was pre-calculated in :func:`TestpulseResponse.prepare`). Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs_call' to perform those checks).
     - If the class attribute ``_PREVIEW_INPUTS`` is defined, it will be used for interactively changing the arguments passed to ``__init__`` in the preview methods. See below for how they must be structured. You can only allow a subset of the input arguments to be varied, but all field names in ``_PREVIEW_INPUTS`` must be input arguments to ``__init__``.
 
+    The usage of this class is demonstrated below for the specific implementation of :class:`TPRPoly`. See the docstrings of the child classes for more information on the specific behavior. 
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        start_us = 1426321613000000
+        ts = np.sort(sp.stats.randint.rvs(low=start_us, high=start_us+3*1e6*3600, size=1000))
+        tp_phs = sp.stats.norm.rvs(loc=1.3, scale=0.05, size=len(ts))
+
+        selected_times = np.linspace(start_us, start_us+10000, 100)
+
+        # Instantiate the object (this does not yet do any fitting).
+        tpr = vai.TPRPoly()
+
+        # Calculate the fit (this is done only once. Afterwards, the
+        # object can be used for as many evaluations as you like).
+        tpr.prepare(ts, tp_phs)
+
+        # Get testpulse pulse heights at selected values
+        tph_at_selected_times = tpr(selected_times)
+
+        # Every TestpulseResponse object can be plotted to interactively
+        # try out different configuration parameters (even before instantiating):
+        vai.TPRPoly.preview(ts, tp_phs)  
+
     .. automethod:: __call__
     """
     _PREVIEW_INPUTS = {}
@@ -175,7 +205,7 @@ class TestpulseResponse(SerializingMixin, ABC):
         if "backend" in viewer_kwargs.keys() and viewer_kwargs["backend"] != "plotly":
             raise NotImplementedError(f"Backend '{viewer_kwargs['backend']}' is currently not supported. Please use 'plotly'. ")
         if "xlabel" not in viewer_kwargs.keys():
-            viewer_kwargs["xlabel"] = "Timestamp"
+            viewer_kwargs["xlabel"] = "x"
         if "ylabel" not in viewer_kwargs.keys():
             viewer_kwargs["ylabel"] = "Testpulse Pulse Height"
 
@@ -234,6 +264,24 @@ class TPRPoly(TestpulseResponse):
     
     :param poly_order: Order of the polynomial. Defaults to 1 (i.e. a linear polynomial).
     :type poly_order: int, optional
+
+    This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        start_us = 1426321613000000
+        ts = np.sort(sp.stats.randint.rvs(low=start_us, high=start_us+3*1e6*3600, size=1000))
+        tp_phs = sp.stats.norm.rvs(loc=1.3, scale=0.05, size=len(ts))
+
+        vai.TPRPoly.preview(ts, tp_phs)
+
+    .. image:: media/TPRPolyPreview.png
     """
     _PREVIEW_INPUTS = {
         "poly_order": {"dtype": int, "default": 1, "domain": (0, 4)},
@@ -271,6 +319,24 @@ class TPRCubicSpline(TestpulseResponse):
     :type kernel_length: float, optional
     :param param_scale: Conversion factor between the argument ``kernel_length`` and the units of the input x-values. E.g. If the x-values are given in microseconds, but you want to specify the ``kernel_length`` in hours, you can set ``param_scale=1e-6/3600``. Defaults to ``1e-6/3600``.
     :type param_scale: float, optional
+
+    This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        start_us = 1426321613000000
+        ts = np.sort(sp.stats.randint.rvs(low=start_us, high=start_us+3*1e6*3600, size=1000))
+        tp_phs = sp.stats.norm.rvs(loc=1.3, scale=0.05, size=len(ts))
+
+        vai.TPRCubicSpline.preview(ts, tp_phs)
+
+    .. image:: media/TPRCubicSplinePreview.png
     """
     _PREVIEW_INPUTS = {
         "kernel_length": {"dtype": float, "default": 0.5, "domain": (0, 3)},

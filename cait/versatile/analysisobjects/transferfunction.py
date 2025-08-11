@@ -216,6 +216,48 @@ class TransferFunction(SerializingMixin, ABC):
 
     This base class provides a default implementation for :func:`TestpulseResponse.inverse`, which calculates the inverse of the fit numerically using the Secant Method, given the function :func:`TestpulseResponse.__call__`. The class attribute ``_DEFAULT_SECANT_ROOT_FIND_ARGS`` stores the configuration details of this method. If you wish to implement your own inverse (e.g. because there is a more efficient or analytical way to do it) you can override :func:`TestpulseResponse.inverse` in the child class. Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs' to perform those checks).
 
+    The usage of this class is demonstrated below for the specific implementation of :class:`TFPchip`. See the docstrings of the child classes for more information on the specific behavior. 
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        tpas = [1.0, 2.5, 4.0, 7.0]
+        tp_phs_single = [0.8, 1.5, 1.9, 2.3]
+        tp_phs_multi = [[0.8, 1.3, 1.9, 2.3], [0.7, 1.2, 1.8, 2.4]]
+        tpes_single = np.linspace(0, 5, 100)
+        tpes_multi = [np.linspace(0, 5, 100), np.linspace(1, 4, 100)]
+
+        tf = vai.TFPchip()
+
+        # Evaluate a single calibration (i.e. fit tpas and tp_phs)
+        # and evaluate this calibration at tpes.
+        # Shapes: tpas: (n_unique_tpas,)
+        #         tp_phs: (n_unique_tpas,)
+        #         tpes: (M,)
+        #         output: (M,)
+        ph_values_single = tf(tpas, tp_phs_single, tpes_single)
+
+        # Evaluate a multiple calibrations at the same time (i.e. fit
+        # tpas and rows of tp_phs SEPARATLY, then evaluate each row's
+        # calibration with each row in tpes).
+        # Shapes: tpas: (n_unique_tpas,)
+        #         tp_phs: (N, n_unique_tpas)
+        #         tpes: (N, M)
+        #         output: (N, M)
+        ph_values_multi = tf(tpas, tp_phs_multi, tpes_multi)
+
+        # The object also has an inverse method:
+        # Call tf.inverse() analogously to above to convert from
+        # pulse height to TPE   
+
+        # Preview what the transfer function does for different arguments.
+        tf.preview(tpas, tp_phs_single)            
+
     .. automethod:: __call__
     """
     _PREVIEW_INPUTS = {}
@@ -366,6 +408,23 @@ class TFPchip(TransferFunction):
     :type fix_at_yaxis: bool
     :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
     :type y_intercept: float
+
+    This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.transferfunction.TransferFunction`.
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        tpas = [1.0, 2.5, 4.0, 7.0]
+        tp_phs = [0.8, 1.5, 1.9, 2.3]
+
+        vai.TFPchip().preview(tpas, tp_phs)
+
+    .. image:: media/TFPchipPreview.png
     """
     _PREVIEW_INPUTS = {
         "fix_at_yaxis": {"dtype": bool, "default": True},
@@ -419,6 +478,23 @@ class TFPoly(TransferFunction):
     :type fix_at_yaxis: bool
     :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
     :type y_intercept: float
+
+    This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.transferfunction.TransferFunction`.
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        tpas = [1.0, 2.5, 4.0, 7.0]
+        tp_phs = [0.8, 1.5, 1.9, 2.3]
+
+        vai.TFPoly().preview(tpas, tp_phs)
+
+    .. image:: media/TFPolyPreview.png
     """
     _PREVIEW_INPUTS = {
         "fix_at_yaxis": {"dtype": bool, "default": True},

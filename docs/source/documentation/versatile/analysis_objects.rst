@@ -40,10 +40,8 @@ Testpulse Responses
 .. currentmodule:: cait.versatile
 
 .. autoclass:: TPRCubicSpline
-   :members:
    :show-inheritance:
 .. autoclass:: TPRPoly
-   :members:
    :show-inheritance:
 
 Transfer Functions
@@ -58,8 +56,6 @@ Transfer Functions
 .. currentmodule:: cait.versatile
 
 .. autoclass:: TFPchip
-   :members:
    :show-inheritance:
 .. autoclass:: TFPoly
-   :members:
    :show-inheritance:
