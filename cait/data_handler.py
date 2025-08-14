@@ -226,13 +226,17 @@ class DataHandler(SimulateMixin,
     # used for TAB-completion in iPython/notebooks. Example: dh['ev<TAB> -> 'events/'
     def _ipython_key_completions_(self):
         with self.get_filehandle(mode="r") as f:
-            suggestions = [f"{k}/{ds}" for k in f.keys() for ds in f[k]]
+            suggestions = [f"{k}/{ds}" for k in f for ds in f[k]]
             suggestions += [s.split("mainpar")[0]+mp
                             for mp in MAINPAR 
                             for s in suggestions if s.endswith("/mainpar")]
             suggestions += [s.split("add_mainpar")[0]+mp
                             for mp in ADD_MAINPAR 
                             for s in suggestions if s.endswith("/add_mainpar")]
+            
+            for group in f:
+                if "time_s" in f[group] and "time_mus" in f[group]:
+                    suggestions.append(f"{group}/timestamps")
 
         return suggestions
     
@@ -972,6 +976,8 @@ class DataHandler(SimulateMixin,
                 available = ds_source_available(f, group, "mainpar")
             elif (dataset in ADD_MAINPAR) and (dataset not in f[group]):
                 available = ds_source_available(f, group, "add_mainpar")
+            elif (dataset == "timestamps") and (dataset not in f[group]):
+                available = ds_source_available(f, group, "time_s") and ds_source_available(f, group, "time_mus")
             else:
                 available = ds_source_available(f, group, dataset)
 
@@ -1013,6 +1019,15 @@ class DataHandler(SimulateMixin,
                     (f[group]['mainpar'][idx0, idx1, 6] - f[group]['mainpar'][idx0, idx1, 4]) / self.sample_frequency * 1000)
             elif dataset == 'slope' and 'slope' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 8] * self.record_length)
+            elif (
+                dataset == 'timestamps' 
+                and 'timestamps' not in f[group]
+                and 'time_mus' in f[group] 
+                and 'time_s' in f[group]
+                ):
+                sec = np.array(f[group]["time_s"], dtype=np.int64)
+                mus = np.array(f[group]["time_mus"], dtype=np.int64)
+                data = sec*int(1e6) + mus
             else:
                 for i, name in enumerate(ADD_MAINPAR):
                     if dataset == name and name not in f[group]:
@@ -1236,7 +1251,7 @@ class DataHandler(SimulateMixin,
         """
 
         if print_info:
-            print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset). If present, some contents of the mainpar and add_mainpar datasets are displayed as well. For convenience, they can also be accessed through get(), even though they are not separate datasets in the HDF5 file.\nDatasets marked with {fmt_virt("(v)")} are virtual datasets, i.e. they are stored in another (or multiple other) HDF5 file(s). They are treated like regular datasets when read.\n')
+            print(f'The HDF5 file contains the following {fmt_gr("groups")} and {fmt_ds("datasets")}, which can be accessed through get(group, dataset) or dh["group/dataset"]. If present, some contents of the mainpar, add_mainpar and timestamps datasets are displayed as well. For convenience, they can also be accessed through get(...) and dh[...], even though they are not separate datasets in the HDF5 file.\nDatasets marked with {fmt_virt("(v)")} are virtual datasets, i.e. they are stored in another (or multiple other) HDF5 file(s). They are treated like regular datasets when read.\n')
 
         with self.get_filehandle(mode="r") as f:
             if group is None:
@@ -1282,6 +1297,14 @@ class DataHandler(SimulateMixin,
                         shape = f[group]['add_mainpar'].shape[:2]
                         for dataset in ADD_MAINPAR:
                             print(f'  |{dataset:<{width_dataset+len(virt_str)}} {shape}')
+                    
+                    if (
+                        dataset=='time_s' 
+                        and 'time_mus' in f[group]
+                        and 'timestamps' not in f[group]
+                        ):
+                        shape = f[group][dataset].shape
+                        print(f'  |{"timestamps":<{width_dataset+len(virt_str)}} {shape}')
 
     def generate_startstop(self):
         """

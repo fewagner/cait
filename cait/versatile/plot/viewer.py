@@ -1,9 +1,10 @@
-from typing import Callable, Union, List, Tuple
+from typing import Callable, List, Tuple, Union
 
-from .backends.impl_plotly import BaseClassPlotly
-from .backends.impl_matplotlib import BaseClassMPL
-from .backends.impl_uniplot import BaseClassUniplot
 from .backends.helper import auto_backend
+from .backends.impl_matplotlib import BaseClassMPL
+from .backends.impl_plotly import BaseClassPlotly
+from .backends.impl_uniplot import BaseClassUniplot
+
 
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
@@ -110,6 +111,7 @@ class Viewer():
         else:
             raise NotImplementedError('Only backend "plotly", "mpl" and "uniplot" are supported.')
 
+        self._backend = backend
         self.visible = False
 
         if data is not None: 
@@ -342,9 +344,7 @@ class Viewer():
         self.fig_widget._update_vmarker(name, marker_pos, y_int)
 
     def get_figure(self):
-        """
-        Returns the figure object of the plot. Can be used to further manipulate the plot.
-        """
+        """Returns the figure object of the plot. Can be used to further manipulate the plot."""
         return self.fig_widget._get_figure()
     
     def get_artist(self, name: str):
@@ -417,9 +417,7 @@ class Viewer():
         self.update()
 
     def show(self):
-        """
-        Show the plot in Jupyter.
-        """
+        """Show the plot in Jupyter."""
         self.fig_widget._show()
         self.visible = True
 
@@ -427,9 +425,12 @@ class Viewer():
         self.fig_widget._update()
     
     def close(self, b=None):
-        """
-        Hide the plot in Jupyter.
-        """
+        """Hide the plot in Jupyter."""
         if self.visible: 
             self.fig_widget._close()
             self.visible = False
+
+    @property
+    def backend(self):
+        """Return the backend currently in use."""
+        return self._backend
