@@ -277,11 +277,11 @@ class EnergyCalibration(SerializingMixin):
                 ]
             },
             "line": {
-                f"Fit TPA {i+1}": [
+                f"TPA {tpa:.2g}": [
                     np.atleast_1d(x_fit),
                     np.atleast_1d(fit)
                 ] 
-                for i, fit in enumerate(y_fit.T)
+                for tpa, fit in zip(self._unique_tpas, y_fit.T)
             },
         }
         
@@ -293,8 +293,8 @@ class EnergyCalibration(SerializingMixin):
         tpe_len = tpe_stop - tpe_start
         tpe_fit = np.linspace(tpe_start-0.01*tpe_len, tpe_stop+0.01*tpe_len, n_fit_grid_points)
         y_fit = np.reshape(self(np.atleast_1d(x), np.atleast_2d(tpe_fit)), np.shape(tpe_fit))
-
-        tp_phs = np.reshape(self(x, np.atleast_2d(self._unique_tpas)), np.shape(self._unique_tpas))
+        
+        tp_phs = np.reshape(self.get_tp_phs(x)[0], np.shape(self._unique_tpas))
 
         return {
             "line": {
@@ -304,11 +304,11 @@ class EnergyCalibration(SerializingMixin):
                 ]
             },
             "scatter": {
-                f"TPA {i+1}": [
+                f"TPA {tpa:.2g}": [
                     np.atleast_1d(tpa),
                     np.atleast_1d(tp_ph)
                 ]
-                for i, (tpa, tp_ph) in enumerate(zip(self._unique_tpas, tp_phs))
+                for tpa, tp_ph in zip(self._unique_tpas, tp_phs)
             }
         }
 
