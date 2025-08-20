@@ -472,7 +472,8 @@ class DataHandler(SimulateMixin,
         new_dict = self.get_ext_event_dict().copy()
         new_dict[group] = {
             "shape": (it.n_channels, len(it), it.record_length),
-            "iterator": it.to_dict()
+            # save flattened iterator (will otherwise lead to all sorts of problems)
+            "iterator": it.flatten().to_dict(),
         }
         self.update_ext_event_dict(new_dict)
         print(f"Successfully saved {fmt_virt('event iterator reference')} for group {fmt_gr(group)}.")
