@@ -432,7 +432,7 @@ class DataHandler(SimulateMixin,
             channel = slice(None) if channel is None else channel
             flag = slice(None) if flag is None else flag
 
-            return it[channel, flag]
+            return it[channel, flag].with_batchsize(batch_size)
 
         # Else, read event dataset and construct iterator
         # Reading number of events is much faster if we open the HDF5 file directly

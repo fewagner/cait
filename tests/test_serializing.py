@@ -132,6 +132,9 @@ def test_externally_store_iterator_in_datahandler(testdata):
         recovered_it = dh.get_event_iterator(f"external_storage_test_group{i}")
         assert isinstance(recovered_it, it.__class__)
 
+        # Check if setting batch_size works
+        assert dh.get_event_iterator(f"external_storage_test_group{i}", batch_size=11).uses_batches
+
         # Check if accessing events via dh.get() works and gives the correct shape
         assert (it.n_channels, len(it), it.record_length) == dh.get(f"external_storage_test_group{i}", "event").shape
 
