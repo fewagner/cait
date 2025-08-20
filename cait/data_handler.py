@@ -980,6 +980,14 @@ class DataHandler(SimulateMixin,
                 available = ds_source_available(f, group, "add_mainpar")
             elif (dataset == "timestamps") and (dataset not in f[group]):
                 available = ds_source_available(f, group, "time_s") and ds_source_available(f, group, "time_mus")
+            elif dataset == "event" and (
+                    ("event" in f[group].keys() and f[group]["event"].ndim==3) 
+                    or _events_exist_virtually(self, group)
+                ):
+                if "event" in f[group].keys():
+                    available = ds_source_available(f, group, dataset)
+                else:
+                    available = True
             else:
                 available = ds_source_available(f, group, dataset)
 
