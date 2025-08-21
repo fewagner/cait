@@ -63,6 +63,15 @@ def test_sanity_check_testpulse_response(tpr_obj):
         # Prepare fine but wrong shape for __call__
         tpr_obj().prepare(x=TEST_TS, tp_phs=TEST_TPH[0])([TEST_EVAL_TS[:10], TEST_EVAL_TS[:10]])
 
+    with pytest.warns(UserWarning):
+        # Warning when < 10 data points
+        tpr_obj().prepare(x=[0, 1, 2, 3], tp_phs=[1, 2, 1, 1])
+
+    with pytest.warns(UserWarning):
+        # Warning when outliers present
+        tpr_obj().prepare(x=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11], 
+                          tp_phs=[1, 1, 1, 1, 2, 1, 0, 100, 2, 1, 1, 1])
+
 @pytest.mark.parametrize("tf_obj", all_tfs)
 def test_sanity_check_transfer_function(tf_obj):
     # Test for default arguments

@@ -1,4 +1,5 @@
 import math
+import warnings
 from abc import ABC, abstractmethod
 
 import numba
@@ -70,7 +71,36 @@ def gauss_smoothing(x: np.ndarray, y: np.ndarray, width: float):
         
     return arr_out
 
-def _sanitize_inputs_prepare(x: np.ndarray, tp_phs: np.ndarray):
+def _check_npoints_and_outliers(phs: np.ndarray):
+    """Check if data contains 5-sigma outliers or less than 10 datapoints and issue warnings accordingly. Return flag of outliers, i.e. True means outlier."""
+    outlier_flag = np.zeros(phs.shape, dtype=bool)
+    
+    if np.size(phs) < 10:
+        warnings.warn(f"You attempt to construct a TestpulseResponse with only {np.size(phs)} phs-points. This might result in an unreliable calibration. Make sure that your cuts didn't remove a substential number of testpulses.", category=UserWarning)
+        
+    if np.size(phs) > 10:
+        # Normalize inputs:
+        # Median filter removes trend, differences should detect spikes
+        diffs = np.diff(phs - sp.signal.medfilt(phs, 9))
+        # Get median and +-1 sigma of the diffs distribution
+        qs = np.quantile(diffs, sp.stats.norm.cdf(np.array([-1., 0., 1.])))
+        
+        # Scale the diffs distribution to a standard normal distribution
+        std_gauss = diffs - qs[1]
+        std_gauss[diffs>qs[1]] /= qs[2] - qs[1]
+        std_gauss[diffs<qs[1]] /= qs[1] - qs[0]
+
+        outside_flag = np.abs(std_gauss) > 5
+        n_outside = np.sum(outside_flag)
+
+        if n_outside > 0:
+            warnings.warn(f"There are {n_outside} outliers in the phs-points that you use to construct the TestpulseResponse. This might heavily impact the reliability of your calibration. Make sure that your cuts remove outliers BEFORE constructing the TestpulseResponse. Alternatively, you can set 'remove_outliers=True', although this is NOT RECOMMENDED because ideally, testpulses are cleaned BEFOREHAND.", category=UserWarning)
+            
+        outlier_flag[1:] = outside_flag
+    
+    return outlier_flag
+
+def _sanitize_inputs_prepare(x: np.ndarray, tp_phs: np.ndarray, remove_outliers: bool = False):
     orig_shape_x, orig_shape_tp_phs = np.shape(x), np.shape(tp_phs)
     x, tp_phs = np.atleast_1d(x), np.atleast_1d(tp_phs)
 
@@ -80,6 +110,14 @@ def _sanitize_inputs_prepare(x: np.ndarray, tp_phs: np.ndarray):
         raise ValueError(f"Array 'tp_phs' has to be 1d. Got shape {orig_shape_tp_phs}.")
     if x.shape != tp_phs.shape:
         raise ValueError(f"Arrays 'x' and 'tp_phs' have to have same shape. Got shapes {orig_shape_x} and {orig_shape_tp_phs}.")
+    
+    outlier_flag = _check_npoints_and_outliers(tp_phs)
+    
+    if remove_outliers:
+        x, tp_phs = x[~outlier_flag], tp_phs[~outlier_flag]
+        n_outliers = np.sum(outlier_flag)
+        if n_outliers > 0:
+            warnings.warn(f"{n_outliers} outlier(s) were automatically removed for TestpulseResponse. Remaining datapoints: {np.size(tp_phs)-n_outliers}", category=UserWarning)
     
     return x, tp_phs
 
@@ -99,10 +137,13 @@ class TestpulseResponse(SerializingMixin, ABC):
     """
     Abstract object describing the height of testpulses over x (usually time) for a single testpulse amplitude (TPA).
 
+    :param remove_outliers: If True, pulse heights that deviate more than 5 sigma from the pulse heights trend will be removed. Note that we always recommend to REMOVE OUTLIERS MANUALLY before even starting the calibration! Defaults to False.
+    :type remove_outliers: bool, optional
+
     To add a specific model (e.g. piecewise cubic splines or polynomials), the following things need to be implemented:
 
     - :func:`TestpulseResponse.__init__`: Initialize the object with parameters that it needs (e.g. polynomial order) and call the constructor of the super class with those arguments.
-    - :func:`TestpulseResponse.prepare`: Takes a 1-d array of x-values (usually microsecond timestamps) of testpulses of A SINGLE testpulse amplitude and a 1-d array of the corresponding testpulse heights at these x-values (usually timestamps) and performs the fit over x. This method must return the object itself again. Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs_prepare' to perform those checks).
+    - :func:`TestpulseResponse.prepare`: Takes a 1-d array of x-values (usually microsecond timestamps) of testpulses of A SINGLE testpulse amplitude and a 1-d array of the corresponding testpulse heights at these x-values (usually timestamps) and performs the fit over x. This method must return the object itself again. Must perform input shape validation, raise a ValueError in case of shape mismatch, and generate a UserWarning if there are outliers in the pulse-heights or less than 10 data points (you can use the function '_sanitize_inputs_prepare' to perform those checks).
     - :func:`TestpulseResponse.__call__`: Takes a 1-d array of x-values (usually microsecond timestamps) and evaluates the polynomial (which was pre-calculated in :func:`TestpulseResponse.prepare`). Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs_call' to perform those checks).
     - If the class attribute ``_PREVIEW_INPUTS`` is defined, it will be used for interactively changing the arguments passed to ``__init__`` in the preview methods. See below for how they must be structured. You can only allow a subset of the input arguments to be varied, but all field names in ``_PREVIEW_INPUTS`` must be input arguments to ``__init__``.
 
@@ -145,9 +186,9 @@ class TestpulseResponse(SerializingMixin, ABC):
     #    "arg3": {"dtype": int, "default": 1, "domain": (0, 4)} # Results in Dropdown
     #}
     
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._init_kwargs = kwargs
+    def __init__(self, remove_outliers: bool = False, **kwargs):
+        super().__init__(remove_outliers=remove_outliers, **kwargs)
+        self._init_kwargs = dict(remove_outliers=remove_outliers, **kwargs)
         
     def __repr__(self):
         return f"{self.__class__.__name__}({', '.join([f'{k}={v}' for k, v in self._init_kwargs.items()])})"
@@ -244,12 +285,17 @@ class TestpulseResponse(SerializingMixin, ABC):
 ############# CHILD CLASSES ##############
 ##########################################
 class TPRUnity(TestpulseResponse):
-    """Do-Nothing class that is used to validate the automatic tests for all children of :class:`TestpulseResponse`."""
-    def __init__(self):
-        super().__init__()
+    """
+    Do-Nothing class that is used to validate the automatic tests for all children of :class:`TestpulseResponse`.
+
+    :param kwargs: Additional keyword arguments for see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
+    :type poly_order: Any
+    """
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
-        x, tp_phs = _sanitize_inputs_prepare(x, tp_phs)
+        x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
         self._mean_ph = np.mean(tp_phs)
         return self
     
@@ -264,6 +310,8 @@ class TPRPoly(TestpulseResponse):
     
     :param poly_order: Order of the polynomial. Defaults to 1 (i.e. a linear polynomial).
     :type poly_order: int, optional
+    :param kwargs: Additional keyword arguments for see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
+    :type poly_order: Any
 
     This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
 
@@ -286,13 +334,13 @@ class TPRPoly(TestpulseResponse):
     _PREVIEW_INPUTS = {
         "poly_order": {"dtype": int, "default": 1, "domain": (0, 4)},
     }
-    def __init__(self, poly_order: int = 1):
-        super().__init__(poly_order=poly_order)
+    def __init__(self, poly_order: int = 1, **kwargs):
+        super().__init__(poly_order=poly_order, **kwargs)
         self._poly_order = poly_order
         self._fit_poly = None
         
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
-        x, tp_phs = _sanitize_inputs_prepare(x, tp_phs)
+        x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
 
         # Scale so that x-axis has values in (0, 1) to improve stability
         self._scale_ts = lambda X: (X-np.min(x))/(np.max(x)-np.min(x))
@@ -319,6 +367,8 @@ class TPRCubicSpline(TestpulseResponse):
     :type kernel_length: float, optional
     :param param_scale: Conversion factor between the argument ``kernel_length`` and the units of the input x-values. E.g. If the x-values are given in microseconds, but you want to specify the ``kernel_length`` in hours, you can set ``param_scale=1e-6/3600``. Defaults to ``1e-6/3600``.
     :type param_scale: float, optional
+    :param kwargs: Additional keyword arguments for see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
+    :type poly_order: Any
 
     This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.testpulseresponse.TestpulseResponse`.
 
@@ -341,8 +391,8 @@ class TPRCubicSpline(TestpulseResponse):
     _PREVIEW_INPUTS = {
         "kernel_length": {"dtype": float, "default": 0.5, "domain": (0, 3)},
     }
-    def __init__(self, kernel_length: int = 0.5, param_scale: float = 1e-6/3600):
-        super().__init__(kernel_length=kernel_length, param_scale=param_scale)
+    def __init__(self, kernel_length: int = 0.5, param_scale: float = 1e-6/3600, **kwargs):
+        super().__init__(kernel_length=kernel_length, param_scale=param_scale, **kwargs)
         
         if kernel_length<0:
             raise ValueError(f"Kernel length has to be a non-negative float. Not {kernel_length}.")
@@ -353,7 +403,7 @@ class TPRCubicSpline(TestpulseResponse):
         
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
         # Sanitize data
-        x, tp_phs = _sanitize_inputs_prepare(x, tp_phs)
+        x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
 
         sort_inds = np.argsort(x)
         x, tp_phs = x[sort_inds], tp_phs[sort_inds]

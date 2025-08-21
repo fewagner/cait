@@ -31,6 +31,8 @@ def _sanitize_inputs(arr1: np.ndarray, arr2: np.ndarray, name1: str, name2: str)
 class EnergyCalibration(SerializingMixin):
     """
     Energy calibration for fixed testpulse amplitudes (``tpas``) and testpulse pulse heights (``tp_phs``) which vary with an independent variable (``tp_x``). This independent variable is usually the (microsecond) timestamp of the testpulses but can in principle be any quantity.
+
+    NOTICE: The array ``tp_phs`` must be cleaned from outliers BEFORE starting the calibration!
     
     :param tp_x: The independent variable which the testpulse pulse heights ``tp_phs`` depend on. Usually the (microsecond) timestamps of the testpulses.
     :type tp_x: np.array, shape (N,)
@@ -428,7 +430,7 @@ class EnergyCalibration(SerializingMixin):
         # Already draw pulse height scatter (will not be redrawn later) and fits (will be redrawn)
         tpr_viewer.plot(self._get_tpr_plot_dict(n_fit_grid_points, downsample_factor))
 
-        self._current_plot_ts = np.min(self._tp_x)
+        self._current_plot_x = np.min(self._tp_x)
 
         #scale_time = lambda X: (X-first_data_x)*self._scale   
         #f"Time (h) since {np.array([first_data_x], dtype='datetime64[us]')[0].astype(datetime.datetime).strftime('%d-%b-%Y, %H:%M:%S')}, ({first_data_x})", 
@@ -481,14 +483,14 @@ class EnergyCalibration(SerializingMixin):
 
             new_tf_obj = self._init_tf_obj.__class__(**new_kwargs)
             self._update_tf(new_tf_obj)
-            new_plot_dict = self._get_tf_plot_dict(self._current_plot_ts, n_fit_grid_points)
+            new_plot_dict = self._get_tf_plot_dict(self._current_plot_x, n_fit_grid_points)
 
             # Update both lines (the fits) and re-draw scatter
             tf_viewer.plot(new_plot_dict)
             
         def _on_tpr_click(trace, points, state):
             ind = points.point_inds[0]
-            self._current_plot_ts = self._tp_x[ind]
+            self._current_plot_x = self._tp_x[ind]
             _on_tf_value_change()
             
         for i in tpr_inputs.values():
