@@ -9,6 +9,9 @@ from ..datasourcebase import DataSourceBaseClass
 
 
 class StreamBaseClass(DataSourceBaseClass):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def __enter__(self):
         return self
 

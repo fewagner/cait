@@ -1,17 +1,18 @@
 import os
-
 from typing import Union
-from contextlib import nullcontext
 
 import numpy as np
+
 import cait as ai
 
-from .par_file import PARFile
-from ..datasourcebase import DataSourceBaseClass
-from ...iterators.impl_rdt import RDTIterator
 from ....readers import BinaryFile
+from ....serialize import SerializingMixin
+from ...iterators.impl_rdt import RDTIterator
+from ..datasourcebase import DataSourceBaseClass
+from .par_file import PARFile
 
-class RDTFile:
+
+class RDTFile(SerializingMixin):
     """
     Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object with channel indices/names or tuples thereof, the result of the indexing is a :class:`RDTChannel` object which provides testpulse amplitudes, timestamps, and event iterators for (the) selected channel(s) (see documentation for :class:`RDTChannel`).
 
@@ -46,6 +47,8 @@ class RDTFile:
         vai.Preview(it_testpulses.with_processing(vai.RemoveBaseline()))
     """
     def __init__(self, path: str, path_par: str = None):
+        super().__init__(path=path, path_par=path_par)
+        
         if not path.endswith(".rdt"):
             raise ValueError("Unrecognized file extension for 'path'. Please input an *.rdt file.")
         
@@ -79,9 +82,6 @@ class RDTFile:
         self._raw_file = BinaryFile(path=path, dtype=self._dtype)
         #self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
         
-        import time
-        t0 = time.time()
-        
         # Copy the relevant data to memory so that we don't have to go through
         # the memory mapped file all the time (this should only need a few MB of RAM)
         with self._raw_file as f:
@@ -91,8 +91,6 @@ class RDTFile:
             for i in range(len(f)):
                 meta_copy["detector_nmbr"][i] = f[i, "detector_nmbr"]
                 meta_copy["trig_count"][i] = f[i, "trig_count"]
-                
-        print(time.time() - t0)
 
         self._available_channels = np.unique(meta_copy["detector_nmbr"]).tolist()
 
@@ -166,13 +164,13 @@ class RDTFile:
     def __exit__(self, typ, val, tb):
         self._file.__exit__(typ, val, tb)
 
-    def __getitem__(self, channels: Union[int, str, tuple]):
+    def __getitem__(self, channels: Union[int, str, tuple, list]):
         """
         Choose a single channel (integer) or correlated channels (tuple of integers) from this RDTFile for further investigations. 
         The available keys are found via `RDTFile.keys`. If the channels have names (successfully extracted from the `*.par` file), you can also use those for indexing.
 
         :param channels: Channel index (potentially name) or tuple thereof.
-        :type channels: Union[int, str, tuple]
+        :type channels: Union[int, str, tuple, list]
 
         :return: RDTChannel instance corresponding to the choice of channels
         :rtype: RDTChannel
@@ -186,7 +184,7 @@ class RDTFile:
                 raise KeyError(f"Name '{channels}' is not a valid channel name. Did you mean {[v for k,v in self.keys.items()]}")
             # If channel names are available and corresponding key could be retrieved, we switch to channel numbers
             channels = corresponding_key[0]
-        elif isinstance(channels, tuple):
+        elif isinstance(channels, (tuple, list)):
             l = list(channels)
             for i, c in enumerate(l):
                 if isinstance(c, str):
@@ -333,7 +331,12 @@ class RDTChannel(DataSourceBaseClass):
     :return: Specified channels of an RDTFile
     :rtype: RDTChannel
     """
-    def __init__(self, rdt_file: RDTFile, key: Union[int, tuple]):
+    def __init__(self, rdt_file: RDTFile, key: Union[int, tuple, list]):
+        super().__init__(rdt_file=rdt_file, key=key)
+
+        if isinstance(key, list):
+            # Ensure tuple, because list cannot be dictionary key!
+            key = tuple(key)
 
         inds = rdt_file._inds[key]
         self._n_channels = len(key) if isinstance(key, tuple) else 1

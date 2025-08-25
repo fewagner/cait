@@ -1,11 +1,12 @@
 import numpy as np
 
-from ..datasourcebase import DataSourceBaseClass
-from ...iterators.impl_mock import MockIterator
 from ....fit._templates import pulse_template
-from ...analysisobjects.sev import SEV
 from ...analysisobjects.nps import NPS
 from ...analysisobjects.of import OF
+from ...analysisobjects.sev import SEV
+from ...iterators.impl_mock import MockIterator
+from ..datasourcebase import DataSourceBaseClass
+
 
 class MockData(DataSourceBaseClass):
     """
@@ -25,6 +26,7 @@ class MockData(DataSourceBaseClass):
                  n_events: int = 100,
                  record_length: int = 16384,
                  dt_us: int = 10):
+        super().__init__(n_events=n_events, record_length=record_length, dt_us=dt_us)
         
         self._n_events = n_events
         self._record_length = record_length

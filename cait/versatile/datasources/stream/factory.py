@@ -2,9 +2,8 @@ from typing import List, Union
 
 from .impl_csmpl import Stream_CSMPL
 from .impl_vdaq2 import Stream_VDAQ2
+from .impl_vdaq3 import Stream_VDAQ3
 from .streambase import StreamBaseClass
-
-# from .impl_vdaq3 import Stream_VDAQ3
 
 
 class Stream(StreamBaseClass):
@@ -77,6 +76,8 @@ class Stream(StreamBaseClass):
     """
 
     def __init__(self, hardware: str, src: Union[str, List[str]], *args, **kwargs):
+        super().__init__(hardware, src, *args, **kwargs)
+
         if hardware.lower() == "csmpl":
             self._stream = Stream_CSMPL(src, *args, **kwargs)
         elif hardware.lower() == "vdaq2":

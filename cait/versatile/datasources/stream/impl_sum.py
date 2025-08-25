@@ -4,6 +4,7 @@ import numpy as np
 
 from .streambase import StreamBaseClass
 
+
 class StreamSum(StreamBaseClass):
     """
     Implementation of StreamBaseClass that represents the sum of stream channels (used primarily for double TES analysis).
@@ -40,6 +41,8 @@ class StreamSum(StreamBaseClass):
         vai.StreamViewer(ss)
     """
     def __init__(self, stream: StreamBaseClass, keys: List[str]):
+        super().__init__(stream=stream, keys=keys)
+
         if not all([k in stream.keys for k in keys]):
             raise KeyError(f"All given keys have to be present in the stream's keys. Available: {stream.keys}, got: {keys}")
         

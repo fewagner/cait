@@ -1,8 +1,9 @@
-from typing import Union, List
+from typing import List, Union
 
 import numpy as np
 
 from .iteratorbase import IteratorBaseClass
+
 
 class StreamIterator(IteratorBaseClass):
     """
@@ -39,8 +40,14 @@ class StreamIterator(IteratorBaseClass):
         self._keys = [keys] if isinstance(keys, str) else keys
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
-        # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches. 
+        # Also sets up serializing.
+        super().__init__(inds=inds, 
+                         batch_size=batch_size, 
+                         stream=stream, 
+                         keys=keys, 
+                         record_length=record_length, 
+                         alignment=alignment)
 
         self._stream = stream
         self._record_length = record_length
