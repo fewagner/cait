@@ -64,15 +64,20 @@ The philosophy of ``cait.versatile`` rests upon the following building blocks:
 
         it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
 
-        # Check the effect the CalcMP function has on the events of the first channel
+        f = vai.MainParameters(dt_us=it.dt_us)
+        # Check the effect the MainParameters function has on the events of the first channel
         # (it plots the event, the moving average that is applied, as well
         # as the points selected to infer time constants and pulse height)
-        vai.Preview(it[0], vai.CalcMP())
+        vai.Preview(it, f)
 
-        # Calculate main parameters by applying CalcMP to the iterator
-        pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us), it)
+        # Calculate main parameters by applying MainParameters to the iterator
+        mp = vai.apply(f, events)
 
-    .. image:: versatile/media/CalcMP_preview.png
+        # Generate a directory where the keys correspond to the names
+        # of the main parameters and the values to the calculated values
+        mp_dict = {k: v for k, v in zip(f.names, mp)}
+
+    .. image:: versatile/media/MainParameters_preview.png
 
 *  **analysis objects** (:ref:`docs <analysisobjects>`)
     Central parts of almost all analyses are the standard event (SEV), the noise power spectrum (NPS) and the optimum filter (OF), which is why we provide dedicated objects ``SEV``, ``NPS``, and ``OF`` to easily use, view and share them. All three objects have classmethods ``from_dh`` and ``from_file`` which let you read them from a ``DataHandler`` or xy-file. The reverse methods ``to_dh`` and ``to_file`` also exist. Furthermore, all three have a method ``show`` which plots the object.

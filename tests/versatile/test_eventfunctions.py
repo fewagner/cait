@@ -1,6 +1,7 @@
 import pytest
+import numpy as np
 
-from cait.versatile import apply, MockData, BoxCarSmoothing, Downsample, OptimumFiltering, RemoveBaseline, TukeyWindow, CalcMP, FitBaseline
+from cait.versatile import apply, MockData, BoxCarSmoothing, Downsample, OptimumFiltering, RemoveBaseline, TukeyWindow, CalcMP, FitBaseline, MainParameters
 
 RECORD_LENGTH = 2**14
 N_EVENTS = 100
@@ -18,21 +19,23 @@ calcmp = CalcMP()
 
 calcmp_scalar = CalcMP(dt_us=mock.dt_us)
 fbl = FitBaseline()
+mp = MainParameters()
+mp_scalar = MainParameters(dt_us=mock.dt_us)
 
-@pytest.mark.parametrize("fnc", [bcs, ds, rmbl, tf, calcmp])
+@pytest.mark.parametrize("fnc", [bcs, ds, rmbl, tf, calcmp, mp])
 def test_batches_processing(fnc):
     # Double channel
-    out1 = apply(fnc, it1)
-    out2 = apply(fnc, it2)
-    out3 = apply(fnc, it3)
+    out1 = np.array(apply(fnc, it1))
+    out2 = np.array(apply(fnc, it2))
+    out3 = np.array(apply(fnc, it3))
 
     assert out1.shape == out2.shape
     assert out2.shape == out3.shape
 
     # Single channel
-    out1 = apply(fnc, it1[0])
-    out2 = apply(fnc, it2[0])
-    out3 = apply(fnc, it3[0])
+    out1 = np.array(apply(fnc, it1[0]))
+    out2 = np.array(apply(fnc, it2[0]))
+    out3 = np.array(apply(fnc, it3[0]))
 
     assert out1.shape == out2.shape
     assert out2.shape == out3.shape
@@ -57,7 +60,7 @@ def test_batches_of():
     assert out1.shape == out2.shape
     assert out2.shape == out3.shape
 
-@pytest.mark.parametrize("fnc", [calcmp_scalar, fbl])
+@pytest.mark.parametrize("fnc", [calcmp_scalar, fbl, mp_scalar])
 def test_batches_scalar(fnc):
     # Double channel
     out1 = apply(fnc, it1)

@@ -13,3 +13,4 @@ from .scalarfunctions.templatefitcorrelated import TemplateFitCorrelated
 from .scalarfunctions.templatefit_fqlc import TemplateFit_FQLC
 from .scalarfunctions.npeaks import NPeaks
 from .scalarfunctions.saturationtime import SaturationTime
+from .scalarfunctions.mainparameters import MainParameters

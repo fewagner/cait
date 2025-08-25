@@ -22,6 +22,7 @@ from .mixins._data_handler_plot import PlotMixin
 from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_simulate import SimulateMixin
 from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
+from .mixins._data_handler_mainparameters import MainParametersMixin
 from .serialize import SerializingMixin
 from .styles._print_styles import (datetime_fmt, fmt_ds, fmt_gr, fmt_virt,
                                    sizeof_fmt, txt_fmt)
@@ -52,6 +53,7 @@ class DataHandler(SimulateMixin,
                   BinMixin,
                   TriggerCollectionMixin,
                   SerializingMixin,
+                  MainParametersMixin,
                   ):
     """
     A class for the processing of raw data events.
