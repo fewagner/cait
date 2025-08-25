@@ -1,13 +1,17 @@
 import numpy as np
 
 from ..functionbase import FncBaseClass
-from ..processing.removebaseline import RemoveBaseline
 from ..processing.boxcarsmoothing import BoxCarSmoothing
+from ..processing.removebaseline import RemoveBaseline
+
 
 #### HAS NO TESTCASE YET ####
 class CalcMP(FncBaseClass):
     """
-    Calculates main parameters for an event. 
+    Calculates (traditional) main parameters for an event. 
+    
+    **NOTICE:** Using :class:`cait.versatile.MainParameters` is **preferred**! This function is only kept for legacy reasons.
+
     If the argument ``dT`` is set to ``None``, the output is an array of shape ``(n_channels, 9)``, where the nine entries are ``ph, t_0, t_rise, t_max, t_decaystart, t_half, t_end, offset, lin_drift``, and quantities starting with ``t_`` are given as sample indices.
     If the argument ``dT`` is set (to the microsecond time base of the recording), the (human readable) quantities ``pulse_height (V), onset (ms), rise_time (ms), decay_time (ms), slope (V)`` as a tuple.
     Also works for multiple channels simultaneously.

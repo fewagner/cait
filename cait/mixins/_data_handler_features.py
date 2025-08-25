@@ -1,26 +1,26 @@
-from typing import Tuple, List
-from warnings import warn
-from deprecation import deprecated
 from functools import partial
+from typing import List, Tuple
+from warnings import warn
 
-import numpy as np
 import h5py
+import numpy as np
+from deprecation import deprecated
 from tqdm.auto import trange
 
 import cait as ai
 import cait.versatile as vai
 
-from ..features._mp import calc_main_parameters, calc_additional_parameters
-from ..features._ph_corr import calc_correlated_ph
-from ..filter._of import optimal_transfer_function
-from ..fit._sev import generate_standard_event
-from ..filter._of import get_amplitudes
-from ..fit._pm_fit import fit_pulse_shape
-from ..fit._templates import pulse_template
-from ..filter._ma import rem_off
-from ..trigger._peakdet import get_triggers
 from ..data._baselines import calculate_mean_nps
+from ..features._mp import calc_additional_parameters, calc_main_parameters
+from ..features._ph_corr import calc_correlated_ph
+from ..filter._ma import rem_off
+from ..filter._of import get_amplitudes, optimal_transfer_function
+from ..fit._pm_fit import fit_pulse_shape
+from ..fit._sev import generate_standard_event
+from ..fit._templates import pulse_template
 from ..styles._print_styles import txt_fmt
+from ..trigger._peakdet import get_triggers
+
 
 # convenience function used in calc_mp
 def _calc_mp_helper(event, down, max_bounds):
@@ -70,6 +70,7 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
+    @deprecated(deprecated_in='1.3.0', details="This method is deprecated. Use DataHandler.cmp() instead.")
     def calc_mp(self, 
                 type: str = 'events', 
                 path_h5: str = None, 
@@ -806,6 +807,7 @@ class FeaturesMixin(object):
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
 
+    @deprecated(deprecated_in='1.3.0', details="This method is deprecated. Use DataHandler.cmp() instead.")
     def calc_additional_mp(self, 
                            type: str = 'events', 
                            path_h5: str = None, 
