@@ -232,10 +232,10 @@ class MainParameters(FncBaseClass):
             self._os[ichan] = (self._rs[ichan] - event.shape[-1]//4)
 
             _os = np.where(mask_pp & (event[ichan] < 3*bl_rms[ichan]))
-            _rs = np.where(mask_pp & (event < 0.1*ph[ichan]))
-            _re = np.where(mask_pp & (event < 0.9*ph[ichan]))
-            _ds = np.where(~mask_pp & (event > 0.9*ph[ichan]))
-            _de = np.where(~mask_pp & (event > 0.1*ph[ichan]))
+            _rs = np.where(mask_pp & (event[ichan] < 0.1*ph[ichan]))
+            _re = np.where(mask_pp & (event[ichan] < 0.9*ph[ichan]))
+            _ds = np.where(~mask_pp & (event[ichan] > 0.9*ph[ichan]))
+            _de = np.where(~mask_pp & (event[ichan] > 0.1*ph[ichan]))
 
             if len(_os[0]):
                 osc[ichan] = _os[0][-1]
