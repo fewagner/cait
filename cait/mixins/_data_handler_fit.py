@@ -512,7 +512,7 @@ class FitMixin(object):
                     **kwargs)
             
             if preview: 
-                vai.Preview(events_used, tf)
+                vai.Preview(events_used.with_processing(vai.RemoveBaseline()), tf)
             else:
                 fitpar, opt_shift, rms = vai.apply(tf, events_used)
 
@@ -533,7 +533,7 @@ class FitMixin(object):
                         **kwargs)
 
                 if preview:
-                    vai.Preview(events_used[i], tf)
+                    vai.Preview(events_used[i].with_processing(vai.RemoveBaseline()), tf)
                 else:
                     fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
 
