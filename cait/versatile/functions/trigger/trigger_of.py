@@ -132,7 +132,7 @@ def trigger_of(
 def trigger_of2d(
     streams: ArrayLike,
     threshold: float,
-    of2d: np.ndarray,
+    of: np.ndarray,
     n_triggers: int = None,
     chunk_size: int = 100,
     apply_first: Union[callable, List[callable]] = None,
@@ -147,8 +147,8 @@ def trigger_of2d(
     :type streams: ArrayLike
     :param threshold: The threshold (in Volts) above which events should be triggered.
     :type threshold: float
-    :param of2d: The correlated (2d) optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
-    :type of2d: np.ndarray
+    :param of: The correlated (2d) optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
+    :type of: np.ndarray
     :param n_triggers: The number of events to trigger (might be more, depending on 'chunk_size'). E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
     :type n_triggers: int
     :param chunk_size: The number of record windows that are processed (i.e. filter + peak search) at a time.
@@ -162,10 +162,10 @@ def trigger_of2d(
     :rtype: Tuple[List[int], List[float]]
     """
     # size of record window (as determined by the size of the filter)
-    record_length = 2 * (of2d.shape[-1] - 1)
+    record_length = 2 * (of.shape[-1] - 1)
 
     # before samples exceeding threshold are searched, the chunks are filtered
-    filter_fnc = partial(filter_chunk_2d, of=of2d, record_length=record_length)
+    filter_fnc = partial(filter_chunk_2d, of=of, record_length=record_length)
 
     return trigger_base(
         stream=streams,

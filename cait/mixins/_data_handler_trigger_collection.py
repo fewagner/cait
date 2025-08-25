@@ -21,9 +21,12 @@ def _trigger_helper(dh,
                     f_noise,
                     name_appendix
                     ):
-    
+    # All trigger channels (flattened such that when a 2d of is used, we can still check
+    # all required channel names conveniently)
+    trigger_channels_flat = np.hstack(trigger_channels).tolist()
+
     # Input validation
-    if not all([x in stream.keys for x in trigger_channels]):
+    if not all([x in stream.keys for x in trigger_channels_flat]):
             raise KeyError(f"All 'trigger_channels' have to be valid channel names. Available: {stream.keys}")
             
     if ( passive_channels is not None ) and ( not all([x in stream.keys for x in passive_channels]) ):
@@ -33,8 +36,8 @@ def _trigger_helper(dh,
         raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {stream.tp_keys}")
 
     if testpulse_channels is not None:
-        if len(trigger_channels) + (0 if passive_channels is None else len(passive_channels)) != len(testpulse_channels):
-            raise ValueError(f"Testpulse channels are required for all channels (including passive channels). I.e. len(testpulse_channels)' must match 'len(trigger_channels)+len(passive_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels)}+{0 if passive_channels is None else len(passive_channels)}")
+        if len(trigger_channels_flat) + (0 if passive_channels is None else len(passive_channels)) != len(testpulse_channels):
+            raise ValueError(f"Testpulse channels are required for all channels (including passive channels). I.e. len(testpulse_channels)' must match 'len(np.hstack(trigger_channels))+len(passive_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels_flat)}+{0 if passive_channels is None else len(passive_channels)}")
 
     # Convert noise sample frequency to number of noise traces to sample.
     # Print info if less than one sample is expected. Set number to at least
@@ -45,7 +48,12 @@ def _trigger_helper(dh,
         warnings.warn(f"The specified frequency to sample noise ({f_noise:.3f}/h) resulted in less than one expected event for the given stream of length {len(stream)*stream.dt_us/1e6/3600:.3f} h. Only a single event will be (attempted to be) sampled.")
         n_noise += 1
 
+    # The entries of this list can either be tuples (results e.g. in OF2D) 
+    # or strings (regular single channel trigger).
     all_channels = trigger_channels + ([] if passive_channels is None else passive_channels)
+    # This is the same list but with only strings (will be used for including the raw
+    # voltage traces later).
+    all_channels_flat = np.hstack(all_channels).tolist()
 
     # Triggering channels
     for i, key in enumerate(trigger_channels):
@@ -57,7 +65,12 @@ def _trigger_helper(dh,
         else:
             with stream: # this keeps the stream file opened (performance increase)
                 print(f"Triggering channel {key} ...")
-                ind, ph = trigger_fncs[i](stream[key])
+                # Multi-channel stream slicing requires 'key' to be a list (not tuple)
+                # because otherwise the slicing would be ambiguous. At this point, 
+                # however, 'key' is a tuple to prevent ambiguity when calling the trigger
+                # function. Therefore, we convert tuples to lists.
+                sanitized_key = list(key) if isinstance(key, tuple) else key
+                ind, ph = trigger_fncs[i](stream[sanitized_key])
                 
             ts = stream.time[ind]
 
@@ -73,8 +86,21 @@ def _trigger_helper(dh,
                      dtype=np.float32, 
                      overwrite_existing=True)
 
-    trigger_ts = [ list(dh.get(f"triggers-{name_appendix}", f"ts_{key}")) for key in trigger_channels]
-    trigger_ph = [ list(dh.get(f"triggers-{name_appendix}", f"ph_{key}")) for key in trigger_channels]
+    trigger_ts_temp = [ list(dh.get(f"triggers-{name_appendix}", f"ts_{key}")) for key in trigger_channels]
+    trigger_ph_temp = [ list(dh.get(f"triggers-{name_appendix}", f"ph_{key}")) for key in trigger_channels]
+
+    # Account for potentially combined channels (e.g. in OF2D triggering) by filling
+    # all channels' information with the trigger information (if they were triggered
+    # together, i.e. if their channel name is a tuple).
+    trigger_ts, trigger_ph = [], []
+    for ch, ts, ph in zip(trigger_channels, trigger_ts_temp, trigger_ph_temp):
+        if isinstance(ch, tuple):
+            for _ in range(len(ch)):
+                trigger_ts.append(ts)
+                trigger_ph.append(ph)
+        else:
+            trigger_ts.append(ts)
+            trigger_ph.append(ph)
 
     if testpulse_channels is not None:
         for key in testpulse_channels:
@@ -158,7 +184,7 @@ def _trigger_helper(dh,
     if len(event_ts)>0:
         dh.include_event_iterator("events", 
                                     stream.get_event_iterator(
-                                        all_channels, 
+                                        all_channels_flat, 
                                         dh.record_length, 
                                         timestamps=event_ts
                                     ),
@@ -188,7 +214,7 @@ def _trigger_helper(dh,
         if len(tp_ts)>0:
             dh.include_event_iterator("testpulses", 
                                         stream.get_event_iterator(
-                                            all_channels, 
+                                            all_channels_flat, 
                                             dh.record_length, 
                                             timestamps=tp_ts
                                         ),
@@ -215,7 +241,7 @@ def _trigger_helper(dh,
             if len(cp_ts)>0:
                 dh.include_event_iterator("controlpulses", 
                                             stream.get_event_iterator(
-                                                all_channels, 
+                                                all_channels_flat, 
                                                 dh.record_length, 
                                                 timestamps=cp_ts
                                             ),
@@ -237,7 +263,7 @@ def _trigger_helper(dh,
         if len(noise_ts)>0:
             dh.include_event_iterator("noise", 
                                         stream.get_event_iterator(
-                                            all_channels, 
+                                            all_channels_flat, 
                                             dh.record_length, 
                                             timestamps=noise_ts
                                         ),
@@ -354,7 +380,7 @@ class TriggerCollectionMixin:
         
     def trigger_of(self,
                    stream: vai.datasources.stream.streambase.StreamBaseClass,
-                   trigger_channels: List[str],
+                   trigger_channels: List[Union[Tuple[str], str]],
                    of: np.ndarray,
                    thresholds: List[float],
                    passive_channels: List[str] = None,
@@ -371,14 +397,16 @@ class TriggerCollectionMixin:
 
         The stream channels specified by ``trigger_channels`` are triggered. If some channels are not triggered but read out in coincidence (i.e. as 'passive' channels), you can specify their channel names using ``passive_channels``. 
 
+        If you want to perform a 2D optimum filter trigger, you specify the respective channels (which are filtered together) as tuples in the ``trigger_channels`` list (e.g. ``[('ch0', 'ch1'), 'ch2']`` will apply a 2D optimum filter to the first two channels. This will result in A SINGLE filtered trace which is triggered. The last channel is triggered regularly). Note that the ``of`` you pass to this function has to have as many channels as total trigger channels. I.e. in the example above, it would need to have 3 channels. Likewise, the ``testpulse_channels`` and ``controlpulses_above`` lists have to have length 3 here. HOWEVER, you only need 2 (!) trigger threshold (one for the combined channel, one for the single channel).
+
         Events are built as follows: Starting from the first channel's trigger timestamps, the remaining channels' triggers are checked to be in coincidence with already existing timestamps. The default coincidence window (if ``interval=None``), is ``-+dt_us*record_length//4`` but can be adapted as needed.
 
         If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'passive' channels.
 
         :param stream: The stream object including the channels that you want to trigger.
         :type stream: vai.datasources.stream.streambase.StreamBaseClass
-        :param trigger_channels: The list of channel names to be triggered. Have to be present in ``stream.keys``.
-        :type trigger_channels: List[str]
+        :param trigger_channels: The list of channel names to be triggered. Have to be present in ``stream.keys``. If you pass a tuple of channel names, the 2D optimum filter is applied to this combination. See explanation above.
+        :type trigger_channels: List[Union[Tuple[str], str]]
         :param of: The optimum filter to use for triggering (has to have one for each channel in 'trigger_channels').
         :type of: np.ndarray
         :param thresholds: A list of trigger thresholds (in V) for each channel.
@@ -431,8 +459,8 @@ class TriggerCollectionMixin:
                               testpulse_channels=["DAC1", "DAC3"],
                               copy_events=True)
         """
-        # Allow string input if only one channel
-        trigger_channels = [trigger_channels] if isinstance(trigger_channels, str) else trigger_channels
+        # Allow string and tuple input if only one channel (or 2d filter channel combination)
+        trigger_channels = [trigger_channels] if isinstance(trigger_channels, (str, tuple)) else trigger_channels
         passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
         testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
         
@@ -455,14 +483,28 @@ class TriggerCollectionMixin:
             
         ofs = np.atleast_2d(of)
             
-        if len(ofs) != len(trigger_channels):
-            raise ValueError(f"Optimum filter has to have as many channels as channels to trigger, i.e. len(of) must be len(trigger_channels). Received {len(ofs)} and {len(trigger_channels)}.")
+        if len(ofs) != len(np.hstack(trigger_channels)):
+            raise ValueError(f"Optimum filter has to have as many channels as channels to trigger, i.e. len(of) must be len(np.hstack(trigger_channels)). Received {len(ofs)} and {len(np.hstack(trigger_channels))}.")
         
-        trigger_fncs = [partial(vai.trigger_of, 
-                               of=of,
-                               threshold=thresh, 
-                               **kwargs) 
-                       for of, thresh in zip(ofs, thresholds)]
+        # Used to split OF into single- or multi-channel components.
+        # If channels were specified as tuples, the OF2D should be used
+        # which needs a multi-channel filter.
+        of_lens = [(len(x) if isinstance(x, tuple) else 1) for x in trigger_channels]
+
+        trigger_fncs = [
+            partial(
+                vai.trigger_of2d if isinstance(ch, tuple) else vai.trigger_of, 
+                # remove potential extra dimensions resulting from split
+                of=np.squeeze(of),
+                threshold=thresh, 
+                **kwargs) 
+            for of, thresh, ch in zip(
+                # the split can produce empty arrays which are not iterated over in the zip
+                np.split(ofs, np.cumsum(of_lens), axis=0), 
+                thresholds, 
+                trigger_channels
+                )
+        ]
         
         _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, copy_events, reuse_triggers,
                         interval, trigger_fncs, f_noise, "of")

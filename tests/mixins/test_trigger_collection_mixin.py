@@ -1,6 +1,6 @@
+import numpy as np
 import pytest
 
-import numpy as np
 import cait as ai
 import cait.versatile as vai
 
@@ -119,6 +119,7 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
     dh.init_empty()
         
     of = vai.OF(np.ones(int(dh.record_length/2+1), dtype=complex), dt_us=dh.dt_us)
+    of2 = vai.OF(np.ones((2, int(dh.record_length/2+1)), dtype=complex), dt_us=dh.dt_us)
 
     # thresholds and channels don't match
     with pytest.raises(ValueError): 
@@ -135,6 +136,15 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
                       trigger_channels="Ch2",
                       of=of,
                       passive_channels="Ch0",
+                      thresholds=[1],
+                      testpulse_channels=["0", "0"])
+        
+    # trigger_channel unavailable (2dof)
+    with pytest.raises(KeyError): 
+        dh.trigger_of(stream_csmpl,
+                      trigger_channels=[("Ch0", "Ch2")],
+                      of=of2,
+                      passive_channels=[],
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
@@ -182,14 +192,20 @@ def test_trigger_of_errors(tempdir, stream_csmpl):
                       controlpulses_above=[1,2],
                       testpulse_channels="0")
         
-    of2 = vai.OF(np.ones((2, int(dh.record_length/2+1)), dtype=complex), dt_us=dh.dt_us)
-
     # wrong OF shape
     with pytest.raises(ValueError): 
         dh.trigger_of(stream_csmpl,
                       trigger_channels="Ch0",
                       of=of2,
                       passive_channels="Ch1",
+                      thresholds=[1],
+                      testpulse_channels=["0", "0"])
+        
+    with pytest.raises(ValueError): 
+        dh.trigger_of(stream_csmpl,
+                      trigger_channels=[("Ch0", "Ch1")],
+                      of=of,
+                      passive_channels=[],
                       thresholds=[1],
                       testpulse_channels=["0", "0"])
         
@@ -228,3 +244,43 @@ def test_trigger_of(tempdir, stream_csmpl):
                   copy_events=True,
                   reuse_triggers=False,
                   f_noise=100)
+    
+    # Test OF2D functionality
+    dh3 = ai.DataHandler(nmbr_channels=2)
+    dh3.set_filepath(tempdir.name, "test_trigger_of_3", appendix=False)
+    dh3.init_empty()
+
+    of2 = vai.OF(np.ones((2, int(dh3.record_length/2+1)), dtype=complex), dt_us=dh3.dt_us)
+
+    dh3.trigger_of(stream_csmpl,
+                  trigger_channels=[("Ch0", "Ch1")],
+                  of=of2,
+                  passive_channels=[],
+                  testpulse_channels=["0", "0"],
+                  controlpulses_above=[0.5, 0.5],
+                  thresholds=[0.1],
+                  copy_events=True,
+                  reuse_triggers=False,
+                  f_noise=100)
+    
+    assert dh3.get("events", "event").shape[0] == 2
+    
+    # Test OF2D functionality with passive channel
+    dh4 = ai.DataHandler(nmbr_channels=2)
+    dh4.set_filepath(tempdir.name, "test_trigger_of_4", appendix=False)
+    dh4.init_empty()
+
+    of2 = vai.OF(np.ones((2, int(dh3.record_length/2+1)), dtype=complex), dt_us=dh4.dt_us)
+
+    dh4.trigger_of(stream_csmpl,
+                  trigger_channels=[("Ch0", "Ch1")],
+                  of=of2,
+                  passive_channels=["Ch0"],
+                  testpulse_channels=["0", "0", "0"],
+                  controlpulses_above=[0.5, 0.5, 0.5],
+                  thresholds=[0.1],
+                  copy_events=True,
+                  reuse_triggers=False,
+                  f_noise=100)
+    
+    assert dh4.get("events", "event").shape[0] == 3
