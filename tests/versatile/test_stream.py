@@ -1,5 +1,6 @@
 import json
 
+import numpy as np
 import pytest
 
 import cait as ai
