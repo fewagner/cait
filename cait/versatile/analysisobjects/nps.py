@@ -116,7 +116,7 @@ class NPS(ArrayWithBenefits):
         :type group: str
         :param dataset: The HDF5 dataset where the NPS should be stored.
         :type dataset: str
-        :param kwargs: Keyword arguments for `DataHandler.set`.
+        :param kwargs: Keyword arguments for :func:`cait.DataHandler.set`.
         :type kwargs: Any
         """
         if self._dt_us != dh.dt_us:
@@ -204,7 +204,7 @@ class NPS(ArrayWithBenefits):
         """
         Plot NPS for all channels. To inspect just one channel, you can index NPS first and call `.show` on the slice.
 
-        :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
+        :param kwargs: Keyword arguments passed on to :class:`cait.versatile.Line`.
         :type kwargs: Any
         """
         if self._n_channels == 0:
@@ -368,7 +368,7 @@ class NCM(ArrayWithBenefits):
         :type group: str
         :param dataset: The HDF5 dataset where the NCM should be stored.
         :type dataset: str
-        :param kwargs: Keyword arguments for `DataHandler.set`.
+        :param kwargs: Keyword arguments for :func:`cait.DataHandler.set`.
         :type kwargs: Any
         """
         if self._dt_us != dh.dt_us:
@@ -486,7 +486,7 @@ class NCM(ArrayWithBenefits):
         """
         Plot NCM for all channels.
 
-        :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
+        :param kwargs: Keyword arguments passed on to :class:`cait.versatile.Line`.
         :type kwargs: Any
         """
         if self._n_channels == 0:

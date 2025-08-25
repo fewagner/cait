@@ -60,12 +60,12 @@ class OptimumFiltering(FncBaseClass):
         return dict(line=d)
 
 
-class OptimumFilteringCorrelated(OptimumFiltering):
+class OptimumFiltering2D(OptimumFiltering):
     """
-    Apply a 2d (correlated) optimum filter to multi-channel voltage traces.
+    Apply a 2D optimum filter to multi-channel voltage traces.
     Regardless of the number of input channels, this function always returns a single, combined channel result.
 
-    Equivalent to regular `OptimumFiltering` all the channels and summing the result.
+    Equivalent to regular :class:`OptimumFiltering` all the channels and summing the result. In general, this only makes sense if you built the multi-channel OF from a Noise Covariance Matrix (:class:`cait.versatile.NCM`), i.e. when the OF incorporates information from all the channels.
 
     :param of: The optimum filter to use.
     :type of: np.ndarray

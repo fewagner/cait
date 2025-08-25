@@ -73,6 +73,28 @@ class SEV(ArrayWithBenefits):
 
         :return: Instance of SEV and relative amplitudes of all channels.
         :rtype: Tuple[SEV, np.ndarray]
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait.versatile as vai
+
+            # Construct mock data to get event iterator
+            it = vai.MockData().get_event_iterator()
+
+            # Get the SEV WITHOUT normalizing (unscaled_sev) and
+            # the pulse heights (maxima) for all channels.
+            unscaled_sev, maxima = vai.SEV.unscaled(it)
+
+            # With this information, you can construct any desired
+            # normalization. E.g. the following gives the regular
+            # SEV, where all channels are normalized to pulse height 1.
+            regular_sev = unscaled_sev/maxima
+
+            # However, if you want to normalize all channels to the first
+            # channel, e.g., you can do
+            sev_scaled_to_ch0 = unscaled_sev/maxima[0]
         """
         it = it.flatten().with_processing(RemoveBaseline())
         if len(it) > 1000:
@@ -120,7 +142,7 @@ class SEV(ArrayWithBenefits):
         :type group: str
         :param dataset: The HDF5 dataset where the SEV should be stored.
         :type dataset: str
-        :param kwargs: Keyword arguments for `DataHandler.set`.
+        :param kwargs: Keyword arguments for :func:`cait.DataHandler.set`.
         :type kwargs: Any
         """
         if self._dt_us != dh.dt_us:
@@ -204,7 +226,7 @@ class SEV(ArrayWithBenefits):
         """
         Plot SEV for all channels. To inspect just one channel, you can index SEV first and call `.show` on the slice.
 
-        :param kwargs: Keyword arguments passed on to `cait.versatile.Line`.
+        :param kwargs: Keyword arguments passed on to :class:`cait.versatile.Line`.
         :type kwargs: Any
         """
         if self._n_channels == 0:

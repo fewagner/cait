@@ -187,10 +187,10 @@ class StreamBaseClass(DataSourceBaseClass):
     @property
     def time(self):
         """
-        Instance of `StreamTime`, which can be sliced to convert stream indices into microsecond timestamps and implements utility functions for the conversion to datetime for example.
+        Instance of ``StreamTime``, which can be sliced to convert stream indices into microsecond timestamps and implements utility functions for the conversion to datetime for example.
 
         :return: StreamTime instance
-        :rtype: `StreamTime`
+        :rtype: :class:`cait.versatile.datasources.stream.streambase.StreamTime`
         """
         if not hasattr(self, "_t"):
             self._t = StreamTime(self.start_us, self.dt_us, len(self))

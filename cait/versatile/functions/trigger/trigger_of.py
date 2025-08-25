@@ -34,9 +34,9 @@ def filter_chunk(data: np.ndarray, of: np.ndarray, record_length: int):
     ]
 
 
-def filter_chunk_correlated(data: np.ndarray, of: np.ndarray, record_length: int):
+def filter_chunk_2d(data: np.ndarray, of: np.ndarray, record_length: int):
     """
-    Filters multi-channel 'data' with a correlated optimum filter 'of' according to the overlap-add-algorithm and sums them up to obtain a single, filtered trace, which is ready for triggering/maximum search.
+    Filters multi-channel 'data' with a 2D optimum filter 'of' according to the overlap-add-algorithm and sums them up to obtain a single, filtered trace, which is ready for triggering/maximum search.
 
     :param data: The data to filter.
     :type data: np.ndarray
@@ -129,26 +129,26 @@ def trigger_of(
     )
 
 
-def trigger_ofc(
+def trigger_of2d(
     streams: ArrayLike,
     threshold: float,
-    ofc: np.ndarray,
+    of2d: np.ndarray,
     n_triggers: int = None,
     chunk_size: int = 100,
     apply_first: Union[callable, List[callable]] = None,
     n_processes: int = None,
 ):
     """
-    Trigger multiple channels of a stream at the same time using a correlated (2d) optimum filter and the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation. The correlated filtering returns A SINGLE voltage trace (even for multiple input channels), hence, only a combined trigger threshold is required.
+    Trigger multiple channels of a stream at the same time using a 2D optimum filter and the optimum filter triggering algorithm described in https://edoc.ub.uni-muenchen.de/23762/. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation. The correlated filtering returns A SINGLE voltage trace (even for multiple input channels), hence, only a combined trigger threshold is required.
 
-    Apart from the fact that multi-channel 'streams' and 'ofc' are required here, the usage is identical to :func:`cait.versatile.trigger_of`.
+    Apart from the fact that multi-channel 'streams' and 'of2d' are required here, the usage is identical to :func:`cait.versatile.trigger_of`.
 
     :param streams: The stream channels to trigger.
     :type streams: ArrayLike
     :param threshold: The threshold (in Volts) above which events should be triggered.
     :type threshold: float
-    :param ofc: The correlated (2d) optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
-    :type ofc: np.ndarray
+    :param of2d: The correlated (2d) optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
+    :type of2d: np.ndarray
     :param n_triggers: The number of events to trigger (might be more, depending on 'chunk_size'). E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
     :type n_triggers: int
     :param chunk_size: The number of record windows that are processed (i.e. filter + peak search) at a time.
@@ -162,10 +162,10 @@ def trigger_ofc(
     :rtype: Tuple[List[int], List[float]]
     """
     # size of record window (as determined by the size of the filter)
-    record_length = 2 * (ofc.shape[-1] - 1)
+    record_length = 2 * (of2d.shape[-1] - 1)
 
     # before samples exceeding threshold are searched, the chunks are filtered
-    filter_fnc = partial(filter_chunk_correlated, of=ofc, record_length=record_length)
+    filter_fnc = partial(filter_chunk_2d, of=of2d, record_length=record_length)
 
     return trigger_base(
         stream=streams,
