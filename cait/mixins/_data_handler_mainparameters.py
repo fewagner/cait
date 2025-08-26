@@ -51,13 +51,14 @@ class MainParametersMixin:
 
         print(txt_fmt('Calculating main parameters ...', style="bold"))
         mp = vai.MainParameters(self.dt_us)
-        out = vai.apply(mp, events)
+        out = np.array(vai.apply(mp, events))
 
         # Swap array axes to be able to unpack the parameters and insert them
         # into the data handler by name.
         # vai.apply returns an array of shape (n_parameters, n_events, n_channels)
         # the following line swaps this to (n_parameters, n_channels, n_events).
-        out = np.swapaxes(out, 1, 2)
+        if out.ndim == 3:
+            out = np.swapaxes(out, 1, 2)
 
         for n, t, d in zip(mp.names, mp.types, out):
             self.set(
