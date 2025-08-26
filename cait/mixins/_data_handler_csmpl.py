@@ -217,7 +217,7 @@ class CsmplMixin(object):
 
                 if of is None:
                     print("Read OF Transfer Function from h5 file. Alternatively provide one through the of argument.")
-                    of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=np.complex)
+                    of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=complex)
                     of.real = h5f['optimumfilter']['optimumfilter_real']
                     of.imag = h5f['optimumfilter']['optimumfilter_imag']
 

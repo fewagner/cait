@@ -70,14 +70,17 @@ You now have everything installed that you will need (including ``jupyterlab`` t
     $ source venv_cait/bin/activate
     $ jupyter-lab
 
-You are currently still on the 'main' branch of the ``cait`` repository that we cloned. When creating new features, you want to do this on a separate *feature branch* which is created *from the develop branch*. You can create such a branch either on *GitLab* (``cryocluster/cait/Branches``, **New branch**, **create from develop** and choose branch name 'my_new_feature'), then use 
+You are currently still on the 'main' branch of the ``cait`` repository that we cloned. When creating new features, you want to do this on a separate *feature branch* which is created *from the develop branch*. The same procedure applies for fixing bugs. To better track the work done on ``cait`` by multiple people, such a branch (either for a new feature or a bug fix) has to be created via an **issue** on *GitLab*. Here is an overview of the steps involved. Below, we also illustrate it with screenshots.
 
-.. code:: console 
+    - Go to **cait>Issues>New Issue**, choose a descriptive title and description, add applicable labels (which describe the thing you want to do), and a milestone (if applicable). Milestones mark goals of new ``cait`` releases, e.g. ``v1.3.0``. If you anticipate your feature/bug fix to be part of such a release, add it in the issue (can also be done afterwards). Click **Create issue**.
+    - On the next page, you want to create a dedicated branch and merge request for this issue. Note that nothing will be merged yet, this is just a formality for later. Click the **dropdown** of **Create merge request** and choose **develop** as the source branch. Hit **Create merge request**.
+    - On the **New merge request** page you can keep the default fields (all information should be already spelled out in the previously created issue which is mentioned in the description automatically). Click **Create merge request**.
+    - Now go to your local ``cait`` repository and checkout your new branch (you can find the name in the merge request, it starts with the issue number). In our case, we use ``git checkout 174-update-developer-guide-docs``.
+    - You are now all set up to start implementing changes. Please refer to the coming sections for a 'how-to' and 'best-practice'.
+    - After you are done making changes, use ``git add .`` and ``git commit -m 'some commit message'``, then ``git push`` to push your changes to the *GitLab* repository. It will show up on the issue and merge request pages that you created before.
+    - Finally, if your feature is fully implemented (or the bug fully fixed), you want to pull from the **develop** branch and locally merge any changes into your feature/issue branch as described in `Merge request`_. Afterwards, the maintainers of ``cait`` will take care of including your code into an upcoming version of ``cait``. Thank you for contributing! :)
 
-    $ git pull
-    $ git checkout my_new_feature
-
-or create the branch locally using ``git checkout -b my_new_feature develop``. In either case, you will end up with a branch that you can play around on. If you made changes, use ``git add .`` and ``git commit -m 'some commit message'``, then ``git push`` to push your changes to the *GitLab* repository.
+.. image:: documentation/pics/issue_guide.png
 
 .. note::
     Since we installed ``cait`` using the editable ``-e`` flag, its behavior changes when changing branches. *However*, every time you change branch or make a change to the repository, these changes will only be reflected if you *restart* your python session (or just the kernel if you work in a Jupyter notebook).
@@ -402,9 +405,9 @@ If some tests failed, and you think you fixed their causes, you can re-run just 
 
 Thank you (in every user's and developer's name) for writing tests!
 
-Opening merge request
----------------------
-If all tests pass, your feature is ready to go and you can create a request for merging your feature branch into the develop branch. Before you do that, you should pull the latest changes of the 'develop' branch and locally merge them into your feature branch (resolving any potential conflicts). Afterwards, you push to *GitLab* a last time.
+Merge request
+-------------
+If all tests pass, your feature is ready to go. Before it can be merged back into the 'develop' branch, however, you should pull the latest changes of the 'develop' branch (which might have received new changes in the meantime) and locally merge them into your feature branch (resolving any potential conflicts). Afterwards, you push to *GitLab* a last time.
 
 .. code:: console
 
@@ -414,28 +417,65 @@ If all tests pass, your feature is ready to go and you can create a request for 
     $ git merge develop
     $ git push
 
-Then you go to ``cryocluster/cait/Merge requests`` on *GitLab* and click **New merge request**. Select your feature branch (in our case it was called 'my_new_feature') as the source and 'develop' as the target, then click **Compare branches and continue**. Write a description of what the feature is about and check 'delete source branch after merge' if it was just a feature branch that is not needed anymore afterwards. 
-
-After creating the merge request, all tests will run again for multiple Python versions. If they pass, the main developers of ``cait`` will accept the merge request (if you had the required permissions to do it yourself, you would probably not be reading this guide).
+Then you go to your previously created merge request on *GitLab* where your commit shows up in the timeline.  
+All tests will run again for multiple Python versions. If they pass, the main developers of ``cait`` will accept the merge request (if you had the required permissions to do it yourself, you would probably not be reading this guide).
 
 Congratulations! Your feature is now on the develop branch and will be included in the next released version of ``cait``! Thank you so much for contributing :)
 
 Fixing bug getting started
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
-If you come across a bug in ``cait``, it would be fantastic if you tried to fix it yourself. For that, you would go to your (local) ``cait`` repository, pull the latest changes from the develop branch, and create a new branch **from develop** (give it a name that is connected to the bug). On this branch, the best course of actions is to go to the ``cait/tests/`` folder and write a **test that reproduces** the bug/error you want to fix **before** attempting to **fix** it (see also `Implementing test case and running tests`_). Run the test to confirm that it indeed *fails*. Afterwards, go to the main ``cait/cait/`` folder, locate and fix the bug. Run the tests again to confirm that the (previously failed) test now *passes*. Once it does, commit your changes and push them to GitLab. Go to the ``cait`` GitLab repository and open a merge request from your bug fix branch to the **develop** (!) branch. We will review your changes and accept the request if everything is okay. 
+If you come across a bug in ``cait``, it would be fantastic if you tried to fix it yourself. For that, you would go to the ``cait`` *GitLab* repository and create an issue/branch/merge request (as already explained in `Setting up your working environment and git usage`_). On the newly created (issue) branch, the best course of actions is to go to the ``cait/tests/`` folder and write a **test that reproduces** the bug/error you want to fix **before** attempting to **fix** it (see also `Implementing test case and running tests`_). Run the test to confirm that it indeed *fails*. Afterwards, go to the main ``cait/cait/`` folder, locate and fix the bug. Run the tests again to confirm that the (previously failed) test now *passes*. Once it does, commit your changes and push them to GitLab. The commit will show up in your issue of the ``cait`` *GitLab* repository. We will review your changes and accept the request if everything is okay. 
 
 Below, the process is illustrated with some screenshots. Thank you so much for fixing bugs in ``cait``! :)
 
 .. image:: documentation/pics/fix_bug_guide.png
 
+Tags
+~~~~
+Tags are created when releasing a new version (see below) and follow the format ``v1.2.3`` where 
+
+- ``1`` denotes a major version (i.e. increasing this implies non-downwards-compatible changes), 
+- ``2`` denotes a minor version or feature release (i.e. increasing it implies the implementation of new features which are downwards-compatible), and 
+- ``3`` denotes a patch or bug fix (i.e. increasing it implies that it is equivalent to the previous version but with some bugs fixed). 
+
+When a release tag is created, it should always come together with a milestone and release of the respective version (``1.2.3`` in this example) such that people can install this version using 
+
+.. code:: console
+
+    $ python3 -m pip install cait==1.2.3
+
+from PyPI. 
+
+Furthermore, development versions of ``cait`` are also tagged if there was a noteworthy change. This is important to track which version (specified by the tag) was used for an analysis (for people who use the develop branch for their analysis). The development tags follow the format ``v1.3.0.dev1`` where the first part represents the upcoming release tag (resp. milestone) of ``cait``, and the last part denotes the develop version (``1``, ``2``, ...). Note that even though we create tags for development versions, we do not make any development *releases*. However, we **do update** the ``__version__`` in ``_version.py`` accordingly. If you want to install a specific develop version, use 
+
+.. code:: console
+
+    $ python3 -m pip install git+https://gitlab.cern.ch/cryocluster/cait.git@v1.3.0.dev1
+
+Docs
+~~~~
+If you make changes/additions to the docs (always appreciated), you might want to compile the docs locally. To do so, you can install all docs build dependencies by calling (we assume that you are in the ``cait`` repository)
+
+.. code:: console
+
+    $ python3 -m pip install -e .[docs]
+
+Afterwards, you can run 
+
+.. code:: console
+
+    $ sphinx-build -M html ./docs/source ~/Desktop/docs_build
+
+which builds the docs on your desktop. Open the ``~/Desktop/docs_build/html/index.html`` in your browser to see the docs.
+
 Releasing
 ~~~~~~~~~
 
-If a new version of cait is to be released, follow these steps (probably not relevant to you reading this, rather meant as a reference for the core developers):
+If a new version of ``cait`` is to be released, follow these steps (probably not relevant to you reading this, rather meant as a reference for the core developers):
 
 You probably want to have a separate (clean) python environment for building the package. You need to have ``build`` and ``twine`` installed (``python -m pip install build twine``) and be in the cait repository.
 
-    - Create new version branch (either locally or on *GitLab*, NOT *GitHub*)
+    - Create new version branch (either locally or on *GitLab*, **NOT** *GitHub*)
     - Update version number in ``cait._version``! This will automatically propagate into ``pyproject.toml`` and into the docs via ``conf.py`` and ``.readthedocs.yaml``.
     - Make sure that all tests succeed (run ``pytest``)
     - Delete the old ``build/`` folder that you might still have locally from previous builds
@@ -445,7 +485,7 @@ You probably want to have a separate (clean) python environment for building the
     - Do a test upload to **testpypi** using ``twine upload -r testpypi dist/<correct-version>.whl`` (username: '__token__', password: your testpypi-token)
     - Install cait from testpypi (possibly into a fresh environment) using ``python -m pip install -i https://test.pypi.org/simple/ cait --no-dependencies`` to see if any issues occur while pulling.
     - If everything is okay, git commit the wheel file 
-    - Create a new tag/release on *GitLab*
+    - Create a new tag/release on *GitLab*, following the format ``v1.2.3``
     - Merge version branch into master
     - Upload the wheel also to the actual PyPI using ``twine upload dist/<correct-version>.whl`` (username: '__token__', password: your pypi-token)
     - Tags are synched to *GitHub* (!) but release also has to be created (from tag) on *GitHub*

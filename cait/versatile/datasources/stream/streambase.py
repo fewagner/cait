@@ -1,13 +1,17 @@
-from abc import ABC, abstractmethod
-from typing import Union, List, Tuple
+from abc import abstractmethod
+from typing import List, Tuple, Union
 
 import numpy as np
 from numpy.typing import ArrayLike
 
-from ..datasourcebase import DataSourceBaseClass
 from ...iterators.impl_stream import StreamIterator
+from ..datasourcebase import DataSourceBaseClass
+
 
 class StreamBaseClass(DataSourceBaseClass):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     def __enter__(self):
         return self
     

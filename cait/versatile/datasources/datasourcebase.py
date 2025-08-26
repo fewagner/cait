@@ -1,6 +1,12 @@
 from abc import ABC, abstractmethod
 
-class DataSourceBaseClass(ABC):
+from ...serialize import SerializingMixin
+
+
+class DataSourceBaseClass(SerializingMixin, ABC):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
     @abstractmethod
     def get_event_iterator(self, *args, **kwargs):
         ...

@@ -136,12 +136,13 @@ work here as well.
 
    # generate mock data and calculate main parameters
    it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
-   pulse_height, onset, rise_time, decay_time, slope = vai.apply(vai.CalcMP(dt_us=it.dt_us), it)
+   f = vai.MainParameters(dt_us=it.dt_us)
+   mp_dict = {k: v for k, v in zip(f.names, vai.apply(f, it))}
 
    # plot two main parameters and apply some formatting 
    # (assigning it to a variable is not necessary but allows for additional functionality)
-   prev = vai.ScatterPreview(x=pulse_height[:,0],
-                          y=decay_time[:,0], 
+   prev = vai.ScatterPreview(x=mp_dict["pulse_height"][:,0],
+                          y=mp_dict["decay_time"][:,0], 
                           ev_it=it, 
                           xlabel="pulse height channel 0", 
                           ylabel="decay time channel 0", 
@@ -169,7 +170,7 @@ If you just want to add some line on top of the plot, you can use the `.add_line
 
    # normal usage
    ev_it = vai.MockData().get_event_iterator()[0].with_processing(vai.RemoveBaseline())
-   vai.Preview(ev_it, vai.CalcMP())
+   vai.Preview(ev_it, vai.MainParameters())
 
    # with static line added
    vai.Preview(ev_it).add_line(x=ev_it.t, y=np.ones_like(ev_it.t), name="some line")

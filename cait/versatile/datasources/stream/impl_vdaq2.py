@@ -1,14 +1,16 @@
 from functools import partial
 
 import numpy as np
+
 import cait as ai
 
-from .streambase import StreamBaseClass
-from ...functions.apply import apply
-from ...functions.trigger.triggerbase import trigger_base
-from ...functions.trigger.trigger_zscore import zscore_chunk
-from ...eventfunctions.processing.removebaseline import RemoveBaseline
 from ....readers import BinaryFile
+from ...eventfunctions.processing.removebaseline import RemoveBaseline
+from ...functions.apply import apply
+from ...functions.trigger.trigger_zscore import zscore_chunk
+from ...functions.trigger.triggerbase import trigger_base
+from .streambase import StreamBaseClass
+
 
 # Helper Function to get testpulse information from VDAQ2 files
 def _square(x): 
@@ -62,6 +64,8 @@ class Stream_VDAQ2(StreamBaseClass):
                  dac_trig_thr: float = 5.,      # sigmas
                  dac_trig_win_len_ms: int = 100 # ms
                  ):
+        super().__init__(file=file, dac_trig_thr=dac_trig_thr, dac_trig_win_len_ms=dac_trig_win_len_ms)
+
         # Get relevant info about file from its header
         header, keys, self._adc_bits, self._dac_bits, dt_tcp = ai.trigger.read_header(file)
         # Start timestamp of the file in us (header['timestamp'] is in ns)
