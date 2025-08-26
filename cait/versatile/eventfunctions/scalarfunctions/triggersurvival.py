@@ -1,9 +1,11 @@
 from functools import partial
+
 import numpy as np
 
+import cait.versatile as vai
+
 from ..functionbase import FncBaseClass
-from ...functions.trigger.trigger_of import filter_chunk, trigger_of
-from ...functions.trigger.trigger_zscore import zscore_chunk, trigger_zscore
+
 
 def is_same_function(f1, f2):
     return (f1.__module__ == f2.__module__) and (f1.__name__ == f2.__name__)
@@ -59,14 +61,14 @@ class TriggerSurvival(FncBaseClass):
         s = { "triggers": [self._inds, event[self._inds] if len(self._inds)>0 else []] }
         
         if isinstance(self._f, partial):
-            if is_same_function(self._f.func, trigger_of):
+            if is_same_function(self._f.func, vai.functions.trigger.trigger_of.trigger_of):
                 if all([kw in self._f.keywords.keys() for kw in ["of", "threshold"]]):
                     of = self._f.keywords["of"]
                     rl = 2*(len(of)-1) # record_length
                     threshold = self._f.keywords["threshold"]
                     
                     N = len(x)
-                    filtered_event = filter_chunk(event, of, rl)
+                    filtered_event = vai.functions.trigger.trigger_of.filter_chunk(event, of, rl)
                     x_filtered = x[rl:-rl]
 
                     l = l | {
@@ -76,13 +78,13 @@ class TriggerSurvival(FncBaseClass):
                             [mine, maxe, None, mine, maxe, None, mine, maxe]],
                         "threshold": [ [rl, N-rl], [threshold]*2 ],
                     }
-            if is_same_function(self._f.func, trigger_zscore):
+            if is_same_function(self._f.func, vai.functions.trigger.trigger_zscore.trigger_zscore):
                 if all([kw in self._f.keywords.keys() for kw in ["record_length", "threshold"]]):
                     rl = self._f.keywords["record_length"]
                     threshold = self._f.keywords["threshold"]
                     
                     N = len(x)
-                    filtered_event = zscore_chunk(event, rl)
+                    filtered_event = vai.functions.trigger.trigger_zscore.zscore_chunk(event, rl)
                     x_filtered = x[rl:-rl]
                     
                     mine, maxe = np.min(filtered_event), np.max(filtered_event)
