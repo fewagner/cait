@@ -56,13 +56,13 @@ class Stream_VDAQ2(StreamBaseClass):
     :type file: str
     :param dac_trig_thr: Trigger threshold (in sigmas) to find testpulses from the DAC channels. Defaults to 5 sigmas
     :type dac_trig_thr: float, optional
-    :param dac_trig_win_len_ms: Trigger window length (in ms) to find testpulses from the DAC channels. Defaults to 100 ms
+    :param dac_trig_win_len_ms: Trigger window length (in ms) to find testpulses from the DAC channels. Defaults to 500 ms
     :type dac_trig_win_len_ms: int, optional
     """
     def __init__(self, 
                  file: str, 
                  dac_trig_thr: float = 5.,      # sigmas
-                 dac_trig_win_len_ms: int = 100 # ms
+                 dac_trig_win_len_ms: int = 500 # ms
                  ):
         super().__init__(file=file, dac_trig_thr=dac_trig_thr, dac_trig_win_len_ms=dac_trig_win_len_ms)
 
