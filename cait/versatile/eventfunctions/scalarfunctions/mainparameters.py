@@ -171,11 +171,11 @@ class MainParameters(FncBaseClass):
 
         # Pulse height is simply the maximum in the search interval
         if isinstance(self._peak_loc, int):
-            self._peak_pos = self._peak_loc
+            self._peak_pos = np.full(event.shape[0], self._peak_loc)
             ph = event[..., self._peak_loc]
         elif isinstance(self._peak_loc, float):
-            self._peak_pos = int(np.round(self._peak_loc * event.shape[-1]))
-            ph = event[..., self._peak_pos]
+            self._peak_pos = np.full(event.shape[0], int(np.round(self._peak_loc * event.shape[-1])))
+            ph = event[..., self._peak_pos[0]]
         else:
             self._peak_pos = np.argmax(event, axis=-1)
             ph = event.max(axis=-1)
