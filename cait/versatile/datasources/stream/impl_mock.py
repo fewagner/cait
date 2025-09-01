@@ -66,6 +66,8 @@ def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_si
     if end<0:
         end += len_stream
     
+    # Extend slice to go from a multiple of chunk_size
+    # to another multiple of chunk_size
     temp_start = (start//chunk_size)*chunk_size
     temp_end = (end//chunk_size + 1)*chunk_size
     recover_start = start%chunk_size
@@ -76,6 +78,8 @@ def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_si
     
     out = np.zeros(temp_end-temp_start, dtype=np.float64)
     
+    # Generate random numbers with the seed fixed to the start of the chunk.
+    # (that's why it's important to extend the chunks above)
     for i in range(n_chunks):
         out[i*chunk_size:(i+1)*chunk_size] = sp.stats.norm.rvs(
             loc=0, scale=scale, size=chunk_size, random_state=(i+i_first_chunk)*base_seed
@@ -96,7 +100,7 @@ def _saturate(y, plateau=0.3):
 
 def _default_spectrum_cdf(x, x_max: float = 40):
     """Default spectrum consisting of a constant background and an iron line."""
-    w59, w64, wc = 1, 0.6, 0.5
+    w59, w64, wc = 1, 0.2, 0.5
     return (
         w59*sp.stats.norm.cdf(x, loc=5.9, scale=0.01) 
         + w64*sp.stats.norm.cdf(x, loc=6.4, scale=0.01)
@@ -111,8 +115,35 @@ class MockStream(StreamBaseClass):
     """
     Mock implementation of a stream. Can be used for tutorials and testing features. 
 
-    :param duration_h: The length of the stream in hours.
-    :type duration_h: float
+    :param duration_h: The length of the stream in hours. Defaults to 1 hour.
+    :type duration_h: float, optional
+    :param dt_us: The microsecond timebase of the stream. Defaults to 10 us.
+    :type dt_us: float, optional
+    :param pulse_shape: The amplitudes and time constants of the pulses to simulate. Parameters are ``(An, At, tau_n, tau_in, tau_t)``. One list for each channel (number of channels simulated is determined by the number of lists in this argument). 
+    :type pulse_shape: List[List[float]], optional
+    :param rate_Hz: The rate (in Hz) at which events are simulated. Defaults to 0.1 Hz.
+    :type rate_Hz: float, optional
+    :param tpa: The TPA pattern that repeats throughout the stream.
+    :type tpa: List[float], optional
+    :param tp_shape: The TPA pulse parameters for each channel (see ``pulse_shape``). Number of channels has to match number of channels in 'pulse_shape'.
+    :type tp_shape: List[List[float]], optional
+    :param tp_interval_s: The number of seconds between consecutive testpulses (whose amplitude is defined by ``tpa``). Defaults to 5 seconds.
+    :type tp_interval_s: float, optional
+    :param spectrum_cdf: The (keV) spectrum (CDF) for the data to simulate. Defaults to a spectrum consisting of an Fe55 double peak and a constant background up to ``max_energy_keV`` (see below).
+    :type spectrum_cdf: callable, optional
+    :param baseline_sig: The baseline standard deviation (in V) for each channel.
+    :type baseline_sig: List[float], optional
+    :param max_energy_keV: The maximum energy to simulate. Defaults to 40 keV
+    :type max_energy_keV: float, optional
+    :param seed: When set, the random numbers generated in the simulation become reproducible. Defaults to None, i.e. new random numbers each time an object is instantiated.
+    :type seed: int, optional
+
+    .. code-block:: python
+
+        import cait.versatile as vai
+
+        stream = vai.MockStream(seed=137)
+        vai.StreamViewer(stream)
     """
     _auto_gen_config = {
         "chunk_size": 100000,
@@ -128,7 +159,7 @@ class MockStream(StreamBaseClass):
                  tp_shape: List[List[float]] = [[0.5, 0.5, 0.3, 0.01, 20.], [0.5, 0.5, 0.3, 0.01, 10.]],
                  tp_interval_s: float = 5.,   
                  spectrum_cdf: callable = None,
-                 baseline_sig: List[float] = [0.001, 0.0001],
+                 baseline_sig: List[float] = [0.005, 0.001],
                  max_energy_keV: float = 40.,
                  seed: int = None,
                 ):
