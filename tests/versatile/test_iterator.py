@@ -1,15 +1,18 @@
-import pytest
+import json
+
 import numpy as np
+import pytest
 
 import cait as ai
-from cait.versatile import Stream, RDTFile, MockData, apply
+from cait.versatile import MockData, MockStream, RDTFile, Stream, apply
 from cait.versatile.iterators.impl_h5 import H5Iterator
-from cait.versatile.iterators.impl_rdt import RDTIterator
-from cait.versatile.iterators.impl_stream import StreamIterator
 from cait.versatile.iterators.impl_mock import MockIterator
 from cait.versatile.iterators.impl_pulsesim import PulseSimIterator
+from cait.versatile.iterators.impl_rdt import RDTIterator
+from cait.versatile.iterators.impl_stream import StreamIterator
 
-from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus, RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY
+from ..fixtures import (RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY,
+                        datahandler, tempdir, testdata_1D_2D_3D_s_mus)
 
 DATA_2D_single_CH = np.random.rand(1, 100)
 DATA_3D_single_CH = np.random.rand(1, 100, 16)
@@ -145,6 +148,13 @@ def basic_checks(it):
     next(iter(it[0].with_batchsize(13)))
     next(iter(it[0].flatten()))
     next(iter(it[0].with_batchsize(13).flatten()))
+
+    # SERIALIZATION
+    # Test if json-serializable (i.e. no objects that JSON cannot handle)
+    json.dumps(it.to_dict())
+    # Check if object can be reconstructed after serialization
+    ai.serialize.load(ai.serialize.dump(it))
+    ai.serialize.loads(ai.serialize.dumps(it))
 
 class TestH5Iterator:
     def test_iterator_bs1_ch2(self, dh):
@@ -287,6 +297,33 @@ class TestStreamIterator:
                                     record_length=2**15,
                                     alignment=1/2))
         
+    def test_basic_mock(self):
+        # Same as above but with mock stream.
+        # To catch bugs caused by the special creation of the data ...
+        stream = MockStream()
+
+
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["TP0"])
+
+        basic_checks(StreamIterator(stream=stream,
+                                    keys="Ch0",
+                                    inds=inds[:25],
+                                    record_length=2**13))
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["Ch0","Ch1"],
+                                    inds=inds,
+                                    record_length=2**14))
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["Ch0","Ch1"],
+                                    inds=inds,
+                                    record_length=2**15))
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["Ch0","Ch1"],
+                                    inds=inds,
+                                    record_length=2**15,
+                                    alignment=1/2))
+
+
     def test_batches_singleCh(self, testdata):
         stream, *_ = testdata
 
@@ -563,4 +600,4 @@ class TestPulseSimIterator:
                 mock.sev[...,:-1], 
                 np.ones((mock_it.n_channels, len(mock_it))) 
             ) 
-        
+                                

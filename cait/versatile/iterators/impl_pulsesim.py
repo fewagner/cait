@@ -4,6 +4,7 @@ import numpy as np
 
 from .iteratorbase import IteratorBaseClass
 
+
 class PulseSimIterator(IteratorBaseClass):
     """
     Iterator object that returns voltage traces superimposed with a SEV. 
@@ -33,7 +34,7 @@ class PulseSimIterator(IteratorBaseClass):
                  batch_size: int = None):
         
         # check if dimensions for sev, iterator and pulse_heights match
-        sev, phs = np.array(sev), np.array(pulse_heights)
+        sev, phs = np.atleast_2d(sev), np.atleast_2d(pulse_heights)
         N, nch = len(iterator), iterator.n_channels
 
         if nch>1 and not sev.ndim>1:
@@ -65,12 +66,19 @@ class PulseSimIterator(IteratorBaseClass):
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
         
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
-        super().__init__(inds=inds, batch_size=batch_size)
+        super().__init__(
+            inds=inds, 
+            batch_size=batch_size,
+            iterator=iterator,
+            sev=np.array(sev).tolist(),
+            pulse_heights=np.array(phs).tolist(),
+            channels=channels
+        )
 
         # Save values to reconstruct iterator:
         self._params = {'iterator': iterator, 
                         'sev': sev, 
-                        'pulse_heights': pulse_heights,
+                        'pulse_heights': phs,
                         'channels': self._channels, 
                         'inds': inds, 
                         'batch_size': batch_size}
@@ -89,7 +97,7 @@ class PulseSimIterator(IteratorBaseClass):
         # super().__init__() to slice the correct (batched) pulse_heights
         # in _next_raw().
         self._sev = sev[self._channels]
-        self._phs = pulse_heights[self._channels]
+        self._phs = phs[self._channels]
         
     def __enter__(self):
         # enter underlying iterator
