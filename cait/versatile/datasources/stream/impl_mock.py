@@ -46,6 +46,13 @@ def _pulse_sum(t, ts, phs, An, At, tau_n, tau_in, tau_t, res):
 
 def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_size: int = 100000):
     """Generate random but reproducible noise for a part 'sl' of a stream with length 'len_stream'."""
+    recovery_sl = slice(None, None, None)
+    if not isinstance(sl, slice):
+        if not isinstance(sl, np.ndarray):
+            raise TypeError(f"Unsupported type {type(sl)} for input 'sl'.")
+        recovery_sl = sl - np.min(sl)
+        sl = slice(np.min(sl), np.max(sl)+1)
+        
     # Sanitize input
     start = 0 if not sl.start else sl.start
     end = len_stream - 1 if not sl.stop else sl.stop
@@ -74,7 +81,7 @@ def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_si
             loc=0, scale=scale, size=chunk_size, random_state=(i+i_first_chunk)*base_seed
         )
     
-    return out[recover_start:-recover_end:step]
+    return out[recover_start:-recover_end:step][recovery_sl]
 
 def _saturate(y, plateau=0.3):
     """Imitate the effect of saturation close to the plateau of the transition."""
