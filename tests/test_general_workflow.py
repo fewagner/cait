@@ -1,16 +1,17 @@
 # THIS FILE TESTS IF ALL FUNCTIONS IN A GENERAL WORKFLOW WORK.
 # THE TESTS ARE NOT VERY DETAILED BUT SHOULD CATCH MAJOR ISSUES INTRODUCED BY UPDATED 3RD-PARTY DEPENDENCIES
-import pytest
-import numpy as np
-import scipy as sp
-import matplotlib.pyplot as plt
 import warnings
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pytest
+import scipy as sp
 
 import cait as ai
 import cait.versatile as vai
 
-from .fixtures import tempdir
 from .fixtures import datahandler_testdata as dh
+from .fixtures import tempdir
 
 # Suppress pop up plots during tests
 plt.switch_backend("Agg")
@@ -28,6 +29,10 @@ def test_workflow(dh, tempdir):
     dh.calc_additional_mp("events", no_of=True)
     dh.calc_additional_mp("noise", no_of=True)
     dh.calc_additional_mp("testpulses", no_of=True)
+
+    # Controlpulse stability
+    for g in ["events", "noise", "testpulses"]:
+        dh.calc_controlpulse_stability(channel=0, significance=2, group=g)
 
     # Create quick cut for SEV
     sev_cuts = ai.cuts.LogicalCut()
