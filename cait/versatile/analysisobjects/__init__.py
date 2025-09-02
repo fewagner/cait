@@ -1,5 +1,5 @@
 from .ecal import EnergyCalibration
-from .nps import NPS
+from .nps import NCM, NPS
 from .of import OF
 from .sev import SEV
 from .testpulseresponse import TPRCubicSpline, TPRPoly

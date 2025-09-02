@@ -3,7 +3,7 @@ from .processing.align import Align
 from .processing.boxcarsmoothing import BoxCarSmoothing
 from .processing.downsample import Downsample
 from .processing.fluxquantumlosscorrection import FluxQuantumLossCorrection
-from .processing.optimumfiltering import OptimumFiltering
+from .processing.optimumfiltering import OptimumFiltering, OptimumFiltering2D
 from .processing.removebaseline import RemoveBaseline
 from .processing.tukey import TukeyWindow
 from .scalarfunctions.calcmp import CalcMP

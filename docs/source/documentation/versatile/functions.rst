@@ -19,7 +19,7 @@ There are three different kinds of functions:
    it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
    mp = vai.apply(vai.MainParameters(dt_us=it.dt_us), it)
 
-*  `Utility functions`_ don't fall into those two categories (e.g. ``apply`` or triggering functions).
+*  `Utility functions`_ don't fall into those two categories (e.g. ``apply`` or `Trigger functions`_).
 
 Processing functions
 ~~~~~~~~~~~~~~~~~~~~
@@ -38,6 +38,9 @@ Processing functions
    :member-order: bysource
    :exclude-members: batch_support
 .. autoclass:: OptimumFiltering
+   :member-order: bysource
+   :exclude-members: batch_support
+.. autoclass:: OptimumFiltering2D
    :member-order: bysource
    :exclude-members: batch_support
 .. autoclass:: FluxQuantumLossCorrection
@@ -78,13 +81,17 @@ Utility functions
 .. currentmodule:: cait.versatile
 
 .. autofunction:: apply
-.. autofunction:: trigger_of
-.. autofunction:: trigger_zscore
+.. autofunction:: timestamp_coincidence
+.. autofunction:: sample_noise
+.. autofunction:: event_building
 
+Trigger functions
+~~~~~~~~~~~~~~~~~
 .. currentmodule:: cait.versatile.functions.trigger.triggerbase
 .. autofunction:: trigger_base
 
 .. currentmodule:: cait.versatile
-.. autofunction:: timestamp_coincidence
-.. autofunction:: sample_noise
-.. autofunction:: event_building
+
+.. autofunction:: trigger_of
+.. autofunction:: trigger_of2d
+.. autofunction:: trigger_zscore

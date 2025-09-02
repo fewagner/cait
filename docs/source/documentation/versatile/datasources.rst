@@ -33,4 +33,8 @@ Related classes and base classes
 
 .. autoclass:: StreamBaseClass
    :members:
+.. autoclass:: StreamChannel
+   :members:
+.. autoclass:: StreamTime
+   :members:
    
