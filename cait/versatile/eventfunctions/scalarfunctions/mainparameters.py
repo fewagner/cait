@@ -218,8 +218,9 @@ class MainParameters(FncBaseClass):
             bounds = np.array(self._peak_loc)
             if bounds.dtype == float:
                 bounds = (bounds * event.shape[-1]).astype(int)
-            self._peak_pos = np.argmax(event[..., bounds[0]:bounds[1]], axis=-1)
-            ph = event[np.indices(event.shape[:-1]), self._peak_pos + bounds[0]]
+            self._peak_pos = np.argmax(event[..., bounds[0]:bounds[1]], axis=-1) + bounds[0]
+            index = tuple(np.indices(event.shape[:-1])) + (self._peak_pos,)
+            ph = event[index].reshape(event.shape[:-1])
 
         # Onset is the last sample above 3x the baseline RMS, searching
         # backwards from the peak.
