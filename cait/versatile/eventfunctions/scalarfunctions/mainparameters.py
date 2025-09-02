@@ -102,7 +102,7 @@ class MainParameters(FncBaseClass):
     def __init__(
             self,
             dt_us: int = None,
-            peak_loc: Union[List[float], float, int] = [1/5, 2/5],
+            peak_loc: Union[List[float], List[int], float, int] = [1/5, 2/5],
             bcs = dict(length=50),
             fbl = dict(model=1, where=1/8),
             ):
@@ -174,9 +174,13 @@ class MainParameters(FncBaseClass):
             ind = int(np.round(self._peak_loc * event.shape[-1]))
             self._peak_pos = np.full(event.shape[:-1], ind)
             ph = event[..., ind]
-        else:
-            self._peak_pos = np.argmax(event, axis=-1)
-            ph = event.max(axis=-1)
+        elif isinstance(self._peak_loc, (tuple, list, np.ndarray)):
+            # peak_loc is always an array, and its type should already be set
+            bounds = np.array(self._peak_loc)
+            if bounds.dtype == float:
+                bounds = (bounds * event.shape[-1]).astype(int)
+            self._peak_pos = np.argmax(event[..., bounds[0]:bounds[1]], axis=-1)
+            ph = event[np.indices(event.shape[:-1]), self._peak_pos + bounds[0]]
 
         # Onset is the last sample above 3x the baseline RMS, searching
         # backwards from the peak.
