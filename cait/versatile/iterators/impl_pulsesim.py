@@ -14,7 +14,9 @@ class PulseSimIterator(IteratorBaseClass):
     :param iterator: An iterator (of baselines, stream_chunks, etc.) that you want to superimpose the SEV on.
     :type iterator: IteratorBaseClass
     :param pulse_heights: The pulse heights to scale the SEV. One for each event in 'iterator' and each channel, i.e. with shape ``(iterator.n_channels, len(iterator))``.
-    :type pulse_heights: np.ndarray
+    :type pulse_heights: List[List[float]]
+    :param shift_samples: If specified for all elements in ``pulse_heights`` (i.e. also for all channels). The respective x-shift (in samples) is applied to the superimposed pulse. If you use a ``sev`` (see below), the edges of the shifted array are padded with the average of the first/last 10 samples. If you use ``sev_fitpars`` (see below), no padding is required because the fit can just be extrapolated.
+    :type shift_samples: List[List[int]]
     :param sev: The SEV to superimpose. Has to match the number of channels of ``iterator`` and its record length, i.e. requires shape ``(iterator.n_channels, iterator.record_length)``. Cannot be specified together with ``sev_fitpars``.
     :type sev: np.ndarray
     :param sev_fitpars: The fit parameters for the SEV to superimpose. Has to match the number of channels of ``iterator``. Cannot be specified together with ``sev``.
@@ -31,7 +33,8 @@ class PulseSimIterator(IteratorBaseClass):
     """
     def __init__(self, 
                  iterator: IteratorBaseClass, 
-                 pulse_heights: List[float], 
+                 pulse_heights: List[List[float]],
+                 shift_samples: List[List[int]] = None,
                  sev: np.ndarray = None,
                  sev_fitpars: List[List[float]] = None,
                  channels: Union[int, List[int]] = None, 
@@ -66,6 +69,12 @@ class PulseSimIterator(IteratorBaseClass):
         
         if self._using_fit and ((sev_or_pars.shape[-1]-2)%2 != 0):
             raise ValueError(f"Number of parameters in 'sev_fitpars' has to be 2k+2 for k>1. Got {sev_or_pars.shape[-1]}.")
+        
+        # Sanitize shifts
+        if shift_samples is not None:
+            shift_samples = np.atleast_2d(shift_samples).astype(np.int32)
+            if shift_samples.shape != phs.shape:
+                raise ValueError(f"The shapes of 'shift_samples' and 'pulse_heights' have to be identical. Got {shift_samples.shape} and {phs.shape}.")
             
         if channels is None: channels = list(range(iterator.n_channels)) 
 
@@ -89,6 +98,7 @@ class PulseSimIterator(IteratorBaseClass):
             sev=np.array(sev).tolist() if sev is not None else None,
             sev_fitpars=np.array(sev_fitpars).tolist() if sev_fitpars is not None else None,
             pulse_heights=np.array(phs).tolist(),
+            shift_samples=np.array(shift_samples).tolist() if shift_samples is not None else None,
             channels=channels
         )
 
@@ -97,6 +107,7 @@ class PulseSimIterator(IteratorBaseClass):
                         'sev': sev, 
                         'sev_fitpars': sev_fitpars,
                         'pulse_heights': phs,
+                        'shift_samples': shift_samples,
                         'channels': self._channels, 
                         'inds': inds, 
                         'batch_size': batch_size}
@@ -117,6 +128,13 @@ class PulseSimIterator(IteratorBaseClass):
         self._sev_or_pars = sev_or_pars[self._channels]
         self._phs = phs[self._channels]
 
+        # We will always have shift samples (easier handling) and
+        # just set them to zero if not specified
+        if shift_samples is not None:
+            self._shift_samples = shift_samples[self._channels]
+        else:
+            self._shift_samples = np.zeros(self._phs.shape, dtype=np.int32)
+
         # If fit pars are used, we have to evaluate the pulse model at some
         # point for which the time array of the iterator is used:
         self._fit_t = iterator.t
@@ -135,22 +153,70 @@ class PulseSimIterator(IteratorBaseClass):
         # (this way we can retrieve elements faster)
         self._itit = self._it.__iter__()
         return self
+    
+    def _shift_fit_pars_and_eval(self, pars: np.ndarray, ks: np.ndarray):
+        # for all fitpar-tuple in pars, the corresponding shift in ks is 
+        # applied and the parameters are evaluated on self.t 
+        temp_array = pars.reshape(-1, pars.shape[-1])
+        temp_k = ks.flatten()
+
+        new_array = np.zeros((temp_array.shape[0], self.record_length))
+
+        for j in range(temp_array.shape[0]):
+            p = temp_array[j]
+            k = temp_k[j]
+            new_array[j, :] = pulse_template(self.t, *(p[0] + k*self.dt_us//1000, *p[1:]))
+
+        return np.reshape(new_array, tuple(list(pars.shape)[:-1]+[self.record_length]))
+    
+    def _shift_array(self, pulses: np.ndarray, ks: np.ndarray):
+        # return the input array with all pulses shifted by k samples
+        # according to the values in ks. If required, edges are padded.
+        temp_array = pulses.reshape(-1, pulses.shape[-1])
+        temp_k = ks.flatten()
+
+        new_array = np.zeros(temp_array.shape)
+
+        for j in range(temp_array.shape[0]):
+            k = temp_k[j]
+            if k == 0:
+                new_array[j, :] = temp_array[j, :]
+            elif k > 0:
+                new_array[j, k:] = temp_array[j, :-k]
+                new_array[j, :k] = np.mean(temp_array[j, :10])
+            else:
+                # Note that k is negative here
+                new_array[j, :k] = temp_array[j, -k:]
+                new_array[j, k:] = np.mean(temp_array[j, -10:])
+
+        return np.reshape(new_array, pulses.shape)
 
     def _next_raw(self):
         if self._current_batch_ind < self.n_batches:
             event_inds_in_batch = self._inds[self._current_batch_ind]
             self._current_batch_ind += 1
             
-            sim_phs = self._phs[..., event_inds_in_batch].T[...,None]
+            sim_phs = self._phs[..., event_inds_in_batch].T[..., None]
+            shifts = self._shift_samples[..., event_inds_in_batch].T[..., None]
             events = next(self._itit)
 
             if self._using_fit:
-                pulse = np.array([
-                    pulse_template(self._fit_t, *pars) 
-                    for pars in np.atleast_2d(self._sev_or_pars)
-                ])
+                pulse = self._shift_fit_pars_and_eval(
+                    # Extend the fitpars array so that we can easier treat different cases
+                    # (batches, no batches, single channel, multi channel, ...)
+                    np.broadcast_to(
+                        self._sev_or_pars, 
+                        tuple(list(events.shape)[:-1] + [self._sev_or_pars.shape[-1]]) 
+                    ),
+                    shifts
+                )
             else:
-                pulse = self._sev_or_pars
+                pulse = self._shift_array(
+                    # Extend the sev array so that we can easier treat different cases
+                    # (batches, no batches, single channel, multi channel, ...)
+                    np.broadcast_to(self._sev_or_pars, events.shape),
+                    shifts
+                )
 
             return sim_phs*pulse + events
         

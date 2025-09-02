@@ -489,6 +489,13 @@ class TestPulseSimIterator:
         basic_checks(PulseSimIterator(
             iterator=mock_it, 
             sev=mock.sev, 
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
             pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
             channels=0
             ) 
@@ -503,6 +510,14 @@ class TestPulseSimIterator:
         basic_checks(PulseSimIterator(
             iterator=mock_it[0], 
             sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            shift_samples=10*np.ones(len(mock_it)),
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
             pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
             channels=0
             ) 
@@ -510,6 +525,14 @@ class TestPulseSimIterator:
         basic_checks(PulseSimIterator(
             iterator=mock_it, 
             sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
             pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
             channels=[0,1]
             ) 
@@ -527,9 +550,26 @@ class TestPulseSimIterator:
             )[0]
         )
         basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            batch_size=13
+            )[0]
+        )
+        basic_checks(PulseSimIterator(
             iterator=mock_it[0], 
             sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
             pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0,
+            batch_size=13,
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            shift_samples=10*np.ones(len(mock_it)),
             channels=0,
             batch_size=13,
             )
@@ -568,8 +608,38 @@ class TestPulseSimIterator:
         )
         basic_checks(PulseSimIterator(
             iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            batch_size=13
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
             sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
             pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        # Try once with extended pulse shape model
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[
+                [0, 0.5, 0.5, 0.3, 0.3, 0.1, 10.0, 100.0], 
+                [0, 0.3, 0, 0.5, 0.3, 0.01, 4.0, 1.0]
+            ], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
             channels=[0,1],
             batch_size=13
             ) 
