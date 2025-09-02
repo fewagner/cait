@@ -343,6 +343,7 @@ class FitMixin(object):
                            max_shift: int = 50,
                            only_channels: Union[int, List[int]] = None,
                            event_flag: np.ndarray = None,
+                           tag: str = "",
                            preview: bool = False,
                            **kwargs
                            ):
@@ -370,6 +371,8 @@ class FitMixin(object):
         :type only_channels: Union[int, List[int]], optional
         :param event_flag: A boolean flag. If you don't want to fit all events in 'group', you can specify a flag for which to fit here. Events that were not fit, receive an RMS value of -404 in the output dataset. Has to have the same length as there are events in 'group' and applies to all channels. Defaults to None, i.e. fit all events.
         :type event_flag: np.ndarray, optional
+        :param tag: A string that is appended to the datasets when they are saved to the DataHandler (e.g. if you want to perform fits for different pulse shapes). This string is appended with a hyphen, i.e. for ``tag="wafer"`` this would result in datasets like ``templatefit_pars-wafer``. Defaults to an empty string, i.e. no tag.
+        :type tag: str, optional
         :param preview: If True, an interactive preview illustrating the fit using the current input arguments on the event traces opens up. Defaults to False
         :type preview: bool, optional
         :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.TemplateFit` or :class:`cait.versatile.TemplateFitCorrelated` (depending on the 'correlated' keyword).
@@ -451,7 +454,11 @@ class FitMixin(object):
         if not self.exists(group):
             raise KeyError(f"Group '{group}' is not available in this DataHandler.")
         
-        _ds_to_be_written = ['templatefit_pars', 'templatefit_rms', 'templatefit_shift']
+        _ds_to_be_written = [
+            "templatefit_pars" + (f"-{tag}" if tag else ""), 
+            "templatefit_rms" + (f"-{tag}" if tag else ""), 
+            "templatefit_shift" + (f"-{tag}" if tag else ""),
+        ]
         if any([self.exists(group, ds) for ds in _ds_to_be_written]):
             raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')', or rename them using the 'dh.rename' function.")
         
@@ -512,7 +519,7 @@ class FitMixin(object):
                     **kwargs)
             
             if preview: 
-                vai.Preview(events_used, tf)
+                vai.Preview(events_used.with_processing(vai.RemoveBaseline()), tf)
             else:
                 fitpar, opt_shift, rms = vai.apply(tf, events_used)
 
@@ -533,7 +540,7 @@ class FitMixin(object):
                         **kwargs)
 
                 if preview:
-                    vai.Preview(events_used[i], tf)
+                    vai.Preview(events_used[i].with_processing(vai.RemoveBaseline()), tf)
                 else:
                     fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
 
@@ -543,10 +550,12 @@ class FitMixin(object):
 
         if not preview:
             self.set(group, 
-                    templatefit_pars=output_pars, 
-                    templatefit_rms=output_rms, 
+                    **{
+                        _ds_to_be_written[0]: output_pars, 
+                        _ds_to_be_written[1]: output_rms
+                    }, 
                     dtype=np.float32)
-            self.set(group, templatefit_shift=output_shift, dtype=np.int16)
+            self.set(group, **{_ds_to_be_written[2]: output_shift}, dtype=np.int16)
 
             if np.any(output_rms == -404):
                 print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding fit values should not be trusted! If you provided an 'event_flag', the events which were excluded from the fit received an RMS value of -404. Likewise, if you chose only to fit a subset of channels using the 'only_channels' argument, channels which were not fitted had their RMS values set to -404. Finally, if the fit failed for any of the fitted events, the respective RMS was also set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")

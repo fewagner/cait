@@ -22,6 +22,7 @@ from .mixins._data_handler_plot import PlotMixin
 from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_simulate import SimulateMixin
 from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
+from .mixins._data_handler_mainparameters import MainParametersMixin
 from .serialize import SerializingMixin
 from .styles._print_styles import (datetime_fmt, fmt_ds, fmt_gr, fmt_virt,
                                    sizeof_fmt, txt_fmt)
@@ -52,6 +53,7 @@ class DataHandler(SimulateMixin,
                   BinMixin,
                   TriggerCollectionMixin,
                   SerializingMixin,
+                  MainParametersMixin,
                   ):
     """
     A class for the processing of raw data events.
@@ -430,7 +432,7 @@ class DataHandler(SimulateMixin,
             channel = slice(None) if channel is None else channel
             flag = slice(None) if flag is None else flag
 
-            return it[channel, flag]
+            return it[channel, flag].with_batchsize(batch_size)
 
         # Else, read event dataset and construct iterator
         # Reading number of events is much faster if we open the HDF5 file directly
@@ -470,7 +472,8 @@ class DataHandler(SimulateMixin,
         new_dict = self.get_ext_event_dict().copy()
         new_dict[group] = {
             "shape": (it.n_channels, len(it), it.record_length),
-            "iterator": it.to_dict()
+            # save flattened iterator (will otherwise lead to all sorts of problems)
+            "iterator": it.flatten().to_dict(),
         }
         self.update_ext_event_dict(new_dict)
         print(f"Successfully saved {fmt_virt('event iterator reference')} for group {fmt_gr(group)}.")
@@ -978,6 +981,14 @@ class DataHandler(SimulateMixin,
                 available = ds_source_available(f, group, "add_mainpar")
             elif (dataset == "timestamps") and (dataset not in f[group]):
                 available = ds_source_available(f, group, "time_s") and ds_source_available(f, group, "time_mus")
+            elif dataset == "event" and (
+                    ("event" in f[group].keys() and f[group]["event"].ndim==3) 
+                    or _events_exist_virtually(self, group)
+                ):
+                if "event" in f[group].keys():
+                    available = ds_source_available(f, group, dataset)
+                else:
+                    available = True
             else:
                 available = ds_source_available(f, group, dataset)
 

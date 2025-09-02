@@ -33,7 +33,7 @@ def testdata(tempdir):
                                tempdir.name+'/mock_001.par'])
     rdt_file = vai.RDTFile(tempdir.name+'/mock_001.rdt')
 
-    dh = ai.DataHandler(channels=[0, 1])
+    dh = ai.DataHandler(channels=[0, 1], record_length=RECORD_LENGTH)
     dh.set_filepath(tempdir.name, "mock_001")
     dh.init_empty()
     dh.include_event_iterator("events", rdt_file[(0, 1)].get_event_iterator())
@@ -99,12 +99,15 @@ def test_iterators(testdata):
         
 def test_externally_store_iterator_in_datahandler(testdata):
     stream, rdt_file, dh = testdata
-    mock = vai.MockData()
+    mock = vai.MockData(record_length=RECORD_LENGTH)
 
-    stream_it = stream.get_event_iterator("Ch0", 100, [1000, 2000, 3000, 4000])
+    stream_it = stream.get_event_iterator("Ch0", 
+                                          RECORD_LENGTH, 
+                                          [3*RECORD_LENGTH, 5*RECORD_LENGTH, 10*RECORD_LENGTH, 13*RECORD_LENGTH]
+                                          )
     rdt_it = rdt_file[(0,1)].get_event_iterator()
     dh_it = dh.get_event_iterator("events")
-    mock_it = mock.get_event_iterator(batch_size=20)
+    mock_it = mock.get_event_iterator(batch_size=13)
 
     # Check if reference remains even after dataset is dropped
     dh.include_event_iterator("external_storage_test_group1", rdt_it, copy_events=True)
@@ -113,6 +116,8 @@ def test_externally_store_iterator_in_datahandler(testdata):
     dh.drop("external_storage_test_group1", "event")
     it = dh.get_event_iterator("external_storage_test_group1")
     assert isinstance(it, rdt_it.__class__)
+    # Check if accessing events via dh.get() works
+    dh.get(f"external_storage_test_group1", "event")
 
     # Check if reference is deleted when entire group is dropped
     dh.include_event_iterator("external_storage_test_group2", rdt_it, copy_events=True)
@@ -126,6 +131,12 @@ def test_externally_store_iterator_in_datahandler(testdata):
         dh.include_event_iterator(f"external_storage_test_group{i}", it, copy_events=False)
         recovered_it = dh.get_event_iterator(f"external_storage_test_group{i}")
         assert isinstance(recovered_it, it.__class__)
+
+        # Check if setting batch_size works
+        assert dh.get_event_iterator(f"external_storage_test_group{i}", batch_size=11).uses_batches
+
+        # Check if accessing events via dh.get() works and gives the correct shape
+        assert (it.n_channels, len(it), it.record_length) == dh.get(f"external_storage_test_group{i}", "event").shape
 
 def test_combine_h5(tempdir):
     h5_fnames = [
