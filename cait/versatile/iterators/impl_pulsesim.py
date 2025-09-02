@@ -2,19 +2,23 @@ from typing import List, Union
 
 import numpy as np
 
+from ...fit import pulse_template
 from .iteratorbase import IteratorBaseClass
 
 
 class PulseSimIterator(IteratorBaseClass):
     """
-    Iterator object that returns voltage traces superimposed with a SEV. 
+    Iterator object that returns voltage traces superimposed with a SEV.
+    The SEV can EITHER be specified by a template array OR by fit parameters [t0, An, At, tau_n, tau_in, tau_t] where the time constants are given in ms. The n-component pulse shape model with parameters [t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n] is also supported.
 
     :param iterator: An iterator (of baselines, stream_chunks, etc.) that you want to superimpose the SEV on.
     :type iterator: IteratorBaseClass
-    :param sev: The SEV to superimpose. Has to match the number of channels of 'iterator' and its record length, i.e. requires shape ``(iterator.n_channels, iterator.record_length)``.
-    :type sev: np.ndarray
     :param pulse_heights: The pulse heights to scale the SEV. One for each event in 'iterator' and each channel, i.e. with shape ``(iterator.n_channels, len(iterator))``.
     :type pulse_heights: np.ndarray
+    :param sev: The SEV to superimpose. Has to match the number of channels of ``iterator`` and its record length, i.e. requires shape ``(iterator.n_channels, iterator.record_length)``. Cannot be specified together with ``sev_fitpars``.
+    :type sev: np.ndarray
+    :param sev_fitpars: The fit parameters for the SEV to superimpose. Has to match the number of channels of ``iterator``. Cannot be specified together with ``sev``.
+    :type sev_fitpars: List[List[float]]
     :param channels: The channels that we are interested in. Has to be a subset of iterator's channels. If None, all channels are considered. Defaults to None.
     :type channels: Union[int, List[int]]
     :param inds: The indices of 'iterator' that we want to iterate over. If None, all indices are considered. Defaults to None
@@ -27,29 +31,41 @@ class PulseSimIterator(IteratorBaseClass):
     """
     def __init__(self, 
                  iterator: IteratorBaseClass, 
-                 sev: np.ndarray,
                  pulse_heights: List[float], 
+                 sev: np.ndarray = None,
+                 sev_fitpars: List[List[float]] = None,
                  channels: Union[int, List[int]] = None, 
                  inds: List[int] = None,
                  batch_size: int = None):
         
+        if np.sum([x is None for x in [sev, sev_fitpars]]) != 1:
+            raise ValueError(f"You have to specify EITHER a sev or its fit parameters. Not both.")
+        
+        # We will use a flag 'using_fit' to distinguish between the two cases
+        # and just call the variable collectively 'sev_or_pars'.
+        self._using_fit = sev_fitpars is not None
+        sev_or_pars = sev_fitpars if self._using_fit else sev
+
         # check if dimensions for sev, iterator and pulse_heights match
-        sev, phs = np.atleast_2d(sev), np.atleast_2d(pulse_heights)
+        sev_or_pars, phs = np.atleast_2d(sev_or_pars), np.atleast_2d(pulse_heights)
         N, nch = len(iterator), iterator.n_channels
 
-        if nch>1 and not sev.ndim>1:
-            raise ValueError(f"For multi-channel iterators, also 'sev' must be multi-channel.")
+        if nch>1 and not sev_or_pars.ndim>1:
+            raise ValueError(f"For multi-channel iterators, also 'sev'/'sev_fitpars' must be multi-channel.")
         if nch>1 and not phs.ndim>1:
             raise ValueError(f"For multi-channel iterators, also 'pulse_heights' must be multi-channel.")
         
-        if (nch!=sev.shape[0]) or (nch!=phs.shape[0]):
-            raise ValueError(f"Number of channels in 'iterator', 'sev', and 'pulse_heights' must be equal. Got {[nch, sev.shape[0], phs.shape[0]]}.")
+        if (nch!=sev_or_pars.shape[0]) or (nch!=phs.shape[0]):
+            raise ValueError(f"Number of channels in 'iterator', 'sev'/'sev_fitpars', and 'pulse_heights' must be equal. Got {[nch, sev_or_pars.shape[0], phs.shape[0]]}.")
 
         if N!=phs.shape[-1]:
             raise ValueError(f"Number of events in 'iterator', and 'pulse_heights' must be equal. Got {[N, phs.shape[-1]]}.")
         
-        if sev.shape[-1] != iterator.record_length:
-            raise ValueError(f"Length of 'sev' has to match the record length of 'iterator'. Got {[sev.shape[-1], iterator.record_length]}.")
+        if (not self._using_fit) and (sev_or_pars.shape[-1] != iterator.record_length):
+            raise ValueError(f"Length of 'sev' has to match the record length of 'iterator'. Got {[sev_or_pars.shape[-1], iterator.record_length]}.")
+        
+        if self._using_fit and ((sev_or_pars.shape[-1]-2)%2 != 0):
+            raise ValueError(f"Number of parameters in 'sev_fitpars' has to be 2k+2 for k>1. Got {sev_or_pars.shape[-1]}.")
             
         if channels is None: channels = list(range(iterator.n_channels)) 
 
@@ -70,7 +86,8 @@ class PulseSimIterator(IteratorBaseClass):
             inds=inds, 
             batch_size=batch_size,
             iterator=iterator,
-            sev=np.array(sev).tolist(),
+            sev=np.array(sev).tolist() if sev is not None else None,
+            sev_fitpars=np.array(sev_fitpars).tolist() if sev_fitpars is not None else None,
             pulse_heights=np.array(phs).tolist(),
             channels=channels
         )
@@ -78,6 +95,7 @@ class PulseSimIterator(IteratorBaseClass):
         # Save values to reconstruct iterator:
         self._params = {'iterator': iterator, 
                         'sev': sev, 
+                        'sev_fitpars': sev_fitpars,
                         'pulse_heights': phs,
                         'channels': self._channels, 
                         'inds': inds, 
@@ -96,8 +114,12 @@ class PulseSimIterator(IteratorBaseClass):
         # Furthermore, we make use of the self._inds created by
         # super().__init__() to slice the correct (batched) pulse_heights
         # in _next_raw().
-        self._sev = sev[self._channels]
+        self._sev_or_pars = sev_or_pars[self._channels]
         self._phs = phs[self._channels]
+
+        # If fit pars are used, we have to evaluate the pulse model at some
+        # point for which the time array of the iterator is used:
+        self._fit_t = iterator.t
         
     def __enter__(self):
         # enter underlying iterator
@@ -122,7 +144,15 @@ class PulseSimIterator(IteratorBaseClass):
             sim_phs = self._phs[..., event_inds_in_batch].T[...,None]
             events = next(self._itit)
 
-            return sim_phs*self._sev + events
+            if self._using_fit:
+                pulse = np.array([
+                    pulse_template(self._fit_t, *pars) 
+                    for pars in np.atleast_2d(self._sev_or_pars)
+                ])
+            else:
+                pulse = self._sev_or_pars
+
+            return sim_phs*pulse + events
         
         else:
             raise StopIteration
