@@ -129,11 +129,6 @@ class MainParameters(FncBaseClass):
             was_single_channel = True
             event = np.expand_dims(event, 0)
 
-        orig_shape = None
-        if event.ndim == 3:
-            orig_shape = event.shape
-            event = event.reshape(-1, event.shape[-1])
-
         # Used for calculations.  If dt_us is set, then output has some values
         # with units in terms of seconds (e.g. rise time in [V/s]), otherwise
         # in samples (e.g. [V/sample]).
@@ -141,12 +136,14 @@ class MainParameters(FncBaseClass):
 
         par, bl_rms = self._fitbaseline(event)
         bl_rms /= np.sqrt(self._fitbaseline.xdata[self._fitbaseline.where].shape[0])
-        bl_offset = self._fitbaseline.model(0, par)
+        bl_rms = bl_rms.reshape(event.shape[:-1])
+        bl_offset = self._fitbaseline.model(0, par).reshape(event.shape[:-1])
         # Since the baseline fit may be an arbitrary polynomial or an exponential,
         # approximate the slope using finite difference.
         x1 = self._fitbaseline.xdata[1]
         x0 = self._fitbaseline.xdata[0]
         bl_slope = (self._fitbaseline.model(x1, par) - self._fitbaseline.model(x0, par)) / (x1 - x0)
+        bl_slope = bl_slope.reshape(event.shape[:-1])
 
 
         # After calculating the baseline parameters, we operate on the baseline-
@@ -171,11 +168,12 @@ class MainParameters(FncBaseClass):
 
         # Pulse height is simply the maximum in the search interval
         if isinstance(self._peak_loc, int):
-            self._peak_pos = np.full(event.shape[0], self._peak_loc)
+            self._peak_pos = np.full(event.shape[:-1], self._peak_loc)
             ph = event[..., self._peak_loc]
         elif isinstance(self._peak_loc, float):
-            self._peak_pos = np.full(event.shape[0], int(np.round(self._peak_loc * event.shape[-1])))
-            ph = event[..., self._peak_pos[0]]
+            ind = int(np.round(self._peak_loc * event.shape[-1]))
+            self._peak_pos = np.full(event.shape[:-1], ind)
+            ph = event[..., ind]
         else:
             self._peak_pos = np.argmax(event, axis=-1)
             ph = event.max(axis=-1)
@@ -258,10 +256,9 @@ class MainParameters(FncBaseClass):
 
         # Return values
         # This should fix batch issues...
-        if orig_shape is not None:
-            out = np.array(out).reshape(len(out), -1, orig_shape[1])
         if was_single_channel:
             out = np.squeeze(out)
+
         return tuple(out)
 
 
