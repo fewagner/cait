@@ -193,60 +193,38 @@ class MainParameters(FncBaseClass):
         # ---
         # Note we do this in a loop instead of cutting, so that we catch the
         # FIRST instance of each case (i.e. avoids issues with e.g. pileup).
-        self._os = -1 * np.ones(event.shape[:-1], dtype=int)  # rise start
-        self._rs = -1 * np.ones(event.shape[:-1], dtype=int)  # rise start
-        self._re = -1 * np.ones(event.shape[:-1], dtype=int)  # rise end
-        self._ds = -1 * np.ones(event.shape[:-1], dtype=int)  # decay start
-        self._de = -1 * np.ones(event.shape[:-1], dtype=int)  # decay end
+        #self._os = -1 * np.ones(event.shape[:-1], dtype=int)  # rise start
+        #self._rs = -1 * np.ones(event.shape[:-1], dtype=int)  # rise start
+        #self._re = -1 * np.ones(event.shape[:-1], dtype=int)  # rise end
+        #self._ds = -1 * np.ones(event.shape[:-1], dtype=int)  # decay start
+        #self._de = -1 * np.ones(event.shape[:-1], dtype=int)  # decay end
 
         # CAT parameters
-        osc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        rsc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        rec = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        dsc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        dec = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
+        #osc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
+        #rsc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
+        #rec = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
+        #dsc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
+        #dec = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
 
 
         # Create mask of correct shape
         # Two cases:
         #  - event.ndim == 2: add last dimension
         #  - event.ndim == 3: add first and last dimension
-        for ichan in range(event.shape[0]):
-            _x = np.arange(event.shape[-1])
-            mask_pp = _x < self._peak_pos[ichan]
+        _x = np.tile(np.arange(event.shape[-1]), (event.shape[0], 1))
+        mask_pp = _x < np.expand_dims(self._peak_pos, -1)
 
-            _rs = np.where(mask_pp & (event[ichan] < 0.2*ph[ichan]))
-            _re = np.where(mask_pp & (event[ichan] < 0.8*ph[ichan]))
-            _ds = np.where(~mask_pp & (event[ichan] > 0.9*ph[ichan]))
-            _de = np.where(~mask_pp & (event[ichan] > 1/np.e*ph[ichan]))
+        self._rs = np.argmax(_x * (mask_pp & (event < 0.2*np.expand_dims(ph, axis=-1))), axis=-1)
+        self._re = np.argmax(_x * (mask_pp & (event < 0.8*np.expand_dims(ph, axis=-1))), axis=-1)
+        self._ds = np.argmax(_x * (~mask_pp & (event > 0.9*np.expand_dims(ph, axis=-1))), axis=-1)
+        self._de = np.argmax(_x * (~mask_pp & (event > 1/np.e*np.expand_dims(ph, axis=-1))), axis=-1)
+        self._os = self._rs - event.shape[-1] // 4
 
-            if len(_rs[0]):
-                self._rs[ichan] = _rs[0][-1]
-            if len(_re[0]):
-                self._re[ichan] = _re[0][-1]
-            if len(_ds[0]):
-                self._ds[ichan] = _ds[0][-1]
-            if len(_de[0]):
-                self._de[ichan] = _de[0][-1]
-
-            self._os[ichan] = (self._rs[ichan] - event.shape[-1]//4)
-
-            _os = np.where(mask_pp & (event[ichan] < 3*bl_rms[ichan]))
-            _rs = np.where(mask_pp & (event[ichan] < 0.1*ph[ichan]))
-            _re = np.where(mask_pp & (event[ichan] < 0.9*ph[ichan]))
-            _ds = np.where(~mask_pp & (event[ichan] > 0.9*ph[ichan]))
-            _de = np.where(~mask_pp & (event[ichan] > 0.1*ph[ichan]))
-
-            if len(_os[0]):
-                osc[ichan] = _os[0][-1]
-            if len(_rs[0]):
-                rsc[ichan] = _rs[0][-1]
-            if len(_re[0]):
-                rec[ichan] = _re[0][-1]
-            if len(_ds[0]):
-                dsc[ichan] = _ds[0][-1]
-            if len(_de[0]):
-                dec[ichan] = _de[0][-1]
+        osc = np.argmax(_x * (mask_pp & (event < 3*np.expand_dims(bl_rms, axis=-1))), axis=-1)
+        rsc = np.argmax(_x * (mask_pp & (event < 0.1*np.expand_dims(ph, axis=-1))), axis=-1)
+        rec = np.argmax(_x * (mask_pp & (event < 0.9*np.expand_dims(ph, axis=-1))), axis=-1)
+        dsc = self._ds
+        dec = np.argmax(_x * (~mask_pp & (event > 0.1*np.expand_dims(ph, axis=-1))), axis=-1)
 
         # Integral may be useful in rejecting pileup.
         integral = trapezoid(event, dx=_dt, axis=-1)
