@@ -47,7 +47,7 @@ class MainParametersMixin:
             # CMP for group "testpulses"
             dh.cmp("testpulses")
         """
-        events = self.get_event_iterator(group, batch_size=100)
+        events = self.get_event_iterator(group, batch_size=2)
 
         print(txt_fmt('Calculating main parameters ...', style="bold"))
         mp = vai.MainParameters(self.dt_us)
