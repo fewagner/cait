@@ -1,14 +1,12 @@
 from collections import Counter
 
+import h5py
 import numpy as np
 from scipy.stats import norm
-import h5py
 from tqdm.auto import tqdm
 
-from ..cuts import rate_cut, testpulse_stability, controlpulse_stability
-from ..calibration import light_yield_correction
-from ..calibration import PulserModel
-
+from ..calibration import PulserModel, light_yield_correction
+from ..cuts import controlpulse_stability, rate_cut, testpulse_stability
 
 # -----------------------------------------------------------
 # CLASS
@@ -208,8 +206,15 @@ class AnalysisMixin(object):
                                                  dtype=bool)
                 h5['testpulses']['rate_cut'][...] = flag_tp
 
-    def calc_controlpulse_stability(self, channel: int, significance: float = 3, max_gap: float = 0.5, lb: float = 0,
-                                    ub: float = 100, instable_iv: list = None):
+    def calc_controlpulse_stability(self, 
+                                    channel: int, 
+                                    significance: float = 3, 
+                                    max_gap: float = 0.5, 
+                                    lb: float = 0,
+                                    ub: float = 100, 
+                                    instable_iv: list = None,
+                                    group: str = "events",
+                                    ):
         """
         Do a stability cut on the control pulses.
 
@@ -238,43 +243,59 @@ class AnalysisMixin(object):
         :param instable_iv: A list of the instable intervals. If this is handed, the instable intervals are not calculated
             but those are used. Useful for e.g. the cut efficiency.
         :type instable_iv: list
+        :param group: The group for which to calculate the controlpulse stability. Defaults to 'events'.
+        :type group: str, optional
         """
 
-        with h5py.File(self.path_h5, 'r+') as f:
+        if self.exists("controlpulses"):
+            cphs = self.get("controlpulses", "pulse_height", channel)
+            hours_cp = self.get("controlpulses", "hours")
+        else:
+            cphs = None
+            hours_cp = None
 
-            if 'controlpulses' in f:
-                cphs = f['controlpulses']['pulse_height'][channel]
-                hours_cp = f['controlpulses']['hours']
-            else:
-                cphs = None
-                hours_cp = None
+        hours_ev = self.get(group, "hours")
 
-            hours_ev = f['events']['hours']
+        try:
+            flag_ev, flag_cp, instable_iv = controlpulse_stability(
+                hours_ev=hours_ev, 
+                cphs=cphs, 
+                hours_cp=hours_cp,
+                significance=significance, 
+                max_gap=max_gap,
+                lb=lb, 
+                ub=ub, 
+                instable_iv=instable_iv
+            )
+        except AssertionError:
+            raise AttributeError('If you do not hand instable_iv, you need to have control pulses in the file!')
 
-            try:
-                # cphs, hours_cp, hours_ev, significance=3, max_gap=1
-                flag_ev, flag_cp, instable_iv = controlpulse_stability(hours_ev=hours_ev, cphs=cphs, hours_cp=hours_cp,
-                                                          significance=significance, max_gap=max_gap,
-                                                          lb=lb, ub=ub, instable_iv=instable_iv)
-            except AssertionError:
-                raise AttributeError('If you do not hand instable_iv, you need to have control pulses in the file!')
+        self.set(
+            "metainfo", 
+            **{f"controlpulse_instable_ch{channel}": instable_iv},
+            change_existing=True, 
+            overwrite_existing=True,
+        )
+        self.set(
+            group, 
+            controlpulse_stability=flag_ev,
+            dtype=bool,
+            n_channels=self.nmbr_channels, 
+            channel=channel, 
+            change_existing=True,
+            overwrite_existing=True,
+        )
 
-            f.require_group('metainfo')
-            if f'controlpulse_instable_ch{channel}' in f['metainfo']:
-                del f['metainfo'][f'controlpulse_instable_ch{channel}']
-            f['metainfo'].create_dataset(name=f'controlpulse_instable_ch{channel}',
-                                          data=instable_iv)
-
-            f['events'].require_dataset(name='controlpulse_stability',
-                                        shape=(self.nmbr_channels, len(flag_ev)),
-                                        dtype=bool)
-            f['events']['controlpulse_stability'][channel, ...] = flag_ev
-
-            if flag_cp is not None:
-                f['controlpulses'].require_dataset(name='controlpulse_stability',
-                                                   shape=(self.nmbr_channels, len(flag_cp)),
-                                                   dtype=bool)
-                f['controlpulses']['controlpulse_stability'][channel, ...] = flag_cp
+        if flag_cp is not None:
+            self.set(
+                "controlpulses",
+                controlpulse_stability=flag_cp,
+                dtype=bool,
+                n_channels=self.nmbr_channels, 
+                channel=channel, 
+                change_existing=True,
+                overwrite_existing=True,
+            )
 
     def calc_testpulse_stability(self, channel: int, significance: float = 3, noise_level: float = 0.005,
                                  max_gap: float = 0.5, ub: float = None, lb: float = None):

@@ -117,6 +117,13 @@ def event_building(trigger_ts: List[List[int]],
         
         for i, ts in enumerate(tp_ts[1:]):
             this_tp_ts = ts.copy()
+            
+            # If testpulse timestamps are too close to each other, the method below will fail.
+            # But in such cases, it is safe to assume that there is a problem with the timestamps anyways.
+            # Therefore, we check and raise an error to tell the user to check their testpulses.
+            if np.any(np.diff(np.sort(this_tp_ts)) < np.max(rec_window_coinc)):
+                raise ValueError(f"(Some) testpulse timestamps for channel {i+1} are too close to each other (within the same record window for event-building), which makes event building ambiguous. Make sure that only one testpulse occurs in the coincidence window {rec_window_coinc} us around any testpulse. If the testpulse timestamps are obtained from triggering a testpulse channel (e.g. in stream hardware 'vdaq2'), make sure to configure the parameters for automatic testpulse triggering correctly in the respective stream hardware constructor. To check if the obtained testpulse timestamps make sense, you can use, e.g., vai.StreamViewer(stream, mark_timestamps=stream.tp_timestamps[channel]).")
+                
             _, coinc_inds, outside = timestamp_coincidence(all_tp_ts, this_tp_ts, rec_window_coinc)
 
             for k in range(i+1):

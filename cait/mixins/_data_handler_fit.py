@@ -450,6 +450,8 @@ class FitMixin(object):
                 fit_onset=[True, True] # Onset of both channels is fitted together
             )
         """
+        # 10 is a good trade off for copying data to processes and file access speed
+        _batch_size = 10
         
         if not self.exists(group):
             raise KeyError(f"Group '{group}' is not available in this DataHandler.")
@@ -521,7 +523,7 @@ class FitMixin(object):
             if preview: 
                 vai.Preview(events_used.with_processing(vai.RemoveBaseline()), tf)
             else:
-                fitpar, opt_shift, rms = vai.apply(tf, events_used)
+                fitpar, opt_shift, rms = vai.apply(tf, events_used.with_batchsize(_batch_size))
 
                 output_pars[np.ix_(channels_used, event_flag)] = np.transpose(fitpar, [1,0,2])
                 output_shift[np.ix_(channels_used, event_flag)] = opt_shift[None, :]
@@ -542,7 +544,7 @@ class FitMixin(object):
                 if preview:
                     vai.Preview(events_used[i].with_processing(vai.RemoveBaseline()), tf)
                 else:
-                    fitpar, opt_shift, rms = vai.apply(tf, events_used[i], pb_prefix=f"Channel {ch}")
+                    fitpar, opt_shift, rms = vai.apply(tf, events_used[i].with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
 
                     output_pars[ch, event_flag, :n_pars] = fitpar
                     output_shift[ch, event_flag] = opt_shift

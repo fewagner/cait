@@ -75,6 +75,9 @@ Scalar functions
 .. autoclass:: NPeaks
    :member-order: bysource
    :exclude-members: batch_support
+.. autoclass:: TriggerSurvival
+   :member-order: bysource
+   :exclude-members: batch_support
 
 Utility functions
 ~~~~~~~~~~~~~~~~~

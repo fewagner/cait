@@ -7,20 +7,25 @@ import numpy as np
 import cait.versatile as vai
 
 
-# Helper function that is used in both trigger_of and trigger_zscore
-def _trigger_helper(dh, 
-                    stream, 
+# Helper function that validates and sanitizes input and outputs
+# correctly formatted versions of the inputs
+def _sanitize_input(stream,
                     trigger_channels,
-                    passive_channels, 
-                    testpulse_channels, 
+                    passive_channels,
+                    testpulse_channels,
                     controlpulses_above,
-                    copy_events, 
-                    reuse_triggers,
-                    interval,
-                    trigger_fncs,
-                    f_noise,
-                    name_appendix
-                    ):
+                    thresholds):
+    # Allow string input if only one channel
+    trigger_channels = [trigger_channels] if isinstance(trigger_channels, str) else trigger_channels
+    passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
+    testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
+    
+    # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
+    thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
+
+    if len(thresholds) != len(trigger_channels):
+            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+    
     # All trigger channels (flattened such that when a 2d of is used, we can still check
     # all required channel names conveniently)
     trigger_channels_flat = np.hstack(trigger_channels).tolist()
@@ -38,6 +43,34 @@ def _trigger_helper(dh,
     if testpulse_channels is not None:
         if len(trigger_channels_flat) + (0 if passive_channels is None else len(passive_channels)) != len(testpulse_channels):
             raise ValueError(f"Testpulse channels are required for all channels (including passive channels). I.e. len(testpulse_channels)' must match 'len(np.hstack(trigger_channels))+len(passive_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels_flat)}+{0 if passive_channels is None else len(passive_channels)}")
+        
+    # Make sure that controlpulses_above is a list (allow scalar input, to be used for all channels)
+    # Also check if it is specified for all testpulse channels
+    if controlpulses_above is not None:
+        if testpulse_channels is None:
+            raise ValueError("If you specify 'controlpulses_above', you also have to specify 'testpulse_channels'.")
+        else:
+            controlpulses_above = [controlpulses_above]*len(testpulse_channels) if isinstance(controlpulses_above, (int, float, tuple)) else controlpulses_above
+
+        if not (len(testpulse_channels) == len(controlpulses_above)):
+            raise ValueError(f"The length of 'controlpulses_above' and 'testpulse_channels' has to match. Got {len(controlpulses_above)} and {len(testpulse_channels)}.")
+        
+    return trigger_channels, passive_channels, testpulse_channels, controlpulses_above, thresholds
+
+# Helper function that is used in both trigger_of and trigger_zscore
+def _trigger_helper(dh, 
+                    stream, 
+                    trigger_channels,
+                    passive_channels, 
+                    testpulse_channels, 
+                    controlpulses_above,
+                    copy_events, 
+                    reuse_triggers,
+                    interval,
+                    trigger_fncs,
+                    f_noise,
+                    name_appendix
+                    ):
 
     # Convert noise sample frequency to number of noise traces to sample.
     # Print info if less than one sample is expected. Set number to at least
@@ -346,28 +379,14 @@ class TriggerCollectionMixin:
                               copy_events=True)
         """
         
-        # Allow string input if only one channel
-        trigger_channels = [trigger_channels] if isinstance(trigger_channels, str) else trigger_channels
-        passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
-        testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
-        
-        # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
-        thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
-
-        # Make sure that controlpulses_above is a list (allow scalar input, to be used for all channels)
-        # Also check if it is specified for all testpulse channels
-        if controlpulses_above is not None:
-            if testpulse_channels is None:
-                raise ValueError("If you specify 'controlpulses_above', you also have to specify 'testpulse_channels'.")
-            else:
-                controlpulses_above = [controlpulses_above]*len(testpulse_channels) if isinstance(controlpulses_above, (int, float, tuple)) else controlpulses_above
-
-            if not (len(testpulse_channels) == len(controlpulses_above)):
-                raise ValueError(f"The length of 'controlpulses_above' and 'testpulse_channels' has to match. Got {len(controlpulses_above)} and {len(testpulse_channels)}.")
-            
-
-        if len(thresholds) != len(trigger_channels):
-            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+        trigger_channels, passive_channels, testpulse_channels, controlpulses_above, thresholds = _sanitize_input(
+            stream=stream,
+            trigger_channels=trigger_channels,
+            passive_channels=passive_channels,
+            testpulse_channels=testpulse_channels,
+            controlpulses_above=controlpulses_above,
+            thresholds=thresholds,
+        )
         
         trigger_fncs = [partial(vai.trigger_zscore, 
                                threshold=thresh, 
@@ -459,27 +478,14 @@ class TriggerCollectionMixin:
                               testpulse_channels=["DAC1", "DAC3"],
                               copy_events=True)
         """
-        # Allow string and tuple input if only one channel (or 2d filter channel combination)
-        trigger_channels = [trigger_channels] if isinstance(trigger_channels, (str, tuple)) else trigger_channels
-        passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
-        testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
-        
-        # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
-        thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
-
-        # Make sure that controlpulses_above is a list (allow scalar input, to be used for all channels)
-        # Also check if it is specified for all testpulse channels
-        if controlpulses_above is not None:
-            if testpulse_channels is None:
-                raise ValueError("If you specify 'controlpulses_above', you also have to specify 'testpulse_channels'.")
-            else:
-                controlpulses_above = [controlpulses_above]*len(testpulse_channels) if isinstance(controlpulses_above, (int, float, tuple)) else controlpulses_above
-
-            if not (len(testpulse_channels) == len(controlpulses_above)):
-                raise ValueError(f"The length of 'controlpulses_above' and 'testpulse_channels' has to match. Got {len(controlpulses_above)} and {len(testpulse_channels)}.")
-        
-        if len(thresholds) != len(trigger_channels):
-            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+        trigger_channels, passive_channels, testpulse_channels, controlpulses_above, thresholds = _sanitize_input(
+            stream=stream,
+            trigger_channels=trigger_channels,
+            passive_channels=passive_channels,
+            testpulse_channels=testpulse_channels,
+            controlpulses_above=controlpulses_above,
+            thresholds=thresholds,
+        )
             
         ofs = np.atleast_2d(of)
             
