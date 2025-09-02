@@ -31,7 +31,7 @@ class MainParameters(FncBaseClass):
 
     The time-based parameters (peak position, onset, rise time, decay time) are all also returned converted to ms.
     In addition, some parameters are calculated in the way that **CAT** does. These parameters differ in the following:
-    
+
         - **onset** (ms or samples): Start of the pulse, found from when the trace is above 3 times the baseline RMS noise.
         - **rise time** (ms or samples): Calculated from 10% to 90% of the pulse height (and indendent of offset).
         - **decay time** (ms or samples): Calculated from 90% to 10% of the pulse height (and indendent of offset).
@@ -111,6 +111,45 @@ class MainParameters(FncBaseClass):
         if not isinstance(peak_loc, (tuple, list, np.ndarray, int, float)):
             raise ValueError("Argument peak_loc must be array-like, int, or "
                              f"float, got {type(peak_loc)}")
+
+        # Check `peak_loc` for proper input
+        # Integer check
+        if isinstance(peak_loc, int) and peak_loc < 0:
+            raise ValueError("Only integers greater than zero are "
+                             f"allowed for `peak_loc`, got {peak_loc}")
+
+        # Float check
+        elif isinstance(peak_loc, float) and (peak_loc < 0 or peak_loc > 1):
+            raise ValueError("Only floats between 0 and 1 are "
+                             f"allowed for `peak_loc`, got {peak_loc}")
+
+        # Array-like check
+        elif isinstance(peak_loc, (tuple, list, np.ndarray)):
+            peak_loc = np.array(peak_loc)
+
+            if len(peak_loc) != 2:
+                raise ValueError("If `peak_loc` is array-like, it must have "
+                                 f"length 2, got len(peak_loc) == {len(peak_loc)}")
+
+            if np.any(peak_loc < 0):
+                raise ValueError("All entries of `peak_loc` must be "
+                                 f"greater than 0, got {peak_loc}")
+
+            if not peak_loc[0] < peak_loc[1]:
+                raise ValueError("If `peak_loc` is array-like, it must be "
+                                 f"strictly increasing, got {peak_loc}")
+
+            # Float checks
+            if isinstance(peak_loc[0], float):
+                if not np.all((peak_loc >= 0) & (peak_loc <= 1)):
+                    raise ValueError("Only arrays of floats between 0 and 1 are "
+                                     f"allowed for `peak_loc`, got {peak_loc}")
+            # Integer checks
+            elif isinstance(peak_loc[0], int):
+                if not np.all(peak_loc >= 0):
+                    raise ValueError("Only arrays of positive integers are "
+                                     f"allowed for `peak_loc`, got {peak_loc}")
+
 
         self._dt_us = dt_us
         self._peak_loc = peak_loc
