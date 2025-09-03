@@ -165,7 +165,7 @@ class PulseSimIterator(IteratorBaseClass):
         for j in range(temp_array.shape[0]):
             p = temp_array[j]
             k = temp_k[j]
-            new_array[j, :] = pulse_template(self.t, *(p[0] + k*self.dt_us//1000, *p[1:]))
+            new_array[j, :] = pulse_template(self.t, *(p[0] + k*self.dt_us/1000, *p[1:]))
 
         return np.reshape(new_array, tuple(list(pars.shape)[:-1]+[self.record_length]))
     

@@ -96,7 +96,7 @@ class TriggerSurvival(FncBaseClass):
         return 'none'
 
     def preview(self, event: np.ndarray) -> dict:
-        self(event)
+        survived, *_ = self(event)
         event = event - np.mean(event)
         x = np.arange(len(event))
         mine, maxe = np.min(event), np.max(event)
@@ -150,4 +150,4 @@ class TriggerSurvival(FncBaseClass):
                         "threshold": [ [rl, N-2*rl], [threshold]*2 ],
                     }}
 
-        return dict(line=l, scatter=s)
+        return dict(line=l, scatter=s, axes=dict(xaxis=dict(label=f"Survived trigger: {survived}")))

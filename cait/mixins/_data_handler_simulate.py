@@ -1,21 +1,326 @@
 import warnings
+from functools import partial
+from typing import List, Union
 
-import numpy as np
 import h5py
+import numpy as np
 
-from ..simulate._sim_pulses import simulate_events
+import cait.versatile as vai
+from cait.versatile.iterators import PulseSimIterator
+
 from ..data._baselines import calculate_mean_nps
+from ..fit import pulse_template
 from ..fit._saturation import scale_factor
-
-# -----------------------------------------------------------
-# CLASS
-# -----------------------------------------------------------
+from ..simulate._sim_pulses import simulate_events
+from ._data_handler_trigger_collection import _sanitize_input
 
 
 class SimulateMixin(object):
     """
     A Mixin Class for the DataHandler class with methods to simulate data sets.
     """
+
+    def efficiency_sim_trigger_of(
+        self,
+        sim_ts: np.ndarray,
+        sim_phs: np.ndarray,
+        stream: vai.datasources.stream.streambase.StreamBaseClass,
+        trigger_channels: Union[str, List[str]],
+        of: np.ndarray,
+        threshold: Union[float, List[float]],
+        sev: np.ndarray = None,
+        sev_fitpars: List[List[float]] = None,
+        shift_samples: List[List[int]] = None,
+        passive_channels: Union[str, List[str]] = None,
+        testpulse_channels: Union[str, List[str]] = None,
+        tolerance_samples: int = 10,
+        n_record_lens: int = 8,
+        record_placement: int = 4,
+        tag: str = "",
+        preview: bool = False,
+    ):
+        """
+        Perform a trigger efficiency simulation by superimposing a SEV onto random parts of a stream and running an optimum filter trigger to check whether they survive or not.
+        """
+        # Ensures that all inputs are lists
+        trigger_channels, passive_channels, testpulse_channels, _, thresholds = _sanitize_input(
+            stream=stream,
+            trigger_channels=trigger_channels,
+            passive_channels=passive_channels,
+            testpulse_channels=testpulse_channels,
+            controlpulses_above=None,
+            thresholds=threshold,
+        )
+
+        if np.sum([x is None for x in [sev, sev_fitpars]]) != 1:
+            raise ValueError(f"You have to specify EITHER a sev or its fit parameters. At least one. Not both.")
+
+        using_fit = sev_fitpars is not None
+        sev_or_pars = sev_fitpars if using_fit else sev
+
+        # Want 1d timestamps but 2d pulse heights, sev, and of
+        sim_ts = np.array(sim_ts).flatten()
+        sim_phs, sev_or_pars, of = np.atleast_2d(sim_phs), np.atleast_2d(sev_or_pars), np.atleast_2d(of)
+
+        if passive_channels is not None:
+            all_channels = trigger_channels + passive_channels
+        else:
+            all_channels = trigger_channels
+        n_total_ch = len(all_channels)
+        n_trig_ch = len(trigger_channels)
+
+        if sim_phs.shape[0] != n_total_ch:
+            raise ValueError(f"Pulse heights are needed for all channels (including passive ones). Got pulse heights of shape {sim_phs.shape} and in total {n_total_ch} channel(s).")
+        if sev_or_pars.shape[0] != n_total_ch:
+            raise ValueError(f"SEVs are needed for all channels (including passive ones). Got sev/sev_fitpars of shape {sev_or_pars.shape} and in total {n_total_ch} channel(s).")
+        if of.shape[0] != len(trigger_channels):
+            raise ValueError(f"OFs are needed for all trigger channels. Got OF of shape {of.shape} and {len(trigger_channels)} trigger channel(s).")
+        if sim_phs.shape[-1] != len(sim_ts):
+            raise ValueError(f"The number of timestamps must agree with the number of pulse heights. Got {len(sim_ts)} and {sim_phs.shape[-1]}.")
+        
+        if shift_samples is not None:
+            shift_samples = np.atleast_2d(shift_samples).astype(np.int32)
+            if shift_samples.shape != sim_phs.shape:
+                raise ValueError(f"The shapes of 'shift_samples' and 'sim_phs' have to be identical. Got {shift_samples.shape} and {sim_phs.shape}.")
+
+        rl = self.record_length
+            
+        if n_record_lens < 4:
+            raise ValueError(f"Input 'n_record_lens' has to be at least 4 (the more the better).")
+        if record_placement > n_record_lens-2:
+            raise ValueError(f"Input 'record_placement' has to be smaller than 'n_record_lens-2'.")
+            
+        if np.any(sim_ts<stream.time[0]+stream.dt_us*rl*(record_placement+2)):
+            raise ValueError(f"The earliest possible timestamp for simulation is stream.dt_us*record_length*(record_placement+2). Make sure that all timestamps are well within the stream.")
+        if np.any(sim_ts>stream.time[-1]-stream.dt_us*rl*(n_record_lens-record_placement)):
+            raise ValueError(f"The latest possible timestamp for simulation is stream.time[-1]-stream.dt_us*record_length*(n_record_lens-record_placement). Make sure that all timestamps are well within the stream.")
+        
+        appendix = f"-{tag}" if tag else ""
+        
+        # PREPARING SEV TO BE USED IN PULSE_SIM_ITERATOR
+        if using_fit:
+            # We place the pulse in the (extended) record window as
+            # defined by 'record_placement'.
+            # The time=0 of the fitpars is adjusted to fall onto
+            # pulse_sim_index
+            # The (extended) iterator's time array is used to 
+            # evaluate the fitpars. Its 0 is aligned at 1/4th as
+            # usual. We compensate for that.
+            shifted_pars = np.atleast_2d(sev_or_pars[:n_trig_ch,:].copy())
+            shifted_pars[:,0] += (record_placement - n_record_lens/4)*rl*stream.dt_us/1000
+            of_trigger = [of[i] for i in range(n_trig_ch)]
+
+            pulse_sim_index = np.argmax(
+                pulse_template(
+                    (np.arange(n_record_lens*rl) - n_record_lens*rl/4)*stream.dt_us/1000, 
+                    *shifted_pars[0]
+                    )
+                )
+            iterator_kwargs = dict(sev_fitpars=shifted_pars)
+        else:
+            # The SEV that is placed on the stream chunks for triggering
+            # is first sanitized with a window function (this prevents
+            # high frequency artifacts). Reducing the pulse's area means
+            # that we also have to re-normalize the OF!
+            # (This is only done for the channels which are actually triggered)
+            window_sev = [vai.TukeyWindow()(sev_or_pars[i]) for i in range(n_trig_ch)]
+            scale = [np.max(vai.OptimumFiltering(of[i])(window_sev[i])) for i in range(n_trig_ch)]
+            of_trigger = [of[i]/scale[i] for i in range(n_trig_ch)]
+            
+            # We now place it on the stream chunk as defined by the record_placement
+            padded_sev = np.zeros((n_trig_ch, n_record_lens*rl))
+            for i, s in enumerate(window_sev):
+                padded_sev[i, record_placement*rl:(record_placement+1)*rl] = np.array(s)
+            
+            pulse_sim_index = np.argmax(padded_sev[0])
+            iterator_kwargs = dict(sev=padded_sev)
+
+        # CONSTRUCT PULSE_SIM_ITERATOR
+        chunk_iterator = PulseSimIterator(
+            stream.get_event_iterator(
+                trigger_channels, 
+                record_length=n_record_lens*rl, 
+                timestamps=sim_ts, 
+                # This alignment ensures that the peak positions
+                # lie at the timestamps.
+                alignment=pulse_sim_index/(n_record_lens*rl),
+            ),
+            **iterator_kwargs,
+            pulse_heights=sim_phs[:n_trig_ch,:],
+            shift_samples=shift_samples[:n_trig_ch,:] if shift_samples is not None else None,
+        )
+        
+        # DEFINE TARGET INDEX FOR TRIGGER SURVIVAL FUNCTION
+        if using_fit:
+            # The maximum of the evaluated pulse shape is used as the
+            # target index for the trigger survival. This index is the
+            # same irrespective of the added shifts.
+            target_inds = [
+                np.argmax(pulse_template(chunk_iterator.t, *p)) 
+                for p in shifted_pars
+            ]
+        else:
+            target_inds = [np.argmax(ps) for ps in padded_sev]
+        
+        # INITIALIZE TRIGGER SURVIVAL FUNCTION
+        fns = [
+            vai.TriggerSurvival(
+                trigger_fnc=partial(vai.trigger_of, of=ot, threshold=th),
+                target_ind=tind,
+                tolerance_samples=tolerance_samples
+            )
+            for tind, ot, th in zip(target_inds, of_trigger, thresholds)
+        ]
+        
+        if preview:
+            for i, f in enumerate(fns):
+                vai.Preview(chunk_iterator[i], f)
+            return
+        
+        # Initialize array with as many channels as total channels (including passive).
+        # Triggers will be false for passive, values and inds will be -1.
+        # In the next step, the rows of those arrays which correspond to trigger_channels
+        # will be filled accordingly.
+        separate_trigger = np.zeros((n_total_ch, len(chunk_iterator)), dtype=bool)
+        trigger_val = -1*np.ones((n_total_ch, len(chunk_iterator)), dtype=np.float32)
+        trigger_ind = -1*np.ones((n_total_ch, len(chunk_iterator)), dtype=np.int32)
+
+        for i, f in enumerate(fns):
+            separate_trigger[i, :], trigger_val[i, :], trigger_ind[i, :] = vai.apply(
+                f, 
+                chunk_iterator[i], 
+                pb_prefix=f"Triggering channel {i}",
+            )
+
+        # NOTE: In the actual dh.trigger_of, we do sophisticate event building.
+        # Of course, we want to stick as closely to this procedure here, to get
+        # a reliable simulation of the trigger efficiency. 
+        # Nevertheless, the idea of the simulation is to look at one event at a
+        # time and put it on the stream (otherwise, there could be simulation pile-up).
+        # Hence, the event building process would just be 'take this one event, build
+        # an event if at least one of the channels triggered, remove it if it is in 
+        # coincidence with a testpulse'. 
+        # Here, we avoid looping through all events and calling vai.event_building on it.
+        # Reasoning: The difference between here and the 'actual' triggering is, that we
+        # already pre-defined the event. Hence, by just checking whether or not either of
+        # the channels triggered the simulated pulse, and whether or not it would be 
+        # shadowed by a testpulse is sufficient.
+
+        # We consider an event to be triggered, if either of the channels triggered.
+        # (the sum is a logical or)
+        did_trigger = np.sum(separate_trigger, axis=0, dtype=bool)
+
+        # Move event_ts to highest ranking trigger timestamp.
+        # If events didn't trigger, use sim_ts.
+        event_ts = np.copy(sim_ts)
+        not_yet_built = np.ones(len(sim_ts), dtype=bool)
+        for triggered, ind in zip(separate_trigger, trigger_ind):
+            flag = triggered*not_yet_built
+            event_ts[flag] += (ind[flag] - pulse_sim_index)*stream.dt_us
+            not_yet_built[flag] = False
+        
+        # Exclude testpulses if 'testpulse_channels' are specified.
+        # Otherwise, this will just be an array of Trues.
+        # Important: use the actual event_ts here, not the sim_ts.
+        survived_tp = np.ones(len(chunk_iterator), dtype=bool)
+        
+        if testpulse_channels is not None:
+            tp_ts = list()
+            for tp_ch in testpulse_channels:
+                tp_ts.extend(np.array(stream.tp_timestamps[tp_ch]).tolist())
+            
+            inside, *_ = vai.timestamp_coincidence(
+                np.sort(tp_ts), 
+                event_ts, 
+                (-stream.dt_us*rl//4, stream.dt_us*rl//4)
+            )
+            survived_tp[inside] = False
+
+        # SAVE TO DATAHANDLER
+        set_kwargs = dict(change_existing=True, overwrite_existing=True)
+        group = "trig-eff-sim"+appendix
+        group_events = "events-eff-sim"+appendix
+
+        # Save information about trigger efficiency simulation
+        self.include_event_iterator(group, chunk_iterator, copy_events=False)
+        self.set(
+            group, 
+            trigger_flag=separate_trigger,
+            flag_survived_trigger=did_trigger,
+            flag_survived_tp=survived_tp,
+            dtype=bool,
+            **set_kwargs,
+        )
+        self.set(
+            group, 
+            trigger_index=trigger_ind,
+            event_timestamps=event_ts,
+            **{
+                **(
+                    dict(simulated_shifts=np.atleast_2d(shift_samples)) 
+                    if shift_samples is not None else dict()
+                )
+            },
+            dtype=np.int32,
+            **set_kwargs,
+        )
+        self.set(
+            group, 
+            simulated_phs=sim_phs,
+            reconstructed_phs=trigger_val,
+            dtype=np.float32,
+            **set_kwargs,
+        )
+
+        # Save events in a separate group for subsequent (cut) efficiency studies.
+        # (Only save (surviving) particle events to events group).
+        # IMPORTANT: here, we use the event timestamps, NOT the trigger timestamps.
+        # Because the actual trigger also aligns around the trigger timestamps 
+        # (important for subsequent cuts).
+        # ALSO: The shifts (if present) are applied BEFORE (such that the pulses
+        # are in any case aligned around the maximum!)
+        event_flag = survived_tp*did_trigger
+
+        # The timestamps that we read now are NOT the simulation timestamps
+        # anymore! We have to account for that using a shift (regardless
+        # of whether an additional shift was given or not).
+        if shift_samples is None: 
+            mod_shift_samples = np.zeros((n_total_ch, len(event_flag)))
+        else:
+            mod_shift_samples = shift_samples.copy()
+
+        offset_samples = (sim_ts - event_ts)//stream.dt_us
+        mod_shift_samples += offset_samples
+        
+        #mod_shift_samples += (pulse_sim_index-int(rl//4))
+
+        event_iterator = PulseSimIterator(
+            stream.get_event_iterator(
+                all_channels, 
+                record_length=rl, 
+                timestamps=event_ts[..., event_flag],
+            ),
+            # PulseSimIterator handles sev/sev_fitpars
+            sev=sev,
+            sev_fitpars=sev_fitpars,
+            pulse_heights=sim_phs[..., event_flag],
+            shift_samples=mod_shift_samples[..., event_flag],
+        )
+        
+        self.include_event_iterator(group_events, event_iterator, copy_events=False)
+        self.set(
+            group_events, 
+            simulated_phs=sim_phs[..., event_flag],
+            reconstructed_phs=trigger_val[..., event_flag],
+            dtype=np.float32,
+            **set_kwargs,
+        )
+        self.set(
+            group_events, 
+            simulated_ts=sim_ts[..., event_flag],
+            dtype=np.int32,
+            **set_kwargs,
+        )
 
     # Simulate Dataset with specific classes
     def simulate_pulses(self,
@@ -384,3 +689,6 @@ class SimulateMixin(object):
                 data.create_dataset(name='optimumfilter_imag', data=of_imag)
 
             print('Simulation done.')
+            print('Simulation done.')
+            print('Simulation done.')
+

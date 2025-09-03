@@ -24,7 +24,7 @@ def _sanitize_input(stream,
     thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
 
     if len(thresholds) != len(trigger_channels):
-            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+        raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
     
     # All trigger channels (flattened such that when a 2d of is used, we can still check
     # all required channel names conveniently)
@@ -32,7 +32,7 @@ def _sanitize_input(stream,
 
     # Input validation
     if not all([x in stream.keys for x in trigger_channels_flat]):
-            raise KeyError(f"All 'trigger_channels' have to be valid channel names. Available: {stream.keys}")
+        raise KeyError(f"All 'trigger_channels' have to be valid channel names. Available: {stream.keys}")
             
     if ( passive_channels is not None ) and ( not all([x in stream.keys for x in passive_channels]) ):
         raise KeyError(f"All 'passive_channels' have to be valid channel names. Available: {stream.keys}")
