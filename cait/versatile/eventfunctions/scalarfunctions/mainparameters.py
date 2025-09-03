@@ -314,7 +314,7 @@ class MainParameters(FncBaseClass):
     def preview(self, event) -> dict:
         unsmoothed = event.copy()
         _ = self(event)
-        mp = np.array([self._peak_pos, self._os, self._rs, self._re, self._ds, self._de])
+        mp = np.array([self._peak_pos, self._os, self._rs, self._re, self._ds, self._de]).squeeze()
 
         _dt = self._dt_us if self._dt_us is not None else 1
         x = np.arange(event.shape[-1]) * _dt
