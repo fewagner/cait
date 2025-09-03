@@ -43,7 +43,7 @@ class MainParameters(FncBaseClass):
     :param bcs: Keyword arguments for :class:`cait.versatile.BoxCarSmoothing`. See its docstring for details.
     :type bcs: dict
     :param fbl: Keyword arguments for :class:`cait.versatile.FitBaseline`. See its docstring for details.
-    :type bcs: dict
+    :type fbl: dict
 
     :return: Main parameters as described above
     :type: Tuple[np.ndarray]
