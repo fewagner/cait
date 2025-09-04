@@ -55,6 +55,8 @@ class SimulateMixin(object):
         if np.sum([x is None for x in [sev, sev_fitpars]]) != 1:
             raise ValueError(f"You have to specify EITHER a sev or its fit parameters. At least one. Not both.")
 
+        # Save a variable to later check whether we are using
+        # a SEV (array) or fit parameters of the pulse shape model
         using_fit = sev_fitpars is not None
         sev_or_pars = sev_fitpars if using_fit else sev
 
@@ -62,19 +64,45 @@ class SimulateMixin(object):
         sim_ts = np.array(sim_ts).flatten()
         sim_phs, sev_or_pars, of = np.atleast_2d(sim_phs), np.atleast_2d(sev_or_pars), np.atleast_2d(of)
 
+        # Needed for 2d-of support ... 
+        # All 'channels' that are an entity as seen by the trigger.
+        # (2d-of channels which are given by tuples are treated
+        # as a single entity by the trigger).
+        trigger_groups = trigger_channels.copy()
+        # The flattened list of all channels (each of these
+        # needs an OF!)
+        trigger_channels = np.hstack(trigger_channels).tolist()
+
+        
+        # Also add passive channels because even though 
+        # they are not triggered, they are considered during 
+        # event building.
         if passive_channels is not None:
-            all_channels = trigger_channels + passive_channels
+            all_groups = trigger_groups + passive_channels
         else:
-            all_channels = trigger_channels
-        n_total_ch = len(all_channels)
+            all_groups = trigger_groups
+
+        # All channel names (with potential 2d-of tuples expanded).
+        # These are the channel which are eventually read and saved
+        # as particle events in the DataHandler.
+        all_channels = np.hstack(all_groups).tolist()
+
         n_trig_ch = len(trigger_channels)
+        n_total_groups = len(all_groups)
+        n_total_ch = len(all_channels)
+        
+        # Used to split OF into single- or multi-channel components.
+        # If channels were specified as tuples, the OF2D should be used
+        # which needs a multi-channel filter.
+        of_lens = [(len(x) if isinstance(x, tuple) else 1) for x in trigger_groups]
+
+        if len(of) != n_trig_ch:
+            raise ValueError(f"Optimum filter has to have as many channels as channels to trigger, i.e. len(of) must be len(np.hstack(trigger_channels)). Received {len(of)} and {n_trig_ch}.")
 
         if sim_phs.shape[0] != n_total_ch:
             raise ValueError(f"Pulse heights are needed for all channels (including passive ones). Got pulse heights of shape {sim_phs.shape} and in total {n_total_ch} channel(s).")
         if sev_or_pars.shape[0] != n_total_ch:
             raise ValueError(f"SEVs are needed for all channels (including passive ones). Got sev/sev_fitpars of shape {sev_or_pars.shape} and in total {n_total_ch} channel(s).")
-        if of.shape[0] != len(trigger_channels):
-            raise ValueError(f"OFs are needed for all trigger channels. Got OF of shape {of.shape} and {len(trigger_channels)} trigger channel(s).")
         if sim_phs.shape[-1] != len(sim_ts):
             raise ValueError(f"The number of timestamps must agree with the number of pulse heights. Got {len(sim_ts)} and {sim_phs.shape[-1]}.")
         
@@ -96,6 +124,14 @@ class SimulateMixin(object):
             raise ValueError(f"The latest possible timestamp for simulation is stream.time[-1]-stream.dt_us*record_length*(n_record_lens-record_placement). Make sure that all timestamps are well within the stream.")
         
         appendix = f"-{tag}" if tag else ""
+
+        # The time array for the (small) record window.
+        # We will evaluate the SEV's first channel (or the respective)
+        # fitpars on this array and check if the maximum is at t=0.
+        # This is usually the case but if not, we have to later account
+        # for that because the simulation timestamp is aligned with the
+        # maximum.
+        _compensate_t = (np.arange(rl) - rl/4)*stream.dt_us/1000
         
         # PREPARING SEV TO BE USED IN PULSE_SIM_ITERATOR
         if using_fit:
@@ -108,7 +144,7 @@ class SimulateMixin(object):
             # usual. We compensate for that.
             shifted_pars = np.atleast_2d(sev_or_pars[:n_trig_ch,:].copy())
             shifted_pars[:,0] += (record_placement - n_record_lens/4)*rl*stream.dt_us/1000
-            of_trigger = [of[i] for i in range(n_trig_ch)]
+            of_trigger = [np.squeeze(x) for x in np.split(of, np.cumsum(of_lens), axis=0)[:-1]]
 
             pulse_sim_index = np.argmax(
                 pulse_template(
@@ -116,6 +152,7 @@ class SimulateMixin(object):
                     *shifted_pars[0]
                     )
                 )
+            peak_t = _compensate_t[np.argmax(pulse_template(_compensate_t, *sev_or_pars[0]))]
             iterator_kwargs = dict(sev_fitpars=shifted_pars)
         else:
             # The SEV that is placed on the stream chunks for triggering
@@ -124,16 +161,35 @@ class SimulateMixin(object):
             # that we also have to re-normalize the OF!
             # (This is only done for the channels which are actually triggered)
             window_sev = [vai.TukeyWindow()(sev_or_pars[i]) for i in range(n_trig_ch)]
-            scale = [np.max(vai.OptimumFiltering(of[i])(window_sev[i])) for i in range(n_trig_ch)]
-            of_trigger = [of[i]/scale[i] for i in range(n_trig_ch)]
-            
+            of_trigger = []
+            for of_, sev_, ch_ in zip(
+                # the split can produce empty arrays which are not iterated over in the zip because trigger_groups is shorter
+                np.split(of, np.cumsum(of_lens), axis=0),
+                np.split(window_sev, np.cumsum(of_lens), axis=0),
+                trigger_groups,
+                ):
+                of_, sev_ = np.squeeze(of_), np.squeeze(sev_)
+
+                if isinstance(ch_, tuple):
+                    # This is for 2d-OF
+                    scale = np.max(vai.OptimumFiltering2D(of_)(sev_))
+                else:
+                    # This is for regular OF
+                    scale = np.max(vai.OptimumFiltering(of_)(sev_))
+                    
+                of_trigger.append(of_/scale)
+              
             # We now place it on the stream chunk as defined by the record_placement
             padded_sev = np.zeros((n_trig_ch, n_record_lens*rl))
             for i, s in enumerate(window_sev):
                 padded_sev[i, record_placement*rl:(record_placement+1)*rl] = np.array(s)
             
             pulse_sim_index = np.argmax(padded_sev[0])
+            peak_t = _compensate_t[np.argmax(sev_or_pars[0])]
             iterator_kwargs = dict(sev=padded_sev)
+
+        # Usually zero (see above and below when saving particle events to the DataHandler)
+        argmax_offset = int(peak_t*1000/stream.dt_us)
 
         # CONSTRUCT PULSE_SIM_ITERATOR
         chunk_iterator = PulseSimIterator(
@@ -151,45 +207,68 @@ class SimulateMixin(object):
         )
         
         # DEFINE TARGET INDEX FOR TRIGGER SURVIVAL FUNCTION
+        # For 1d-of channels, the target index is the maximum position
+        # of the template/evaluated pulse shape.
+        # For 2d-of channels, the target index is the mean of all 
+        # the participating channel's max positions.
+        # (Q: would it make more sense to use the filter max position
+        # here? I doubt that it will make any difference)
+        # This index is the same irrespective of the added shifts.
         if using_fit:
-            # The maximum of the evaluated pulse shape is used as the
-            # target index for the trigger survival. This index is the
-            # same irrespective of the added shifts.
-            target_inds = [
+            _target_inds = [
                 np.argmax(pulse_template(chunk_iterator.t, *p)) 
                 for p in shifted_pars
             ]
         else:
-            target_inds = [np.argmax(ps) for ps in padded_sev]
-        
+            _target_inds = [np.argmax(ps) for ps in padded_sev]
+
+        # (now has length 'len(trigger_groups)')
+        target_inds = [int(np.mean(x)) for x in np.split(_target_inds, np.cumsum(of_lens))[:-1]]
+
         # INITIALIZE TRIGGER SURVIVAL FUNCTION
         fns = [
             vai.TriggerSurvival(
-                trigger_fnc=partial(vai.trigger_of, of=ot, threshold=th),
+                trigger_fnc=partial(
+                    vai.trigger_of2d if isinstance(g, tuple) else vai.trigger_of, 
+                    of=ot, 
+                    threshold=th,
+                    ),
                 target_ind=tind,
                 tolerance_samples=tolerance_samples
             )
-            for tind, ot, th in zip(target_inds, of_trigger, thresholds)
+            for tind, ot, th, g in zip(
+                target_inds, 
+                of_trigger, 
+                thresholds,
+                trigger_groups,
+                )
+        ]
+
+        # This (helper) variable looks something like this: [[0, 1], 2, 3] etc.
+        # It is needed to slice the correct parts of the iterator.
+        chs = [
+            (int(x[0]) if x.size==1 else x.tolist()) 
+            for x in np.split(np.arange(n_trig_ch), np.cumsum(of_lens))[:-1]
         ]
         
         if preview:
-            for i, f in enumerate(fns):
-                vai.Preview(chunk_iterator[i], f)
+            for ch, f in zip(chs, fns):
+                vai.Preview(chunk_iterator[ch], f)
             return
         
         # Initialize array with as many channels as total channels (including passive).
         # Triggers will be false for passive, values and inds will be -1.
         # In the next step, the rows of those arrays which correspond to trigger_channels
         # will be filled accordingly.
-        separate_trigger = np.zeros((n_total_ch, len(chunk_iterator)), dtype=bool)
-        trigger_val = -1*np.ones((n_total_ch, len(chunk_iterator)), dtype=np.float32)
-        trigger_ind = -1*np.ones((n_total_ch, len(chunk_iterator)), dtype=np.int32)
+        separate_trigger = np.zeros((n_total_groups, len(chunk_iterator)), dtype=bool)
+        trigger_val = -1*np.ones((n_total_groups, len(chunk_iterator)), dtype=np.float32)
+        trigger_ind = -1*np.ones((n_total_groups, len(chunk_iterator)), dtype=np.int32)
 
-        for i, f in enumerate(fns):
+        for i, (ch, f) in enumerate(zip(chs, fns)):
             separate_trigger[i, :], trigger_val[i, :], trigger_ind[i, :] = vai.apply(
                 f, 
-                chunk_iterator[i], 
-                pb_prefix=f"Triggering channel {i}",
+                chunk_iterator[ch], 
+                pb_prefix=f"Triggering channel {ch}",
             )
 
         # NOTE: In the actual dh.trigger_of, we do sophisticate event building.
@@ -230,7 +309,9 @@ class SimulateMixin(object):
                 tp_ts.extend(np.array(stream.tp_timestamps[tp_ch]).tolist())
             
             inside, *_ = vai.timestamp_coincidence(
-                np.sort(tp_ts), 
+                # If a TP timestamp exists in more than one channel, we just
+                # treat it once. Also, TP timestamps must be sorted.
+                np.unique(np.sort(tp_ts)), 
                 event_ts, 
                 (-stream.dt_us*rl//4, stream.dt_us*rl//4)
             )
@@ -292,7 +373,11 @@ class SimulateMixin(object):
         offset_samples = (sim_ts - event_ts)//stream.dt_us
         mod_shift_samples += offset_samples
         
-        #mod_shift_samples += (pulse_sim_index-int(rl//4))
+        # Furthermore, if the SEV's maximum was not previously fixed
+        # at t=0 (but if e.g. t=0 corresponds to the onset), we also 
+        # have to account for that fact (usually, this added shift will
+        # be zero because in most analyses, the maximum is centered at 0).
+        mod_shift_samples -= argmax_offset
 
         event_iterator = PulseSimIterator(
             stream.get_event_iterator(

@@ -102,7 +102,7 @@ def test_trigger_survival():
         tolerance_samples=10
     )
     f2 = TriggerSurvival(
-        trigger_fnc=partial(trigger_zscore, record_length=RECORD_LENGTH),
+        trigger_fnc=partial(trigger_zscore, record_length=RECORD_LENGTH, threshold=5),
         target_ind=np.argmax(padded_sev),
         tolerance_samples=10
     )
