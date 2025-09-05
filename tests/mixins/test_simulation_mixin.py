@@ -103,7 +103,7 @@ def test_trigger_efficiency_of(dh_test, kwargs):
     # With SEV input
     dh_test.efficiency_sim_trigger_of(
         stream=stream, 
-        threshold=0.1,
+        thresholds=0.1,
         sim_ts=sim_ts,
         sim_phs=sim_phs[:n_tot],
         of=of[:n_trig],
@@ -118,7 +118,7 @@ def test_trigger_efficiency_of(dh_test, kwargs):
     kwargs["tag"] += ".1"
     dh_test.efficiency_sim_trigger_of(
         stream=stream, 
-        threshold=0.1,
+        thresholds=0.1,
         sim_ts=sim_ts,
         sim_phs=sim_phs[:n_tot],
         of=of[:n_trig],
@@ -167,7 +167,7 @@ def test_trigger_efficiency_of(dh_test, kwargs):
 def test_trigger_efficiency_of_2dof(dh_test, kwargs):
     dh_test.efficiency_sim_trigger_of(
         stream=stream, 
-        threshold=0.1,
+        thresholds=0.1,
         sim_ts=sim_ts,
         tolerance_samples=10,
         n_record_lens=8,
@@ -229,7 +229,7 @@ def test_trigger_efficiency_of_errors(dh_test, kwargs):
     with pytest.raises(ValueError):
         dh_test.efficiency_sim_trigger_of(
             stream=stream, 
-            threshold=0.1,
+            thresholds=0.1,
             tolerance_samples=10,
             n_record_lens=8,
             record_placement=3,

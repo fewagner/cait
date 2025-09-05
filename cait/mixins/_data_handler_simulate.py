@@ -6,6 +6,7 @@ import h5py
 import numpy as np
 
 import cait.versatile as vai
+from cait.versatile.datasources.stream.streambase import StreamBaseClass
 from cait.versatile.iterators import PulseSimIterator
 
 from ..data._baselines import calculate_mean_nps
@@ -24,10 +25,10 @@ class SimulateMixin(object):
         self,
         sim_ts: np.ndarray,
         sim_phs: np.ndarray,
-        stream: vai.datasources.stream.streambase.StreamBaseClass,
+        stream: StreamBaseClass,
         trigger_channels: Union[str, List[str]],
         of: np.ndarray,
-        threshold: Union[float, List[float]],
+        thresholds: Union[float, List[float]],
         sev: np.ndarray = None,
         sev_fitpars: List[List[float]] = None,
         shift_samples: List[List[int]] = None,
@@ -40,7 +41,172 @@ class SimulateMixin(object):
         preview: bool = False,
     ):
         """
-        Perform a trigger efficiency simulation by superimposing a SEV onto random parts of a stream and running an optimum filter trigger to check whether they survive or not.
+        Perform a trigger efficiency simulation by superimposing a SEV onto random parts of a stream and running an optimum filter trigger to check whether they survive or not. See below for a description of the algorithm.
+
+        The trigger-specific arguments to this function correspond to the ones of :func:`cait.mixins.TriggerCollectionMixin.trigger_of`, and the two are meant to be used in combination (i.e. the trigger efficiency function mimics the behavior of the trigger function). The arguments that the trigger function has but which are not featured here are irrelevant for the efficiency. Also refer to :func:`cait.mixins.TriggerCollectionMixin.trigger_of` for more information.
+
+        :param sim_ts: The timestamps at which you want to simulate events. These cannot be within the first nor the last two record windows of the stream (because there, the filtering is unreliable). This is a 1d-array, i.e. even if you simulate pulses on multiple channels, they are simulated at identical timestamps. Events are simulated such that the SEV of the first trigger channel has its maximum at the given timestamp.
+        :type sim_ts: np.ndarray
+        :param sim_phs: The pulse heights of the pulses that you want to simulate. This has to have as many rows as there are trigger and passive channels (i.e. we simulate pulses on all channels which are of interest). 
+        :type sim_phs: np.ndarray
+        :param stream: The stream object including the channels that you want to trigger.
+        :type stream: StreamBaseClass
+        :param trigger_channels: The list of channel names to be triggered. Have to be present in ``stream.keys``. If you pass a tuple of channel names, the 2D optimum filter is applied to this combination.
+        :type trigger_channels: List[Union[Tuple[str], str]]
+        :param of: The optimum filter to use for triggering (Has to have one for each channel in ``trigger_channels``. If either of the trigger channels is a tuple, i.e. treated using the 2D optimum filter, they count as multiple channels. E.g. if you 2D optimum filter the first two channels together and the third channel with the regular optimum filter, ``of`` would have to have shape ``(3, kernel_length)``).
+        :type of: np.ndarray
+        :param thresholds: A list of trigger thresholds (in V) for each entry in ``trigger_channels``. If only one is specified, the respective threshold is used for all channels. Note that a tuple in ``trigger_channels``, i.e. a channel combination treated by a 2D optimum filter, needs only one threshold.
+        :type thresholds: Union[float, List[float]]
+        :param sev: The standard event to superimpose onto the stream (after it was scaled by ``sim_phs``). Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev_fitpars``.
+        :type sev: np.ndarray, optional
+        :param sev_fitpars: The pulse shape fit parameters of the standard event to be superimposed onto the stream (after it was scaled by ``sim_phs``) WITHOUT the onset parameter (because this is handled by the simulation). The remaining parameters correspond to those of :func:`cait.fit.pulse_template`. Note that the time constants have to be given in milliseconds. Pulse shape parameters both of the 'traditional' 2-component model are supported as well as the n-component extension. Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev``.
+        :type sev_fitpars: List[List[float]], optional
+        :param shift_samples: An array of shift values (in samples) by which the ``sev`` or ``sev_fitpars`` should be offset from ``sim_ts`` before superimposing onto the stream chunks. This can be used to simulate slight onset variations between different channels. In such a case one would probably want to set all offsets for the first channel to zero and only vary the values for the remaining channels. Has to have as many rows as there are trigger and passive channels. Defaults to None, i.e. no shifts are applied and all simulated pulses are aligned such that the first trigger channel's SEV maximum sits on ``sim_ts``.
+        :type shift_samples: List[List[int]], optional
+        :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
+        :type passive_channels: List[str], optional
+        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
+        :type testpulse_channels: List[str], optional
+        :param tolerance_samples: Maximum number of samples that a trigger can deviate from ``sim_ts`` such that it is still considered a trigger. See also :class:`cait.versatile.TriggerSurvival`. Defaults to 10 samples.
+        :type tolerance_samples: int, optional
+        :param n_record_lens: The size of the stream chunks that are used for the simulation in multiples of the record window size. In principle, the higher this number, the better (because it more closely resembles the situation of placing it on the entire stream) but this comes at a performance cost. Has to be at least 4, but no noticeable differences are expected for any size larger than 6. Defaults to 8 record windows.
+        :type n_record_lens: int, optional
+        :param record_placement: You can choose where to place the ``sev`` or ``sev_fitpars`` onto the stream chunk (of length ``record_length*n_record_lens``) This parameter specifies after how many record windows into the chunk the SEV is placed. Defaults to 4 record windows into the stream chunk.
+        :type record_placement: int, optional
+        :param tag: An optional string to be added to the ``DataHandler`` groups that this function produces. E.g. if you want to run several simulations for different filters, you could run them with arguments ``tag='of1'`` etc. and the resulting groups would get a ``-of1`` suffix. Defaults to ``""``, i.e. no suffix.
+        :type tag: str, optional
+        :param preview: If True, a preview of the stream chunks superimposed with the scaled SEV, a filtered version thereof, and the trigger samples are shown. Meant for debugging purposes and/or finding appropriate values for ``tolerance_samples``, ``n_record_lens``, and ``record_placement``. Also see :class:`cait.versatile.TriggerSurvival`. Defaults to False.
+        :type preview: bool, optional
+
+        **Algorithm explanation:**
+
+        In the trigger efficiency simulation one wants to study the trigger survival probability of an event (a pulse) randomly placed onto the stream with a given pulse height. The most direct way to do this is to take the entire stream and superimpose pulses at random times, then trigger the stream and check which of them survived the trigger and event building process. While conceptually straight forward to understand and implement, this procedure has a downside: There is an inherent limit on how many pulses one can simulate on a finite-length stream, because at some point, simulated pulses will pile-up with other simulated pulses. And since we want to study the efficiency for detecting *a single* event, artificially increasing the number of events on the stream drastically will impact the interpretation of this efficiency, i.e. the survival probability will be falsely decreased, and this effect has to be taken care of in the subsequent analysis. Note that as long as only few events are simulated, this method works fine. However, simulating as many events as possible is usually of interest to improve the statistical robustness of the simulation.
+
+        The method employed here follows a slightly different approach. Note that if we just placed one event at a time onto the stream, the procedure above would be perfect. It would be highly inefficient though (because we would have to trigger the entire stream for each simulated event). As a tradeoff, here, we place single simulated events on smaller chunks of the stream and only trigger the chunks. Considering that the trigger's history is 'forgotten' after a few record windows anyways, this simplification will give identical results to placing single events on the full stream. The selected chunks **may overlap** and we may choose **infinitly many** such chunks (and hence events to simulate) because we do it **one simulated event at a time** which avoids any simulation pile-up issues by design. The algorithm proceeds as follows:
+
+            1. Read stream chunks of size ``record_length*n_record_lens`` from the stream. The chunks are aligned such that ``sim_ts`` correspond to the maximum of the SEV if we place ``sev`` (or ``sev_fitpars``) ``record_placement`` record windows into the chunk (magenta pulse). If you handle multiple channels, the maximum of the first SEV (``sev[0]``) defines the position. This position also defines the **target index** for the trigger: If, later, a trigger is detected within at most ``tolerance_samples`` around this index, the simulated event is considered *triggered*.
+            2. Shift the SEV by ``shift_samples``, multiply it by ``sim_phs`` and place it on the stream (dotted pulse). This happens for each of the channels separately, i.e. separate shifts and pulse heights are applied according to the values in the arrays ``shift_samples`` and ``sim_phs``. Usually, you will not apply a shift to the first channel but only relative shifts to the other channel(s). (Notice that the target index for triggering is *not necessarily* the maximum index of the *simulated event* if you simulate shifts to the first channel! It's always the maximum of the non-shifted SEV.) In the illustration below, the first channel was not shifted, but the second was.
+            3. Run the OF trigger on the chunk. Note that the first record window is not searched for maximums exceeding the threshold (because the trace cannot be reliably filtered). The same holds for the last record window. The second to last record window *might* be searched for a maximum if a sample exceeds the threshold just before the beginning of the second to last record window (cf. :func:`cait.versatile.functions.trigger.triggerbase.trigger_base`). In the illustration below, the trigger found an already existing pulse (dark blue) because it is larger than the simulated (dashed dark blue) pulse, i.e. the real pulse *shadows* the simulated pulse. If there was no larger (real) pulse nearby, the simulated pulse would have been triggered (if it is larger than the threshold). This *shadowing* effect is a central aspect that the efficiency simulation should quantify.
+            4. The maximum of the triggered pulse defines the timestamp of the event that is built: It is aligned with the 1/4th-mark of the record window as usual. Note that this event is only considered *triggered* by the efficiency simulation if the trigger timestamp is within ``tolerance_samples`` around the target index. In case of the illustration, this would most likely not have been the case (unless you set it to an unreasonably high number).
+
+        .. image:: media/efficiency_sim_algorithm.png
+
+        The algorithm described above applies to a single trigger channel. If you trigger multiple, the *target index* is individually defined for each channel as the maximum of the (non-shifted) SEV of that channel (Note, however, that the *simulation timestamp* is still defined by the maximum of the (non-shifted) SEV of the first channel). The triggering step is performed for all channels individually. A simulated pulse is considered *triggered* if **either** of the channels triggered (i.e. had a trigger within ``tolerance_samples`` of the *target index*). In case more than one channel triggers, the *event timestamp* is aligned at the maximum of the **first** channel that triggered (i.e. the first if it triggered, the second if the second triggered but the first one didn't, etc.). 
+
+        If testpulse channels are specified, an additional step marks all simulated pulses **not triggered** if they are within half a record window of a testpulse, regardless of whether they triggered or not. 
+
+        **Example:**
+
+        .. code-block:: python
+
+            import numpy as np
+            import scipy as sp
+
+            import cait as ai
+            import cait.versatile as vai
+
+            record_length = 2**14
+            N_sim = 1000
+
+            # Set up stream (here just mock, in your case an actual stream)
+            stream = vai.MockStream(seed=137, rate_Hz=2)
+
+            # Set up DataHandler (in your case, you probably have one already)
+            dh = ai.DataHandler(record_length=record_length, nmbr_channels=2, sample_frequency=stream.sample_frequency)
+            dh.set_filepath(path_h5="", fname="eff-test", appendix=False)
+            dh.init_empty()
+
+            # You can either use a SEV (array) or fit parameters.
+            # Here we use fit parameters.
+            # [t0, An, At, tau_n, tau_in, tau_t]
+            sev_fitpars = [
+                [-2.56, 0.50, 0.50, 3.00, 1.00, 10.00], 
+                [-2.56, 0.50, 0.50, 0.30, 0.10, 10.00]
+            ]
+
+            of = vai.MockData().of[0]
+
+            # Random timestamps for simulation (always a good
+            # idea to sort them so that we don't have to jump
+            # back and forth in the simulation)
+            sim_ts = np.sort(
+                sp.stats.randint.rvs(
+                    stream.time[0] + 6*stream.dt_us*record_length, 
+                    stream.time[-1] - 4*stream.dt_us*record_length, 
+                    size=N_sim
+                )
+            )
+            # Random pulse heights between 0 and 1 (you probably got
+            # some other range in a real world example)
+            sim_phs = [
+                sp.stats.uniform.rvs(size=N_sim),
+                sp.stats.uniform.rvs(size=N_sim),
+            ]
+            # Random shifts (only for second channel)
+            shifts = [
+                np.zeros(N_sim),
+                sp.stats.randint.rvs(-5, 5, size=N_sim)
+            ]
+
+            # Run the simulation.
+            # Note that here, we trigger on Ch0 and Ch1 is read in coincidence.
+            # Therefore, of must have one channel.
+            # We still simulate for Ch1, though, meaning that we need sim_phs,
+            # sev_fitpars, and shift_samples for both Ch0 AND Ch1. 
+            dh.efficiency_sim_trigger_of(
+                stream=stream,
+                trigger_channels=["Ch0"],
+                passive_channels=["Ch1"],
+                testpulse_channels=["TP0", "TP1"],
+                of=of,
+                thresholds=[0.1],
+                sim_ts=sim_ts,
+                sim_phs=sim_phs,
+                #preview=True, # Uncomment to see a preview of the trigger before you run the simulation
+                sev_fitpars=sev_fitpars,
+                shift_samples=shifts,
+            )
+
+            # Two groups have been created in the DataHandler. 
+            # 'trig-eff-sim' contains trigger information and the 
+            # simulation chunks, 'events-eff-sim' contains the particle
+            # traces which survived the procedure. Check them out using
+            dh.content()
+
+            # You can look at the stream chunks that were simulated (only contains trigger channels):
+            vai.Preview(dh.get_event_iterator("trig-eff-sim").with_processing(vai.RemoveBaseline()))
+
+            # You can look at the events that survived (contains trigger and passive channels):
+            vai.Preview(dh.get_event_iterator("events-eff-sim").with_processing(vai.RemoveBaseline()))
+
+            # Basic histogram to show what was simulated and what survived.
+            # You will probably make more sophisticated plots than this.
+            simulated_phs = dh['trig-eff-sim/simulated_phs', 0]
+            survived_trigger = dh['trig-eff-sim/flag_survived_trigger']
+            survived_tp = dh['trig-eff-sim/flag_survived_tp']
+
+            vai.Histogram(
+                {
+                    "simulated": simulated_phs, 
+                    "triggered": simulated_phs[survived_trigger],
+                    "survived tp": simulated_phs[survived_tp*survived_trigger],
+                }, 
+                bins=np.linspace(0, 1, 10),
+                xlabel="Simulated pulse height (V)"
+            )
+
+            # Have a look at simulated vs. reconstructed pulse heights:
+            # (Note: reconstructed pulse heights for channels that were not
+            # triggered are set to -1)
+            vai.Scatter(
+                x=dh["events-eff-sim/simulated_phs", 0], 
+                y=dh["events-eff-sim/reconstructed_phs", 0],
+                xlabel="Simulated pulse heights (V)",
+                ylabel="Reconstructed pulse heights (V)",
+            )
+
+            # ... Now you can run additional calculations/cuts on the
+            # 'events-eff-sim' group and also calculate the cut efficiency.
         """
         # Ensures that all inputs are lists
         trigger_channels, passive_channels, testpulse_channels, _, thresholds = _sanitize_input(
@@ -49,7 +215,7 @@ class SimulateMixin(object):
             passive_channels=passive_channels,
             testpulse_channels=testpulse_channels,
             controlpulses_above=None,
-            thresholds=threshold,
+            thresholds=thresholds,
         )
 
         if np.sum([x is None for x in [sev, sev_fitpars]]) != 1:
