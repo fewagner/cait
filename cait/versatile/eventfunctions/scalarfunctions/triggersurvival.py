@@ -96,17 +96,22 @@ class TriggerSurvival(FncBaseClass):
         return 'none'
 
     def preview(self, event: np.ndarray) -> dict:
-        self(event)
-        event = event - np.mean(event)
-        x = np.arange(len(event))
+        survived, *_ = self(event)
+        event = np.atleast_2d(event - np.mean(event, axis=-1, keepdims=True))
+        x = np.arange(event.shape[-1])
         mine, maxe = np.min(event), np.max(event)
         
         l = {
-            "event": [x, event],
+            **{"event" + (f"Ch{i}" if event.shape[0]>1 else ""): [x, ev] for i, ev in enumerate(event)},
             "target index": [ [self._ind]*2, [mine, maxe] ]
         }
-        
-        s = { "triggers": [self._inds, event[self._inds] if len(self._inds)>0 else []] }
+
+        # Placeholder, will be overwritten by filtered traces if a known trigger function is used
+        s = { "triggers": [ self._inds, event[..., self._inds] if len(self._inds)>0 else []] }
+
+        # Now squeeze the array again (was previously only used to standardize
+        # arrays for plotting etc.)
+        event = np.squeeze(event)
         
         if isinstance(self._f, partial):
             if is_same_function(self._f.func, vai.functions.trigger.trigger_of.trigger_of):
@@ -129,7 +134,35 @@ class TriggerSurvival(FncBaseClass):
                             #[mine, maxe, None, mine, maxe, None, mine, maxe]],
                         "threshold": [ [rl, N-2*rl], [threshold]*2 ],
                     }}
-            if is_same_function(self._f.func, vai.functions.trigger.trigger_zscore.trigger_zscore):
+                    s = { "triggers": [
+                        self._inds, 
+                        filtered_event[np.array(self._inds)-rl] if len(self._inds)>0 else []
+                        ] }
+            elif is_same_function(self._f.func, vai.functions.trigger.trigger_of.trigger_of2d):
+                if all([kw in self._f.keywords.keys() for kw in ["of", "threshold"]]):
+                    of = self._f.keywords["of"]
+                    rl = 2*(np.array(of).shape[-1]-1) # record_length
+                    threshold = self._f.keywords["threshold"]
+                    
+                    N = len(x)
+                    filtered_event = vai.functions.trigger.trigger_of.filter_chunk_2d(event, of, rl)
+                    x_filtered = x[rl:-rl]
+
+                    l = {**l, **{
+                        "filtered event": [x_filtered, filtered_event],
+                        "search_window": [
+                            [rl, rl, N-2*rl, N-2*rl, rl],
+                            [mine, maxe, maxe, mine, mine]
+                        ],
+                            #[rl]*2+[None]+[N-2*rl]*2+[None]+[N-rl]*2,
+                            #[mine, maxe, None, mine, maxe, None, mine, maxe]],
+                        "threshold": [ [rl, N-2*rl], [threshold]*2 ],
+                    }}
+                    s = { "triggers": [
+                        self._inds, 
+                        filtered_event[np.array(self._inds)-rl] if len(self._inds)>0 else []
+                        ] }
+            elif is_same_function(self._f.func, vai.functions.trigger.trigger_zscore.trigger_zscore):
                 if all([kw in self._f.keywords.keys() for kw in ["record_length", "threshold"]]):
                     rl = self._f.keywords["record_length"]
                     threshold = self._f.keywords["threshold"]
@@ -149,5 +182,9 @@ class TriggerSurvival(FncBaseClass):
                         ],
                         "threshold": [ [rl, N-2*rl], [threshold]*2 ],
                     }}
+                    s = { "triggers": [
+                        self._inds, 
+                        filtered_event[np.array(self._inds)-rl] if len(self._inds)>0 else []
+                        ] }
 
-        return dict(line=l, scatter=s)
+        return dict(line=l, scatter=s, axes=dict(xaxis=dict(label=f"Survived trigger: {survived}")))

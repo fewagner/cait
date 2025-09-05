@@ -481,22 +481,59 @@ class TestPulseSimIterator:
         mock_it = mock.get_event_iterator()
 
         basic_checks(PulseSimIterator(
-            mock_it, 
-            mock.sev, 
-            np.ones((mock_it.n_channels, len(mock_it))) 
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
             ) 
         )
         basic_checks(PulseSimIterator(
-            mock_it, 
-            mock.sev, 
-            np.ones((mock_it.n_channels, len(mock_it))),
+            iterator=mock_it, 
+            sev=mock.sev, 
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
             channels=0
             ) 
         )
         basic_checks(PulseSimIterator(
-            mock_it, 
-            mock.sev, 
-            np.ones((mock_it.n_channels, len(mock_it))),
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            shift_samples=10*np.ones(len(mock_it)),
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
             channels=[0,1]
             ) 
         )
@@ -506,23 +543,48 @@ class TestPulseSimIterator:
         mock_it = mock.get_event_iterator()
 
         basic_checks(PulseSimIterator(
-            mock_it, 
-            mock.sev, 
-            np.ones((mock_it.n_channels, len(mock_it))),
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
             batch_size=13
             )[0]
         )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            batch_size=13
+            )[0]
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0,
+            batch_size=13,
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            shift_samples=10*np.ones(len(mock_it)),
+            channels=0,
+            batch_size=13,
+            )
+        )
         
         it = PulseSimIterator(
-                    mock_it, 
-                    mock.sev, 
-                    np.ones((mock_it.n_channels, len(mock_it))),
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
                     batch_size=13
                     )[0]
         it2 = PulseSimIterator(
-                    mock_it, 
-                    mock.sev, 
-                    np.ones((mock_it.n_channels, len(mock_it)))
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it)))
                     )[0]
 
         for n, i in enumerate(it):
@@ -538,23 +600,61 @@ class TestPulseSimIterator:
         mock_it = mock.get_event_iterator()
 
         basic_checks(PulseSimIterator(
-            mock_it, 
-            mock.sev, 
-            np.ones((mock_it.n_channels, len(mock_it))),
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
             batch_size=13
             )
         )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            batch_size=13
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        # Try once with extended pulse shape model
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[
+                [0, 0.5, 0.5, 0.3, 0.3, 0.1, 10.0, 100.0], 
+                [0, 0.3, 0, 0.5, 0.3, 0.01, 4.0, 1.0]
+            ], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
         
         it = PulseSimIterator(
-                    mock_it, 
-                    mock.sev, 
-                    np.ones((mock_it.n_channels, len(mock_it))),
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
                     batch_size=13
                     )
         it2 = PulseSimIterator(
-                    mock_it, 
-                    mock.sev, 
-                    np.ones((mock_it.n_channels, len(mock_it)))
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it)))
                     )
 
         for n, i in enumerate(it):
@@ -572,32 +672,47 @@ class TestPulseSimIterator:
         # wrong number of channels of pulse_heights
         with pytest.raises(ValueError): 
             PulseSimIterator(
-                mock_it, 
-                mock.sev, 
-                np.ones((mock_it.n_channels+1, len(mock_it))) 
+                iterator=mock_it, 
+                sev=mock.sev, 
+                pulse_heights=np.ones((mock_it.n_channels+1, len(mock_it))) 
             ) 
 
         # wrong number of channels of sev
         with pytest.raises(ValueError): 
             PulseSimIterator(
-                mock_it, 
-                mock.sev[0], 
-                np.ones((mock_it.n_channels, len(mock_it))) 
+                iterator=mock_it, 
+                sev=mock.sev[0], 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
             ) 
 
         # wrong number of events of pulse_heights
         with pytest.raises(ValueError): 
             PulseSimIterator(
-                mock_it, 
-                mock.sev, 
-                np.ones((mock_it.n_channels, len(mock_it)+1)) 
+                iterator=mock_it, 
+                sev=mock.sev, 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it)+1)) 
             ) 
 
         # wrong record_length of sev
         with pytest.raises(ValueError): 
             PulseSimIterator(
-                mock_it, 
-                mock.sev[...,:-1], 
-                np.ones((mock_it.n_channels, len(mock_it))) 
+                iterator=mock_it, 
+                sev=mock.sev[...,:-1], 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
             ) 
-                                
+
+        # sev and sev_fitpars
+        with pytest.raises(ValueError):
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev, 
+                sev_fitpars=[[1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]],
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        # wrong length of sev_fitpars
+        with pytest.raises(ValueError):
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev_fitpars=[[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 

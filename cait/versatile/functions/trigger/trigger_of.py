@@ -130,7 +130,7 @@ def trigger_of(
 
 
 def trigger_of2d(
-    streams: ArrayLike,
+    stream: ArrayLike,
     threshold: float,
     of: np.ndarray,
     n_triggers: int = None,
@@ -143,8 +143,8 @@ def trigger_of2d(
 
     Apart from the fact that multi-channel 'streams' and 'of2d' are required here, the usage is identical to :func:`cait.versatile.trigger_of`.
 
-    :param streams: The stream channels to trigger.
-    :type streams: ArrayLike
+    :param stream: The stream channels to trigger (The 'channel' returns 2d-arrays. Usually, one would get this using ``stream[('Ch0', 'Ch1')]``).
+    :type stream: ArrayLike
     :param threshold: The threshold (in Volts) above which events should be triggered.
     :type threshold: float
     :param of: The correlated (2d) optimum filter to be used for filtering (it is assumed that the filter's first entry is set to zero to correctly remove the offset).
@@ -168,7 +168,7 @@ def trigger_of2d(
     filter_fnc = partial(filter_chunk_2d, of=of, record_length=record_length)
 
     return trigger_base(
-        stream=streams,
+        stream=stream,
         threshold=threshold,
         filter_fnc=filter_fnc,
         record_length=record_length,

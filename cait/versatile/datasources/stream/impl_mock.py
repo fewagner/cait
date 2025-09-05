@@ -1,3 +1,4 @@
+import copy
 from functools import partial
 from math import exp
 from typing import List
@@ -217,11 +218,12 @@ class MockStream(StreamBaseClass):
         self._ts = {f"Ch{k}": ts-5000*k for k in range(self._n_ch)}
         
         # Normalise pulse shape to 1 
-        for i in range(len(pulse_shape)):
-            scale = np.max(_pulse_vec(np.linspace(-10, 1000, 100000), 0, *pulse_shape[i]))
-            pulse_shape[i][0] /= scale
-            pulse_shape[i][1] /= scale
-        self._pulse_shape =  {f"Ch{k}": ps for k, ps in enumerate(pulse_shape)}
+        new_pulse_shape = copy.deepcopy(pulse_shape)
+        for i in range(len(new_pulse_shape)):
+            scale = np.max(_pulse_vec(np.linspace(-10, 1000, 100000), 0, *new_pulse_shape[i]))
+            new_pulse_shape[i][0] /= scale
+            new_pulse_shape[i][1] /= scale
+        self._pulse_shape =  {f"Ch{k}": ps for k, ps in enumerate(new_pulse_shape)}
         
         # Set up testpulses
         n_tp = int(duration_h*3600/(tp_interval_s*len(tpa))) - 1
@@ -229,11 +231,12 @@ class MockStream(StreamBaseClass):
         self._tpas = np.tile(tpa, n_tp//len(tpa) + 1)[:n_tp]
         self._tp_phs = {f"TP{k}": self._tpas/(c*cpe_tp_mod)  for k, c in enumerate([cpe] + cpe_add)}
         
-        for i in range(len(tp_shape)):
-            scale = np.max(_pulse_vec(np.linspace(-10, 1000, 100000), 0, *tp_shape[i]))
-            tp_shape[i][0] /= scale
-            tp_shape[i][1] /= scale
-        self._tp_shape = {f"TP{k}": ps for k, ps in enumerate(tp_shape)}
+        new_tp_shape = copy.deepcopy(tp_shape)
+        for i in range(len(new_tp_shape)):
+            scale = np.max(_pulse_vec(np.linspace(-10, 1000, 100000), 0, *new_tp_shape[i]))
+            new_tp_shape[i][0] /= scale
+            new_tp_shape[i][1] /= scale
+        self._tp_shape = {f"TP{k}": ps for k, ps in enumerate(new_tp_shape)}
         
         self._bl_sig = {f"Ch{k}": bs for k, bs in enumerate(baseline_sig)}
         self._seed = 137*seed

@@ -45,10 +45,13 @@ class MockData(DataSourceBaseClass):
         # Record window used to evaluate the pulse model
         self._t = (np.arange(record_length) - record_length/4)*dt_us/1000
 
+        template0 = pulse_template(self._t, 0, 0.5, 0.5, 0.3*dt_us, 0.1*dt_us, 1*dt_us)
+        # Move maximum to 1/4th of record window
+        t0 = -self._t[np.argmax(template0)]
         # Pulse templates for two channels
         self._template = np.array([
-            pulse_template(self._t, 0, 0.5, 0.5, 0.3*dt_us, 0.1*dt_us, 1*dt_us),
-            pulse_template(self._t, 0, 0.5, 0.5, 0.3*dt_us, 0.01*dt_us, 0.4*dt_us)
+            pulse_template(self._t, t0, 0.5, 0.5, 0.3*dt_us, 0.1*dt_us, 1*dt_us),
+            pulse_template(self._t, t0, 0.5, 0.5, 0.3*dt_us, 0.01*dt_us, 0.4*dt_us)
         ])
         self._template = self._template/np.max(self._template, axis=-1, keepdims=True)
 

@@ -1,23 +1,39 @@
-import os
-from typing import Union, List
 from contextlib import nullcontext
+from typing import List, Union
+
+import numba as nb
+import numpy as np
 # Note that multiprocessing.Pool cannot handle lambdas
 # which is why we use multiprocess here. The Pool interface
 # os otherwise identical
 from multiprocess import Pool
-
-import numpy as np
 from numpy.typing import ArrayLike
-import numba as nb
-
 from tqdm.auto import tqdm
 
 import cait as ai
+
 from ..apply import Compose
+
 
 ####################################################
 ### FUNCTIONS IN THIS FILE HAVE NO TESTCASES YET ###
 ####################################################
+class NumpyStreamWrap:
+    """A helper class that is used to wrap a numpy array and change its 'length' to what a corresponding stream object would report (the array's last dimension). Used e.g. for 2d-of filtering."""
+    def __init__(self, arr: np.ndarray):
+        self._arr = arr
+    def __len__(self):
+        return self._arr.shape[-1]
+    def __getattr__(self, name):
+        if hasattr(self._arr, name):
+            return self._arr.__getattribute__(name)
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
+    def __getitem__(self, val):
+        if not isinstance(val, (tuple, slice)):
+            val = (val,)
+        # index last dimension
+        return self._arr[..., val]
 
 @nb.njit
 def search_chunk(data: np.ndarray, threshold: float, record_length: int, skip_first: int = 0):
@@ -117,7 +133,15 @@ def trigger_base(stream: ArrayLike,
             raise TypeError(f"Unsupported type '{type(apply_first)}' for input argument 'apply_first'.")
     else:
         apply_first = []
-        
+    
+
+    # Sanitize stream: If it is a numpy array (potentially 2d) we use a wrapper
+    # that makes it look like its length (in numpy the first dimension) is its
+    # last dimension (just like a proper stream object would report its length).
+    # (Important for next step)
+    if isinstance(stream, np.ndarray):
+        stream = NumpyStreamWrap(stream)
+
     if len(stream) <= 3*record_length:
         raise Exception(f"Length of data to trigger ({len(stream)}) has to be larger than three record windows (3*{record_length}). See docstring about the trigger algorithm.")
 

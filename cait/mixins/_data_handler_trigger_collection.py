@@ -5,6 +5,7 @@ from typing import List, Tuple, Union
 import numpy as np
 
 import cait.versatile as vai
+from cait.versatile.datasources.stream.streambase import StreamBaseClass
 
 
 # Helper function that validates and sanitizes input and outputs
@@ -24,7 +25,7 @@ def _sanitize_input(stream,
     thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
 
     if len(thresholds) != len(trigger_channels):
-            raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
+        raise ValueError(f"You need to provide as many thresholds as trigger channels. Received {len(thresholds)} and {len(trigger_channels)}")
     
     # All trigger channels (flattened such that when a 2d of is used, we can still check
     # all required channel names conveniently)
@@ -32,7 +33,7 @@ def _sanitize_input(stream,
 
     # Input validation
     if not all([x in stream.keys for x in trigger_channels_flat]):
-            raise KeyError(f"All 'trigger_channels' have to be valid channel names. Available: {stream.keys}")
+        raise KeyError(f"All 'trigger_channels' have to be valid channel names. Available: {stream.keys}")
             
     if ( passive_channels is not None ) and ( not all([x in stream.keys for x in passive_channels]) ):
         raise KeyError(f"All 'passive_channels' have to be valid channel names. Available: {stream.keys}")
@@ -309,7 +310,7 @@ class TriggerCollectionMixin:
     A mixin class with convenience functions concerning triggering and event building.
     """
     def trigger_zscore(self,
-                       stream: vai.datasources.stream.streambase.StreamBaseClass,
+                       stream: StreamBaseClass,
                        trigger_channels: List[str],
                        thresholds: Union[float, List[float]] = 5,
                        passive_channels: List[str] = None,
@@ -331,7 +332,7 @@ class TriggerCollectionMixin:
         If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'passive' channels.
 
         :param stream: The stream object including the channels that you want to trigger.
-        :type stream: vai.datasources.stream.streambase.StreamBaseClass
+        :type stream: StreamBaseClass
         :param trigger_channels: The list of channel names to be triggered. Have to be present in ``stream.keys``.
         :type trigger_channels: List[str]
         :param thresholds: A list of trigger thresholds (in sigmas) for each channel. If only a float is provided, it is used for all channels. Defaults to 5 sigmas
@@ -398,7 +399,7 @@ class TriggerCollectionMixin:
                         interval, trigger_fncs, f_noise, "z-score")
         
     def trigger_of(self,
-                   stream: vai.datasources.stream.streambase.StreamBaseClass,
+                   stream: StreamBaseClass,
                    trigger_channels: List[Union[Tuple[str], str]],
                    of: np.ndarray,
                    thresholds: List[float],
@@ -423,12 +424,12 @@ class TriggerCollectionMixin:
         If you provide ``testpulse_channels``, triggers within a record window of a testpulse are treated as testpulses. Note that you have to provide testpulse information for all channels INCLUDING 'passive' channels.
 
         :param stream: The stream object including the channels that you want to trigger.
-        :type stream: vai.datasources.stream.streambase.StreamBaseClass
+        :type stream: StreamBaseClass
         :param trigger_channels: The list of channel names to be triggered. Have to be present in ``stream.keys``. If you pass a tuple of channel names, the 2D optimum filter is applied to this combination. See explanation above.
         :type trigger_channels: List[Union[Tuple[str], str]]
-        :param of: The optimum filter to use for triggering (has to have one for each channel in 'trigger_channels').
+        :param of: The optimum filter to use for triggering (Has to have one for each channel in ``trigger_channels``. If either of the trigger channels is a tuple, i.e. treated using the 2D optimum filter, they count as multiple channels. E.g. if you 2D optimum filter the first two channels together and the third channel with the regular optimum filter, ``of`` would have to have shape ``(3, kernel_length)``).
         :type of: np.ndarray
-        :param thresholds: A list of trigger thresholds (in V) for each channel.
+        :param thresholds: A list of trigger thresholds (in V) for each entry in ``trigger_channels``. If only one is specified, the respective threshold is used for all channels. Note that a tuple in ``trigger_channels``, i.e. a channel combination treated by a 2D optimum filter, needs only one threshold.
         :type thresholds: Union[float, List[float]]
         :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
         :type passive_channels: List[str], optional
