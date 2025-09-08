@@ -464,7 +464,10 @@ class IteratorCollection(IteratorBaseClass):
         :param batch_size: The new batch size.
         :type batch_size: int
         """
-        return self.__class__([it.with_batchsize(batch_size) for it in self._iterators])
+        new_iterator = self.__class__([it.with_batchsize(batch_size) for it in self._iterators])
+        new_iterator.add_processing(self.fncs.copy())
+
+        return new_iterator
 
     @property
     def record_length(self):
