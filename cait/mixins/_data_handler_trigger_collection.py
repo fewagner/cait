@@ -339,7 +339,7 @@ class TriggerCollectionMixin:
         :type thresholds: Union[float, List[float]], optional
         :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
         :type passive_channels: List[str], optional
-        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
+        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_keys``. Defaults to None
         :type testpulse_channels: List[str], optional
         :param controlpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels' (as a list). If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. If you want to enforce an upper limit as well (i.e. count testpulses as controlpulses for testpulse amplitudes between ``a`` and ``b``), you can do so by passing a tuple ``(a, b)``. Defaults to None, i.e. no testpulse is counted as controlpulse.
         :type controlpulses_above: List[Union[float, Tuple[float]]], optional
@@ -365,7 +365,7 @@ class TriggerCollectionMixin:
             stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
 
             print(f"Available channels: {stream.keys}")
-            print(f"Available TP channels: {stream.tp_timestamps}")
+            print(f"Available TP channels: {stream.tp_keys}")
 
             # Construct DataHandler
             dh = ai.DataHandler(record_length=2**13, nmbr_channels=2, sample_frequency=stream.sample_frequency)
@@ -433,7 +433,7 @@ class TriggerCollectionMixin:
         :type thresholds: Union[float, List[float]]
         :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
         :type passive_channels: List[str], optional
-        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
+        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_keys``. Defaults to None
         :type testpulse_channels: List[str], optional
         :param controlpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels' (as a list). If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. If you want to enforce an upper limit as well (i.e. count testpulses as controlpulses for testpulse amplitudes between ``a`` and ``b``), you can do so by passing a tuple ``(a, b)``. Defaults to None, i.e. no testpulse is counted as controlpulse.
         :type controlpulses_above: List[Union[float, Tuple[float]]], optional
@@ -459,7 +459,7 @@ class TriggerCollectionMixin:
             stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
             
             print(f"Available channels: {stream.keys}")
-            print(f"Available TP channels: {stream.tp_timestamps}")
+            print(f"Available TP channels: {stream.tp_keys}")
 
             # Construct DataHandler
             dh = ai.DataHandler(record_length=2**13, nmbr_channels=2, sample_frequency=stream.sample_frequency)

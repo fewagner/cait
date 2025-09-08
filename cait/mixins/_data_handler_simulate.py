@@ -59,13 +59,13 @@ class SimulateMixin(object):
         :type thresholds: Union[float, List[float]]
         :param sev: The standard event to superimpose onto the stream (after it was scaled by ``sim_phs``). Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev_fitpars``.
         :type sev: np.ndarray, optional
-        :param sev_fitpars: The pulse shape fit parameters of the standard event to be superimposed onto the stream (after it was scaled by ``sim_phs``) WITHOUT the onset parameter (because this is handled by the simulation). The remaining parameters correspond to those of :func:`cait.fit.pulse_template`. Note that the time constants have to be given in milliseconds. Pulse shape parameters both of the 'traditional' 2-component model are supported as well as the n-component extension. Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev``.
+        :param sev_fitpars: The pulse shape fit parameters of the standard event to be superimposed onto the stream (after it was scaled by ``sim_phs``). The remaining parameters correspond to those of :func:`cait.fit.pulse_template`. Note that the time constants have to be given in milliseconds. Pulse shape parameters both of the 'traditional' 2-component model are supported as well as the n-component extension. Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev``.
         :type sev_fitpars: List[List[float]], optional
         :param shift_samples: An array of shift values (in samples) by which the ``sev`` or ``sev_fitpars`` should be offset from ``sim_ts`` before superimposing onto the stream chunks. This can be used to simulate slight onset variations between different channels. In such a case one would probably want to set all offsets for the first channel to zero and only vary the values for the remaining channels. Has to have as many rows as there are trigger and passive channels. Defaults to None, i.e. no shifts are applied and all simulated pulses are aligned such that the first trigger channel's SEV maximum sits on ``sim_ts``.
         :type shift_samples: List[List[int]], optional
         :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
         :type passive_channels: List[str], optional
-        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_timestamps.keys``. Defaults to None
+        :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_keys``. Defaults to None
         :type testpulse_channels: List[str], optional
         :param tolerance_samples: Maximum number of samples that a trigger can deviate from ``sim_ts`` such that it is still considered a trigger. See also :class:`cait.versatile.TriggerSurvival`. Defaults to 10 samples.
         :type tolerance_samples: int, optional
