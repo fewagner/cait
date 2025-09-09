@@ -307,6 +307,8 @@ class StreamTime:
     :type dt_us: int
     :param n: The number of datapoints in the stream data.
     :type n: int
+
+    .. automethod:: __getitem__
     """
 
     def __init__(self, start_us: int, dt_us: int, n: int):
@@ -318,6 +320,7 @@ class StreamTime:
         return f"{self.__class__.__name__}(timestamps=[{self._start}-{self._start + self._n * self._dt}], interval={self._dt}us)"
 
     def __getitem__(self, val):
+        """Slice the microsecond timestamps of the stream."""
         if type(val) is int:
             val = slice(val, val + 1)
 
