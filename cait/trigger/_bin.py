@@ -1,12 +1,14 @@
 import numpy as np
+from deprecation import deprecated
 from tqdm.auto import tqdm
 
 from ..data._raw import convert_to_V
-from ._csmpl import time_to_sample, get_max_index, sample_to_time
 from ..readers import BinaryFile
+from ._csmpl import get_max_index, sample_to_time, time_to_sample
 
 # functions
 
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files.")
 def get_record_window_vdaq(path,
                            start_time,  # in s
                            record_length,
@@ -85,7 +87,7 @@ def bin(s, nmbr_bits=None):
             bit_list = '0' + bit_list
     return bit_list
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files.")
 def read_header(path_bin):
     """
     Function that reads the header of a `*.bin` file.
@@ -152,7 +154,7 @@ def read_header(path_bin):
 
     return header, keys, adc_bits, dac_bits, dt_tcp
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def trigger_bin(paths,
                 dtype,
                 key,
