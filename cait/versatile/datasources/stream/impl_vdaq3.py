@@ -138,7 +138,7 @@ class Stream_VDAQ3(StreamBaseClass):
                                                          count=size_data//prec,
                                                          offset=offset_samples)
             
-            if uuid == UUID_SINGLE_CH_WITH_TRAILER:
+            if uuid == UUID_SINGLE_CH_WITH_TRAILER and len(tp_ts)>0:
                 self._tp_timestamps[f"TP_Ch{channel_name}"] = tp_ts
                 self._tpas[f"TP_Ch{channel_name}"] = tpas
 
@@ -218,7 +218,7 @@ class Stream_VDAQ3(StreamBaseClass):
             return self.keys
         elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
             # Return TP information from trailer
-            return self._tp_timestamps.keys()
+            return list(self._tp_timestamps.keys())
         else:
             return dict()
 
