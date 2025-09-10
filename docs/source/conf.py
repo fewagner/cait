@@ -12,8 +12,9 @@
 
 import os
 import sys
-import sphinx_rtd_theme
 from unittest.mock import MagicMock
+
+import sphinx_rtd_theme
 
 import cait
 
@@ -81,3 +82,5 @@ myst_enable_extensions = [
     "dollarmath",
     "html_image",
 ]
+
+nb_scroll_outputs = True

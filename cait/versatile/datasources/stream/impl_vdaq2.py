@@ -46,6 +46,72 @@ def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
 
     return out_timestamps, out_tpas
 
+def read_header(path_bin):
+    """
+    Function that reads the header of a VDAQ2 `*.bin` file.
+
+    :param path_bin: The path to the `*.bin` file.
+    :type path_bin: string
+    :return: list (dictionary with infos from header,
+                    list of keys that are written in each sample,
+                    bool True if adc is 16 bit,
+                    bool True if dac is 16 bit)
+    :rtype: list
+    """
+
+    keys = []
+
+    dt_header = np.dtype([('ID', 'i4'),
+                          ('numOfBytes', 'i4'),
+                          ('downsamplingFactor', 'i4'),
+                          ('channelsAndFormat', 'i4'),
+                          ('timestamp', 'uint64'),
+                          ])
+
+    #header = np.fromfile(path_bin, dtype=dt_header, count=1)[0]
+    header = BinaryFile(path=path_bin, dtype=dt_header, count=1)[0]
+
+    channelsAndFormat = bin(header['channelsAndFormat'], 32)
+
+    # print('channelsAndFormat: ', channelsAndFormat)
+
+    # bit 0: Timestamp uint64
+    if channelsAndFormat[-1] == '1': keys.append('Time')
+    #bit 9 sample number, currently only used by NUCLEUS experiment
+    if channelsAndFormat[-10] == '1': keys.append('SampleNr')
+    # bit 1: settings uint32
+    if channelsAndFormat[-2] == '1': keys.append('Settings')
+    # bit 2-5: dac 1-4
+    for c, b in enumerate([2, 3, 4, 5]):
+        if channelsAndFormat[-int(b + 1)] == '1': keys.append('DAC' + str(c + 1))
+    # bit 6-8: adc 1-3 
+    for c, b in enumerate([6, 7, 8]):
+        if channelsAndFormat[-int(b + 1)] == '1': keys.append('ADC' + str(c + 1))
+    # bit 10-16: -
+    # bit 16: 0...DAC 16 bit, 1...DAC 32 bit
+    dac_short = not (channelsAndFormat[-17] == '1')
+    # bit 17: 0...ADC 16 bit, 1...ADC 32 bit
+    adc_short = not (channelsAndFormat[-18] == '1')
+    # bit 18-31: -
+
+    # construct data type
+
+    dt_tcp = []
+
+    for k in keys:
+        if k.startswith('Time'): dt_tcp.append((k, 'uint64'))
+        elif k.startswith('SampleNr'): dt_tcp.append((k, 'uint32'))
+        elif k.startswith('Settings'): dt_tcp.append((k, 'i4'))
+        elif k.startswith('DAC'): dt_tcp.append((k, 'i2' if dac_short else 'i4'))
+        elif k.startswith('ADC'): dt_tcp.append((k, 'i2' if adc_short else 'i4'))
+
+    dt_tcp = np.dtype(dt_tcp)
+
+    adc_bits = 16 if adc_short else 24
+    dac_bits = 16 if dac_short else 24
+
+    return header, keys, adc_bits, dac_bits, dt_tcp
+
 # TODO: test cases
 class Stream_VDAQ2(StreamBaseClass):
     """
@@ -67,7 +133,7 @@ class Stream_VDAQ2(StreamBaseClass):
         super().__init__(file=file, dac_trig_thr=dac_trig_thr, dac_trig_win_len_ms=dac_trig_win_len_ms)
 
         # Get relevant info about file from its header
-        header, keys, self._adc_bits, self._dac_bits, dt_tcp = ai.trigger.read_header(file)
+        header, keys, self._adc_bits, self._dac_bits, dt_tcp = read_header(file)
         # Start timestamp of the file in us (header['timestamp'] is in ns)
         self._start = int(header['timestamp']/1000)
         # Temporal step size in us (= inverse sampling frequency)
