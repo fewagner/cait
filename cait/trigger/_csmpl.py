@@ -1,19 +1,21 @@
 import sqlite3
-from time import strptime, mktime
+from time import mktime, strptime
 
-import numpy as np
+import matplotlib.pyplot as plt
 import numba as nb
+import numpy as np
+from deprecation import deprecated
 from scipy import signal
 from tqdm.auto import tqdm
-import matplotlib.pyplot as plt
 
 from ..data._raw import convert_to_V
 from ..filter._of import filter_event
-from ..styles import use_cait_style, make_grid
 from ..readers import BinaryFile
+from ..styles import make_grid, use_cait_style
+
 
 # functions
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files.")
 def readcs(path):
     """
     This functions reads a continuous stream file, i.e. from CRESST.
@@ -158,7 +160,7 @@ def get_max_index(stream,  # memmap array
 
     return int(trig), h
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def trigger_csmpl(paths,
                   trigger_tres,
                   transfer_function=None,
@@ -297,7 +299,7 @@ def trigger_csmpl(paths,
     else:
         return np.array(triggers)
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_record_window(path,
                       start_time,  # in s
                       record_length,
@@ -347,7 +349,7 @@ def get_record_window(path,
 
     return event, time
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For displaying streams, use cait.versatile.StreamViewer.")
 def plot_csmpl(path,
                start_time=0,
                record_length=None,
@@ -583,7 +585,7 @@ def exclude_testpulses(trigger_hours,
 
     return flag
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_test_stamps(path,
                     channels=None,
                     control_pulses=None,
@@ -639,7 +641,7 @@ def get_test_stamps(path,
 
     return hours, tpas, testpulse_channels
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_starttime(path_sql, csmpl_channel, sql_file_label):
     """
     Read the start time of a `*.csmpl` file from the SQL database.
@@ -668,7 +670,7 @@ def get_starttime(path_sql, csmpl_channel, sql_file_label):
 
     return mktime(time_created)
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_offset(path_dig_stamps):
     """
     Get the offset between start of the continuous DAQ and start of the CCS time recording.

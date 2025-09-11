@@ -12,10 +12,10 @@ Top level classes
 ~~~~~~~~~~~~~~~~~
 .. currentmodule:: cait.versatile
 
-.. autoclass:: RDTFile
+.. autoclass:: Stream
    :members:
    :member-order: bysource
-.. autoclass:: Stream
+.. autoclass:: RDTFile
    :members:
    :member-order: bysource
 .. autoclass:: MockData
@@ -24,11 +24,6 @@ Top level classes
 
 Related classes and base classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. currentmodule:: cait.versatile.datasources.hardwaretriggered.rdt_file
-
-.. autoclass:: RDTChannel
-   :members:
-
 .. currentmodule:: cait.versatile.datasources.stream.streambase
 
 .. autoclass:: StreamBaseClass
@@ -37,4 +32,20 @@ Related classes and base classes
    :members:
 .. autoclass:: StreamTime
    :members:
+
+.. currentmodule:: cait.versatile.datasources.stream.impl_vdaq2
+
+.. autoclass:: Stream_VDAQ2
+
+.. currentmodule:: cait.versatile.datasources.stream.impl_vdaq3
+
+.. autoclass:: Stream_VDAQ3
+
+.. currentmodule:: cait.versatile.datasources.stream.impl_csmpl
+
+.. autoclass:: Stream_CSMPL
    
+.. currentmodule:: cait.versatile.datasources.hardwaretriggered.rdt_file
+
+.. autoclass:: RDTChannel
+   :members:

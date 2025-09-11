@@ -19,10 +19,10 @@
 
    tutorials/abouttutorials
    tutorials/00datahandler_baseFeatures
+   tutorials/tutorial_trigger
    tutorials/01conversion
    tutorials/02features
    tutorials/03simulation
-   tutorials/04trigger
    tutorials/05calibration
    tutorials/06labeling
    tutorials/07classification

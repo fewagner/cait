@@ -11,6 +11,83 @@ from ..hardwaretriggered.par_file import PARFile
 from .streambase import StreamBaseClass
 
 
+def get_offset(path_dig_stamps):
+    """
+    Get the offset between start of the continuous DAQ and start of the CCS time recording.
+
+    :param path_dig_stamps: The full path to the `*.dig` file.
+    :type path_dig_stamps: str
+    :return: The offset that needs to be subtracted from all CCS time stamps, to get the time stamps w.r.t. the start of the CSMPL file.
+    :rtype: int
+    """
+
+    dig = np.dtype([
+        ('stamp', np.uint64),
+        ('bank', np.uint32),
+        ('bank2', np.uint32),
+    ])
+
+    #diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+    diq_stamps = BinaryFile(path=path_dig_stamps, dtype=dig)
+    dig_samples = diq_stamps['stamp']
+    offset_clock = (dig_samples[1] - 2 * dig_samples[0])
+
+    return offset_clock
+
+def get_test_stamps(path,
+                    channels=None,
+                    control_pulses=None,
+                    clock=10000000,
+                    min_cpa=10.1):
+    """
+    Load the test pulse time stamps from a ``*.test_stamps`` file.
+
+    :param path: The path to the ``*.test_stamps`` file.
+    :type path: string
+    :param channels: The test pulse channels we want to read out.
+    :type channels: list
+    :param control_pulses: If set to True, only control pulses are returned. If False, only test pulses are returned. If None, all are returned.
+    :type control_pulses: bool or None
+    :param clock: The Frequency of the time clock, in Hz. Standard for CRESST is 10MHz.
+    :type clock: int
+    :return: (the test pulse hours time stamps, the test pulse amplitudes, the channels of the test pulses)
+    :rtype: 3-tuple of 1D arrays
+    """
+
+    teststamp = np.dtype([
+        ('stamp', np.uint64),
+        ('tpa', np.float32),
+        ('tpch', np.uint32),
+    ])
+
+    #stamps = np.fromfile(path, dtype=teststamp)
+    stamps = BinaryFile(path=path, dtype=teststamp)
+
+    hours = stamps['stamp'] / clock / 3600
+    tpas = stamps['tpa']
+    testpulse_channels = stamps['tpch']
+
+    # take only the channels we want
+    if channels is not None:
+        # Deprecated since numpy 2.0
+        # cond = np.in1d(testpulse_channels, channels)
+        cond = np.isin(testpulse_channels, channels)
+        hours = hours[cond]
+        tpas = tpas[cond]
+        testpulse_channels = testpulse_channels[cond]
+
+    # take only control or no control pulses
+    if control_pulses is not None:
+        if control_pulses:
+            cond = tpas > min_cpa
+        else:
+            cond = tpas < min_cpa
+        hours = hours[cond]
+        tpas = tpas[cond]
+        testpulse_channels = testpulse_channels[cond]
+
+    return hours, tpas, testpulse_channels
+
 class Stream_CSMPL(StreamBaseClass):
     """
     Implementation of StreamBaseClass for hardware 'CSMPL'.
@@ -33,7 +110,7 @@ class Stream_CSMPL(StreamBaseClass):
         dig_path = [x for x in files if x.endswith('.dig_stamps')]
 
         # Offset from the dig_stamps file (assuming a 10 MHz clock)
-        offset = 0 if not dig_path else int(ai.trigger._csmpl.get_offset(dig_path[0])/10)
+        offset = 0 if not dig_path else int(get_offset(dig_path[0])/10)
 
         if any([x.endswith('.par') for x in files]):
             par_path = [x for x in files if x.endswith('.par')][0]
@@ -73,7 +150,7 @@ class Stream_CSMPL(StreamBaseClass):
             if not dig_path:
                 raise Exception("When including testpulse information using a '.test_stamps' file, you also have to provide the corresponding '.dig_stamps' file.")
             test_path = test_path[0]
-            test_h, tpas, test_chs = ai.trigger._csmpl.get_test_stamps(test_path)
+            test_h, tpas, test_chs = get_test_stamps(test_path)
 
             self._tpas = dict()
             self._tp_timestamps = dict()
@@ -129,4 +206,5 @@ class Stream_CSMPL(StreamBaseClass):
     def tp_timestamps(self):
         if not hasattr(self, '_tp_timestamps'):
             raise KeyError("Testpulse timestamps not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
+        return self._tp_timestamps
         return self._tp_timestamps

@@ -9,7 +9,7 @@ from .streambase import StreamBaseClass
 class Stream(StreamBaseClass):
     """
     Factory class for providing a common access point to stream data.
-    Currently, only vdaq2 and csmpl stream files are supported but an extension can be straight forwardly implemented by sub-classing :class:`cait.versatile.datasources.stream.streambase.StreamBaseClass` and adding it for selection in the constructor of :class:`Stream`.
+    Currently, only vdaq3, vdaq2 and csmpl stream files are supported but an extension can be straight forwardly implemented by sub-classing :class:`cait.versatile.datasources.stream.streambase.StreamBaseClass` and adding it for selection in the constructor of :class:`Stream`.
 
     The data is accessed by means of slicing (see below). The `time` property is an object of :class:`StreamTime` and offers a convenient time interface as well (see below).
 
@@ -33,18 +33,31 @@ class Stream(StreamBaseClass):
     **Usage for different hardware:**
 
     CSMPL:
-    Files are .csmpl files which contain one channel each. Additionally, we need a .par file to read the start timestamp of the stream data from.
+    Files are ``.csmpl`` files which contain one channel each. Additionally, we need a ``.par`` file to read the start timestamp of the stream data from.
 
     .. code-block:: python
 
         s = Stream(hardware='csmpl', src=['par_file.par', 'stream_Ch0.csmpl', 'stream_Ch1.csmpl'])
 
+    See also: :class:`cait.versatile.datasources.stream.impl_csmpl.Stream_CSMPL`
+
     VDAQ2:
-    Files are .bin files which contain all information necessary to construct the Stream object. It can be input as a single argument.
+    Files are ``.bin`` files which contain all information necessary to construct the Stream object. It can be input as a single argument. Testpulse channels in this file format need to be (automatically) triggered to obtain testpulse amplitudes and timestamps.
 
     .. code-block:: python
 
         s = Stream(hardware='vdaq2', src='file.bin')
+
+    See also: :class:`cait.versatile.datasources.stream.impl_vdaq2.Stream_VDAQ2`
+
+    VDAQ3:
+    Files are ``.bin`` files which contain one channel each. There are two versions of the file format: One for which the testpulse timestamps are already saved inside the ``.bin`` file (preferred format), and one for which you have to load the testpulse channel as an additional stream channel and (automatically) trigger them to get the timestamps/tpas (like for the VDAQ2 format).
+
+    .. code-block:: python
+
+        s = Stream(hardware='vdaq3', src=['file_ch0.bin', 'file_ch1.bin'])
+
+    See also: :class:`cait.versatile.datasources.stream.impl_vdaq3.Stream_VDAQ3`
 
     **Usage slicing:**
 
@@ -82,11 +95,11 @@ class Stream(StreamBaseClass):
             self._stream = Stream_CSMPL(src, *args, **kwargs)
         elif hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src, *args, **kwargs)
-        # elif hardware.lower() == "vdaq3":
-        #    self._stream = Stream_VDAQ3(src)
+        elif hardware.lower() == "vdaq3":
+           self._stream = Stream_VDAQ3(src)
         else:
             raise NotImplementedError(
-                "Only csmpl and vdaq2 files are supported at the moment."
+                "Only csmpl, vdaq2, and vdaq3 files are supported at the moment."
             )
 
     def __repr__(self):
@@ -105,6 +118,14 @@ class Stream(StreamBaseClass):
     def get_trace(self, key: str, where: slice, voltage: bool = True):
         return self._stream.get_trace(key, where, voltage=voltage)
 
+    # redirect all attribute calls to underlying stream object
+    # (if not explicitly defined by this class)
+    def __getattr__(self, name):
+        if hasattr(self._stream, name):
+            return self._stream.__getattribute__(name)
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
+        
     @property
     def keys(self):
         return self._stream.keys
