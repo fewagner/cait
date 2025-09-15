@@ -71,13 +71,9 @@ class MainParameters(FncBaseClass):
     params = (
             ("pulse_height", float),
             ("peak_position", int),
-            ("peak_position_rel", float),
             ("onset", int),
-            ("onset_ms", float),
             ("rise_time", int),
-            ("rise_time_ms", float),
             ("decay_time", int),
-            ("decay_time_ms", float),
             ("rms", float),
             ("baseline_slope", float),
             ("baseline_offset", float),
@@ -91,11 +87,8 @@ class MainParameters(FncBaseClass):
             ("variance", float),
             # CAT parameters
             ("onset_CAT", float),
-            ("onset_CAT_ms", float),
             ("rise_time_CAT", float),
-            ("rise_time_CAT_ms", float),
             ("decay_time_CAT", float),
-            ("decay_time_CAT_ms", float),
             )
 
 
@@ -287,13 +280,9 @@ class MainParameters(FncBaseClass):
 
         out = [
                 ph,
-                self._peak_pos,
                 self._peak_pos * _dt,
-                self._os,
                 self._os * _dt,
-                rise_time,
                 rise_time.astype(float) * _dt,
-                decay_time,
                 decay_time * _dt,
                 bl_rms,
                 bl_slope,
@@ -306,11 +295,8 @@ class MainParameters(FncBaseClass):
                 evmax,
                 integral,
                 variance,
-                osc,
                 osc * _dt,
-                rise_time_cat,
                 rise_time_cat * _dt,
-                decay_time_cat,
                 decay_time_cat * _dt,
                 ]
 
