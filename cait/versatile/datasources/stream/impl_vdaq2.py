@@ -46,6 +46,21 @@ def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
 
     return out_timestamps, out_tpas
 
+def to_bin_string(s, nmbr_bits=None):
+    """
+    Returns a string of 0/1 values for any datatype.
+
+    :param s: Any variable or object.
+    :type s: any
+    :return: The 0/1's of s' bits.
+    :rtype: string
+    """
+    bit_list = str(s) if s <= 1 else bin(s >> 1) + str(s & 1)
+    if nmbr_bits is not None:
+        while len(bit_list) < nmbr_bits:
+            bit_list = '0' + bit_list
+    return bit_list
+
 def read_header(path_bin):
     """
     Function that reads the header of a VDAQ2 `*.bin` file.
@@ -71,7 +86,7 @@ def read_header(path_bin):
     #header = np.fromfile(path_bin, dtype=dt_header, count=1)[0]
     header = BinaryFile(path=path_bin, dtype=dt_header, count=1)[0]
 
-    channelsAndFormat = bin(header['channelsAndFormat'], 32)
+    channelsAndFormat = to_bin_string(header['channelsAndFormat'], 32)
 
     # print('channelsAndFormat: ', channelsAndFormat)
 
