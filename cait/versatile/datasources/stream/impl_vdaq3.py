@@ -51,7 +51,10 @@ class Stream_VDAQ3(StreamBaseClass):
             3: np.dtype([('byte1', '<u1'), 
                          ('byte2', '<u1'), 
                          ('byte3', '<u1')]),
-            4: np.dtype('<u4')
+            4: np.dtype([('byte1', '<u1'), 
+                         ('byte2', '<u1'), 
+                         ('byte3', '<u1'),
+                         ('byte4', '<u1')])
         }
 
         # The data format is documented here: https://cryocluster-vccs.docs.cern.ch/data-formats/single-channel-file/
@@ -196,17 +199,12 @@ class Stream_VDAQ3(StreamBaseClass):
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
         
         elif self._prec == 4:
-            
-            result = np.zeros_like(data)
-    
-            for i, val in enumerate(data):
-                bin_val = format(val, '032b')  # '032b' ensures a 32-bit representation
-                rearranged_bin = bin_val[-24:] + bin_val[:8] # Rearrange the bits: last 24 bits come first 
-                result[i] = int(rearranged_bin, 2)
-    
-                
-            adc_32bit = result 
-          
+            adc_32bit = np.vstack([
+                    data["byte4"] ,
+                    data["byte1"], 
+                    data["byte2"], 
+                    data["byte3"]
+                ]).flatten("F").view("u4")
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
     
     @property
