@@ -49,9 +49,8 @@ class MainParametersMixin:
         """
         events = self.get_event_iterator(group, batch_size=2)
 
-        print(txt_fmt('Calculating main parameters ...', style="bold"))
         mp = vai.MainParameters(self.dt_us)
-        out = np.array(vai.apply(mp, events))
+        out = np.array(vai.apply(mp, events), pb_prefix='Calculating main parameters')
 
         # Swap array axes to be able to unpack the parameters and insert them
         # into the data handler by name.
