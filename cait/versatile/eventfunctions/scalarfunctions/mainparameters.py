@@ -13,11 +13,11 @@ class MainParameters(FncBaseClass):
     Calculate main parameters for an event.  These parameters are:
 
         - **pulse height** (V): Height of the event
-        - **peak_position** (samples): Position of the peak.
-        - **onset** (samples): Start of the pulse, which is assumed to be where the trace rises to 20% of the pulse height.  This value is shifted relative to 1/4 of the record length, so should be negative for normal pulses.
-        - **rise time** (samples): Time from onset to reach 80% of the pulse height.
-        - **decay time** (samples): Time (after pulse maximum) from 90% of pulse height to 36.8% (1/e) of pulse height.
-        - **baseline slope** (V/samples): Slope of baseline prior to onset, calculated msing a fraction of the record length.
+        - **peak_position** (ms): Position of the peak.
+        - **onset** (ms): Start of the pulse, which is assumed to be where the trace rises to 20% of the pulse height.  This value is shifted relative to 1/4 of the record length, so should be negative for normal pulses.
+        - **rise time** (ms): Time from onset to reach 80% of the pulse height.
+        - **decay time** (ms): Time (after pulse maximum) from 90% of pulse height to 36.8% (1/e) of pulse height.
+        - **baseline slope** (V/samples): Slope of baseline prior to onset, calculated using a fraction of the record length.
         - **baseline offset** (V): Offset of the baseline, averaged over a fraction of the record length.
         - **baseline difference** (V): Difference between the right and left edges of the trace, averaged over a fraction of the record length.
         - **baseline rms** (V): RMS noise of the baseline over a fraction of the record length.
@@ -29,12 +29,11 @@ class MainParameters(FncBaseClass):
         - **integral** (V ms): Integral of the trace.
         - **variance** (V²): Variance of the entire trace.
 
-    The time-based parameters (peak position, onset, rise time, decay time) are all also returned converted to ms.
     In addition, some parameters are calculated in the way that **CAT** does. These parameters differ in the following:
 
-        - **onset** (ms or samples): Start of the pulse, found from when the trace is above 3 times the baseline RMS noise.
-        - **rise time** (ms or samples): Calculated from 10% to 90% of the pulse height (and indendent of offset).
-        - **decay time** (ms or samples): Calculated from 90% to 10% of the pulse height (and indendent of offset).
+        - **onset** (ms): Start of the pulse, found from when the trace is above 3 times the baseline RMS noise.
+        - **rise time** (ms): Calculated from 10% to 90% of the pulse height (and indendent of offset).
+        - **decay time** (ms): Calculated from 90% to 10% of the pulse height (and indendent of offset).
 
     :param dt_us: The microsecond time base of the recording.  If provided, relevant output (e.g. rise time) will be in units of seconds. If not provided, these will be in terms of samples.
     :type dt_us: int, optional
