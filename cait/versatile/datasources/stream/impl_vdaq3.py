@@ -51,7 +51,10 @@ class Stream_VDAQ3(StreamBaseClass):
             3: np.dtype([('byte1', '<u1'), 
                          ('byte2', '<u1'), 
                          ('byte3', '<u1')]),
-            4: np.dtype('<u4')
+            4: np.dtype([('byte1', '<u1'), 
+                         ('byte2', '<u1'), 
+                         ('byte3', '<u1'),
+                         ('byte4', '<u1')])
         }
 
         # The data format is documented here: https://cryocluster-vccs.docs.cern.ch/data-formats/single-channel-file/
@@ -183,21 +186,26 @@ class Stream_VDAQ3(StreamBaseClass):
     
     def get_trace(self, key: str, where: slice, voltage: bool = True):
         data = self._data[key][where]
-        
+ 
         if self._prec == 3:
             # If written as 24bit values, here, we convert them to 32 bits such that numpy can handle them
             adc_32bit = np.vstack([
+                    np.zeros_like(data["byte1"]),
                     data["byte1"], 
                     data["byte2"], 
-                    data["byte3"], 
-                    np.zeros_like(data["byte1"])
+                    data["byte3"]
                 ]).flatten("F").view("<u4")
 
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
         
         elif self._prec == 4:
-            # If already written with 32bit, we don't have to do anything further
-            return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else data
+            adc_32bit = np.vstack([
+                    data["byte4"] ,
+                    data["byte1"], 
+                    data["byte2"], 
+                    data["byte3"]
+                ]).flatten("F").view("u4")
+            return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
     
     @property
     def start_us(self):
