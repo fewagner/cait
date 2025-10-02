@@ -66,6 +66,9 @@ class FitBaseline(FitFncBaseClass):
 
     def __call__(self, event):
         event = np.array(event)
+        # ATTENTION: This is only set once, i.e. data has to have same length
+        if self._xdata is None:
+            self._xdata = np.linspace(0, 1, np.array(event).shape[-1])
 
         # Reshape array if ndim > 2
         orig_shape = None
@@ -110,9 +113,6 @@ class FitBaseline(FitFncBaseClass):
             self._rms = np.squeeze(self._rms)
 
         else:
-            # ATTENTION: This is only set once, i.e. data has to have same length
-            if self._xdata is None:
-                self._xdata = np.linspace(0, 1, np.array(event).shape[-1])
 
             # Exponential fit
             if self._model in ['exponential', 'exp']:

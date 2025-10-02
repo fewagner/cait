@@ -13,11 +13,11 @@ class MainParameters(FncBaseClass):
     Calculate main parameters for an event.  These parameters are:
 
         - **pulse height** (V): Height of the event
-        - **peak_position** (samples): Position of the peak.
-        - **onset** (samples): Start of the pulse, which is assumed to be where the trace rises to 20% of the pulse height.  This value is shifted relative to 1/4 of the record length, so should be negative for normal pulses.
-        - **rise time** (samples): Time from onset to reach 80% of the pulse height.
-        - **decay time** (samples): Time (after pulse maximum) from 90% of pulse height to 36.8% (1/e) of pulse height.
-        - **baseline slope** (V/samples): Slope of baseline prior to onset, calculated msing a fraction of the record length.
+        - **peak_position** (ms): Position of the peak.
+        - **onset** (ms): Start of the pulse, which is assumed to be where the trace rises to 20% of the pulse height.  This value is shifted relative to 1/4 of the record length, so should be negative for normal pulses.
+        - **rise time** (ms): Time from onset to reach 80% of the pulse height.
+        - **decay time** (ms): Time (after pulse maximum) from 90% of pulse height to 36.8% (1/e) of pulse height.
+        - **baseline slope** (V/samples): Slope of baseline prior to onset, calculated using a fraction of the record length.
         - **baseline offset** (V): Offset of the baseline, averaged over a fraction of the record length.
         - **baseline difference** (V): Difference between the right and left edges of the trace, averaged over a fraction of the record length.
         - **baseline rms** (V): RMS noise of the baseline over a fraction of the record length.
@@ -29,12 +29,11 @@ class MainParameters(FncBaseClass):
         - **integral** (V ms): Integral of the trace.
         - **variance** (V²): Variance of the entire trace.
 
-    The time-based parameters (peak position, onset, rise time, decay time) are all also returned converted to ms.
     In addition, some parameters are calculated in the way that **CAT** does. These parameters differ in the following:
-    
-        - **onset** (ms or samples): Start of the pulse, found from when the trace is above 3 times the baseline RMS noise.
-        - **rise time** (ms or samples): Calculated from 10% to 90% of the pulse height (and indendent of offset).
-        - **decay time** (ms or samples): Calculated from 90% to 10% of the pulse height (and indendent of offset).
+
+        - **onset** (ms): Start of the pulse, found from when the trace is above 3 times the baseline RMS noise.
+        - **rise time** (ms): Calculated from 10% to 90% of the pulse height (and indendent of offset).
+        - **decay time** (ms): Calculated from 90% to 10% of the pulse height (and indendent of offset).
 
     :param dt_us: The microsecond time base of the recording.  If provided, relevant output (e.g. rise time) will be in units of seconds. If not provided, these will be in terms of samples.
     :type dt_us: int, optional
@@ -43,7 +42,7 @@ class MainParameters(FncBaseClass):
     :param bcs: Keyword arguments for :class:`cait.versatile.BoxCarSmoothing`. See its docstring for details.
     :type bcs: dict
     :param fbl: Keyword arguments for :class:`cait.versatile.FitBaseline`. See its docstring for details.
-    :type bcs: dict
+    :type fbl: dict
 
     :return: Main parameters as described above
     :type: Tuple[np.ndarray]
@@ -71,13 +70,9 @@ class MainParameters(FncBaseClass):
     params = (
             ("pulse_height", float),
             ("peak_position", int),
-            ("peak_position_rel", float),
             ("onset", int),
-            ("onset_ms", float),
             ("rise_time", int),
-            ("rise_time_ms", float),
             ("decay_time", int),
-            ("decay_time_ms", float),
             ("rms", float),
             ("baseline_slope", float),
             ("baseline_offset", float),
@@ -91,18 +86,15 @@ class MainParameters(FncBaseClass):
             ("variance", float),
             # CAT parameters
             ("onset_CAT", float),
-            ("onset_CAT_ms", float),
             ("rise_time_CAT", float),
-            ("rise_time_CAT_ms", float),
             ("decay_time_CAT", float),
-            ("decay_time_CAT_ms", float),
             )
 
 
     def __init__(
             self,
             dt_us: int = None,
-            peak_loc: Union[List[float], float, int] = [1/5, 2/5],
+            peak_loc: Union[List[float], List[int], float, int] = [1/5, 2/5],
             bcs = dict(length=50),
             fbl = dict(model=1, where=1/8),
             ):
@@ -111,6 +103,45 @@ class MainParameters(FncBaseClass):
         if not isinstance(peak_loc, (tuple, list, np.ndarray, int, float)):
             raise ValueError("Argument peak_loc must be array-like, int, or "
                              f"float, got {type(peak_loc)}")
+
+        # Check `peak_loc` for proper input
+        # Integer check
+        if isinstance(peak_loc, int) and peak_loc < 0:
+            raise ValueError("Only integers greater than zero are "
+                             f"allowed for `peak_loc`, got {peak_loc}")
+
+        # Float check
+        elif isinstance(peak_loc, float) and (peak_loc < 0 or peak_loc > 1):
+            raise ValueError("Only floats between 0 and 1 are "
+                             f"allowed for `peak_loc`, got {peak_loc}")
+
+        # Array-like check
+        elif isinstance(peak_loc, (tuple, list, np.ndarray)):
+            peak_loc = np.array(peak_loc)
+
+            if len(peak_loc) != 2:
+                raise ValueError("If `peak_loc` is array-like, it must have "
+                                 f"length 2, got len(peak_loc) == {len(peak_loc)}")
+
+            if np.any(peak_loc < 0):
+                raise ValueError("All entries of `peak_loc` must be "
+                                 f"greater than 0, got {peak_loc}")
+
+            if not peak_loc[0] < peak_loc[1]:
+                raise ValueError("If `peak_loc` is array-like, it must be "
+                                 f"strictly increasing, got {peak_loc}")
+
+            # Float checks
+            if isinstance(peak_loc[0], float):
+                if not np.all((peak_loc >= 0) & (peak_loc <= 1)):
+                    raise ValueError("Only arrays of floats between 0 and 1 are "
+                                     f"allowed for `peak_loc`, got {peak_loc}")
+            # Integer checks
+            elif isinstance(peak_loc[0], int):
+                if not np.all(peak_loc >= 0):
+                    raise ValueError("Only arrays of positive integers are "
+                                     f"allowed for `peak_loc`, got {peak_loc}")
+
 
         self._dt_us = dt_us
         self._peak_loc = peak_loc
@@ -129,24 +160,37 @@ class MainParameters(FncBaseClass):
             was_single_channel = True
             event = np.expand_dims(event, 0)
 
-        orig_shape = None
-        if event.ndim == 3:
-            orig_shape = event.shape
-            event = event.reshape(-1, event.shape[-1])
-
         # Used for calculations.  If dt_us is set, then output has some values
         # with units in terms of seconds (e.g. rise time in [V/s]), otherwise
         # in samples (e.g. [V/sample]).
         _dt = self._dt_us / 1000 if self._dt_us is not None else 1
 
         par, bl_rms = self._fitbaseline(event)
-        bl_rms /= np.sqrt(self._fitbaseline.xdata[self._fitbaseline.where].shape[0])
-        bl_offset = self._fitbaseline.model(0, par)
+        if self._fitbaseline.model == 0:
+            # The RMS is retrieved from the residuals of np.linalg.lstsq,
+            # which is not divided by sqrt(N) (so it's the RSS, not RMS).
+            # Divide by sqrt(N) for RMS.
+            # If xdata is None (which is the case when model=0) then np.std
+            # is used, which does divide by sqrt(N).
+            bl_rms /= np.sqrt(self._fitbaseline.xdata[self._fitbaseline.where].shape[0])
+
+        bl_rms = bl_rms.reshape(event.shape[:-1])
+        bl_offset = self._fitbaseline.model(0, par).reshape(event.shape[:-1])
         # Since the baseline fit may be an arbitrary polynomial or an exponential,
-        # approximate the slope using finite difference.
-        x1 = self._fitbaseline.xdata[1]
-        x0 = self._fitbaseline.xdata[0]
-        bl_slope = (self._fitbaseline.model(x1, par) - self._fitbaseline.model(x0, par)) / (x1 - x0)
+        # approximate the slope using finite difference if a fit was used.
+        if self._fitbaseline.model == 0:
+            x0 = self._fitbaseline.xdata[0]
+            x1 = self._fitbaseline.xdata[1]
+            bl_slope = (self._fitbaseline.model(x1, par) - self._fitbaseline.model(x0, par)) / (x1 - x0)
+            bl_slope = bl_slope.reshape(event.shape[:-1])
+        else:
+            # Approximate from endpoints of the `where` argument
+            x0 = self._fitbaseline.where.start
+            x1 = self._fitbaseline.where.stop
+            bl_slope = (
+                    (np.mean(event[..., x1:x1+100], axis=-1) - np.mean(event[..., x0:x0+100], axis=-1)) /
+                    (x1 - x0)
+                    )
 
 
         # After calculating the baseline parameters, we operate on the baseline-
@@ -171,14 +215,20 @@ class MainParameters(FncBaseClass):
 
         # Pulse height is simply the maximum in the search interval
         if isinstance(self._peak_loc, int):
-            self._peak_pos = self._peak_loc
+            self._peak_pos = np.full(event.shape[:-1], self._peak_loc)
             ph = event[..., self._peak_loc]
         elif isinstance(self._peak_loc, float):
-            self._peak_pos = int(np.round(self._peak_loc * event.shape[-1]))
-            ph = event[..., self._peak_pos]
-        else:
-            self._peak_pos = np.argmax(event, axis=-1)
-            ph = event.max(axis=-1)
+            ind = int(np.round(self._peak_loc * event.shape[-1]))
+            self._peak_pos = np.full(event.shape[:-1], ind)
+            ph = event[..., ind]
+        elif isinstance(self._peak_loc, (tuple, list, np.ndarray)):
+            # peak_loc is always an array, and its type should already be set
+            bounds = np.array(self._peak_loc)
+            if bounds.dtype == float:
+                bounds = (bounds * event.shape[-1]).astype(int)
+            self._peak_pos = np.argmax(event[..., bounds[0]:bounds[1]], axis=-1) + bounds[0]
+            index = tuple(np.indices(event.shape[:-1])) + (self._peak_pos,)
+            ph = event[index].reshape(event.shape[:-1])
 
         # Onset is the last sample above 3x the baseline RMS, searching
         # backwards from the peak.
@@ -191,62 +241,21 @@ class MainParameters(FncBaseClass):
         # 90% of the pulse height to 1/e of the pulse height.
         # DIFFERS FROM CAT: CAT is 90% -> 10%.
         # ---
-        # Note we do this in a loop instead of cutting, so that we catch the
-        # FIRST instance of each case (i.e. avoids issues with e.g. pileup).
-        self._os = -1 * np.ones(event.shape[:-1], dtype=int)  # rise start
-        self._rs = -1 * np.ones(event.shape[:-1], dtype=int)  # rise start
-        self._re = -1 * np.ones(event.shape[:-1], dtype=int)  # rise end
-        self._ds = -1 * np.ones(event.shape[:-1], dtype=int)  # decay start
-        self._de = -1 * np.ones(event.shape[:-1], dtype=int)  # decay end
+        _x = np.tile(np.arange(event.shape[-1]), (*event.shape[:-1], 1))
+        mask_pp = _x < np.expand_dims(self._peak_pos, -1)
+        ph_exp = np.expand_dims(ph, axis=-1)  # Used a lot below
 
-        # CAT parameters
-        osc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        rsc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        rec = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        dsc = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
-        dec = -1 * np.ones(event.shape[:-1], dtype=int)  # onset
+        self._rs = np.argmax(_x * (mask_pp & (event < 0.2*ph_exp)), axis=-1)
+        self._re = np.argmax(_x * (mask_pp & (event < 0.8*ph_exp)), axis=-1)
+        self._ds = np.argmax(_x * (~mask_pp & (event > 0.9*ph_exp)), axis=-1)
+        self._de = np.argmax(_x * (~mask_pp & (event > 1/np.e*ph_exp)), axis=-1)
+        self._os = self._rs - event.shape[-1] // 4
 
-
-        # Create mask of correct shape
-        # Two cases:
-        #  - event.ndim == 2: add last dimension
-        #  - event.ndim == 3: add first and last dimension
-        for ichan in range(event.shape[0]):
-            _x = np.arange(event.shape[-1])
-            mask_pp = _x < self._peak_pos[ichan]
-
-            _rs = np.where(mask_pp & (event[ichan] < 0.2*ph[ichan]))
-            _re = np.where(mask_pp & (event[ichan] < 0.8*ph[ichan]))
-            _ds = np.where(~mask_pp & (event[ichan] > 0.9*ph[ichan]))
-            _de = np.where(~mask_pp & (event[ichan] > 1/np.e*ph[ichan]))
-
-            if len(_rs[0]):
-                self._rs[ichan] = _rs[0][-1]
-            if len(_re[0]):
-                self._re[ichan] = _re[0][-1]
-            if len(_ds[0]):
-                self._ds[ichan] = _ds[0][-1]
-            if len(_de[0]):
-                self._de[ichan] = _de[0][-1]
-
-            self._os[ichan] = (self._rs[ichan] - event.shape[-1]//4)
-
-            _os = np.where(mask_pp & (event[ichan] < 3*bl_rms[ichan]))
-            _rs = np.where(mask_pp & (event[ichan] < 0.1*ph[ichan]))
-            _re = np.where(mask_pp & (event[ichan] < 0.9*ph[ichan]))
-            _ds = np.where(~mask_pp & (event[ichan] > 0.9*ph[ichan]))
-            _de = np.where(~mask_pp & (event[ichan] > 0.1*ph[ichan]))
-
-            if len(_os[0]):
-                osc[ichan] = _os[0][-1]
-            if len(_rs[0]):
-                rsc[ichan] = _rs[0][-1]
-            if len(_re[0]):
-                rec[ichan] = _re[0][-1]
-            if len(_ds[0]):
-                dsc[ichan] = _ds[0][-1]
-            if len(_de[0]):
-                dec[ichan] = _de[0][-1]
+        osc = np.argmax(_x * (mask_pp & (event < 3*np.expand_dims(bl_rms, axis=-1))), axis=-1)
+        rsc = np.argmax(_x * (mask_pp & (event < 0.1*ph_exp)), axis=-1)
+        rec = np.argmax(_x * (mask_pp & (event < 0.9*ph_exp)), axis=-1)
+        dsc = self._ds
+        dec = np.argmax(_x * (~mask_pp & (event > 0.1*ph_exp)), axis=-1)
 
         # Integral may be useful in rejecting pileup.
         integral = trapezoid(event, dx=_dt, axis=-1)
@@ -270,13 +279,9 @@ class MainParameters(FncBaseClass):
 
         out = [
                 ph,
-                self._peak_pos,
                 self._peak_pos * _dt,
-                self._os,
                 self._os * _dt,
-                rise_time,
                 rise_time.astype(float) * _dt,
-                decay_time,
                 decay_time * _dt,
                 bl_rms,
                 bl_slope,
@@ -289,20 +294,16 @@ class MainParameters(FncBaseClass):
                 evmax,
                 integral,
                 variance,
-                osc,
                 osc * _dt,
-                rise_time_cat,
                 rise_time_cat * _dt,
-                decay_time_cat,
                 decay_time_cat * _dt,
                 ]
 
         # Return values
         # This should fix batch issues...
-        if orig_shape is not None:
-            out = np.array(out).reshape(len(out), -1, orig_shape[1])
         if was_single_channel:
             out = np.squeeze(out)
+
         return tuple(out)
 
 
@@ -314,7 +315,7 @@ class MainParameters(FncBaseClass):
     def preview(self, event) -> dict:
         unsmoothed = event.copy()
         _ = self(event)
-        mp = np.array([self._peak_pos, self._os, self._rs, self._re, self._ds, self._de])
+        mp = np.array([self._peak_pos, self._os, self._rs, self._re, self._ds, self._de]).squeeze()
 
         _dt = self._dt_us if self._dt_us is not None else 1
         x = np.arange(event.shape[-1]) * _dt

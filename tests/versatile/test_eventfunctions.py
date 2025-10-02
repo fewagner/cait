@@ -28,8 +28,10 @@ calcmp_scalar = CalcMP(dt_us=mock.dt_us)
 fbl = FitBaseline()
 mp = MainParameters()
 mp_scalar = MainParameters(dt_us=mock.dt_us)
+mp_int = MainParameters(peak_loc=it1.record_length//4)
+mp_float = MainParameters(peak_loc=1/4)
 
-@pytest.mark.parametrize("fnc", [bcs, ds, rmbl, tf, calcmp, mp])
+@pytest.mark.parametrize("fnc", [bcs, ds, rmbl, tf, calcmp, mp, mp_int, mp_float])
 def test_batches_processing(fnc):
     # Double channel
     out1 = np.array(apply(fnc, it1))
