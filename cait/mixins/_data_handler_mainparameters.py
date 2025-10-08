@@ -50,21 +50,12 @@ class MainParametersMixin:
         events = self.get_event_iterator(group, batch_size=2)
 
         mp = vai.MainParameters(self.dt_us)
-        out = np.array(vai.apply(mp, events, pb_prefix='Calculating main parameters'))
-
-        # Swap (or add, for single-channel data) array axes to be able to
-        # unpack the parameters and insert them intto the data handler by name.
-        # vai.apply returns an array of shape (n_parameters, n_events, n_channels)
-        # the following line swaps this to (n_parameters, n_channels, n_events).
-        if out.ndim == 3:
-            out = np.swapaxes(out, 1, 2)
-        else:
-            out = out[:, None, :]
+        out = vai.apply(mp, events, pb_prefix='Calculating main parameters')
 
         for n, t, d in zip(mp.names, mp.types, out):
             self.set(
                     group,
-                    **{n: d},
+                    **{n: np.atleast_2d(d.T)},
                     dtype=t,
                     overwrite_existing=True,
                     write_to_virtual=False,
