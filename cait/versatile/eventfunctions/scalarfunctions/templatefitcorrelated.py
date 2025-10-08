@@ -287,7 +287,7 @@ class TemplateFitCorrelated(FncBaseClass):
         return 'none'
     
     def preview(self, event):
-        fitpars, shift, _ = self(event)
+        fitpars, shift, rms = self(event)
 
         shifted_sev, shifted_x = shift_arrays(self._sev, self._xdata, j=shift)
         shifted_x = np.array([shifted_x]*self._n_channels)
@@ -306,5 +306,8 @@ class TemplateFitCorrelated(FncBaseClass):
             if trunc_lv is not None:
                 truncation_line = trunc_lv + event[i] - self._rm_bl[i](event[i])
                 d[f"trunc. lim. channel {i}"] = [self._xdata, truncation_line]
+                
+        fmt_fitpars = ', '.join(['[' + ', '.join([f"{x:.2g}" for x in fc]) + ']' for fc in fitpars])
+        fmt_rms = [f"{r:.2g}" for r in rms]
 
-        return dict(line=d)
+        return dict(line=d, axes=dict(xaxis=dict(label=f"{shift=}, rms={fmt_rms}, fitpar=[{fmt_fitpars}]")))

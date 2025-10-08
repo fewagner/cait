@@ -1,5 +1,5 @@
 import copy
-import datetime
+import json
 
 import numpy as np
 from ipywidgets import widgets
@@ -246,6 +246,32 @@ class EnergyCalibration(SerializingMixin):
         
         return np.reshape(out, in_shape)
     
+
+    def to_file(self, fname: str):
+        """
+        Write EnergyCalibration object to ``.json``-file.
+        
+        :param fname: Filename to use (without file-extension)
+        :type fname: str
+        """
+        with open(f"{fname}.json", "w") as f:
+            json.dump(self.to_dict(), f, indent=4)
+
+    @classmethod
+    def from_file(cls, fname: str):
+        """
+        Construct EnergyCalibration from ``.json``-file.
+
+        :param fname: Filename to look for (without file-extension)
+        :type fname: str
+
+        :return: Instance of EnergyCalibration.
+        :rtype: EnergyCalibration
+        """
+        with open(f"{fname}.json", "r") as f:
+            d = json.load(f)
+        return cls.from_dict(d)
+
     def _update_tpr(self, tpr_obj: TestpulseResponse):
         """Update the currently used TestpulseResponse object. Called by ``.preview`` to dynamically modify fit parameters."""
         # For each segment, separate into TPA and initialize TestpulseResponse object 
