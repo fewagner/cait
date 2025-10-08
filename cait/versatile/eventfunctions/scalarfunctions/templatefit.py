@@ -445,4 +445,6 @@ class TemplateFit(FncBaseClass):
             truncation_line = self._truncation_limit + event - self._rm_bl(event)
             d["truncation limit"] = [self._xdata, truncation_line]
 
-        return dict(line=d)
+        fmt_fitpars = ', '.join([f"{x:.2g}" for x in fitpars])
+        
+        return dict(line=d, axes=dict(xaxis=dict(label=f"{shift=}, rms={rms:.2g}, fitpar=[{fmt_fitpars}]")))
