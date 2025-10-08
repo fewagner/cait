@@ -1,6 +1,8 @@
 import json
 from functools import lru_cache
 
+import numpy as np
+
 from .._version import __version__
 
 
@@ -48,6 +50,10 @@ class SerializingMixin:
             # assumes that all others are)
             elif isinstance(a, list) and a and any([isinstance(a[0], msc) for msc in my_subclasses]):
                 args.append([x.to_dict() for x in a])
+            # If any of the arguments are numpy arrays, we convert them to lists.
+            # (because numpy arrays cannot be serialized)
+            elif isinstance(a, np.ndarray):
+                args.append(a.tolist())
             # Else, just use the argument as is
             else:
                 args.append(a)
@@ -58,6 +64,8 @@ class SerializingMixin:
                 kwargs[k] = v.to_dict()
             elif isinstance(v, list) and v and any([isinstance(v[0], msc) for msc in my_subclasses]):
                 kwargs[k] =  [x.to_dict() for x in v]
+            elif isinstance(v, np.ndarray):
+                kwargs[k] = v.tolist()
             else:
                 kwargs[k] = v
         
