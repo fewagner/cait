@@ -336,7 +336,7 @@ class AnalysisMixin(object):
             tpas = f['testpulses']['testpulseamplitude']
             if len(tpas.shape) > 1:
                 tpas = f['testpulses']['testpulseamplitude'][channel]
-            tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
+            tphs = self['testpulses/pulse_height', channel]
             hours_tp = f['testpulses']['hours']
             hours_ev = f['events']['hours']
 
