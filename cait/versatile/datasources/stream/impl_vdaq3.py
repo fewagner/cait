@@ -48,13 +48,13 @@ class Stream_VDAQ3(StreamBaseClass):
         # Possibly also 32 bit
         # This is decided by 'sample_size_bytes' in the header which is either 3 or 4
         data_dtype = {
-            3: np.dtype([('byte1', '<u1'), 
-                         ('byte2', '<u1'), 
-                         ('byte3', '<u1')]),
-            4: np.dtype([('byte1', '<u1'), 
-                         ('byte2', '<u1'), 
-                         ('byte3', '<u1'),
-                         ('byte4', '<u1')])
+            3: np.dtype([('byte1', '<i1'), 
+                         ('byte2', '<i1'), 
+                         ('byte3', '<i1')]),
+            4: np.dtype([('byte1', '<i1'), 
+                         ('byte2', '<i1'), 
+                         ('byte3', '<i1'),
+                         ('byte4', '<i1')])
         }
 
         # The data format is documented here: https://cryocluster-vccs.docs.cern.ch/data-formats/single-channel-file/
