@@ -194,7 +194,7 @@ class Stream_VDAQ3(StreamBaseClass):
                     data["byte1"], 
                     data["byte2"], 
                     data["byte3"]
-                ]).flatten("F").view("<u4")
+                ]).flatten("F").view("<i4")
 
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
         
@@ -204,7 +204,7 @@ class Stream_VDAQ3(StreamBaseClass):
                     data["byte1"], 
                     data["byte2"], 
                     data["byte3"]
-                ]).flatten("F").view("u4")
+                ]).flatten("F").view("<i4")
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
     
     @property
