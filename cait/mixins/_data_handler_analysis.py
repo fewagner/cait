@@ -332,27 +332,33 @@ class AnalysisMixin(object):
         :type ub: float
         """
 
-        with h5py.File(self.path_h5, 'r+') as f:
-            tpas = f['testpulses']['testpulseamplitude']
-            if len(tpas.shape) > 1:
-                tpas = f['testpulses']['testpulseamplitude'][channel]
-            tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
-            hours_tp = f['testpulses']['hours']
-            hours_ev = f['events']['hours']
+        tpas = self.get('testpulses', 'testpulseamplitude')
+        if len(tpas.shape) > 1:
+            tpas = self.get('testpulses', 'testpulseamplitude', channel)
+        tphs = self.get('testpulses', 'pulse_height', channel)
+        hours_tp = self.get('testpulses', 'hours')
+        hours_ev = self.get('events', 'hours')
 
-            flag_ev, flag_tp = testpulse_stability(tpas, tphs, hours_tp, hours_ev,
-                                                   significance=significance, noise_level=noise_level, max_gap=max_gap,
-                                                   ub=ub, lb=lb)
+        flag_ev, flag_tp = testpulse_stability(tpas, tphs, hours_tp, hours_ev,
+                                               significance=significance, noise_level=noise_level, max_gap=max_gap,
+                                               ub=ub, lb=lb)
 
-            f['events'].require_dataset(name='testpulse_stability',
-                                        shape=(self.nmbr_channels, len(flag_ev)),
-                                        dtype=bool)
-            f['events']['testpulse_stability'][channel, ...] = flag_ev
-
-            f['testpulses'].require_dataset(name='testpulse_stability',
-                                            shape=(self.nmbr_channels, len(flag_tp)),
-                                            dtype=bool)
-            f['testpulses']['testpulse_stability'][channel, ...] = flag_tp
+        self.set(
+                'events',
+                testpulse_stability = flag_ev,
+                dtype = bool,
+                n_channels = self.nmbr_channels,
+                channel = channel,
+                overwrite_existing = True,
+                )
+        self.set(
+                'testpulses',
+                testpulse_stability = flag_tp,
+                dtype = bool,
+                n_channels=self.nmbr_channels,
+                channel = channel,
+                overwrite_existing = True,
+                )
 
     def calc_calibration(self,
                          starts_saturation: list,  #
