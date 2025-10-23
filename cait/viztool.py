@@ -1,13 +1,12 @@
+import ipywidgets as widgets
 import numpy as np
 import pandas as pd
-
-import plotly.graph_objs as go
 import plotly.colors as colors
-
-import ipywidgets as widgets
+import plotly.graph_objs as go
 from IPython.display import display
 
 from .data_handler import DataHandler
+
 
 class VizTool():
     """
@@ -98,7 +97,7 @@ class VizTool():
                 self.dh.set_filepath(path_h5=path_h5, fname=fname, appendix=False)
                 self.path_h5 = path_h5 + fname + '.h5'
             try:
-                self.dh.get(group, "event", 0, 0)
+                self.dh.get_event_iterator(group)
                 self.events_in_file = True
             except:
                 self.events_in_file = False
@@ -110,7 +109,7 @@ class VizTool():
             for k in datasets.keys():
                 try:
                     # 1d numpy arrays can be included directly.
-                    if isinstance(datasets[k],np.ndarray):
+                    if isinstance(datasets[k], np.ndarray):
                         if datasets[k].ndim == 1:
                             try:
                                 self.data[k] = np.asarray(datasets[k], dtype='float32')
@@ -119,7 +118,7 @@ class VizTool():
                         else:
                             print(f'Failed to include {k} because it is not one-dimensional.')
                         
-                    if isinstance(datasets[k],list):
+                    if isinstance(datasets[k], list):
                         if datasets[k][1] is not None:  # not a single channel flag
                             if datasets[k][2] is not None:
                                 self.data[k] = np.asarray(self.dh.get(group, datasets[k][0])[datasets[k][1], :, datasets[k][2]], dtype="float32")  # the indices
@@ -131,8 +130,8 @@ class VizTool():
                             else:
                                 self.data[k] = np.asarray(self.dh.get(group, datasets[k][0])[:], dtype='float32')
                         self.names.append(k)
-                except:
-                    print(f'Could not include dataset {k}.')
+                except Exception as ex:
+                    print(f'Could not include dataset {k}. Reason: {ex}')
             self.data = pd.DataFrame(self.data)
 
         # general
@@ -342,7 +341,7 @@ class VizTool():
             sev_button.on_click(self._button_sev_fn)
             
             # traces for event plot
-            ev = self.dh.get(self.group, "event", None, 0, None)
+            self.event_iterator = self.dh.get_event_iterator(self.group)
             
             traces = [go.Scatter(x=self.dh.record_window(ms=True),
                                  visible=False,
@@ -352,7 +351,7 @@ class VizTool():
                                  yaxis='y3',
                                  marker={'color': colors.qualitative.Plotly[c%10]},
                                  showlegend=True
-                                ) for c in range(len(ev))]
+                                ) for c in range(self.event_iterator.n_channels)]
             
             # Add to figure0 as is for quick inspection 
             self.f0.add_traces(traces)
@@ -612,7 +611,7 @@ class VizTool():
             print('Click only one Event!')
         else:
             for i in self.remaining_idx[points.point_inds]:
-                ev = self.dh.get(self.group, "event", None, i, None)
+                ev = np.atleast_2d(self.event_iterator.grab(i))
                 #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
                 n = len(ev)
                 pretrigger_samples = int(self.dh.record_length/8)
@@ -626,7 +625,7 @@ class VizTool():
                 self.f1.update_layout(legend_title_text='Event idx {}'.format(i))
 
     def _plot_event_slider(self, i):
-        ev = self.dh.get(self.group, "event", None, i, None)
+        ev = np.atleast_2d(self.event_iterator.grab(i))
         #if self.mp_button.value: mp = np.array(f[self.group]['mainpar'][:, i, 1:7], dtype=int)
         n = len(ev)
         pretrigger_samples = int(self.dh.record_length/8)
@@ -688,19 +687,19 @@ class VizTool():
                 print('Select events first!')
         else:   
             nmbr_batches = int(len(self.sel) / self.batch_size)
-            self.sevs = [np.zeros(self.dh.get(self.group, "event", 0, 0).shape[0]) for c in range(self.dh.nmbr_channels)]
+            self.sevs = [np.zeros(self.dh.record_length) for c in range(self.dh.nmbr_channels)]
 
             pretrigger_samples = int(self.dh.record_length/8)
             for b in range(nmbr_batches):
                 for c in range(self.dh.nmbr_channels):
                     start = int(b * self.batch_size)
                     stop = int((b + 1) * self.batch_size)
-                    ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:stop]])
+                    ev = np.array(self.event_iterator[c, self.remaining_idx[self.sel[start:stop]]])
                     ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                     self.sevs[c] += np.sum(ev, axis=0)
             for c in range(self.dh.nmbr_channels):
                 start = int(nmbr_batches * self.batch_size)
-                ev = self.dh.get(self.group, "event", c, self.remaining_idx[self.sel[start:]])
+                ev = np.array(self.event_iterator[c, self.remaining_idx[self.sel[start:]]])
                 ev -= np.mean(ev[:, :pretrigger_samples], axis=1, keepdims=True)
                 self.sevs[c] += np.sum(ev, axis=0)
                 self.sevs[c] /= len(self.sel)
