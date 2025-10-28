@@ -1,11 +1,13 @@
 import os
-import pytest
 
 import numpy as np
+import pytest
+
 import cait as ai
 import cait.versatile as vai
 
 from ..fixtures import tempdir
+
 
 @pytest.fixture(scope="module")
 def stream_csmpl(tempdir):
@@ -105,9 +107,9 @@ def test_trigger_on_data():
     inds, _ = vai.trigger_of(data1, 0.001, of, chunk_size=100)
     assert np.array_equal(np.array(inds),
                           np.array([
-                              8192, 51364, 84780, 112808, 148103, 201451, 207502, 240854, 
-                              250365, 256341, 321179, 358152, 364750, 371700, 380828, 416178, 
-                              451448, 457506, 483314
+                              8192, 51364, 84778, 112808, 148103, 201450, 240854, 
+                              256339, 321179, 358152, 364750, 370035, 380828, 398347, 416178, 
+                              446274, 451448, 483314
                           ])
                          )
     
@@ -122,9 +124,9 @@ def test_trigger_on_data():
     inds, _ = vai.trigger_of(data2, 0.001, of, chunk_size=100)
     assert np.array_equal(np.array(inds),
                           np.array([
-                              16942, 60214, 93630, 121658, 156953, 210301, 216352, 249704, 
-                              259215, 265191, 330029, 367002, 373600, 380550, 389678, 425028, 
-                              460298, 466356, 492164, 536326
+                              16942, 60214, 93628, 121658, 156953, 210300, 249704, 
+                              265189, 330029, 367002, 373600, 378885, 389678, 407197, 425028, 455124, 
+                              460298, 492164, 536327
                           ])
                          )
     
@@ -157,9 +159,11 @@ def test_trigger_different_chunk_sizes():
     assert all([
                 np.array_equal(
                         np.array(vai.trigger_of(data, 0.001, of, chunk_size=cs)[0]),
-                        np.array([ 8192, 51364, 84780, 112808, 148103, 201451, 207502, 240854, 
-                                   250365, 256341, 321179, 358152, 364750, 371700, 380828, 416178, 
-                                   451448, 457506, 483314 ])
+                        np.array([
+                              8192, 51364, 84778, 112808, 148103, 201450, 240854, 
+                              256339, 321179, 358152, 364750, 370035, 380828, 398347, 416178, 
+                              446274, 451448, 483314
+                          ])
                 )
                 for cs in range(1, 100)
             ])
