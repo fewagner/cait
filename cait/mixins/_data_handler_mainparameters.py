@@ -49,7 +49,7 @@ class MainParametersMixin:
         """
         events = self.get_event_iterator(group, batch_size=2)
 
-        mp = vai.MainParameters(self.dt_us)
+        mp = vai.MainParameters(self.dt_us, **kwargs)
         out = vai.apply(mp, events, pb_prefix='Calculating main parameters')
 
         for n, t, d in zip(mp.names, mp.types, out):
