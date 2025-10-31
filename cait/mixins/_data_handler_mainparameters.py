@@ -12,6 +12,7 @@ from ..styles._print_styles import txt_fmt
 class MainParametersMixin:
     def cmp(self,
             group: str = 'events',
+            batch_size = 2,
             **kwargs,
             ):
         """
@@ -47,7 +48,7 @@ class MainParametersMixin:
             # CMP for group "testpulses"
             dh.cmp("testpulses")
         """
-        events = self.get_event_iterator(group, batch_size=2)
+        events = self.get_event_iterator(group, batch_size=batch_size)
 
         mp = vai.MainParameters(self.dt_us, **kwargs)
         out = vai.apply(mp, events, pb_prefix='Calculating main parameters')
