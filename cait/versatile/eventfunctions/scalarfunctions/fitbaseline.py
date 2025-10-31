@@ -82,7 +82,7 @@ class FitBaseline(FitFncBaseClass):
 
         # Shortcut for constant baseline model
         if self._model == 0:
-            self._fitpar =  np.mean(event[..., self._where], axis=-1)
+            self._fitpar =  np.mean(event[..., self._where], axis=-1)[..., None]
             self._rms = np.std(event[..., self._where], axis=-1)
 
         # Adapted model which is more stable in case of pre-trigger pile-up
