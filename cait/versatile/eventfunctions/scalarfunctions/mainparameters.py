@@ -180,8 +180,9 @@ class MainParameters(FncBaseClass):
             # Approximate from endpoints of the `where` argument
             x0 = self._fitbaseline.where.start
             x1 = self._fitbaseline.where.stop
+            step = min(100, (x1 - x0) // 2)
             bl_slope = (
-                    (np.mean(event[..., x1:x1+100], axis=-1) - np.mean(event[..., x0:x0+100], axis=-1)) /
+                    (np.mean(event[..., x1-step:x1], axis=-1) - np.mean(event[..., x0:x0+step], axis=-1)) /
                     (x1 - x0)
                     )
 
