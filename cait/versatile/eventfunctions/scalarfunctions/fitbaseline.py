@@ -149,7 +149,7 @@ class FitBaseline(FitFncBaseClass):
 
                 par, err, *_ = np.linalg.lstsq(self._A, event[..., self._where].T, rcond=None)
                 self._fitpar = par.T
-                self._rms = np.sqrt(err)
+                self._rms = np.sqrt(err / self._xdata[self._where].shape[0])
 
 
         if orig_shape is not None:
