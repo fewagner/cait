@@ -19,8 +19,8 @@ class FitBaseline(FitFncBaseClass):
 
     :param model: Order of the polynomial, 'exponential'/'exp' (exponential baseline model), or 'voltage_minimum' (subtracting a constant value, which is close to the minimum of the voltage trace before the pulse -- with some fluctuation mitigation. This works better than the standard method when there is a pileup in the pre-trigger region), defaults to 0, i.e. a constant baseline.
     :type model: Union[int, str]
-    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where)*record_length` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None)`.
-    :type where: Union[List[bool], slice, int]
+    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where*record_length)` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None)`.
+    :type where: Union[List[bool], slice, float]
     :param xdata: x-data to use for the fit (has no effect for `order=0`). Specifying xdata is not necessary in general but if you want your fit parameters to have physical units (e.g. time constants) instead of just samples, you may use this option. Defaults to `None`, in which case `xdata=np.linspace(0,1,record_length)`.
     :type xdata: List[float]
 
@@ -77,7 +77,8 @@ class FitBaseline(FitFncBaseClass):
             event = event.reshape(-1, event.shape[-1])
 
         # ATTENTION: this is set only once
-        if isinstance(self._where, float):
+        if isinstance(self._where, (float, int)):
+            assert self._where <= 1, ValueError(f"If 'where' is a float, must be <= 1.  Got {self._where}")
             self._where = slice(0, int(np.array(event).shape[-1]*self._where))
 
         # Shortcut for constant baseline model
