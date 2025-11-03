@@ -39,8 +39,7 @@ def trigger_zscore(stream: ArrayLike,
                    n_triggers: int = None,
                    chunk_size: int = 100,
                    apply_first: Union[callable, List[callable]] = None,
-                   n_processes: int = None,
-                   skip_postprocessing: bool = False):
+                   n_processes: int = None):
     """
     Trigger a single channel of a stream using a moving z-score. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
@@ -112,23 +111,18 @@ def trigger_zscore(stream: ArrayLike,
     corrected_inds = np.zeros(len(inds), dtype=np.int64)
     processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
 
-    if not skip_postprocessing:
-        for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
-            trace = stream[ind-before:ind+after]
-            for p in processing: trace = p(trace)
+    for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
+        trace = stream[ind-before:ind+after]
+        for p in processing: trace = p(trace)
 
-            # re-calculate maximum and peak position
-            peak_pos = np.argmax(trace[sl])
-            corrected_inds[i] = ind - before + a + peak_pos
-            phs[i] = trace[sl][peak_pos]
+        # re-calculate maximum and peak position
+        peak_pos = np.argmax(trace[sl])
+        corrected_inds[i] = ind - before + a + peak_pos
+        phs[i] = trace[sl][peak_pos]
 
-        # By correcting the trigger indices using the maximum search, it is possible to find triggers that happened
-        # before 'record_length' samples into the stream. We want to explicitly discard those.
-        if len(inds)>0 and corrected_inds[0]<record_length:
-            corrected_inds, phs = corrected_inds[1:], phs[1:]
-
-    else:
-        corrected_inds = inds
-
+    # By correcting the trigger indices using the maximum search, it is possible to find triggers that happened
+    # before 'record_length' samples into the stream. We want to explicitly discard those.
+    if len(inds)>0 and corrected_inds[0]<record_length:
+        corrected_inds, phs = corrected_inds[1:], phs[1:]
         
     return corrected_inds, phs
