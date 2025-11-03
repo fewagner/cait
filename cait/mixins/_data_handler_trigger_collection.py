@@ -72,10 +72,6 @@ def _trigger_helper(dh,
                     f_noise,
                     name_appendix
                     ):
-    # If hardware == 'csmpl' and there is a stream dedicated to TPs, make sure
-    # the TP stream has been triggered and its data included
-    if hasattr(stream, "trigger_tp_stream"):
-        stream.trigger_tp_stream()
 
     # Convert noise sample frequency to number of noise traces to sample.
     # Print info if less than one sample is expected. Set number to at least
