@@ -1,6 +1,7 @@
 import json
 import os
 from typing import List, Union
+from functools import partial
 
 import numpy as np
 
@@ -9,8 +10,10 @@ import cait as ai
 from ....readers import BinaryFile
 from ..hardwaretriggered.par_file import PARFile
 from .streambase import StreamBaseClass
-from ...functions import trigger_zscore, apply
-from ...eventfunctions import MainParameters
+from ...functions import apply
+from ...functions.trigger.trigger_zscore import zscore_chunk
+from ...functions.trigger.triggerbase import trigger_base
+from ...eventfunctions import RemoveBaseline
 
 
 def get_offset(path_dig_stamps):
@@ -91,6 +94,54 @@ def get_test_stamps(path,
     return hours, tpas, testpulse_channels
 
 
+def trigger_tp_stream(stream, key, tpa_list, threshold, confidence):
+    """
+    Trigger a dedicated testpulse stream, and determine the TPAs from the list given in
+    the constructor.
+
+    Triggering is done using :func:`cait.versatile.trigger_zscore`, which by default
+    returns a substantial number of noise triggers on TP streams; these are currently
+    rejected by removing triggers with a pulse height below half the lowest TPA.
+
+    If the pulse height of a triggered TP is consistent with more than one TPA, its
+    value is set to -1.
+
+    :param **kwargs: Keyword arguments passed to :func:`cait.versatile.trigger_zscore`.
+    :type **kwargs: dict
+    """
+    # 2**15 samples should be long enough to capture TP, and we shouldn't be sending
+    # them faster than this.
+    _record_length = int(2**15)
+    before = _record_length * 1 // 8
+    after = _record_length * 3 // 8
+
+    print(f"Triggering channel {key} for TP data...")
+    inds, _ = trigger_base(
+            stream=stream[key],
+            threshold = threshold,
+            filter_fnc = partial(zscore_chunk, record_length = _record_length),
+            record_length = _record_length,
+            )
+
+    # Calculate amplitude
+    it = stream.get_event_iterator(key, record_length = _record_length, inds = inds).with_processing(RemoveBaseline())
+
+    argmaxs, ph = apply(_max_and_argmax, it, pb_prefix="Calculating pulse heights")
+    inds = inds + argmaxs - _record_length // 4
+
+    # Cut out noise
+    cut = ph > tpa_list.min() / 2
+    ph = ph[cut]
+    inds = np.array(inds)[cut]
+
+    # Ensure uniqueness (for some reason there are doubles sometimes)
+    inds, _idx = np.unique(inds, return_index=True)
+    ph = ph[_idx]
+
+    tpas = get_tpas_from_stream(ph, tpa_list, confidence)
+    return tpas, stream.time[inds]
+
+
 def get_tpa_from_stream(ph, tpas, threshold):
     """
     Get the most likely TP amplitude that was sent, from the pulse height of
@@ -108,9 +159,14 @@ def get_tpa_from_stream(ph, tpas, threshold):
     most_likely = np.argmin(diffs)
     conf = diffs[most_likely] / diffs
     if np.any(conf[conf<1] > threshold):
-        return -1
+        return -1.
     return tpas[most_likely]
-get_tpas_from_stream = np.vectorize(get_tpa_from_stream, excluded=[1, 2])
+get_tpas_from_stream = np.vectorize(get_tpa_from_stream, excluded=[1, 2], signature='()->()')
+
+
+def _max_and_argmax(x):
+    ind = np.argmax(x)
+    return ind, x[ind]
 
 
 class Stream_CSMPL(StreamBaseClass):
@@ -123,6 +179,7 @@ class Stream_CSMPL(StreamBaseClass):
             files: List[str],
             tp_stream: Union[str, List[str]]=None,
             tp_stream_amplitudes: Union[List[float], List[List[float]]]=None,
+            tp_stream_threshold: float=5,
             tp_confidence_threshold: float=0.5
             ):
         super().__init__(files=files)
@@ -143,12 +200,10 @@ class Stream_CSMPL(StreamBaseClass):
         # Work with list of TP streams in case there is more than one pulser
         if isinstance(tp_stream, str):
             tp_stream = [tp_stream]
-        tp_stream_amplitudes = np.array(tp_stream_amplitudes)
-        if tp_stream_amplitudes.ndim == 1:
-            tp_stream_amplitudes = np.tile(tp_stream_amplitudes, (len(tp_stream), 1))
         self._tp_streams = tp_stream
-        self._tp_stream_amps = tp_stream_amplitudes
-        self._tp_stream_conf = tp_confidence_threshold
+        self._tp_stream_amps = np.atleast_2d(np.array(tp_stream_amplitudes).T)
+        self._tp_stream_thresh = np.atleast_1d(tp_stream_threshold)
+        self._tp_stream_conf = np.atleast_1d(tp_confidence_threshold)
 
         csmpl_paths = [x for x in files if x.endswith('.csmpl')]
         test_path = [x for x in files if x.endswith('.test_stamps')]
@@ -165,8 +220,8 @@ class Stream_CSMPL(StreamBaseClass):
             self._par_path = par_path
 
         elif any([x.endswith('.json') for x in files]):
-            self._json_path = [x for x in files if x.endswith('.json')][0]
-            with open(self._json_path, 'r') as f:
+            self._par_path = [x for x in files if x.endswith('.json')][0]
+            with open(self._par_path, 'r') as f:
                 self._config = json.load(f)
 
             if "start_ts" in self._config:
@@ -239,6 +294,8 @@ class Stream_CSMPL(StreamBaseClass):
     @property
     def tp_keys(self):
         if not hasattr(self, '_tpas'):
+            if self._tp_streams is not None:
+                return CSMPL_TPAS(self).keys
             return []
         else:
             return list(self._tpas.keys())
@@ -249,7 +306,7 @@ class Stream_CSMPL(StreamBaseClass):
             if self._tp_streams is None:
                 raise KeyError("Testpulse amplitudes not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
             else:
-                raise KeyError("Testpulse amplitudes not available, but a stream is available for triggering TP data. Call the 'trigger_tp_stream()' method of this object to calculate it before using this feature")
+                return CSMPL_TPAS(self)
         return self._tpas
 
     @property
@@ -258,59 +315,59 @@ class Stream_CSMPL(StreamBaseClass):
             if self._tp_streams is None:
                 raise KeyError("Testpulse timestamps not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
             else:
-                raise KeyError("Testpulse timestamps not available, but a stream is available for triggering TP data. Call the 'trigger_tp_stream()' method of this object to calculate it before using this feature")
+                return CSMPL_TP_TS(self)
         return self._tp_timestamps
-        return self._tp_timestamps
 
 
-    def trigger_tp_stream(self, **kwargs):
-        """
-        Trigger a dedicated testpulse stream, and determine the TPAs from the list given in
-        the constructor.
 
-        Triggering is done using :func:`cait.versatile.trigger_zscore`, which by default
-        returns a substantial number of noise triggers on TP streams; these are currently
-        rejected by removing triggers with a pulse height below half the lowest TPA.
 
-        If the pulse height of a triggered TP is consistent with more than one TPA, its
-        value is set to -1.
 
-        :param **kwargs: Keyword arguments passed to :func:`cait.versatile.trigger_zscore`.
-        :type **kwargs: dict
-        """
-        if hasattr(self, "_tpas") > 0 or self._tp_streams is None:
-            # Already done, or no data available
-            return
+class CSMPL_TP_Helper:
+    def __init__(self, stream: Stream_CSMPL):
+        self._stream = stream
+        self._tp_stream = Stream_CSMPL(stream._tp_streams + [stream._par_path])
 
-        self._tpas = dict()
-        self._tp_timestamps = dict()
 
-        _stream = Stream_CSMPL(self._tp_streams + [self._par_path if hasattr(self, "_par_path") else self._json_path])
-        # 2**15 samples should be long enough to capture TP, and we shouldn't be sending
-        # them faster than this.
-        _record_length = int(2**15)
+    def __repr__(self):
+        return f'{self.__class__.__name__}(keys={self.keys})'
 
-        for i in range(len(self._tp_streams)):
-            print(f"Triggering channel {_stream.keys[i]} for TP data...")
-            inds, _ = trigger_zscore(
-                    _stream[_stream.keys[i]],
-                    record_length = _record_length,
-                    skip_postprocessing = True,
-                    **kwargs,
+
+    def _trigger(self, key: str):
+        if key not in self._tp_stream.keys:
+            pass
+
+        if not hasattr(self._stream, "_tpas"):
+            self._stream._tpas = {}
+            self._stream._tp_timestamps = {}
+
+        if key not in self._stream._tpas:
+            index = self.keys.index(key)
+            tpas, timestamps = trigger_tp_stream(
+                    self._tp_stream,
+                    key,
+                    self._stream._tp_stream_amps[index],
+                    self._stream._tp_stream_thresh[index],
+                    self._stream._tp_stream_conf[index],
                     )
 
-            mp = MainParameters(dt_us = self._dt, bcs = dict(length=1))
-            it = _stream.get_event_iterator(_stream.keys, record_length = _record_length, inds = inds)
+            self._stream.tpas[key] = tpas
+            self._stream.tp_timestamps[key] = timestamps
 
-            out = np.array(apply(mp, it, pb_prefix="Calculating pulse heights"))
 
-            # Cut out noise
-            ph = out[0]
-            cut = ph > self._tp_stream_amps[i].min() / 2
-            ph = ph[cut]
-            inds = np.array(inds)[cut]
+    @property
+    def keys(self):
+        return self._tp_stream.keys
 
-            tpas = get_tpas_from_stream(ph, self._tp_stream_amps[i], self._tp_stream_conf)
 
-            self._tpas[str(i)] = tpas
-            self._tp_timestamps[str(i)] = _stream.time[inds]
+class CSMPL_TPAS(CSMPL_TP_Helper):
+    def __getitem__(self, key: str):
+        self._trigger(key)
+
+        return self._stream._tpas[key]
+
+
+class CSMPL_TP_TS(CSMPL_TP_Helper):
+    def __getitem__(self, key: str):
+        self._trigger(key)
+
+        return self._stream._tp_timestamps[key]
