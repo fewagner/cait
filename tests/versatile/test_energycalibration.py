@@ -116,13 +116,13 @@ def test_sanity_check_transfer_function(tf_obj):
            tf.inverse(TEST_TPAS, input_tp_phs, tf(TEST_TPAS, input_tp_phs, input_tpes)), 
            input_tpes,
            rtol=0,
-           atol=2*tf._DEFAULT_SECANT_ROOT_FIND_ARGS["eps"],
+           atol=2*tf._DEFAULT_ROOT_FIND_ARGS["eps"],
            ), f"Calling f.inverse(f(x)) on {tf.__class__.__name__} must return x."
         assert np.allclose(
             tf(TEST_TPAS, input_tp_phs, tf.inverse(TEST_TPAS, input_tp_phs, input_phs)), 
             input_phs,
             rtol=0,
-            atol=2*tf._DEFAULT_SECANT_ROOT_FIND_ARGS["eps"],
+            atol=2*tf._DEFAULT_ROOT_FIND_ARGS["eps"],
             ), f"Calling f(f.inverse(x)) on {tf.__class__.__name__} must return x."
 
     # Test if errors are correctly raised in case of shape mismatch.
@@ -190,7 +190,7 @@ def test_energy_calibration(tpr_obj, tf_obj):
                 in_arr, 
                 inv_out_arr,
                 rtol=0,
-                atol=10*tf_obj._DEFAULT_SECANT_ROOT_FIND_ARGS["eps"],
+                atol=10*tf_obj._DEFAULT_ROOT_FIND_ARGS["eps"],
                 ), f"Calling f(f.inverse(x)) on {my_ecal.__class__.__name__} must return x."
         
     # Try basic plotting
