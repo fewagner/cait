@@ -47,5 +47,6 @@ build_kaniko_command:
   parallel:
     # build a container including all optional dependencies and one without torch
     matrix:
-      - FLAVOUR: ['', '-slim']
+      #- FLAVOUR: ['', '-slim'] # full container build started to fail mid of 2025 due to out-of-memory issues. Has to be investigated. Only building -slim container for now.
+      - FLAVOUR: ['-slim']
 
