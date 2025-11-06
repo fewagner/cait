@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 
 import numba
@@ -233,6 +234,12 @@ def _sanitize_inputs(arr1: np.ndarray,
         raise ValueError(f"The number of elements in '{name1}' must match the last dimension of '{name2}'. Need shapes (n_unique_tpas,) and (n_unique_tpas,) or (N, n_unique_tpas). Got shapes {orig_shape_arr1} and {orig_shape_arr2}.")
     if arr2.shape[0] != arr3.shape[0]:
         raise ValueError(f"The number of elements in the first dimension of '{name2}' must match the first dimension of '{name3}'. Need shapes (n_unique_tpas,) or (N, n_unique_tpas) and (M,) or (N, M). Got shapes {orig_shape_arr2} and {orig_shape_arr3}.")
+    
+    # Raise a warning if tp_phs are not monotonically increasing
+    sort_ind = np.argsort(arr1)
+    decreasing_flag = np.diff(arr2[:, sort_ind], axis=-1) < 0
+    if np.any(decreasing_flag):
+        warnings.warn(f"The testpulse pulse heights for {np.sum(decreasing_flag)} evaluation(s) is (are) not monotonically increasing. This could result in a nonsensical mapping between TPE and PH.")
     
     return (
         arr1, # shape (n_unique_tpas,)

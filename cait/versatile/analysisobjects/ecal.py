@@ -452,6 +452,7 @@ class EnergyCalibration(SerializingMixin):
             xlabel="Testpulse-equivalent Height",
             **viewer_kwargs
         )
+        tpr_viewer.show_legend(False)
 
         # Already draw pulse height scatter (will not be redrawn later) and fits (will be redrawn)
         tpr_viewer.plot(self._get_tpr_plot_dict(n_fit_grid_points, downsample_factor))
