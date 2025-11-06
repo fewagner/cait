@@ -62,5 +62,7 @@ Transfer Functions
 
 .. autoclass:: TFPchip
    :show-inheritance:
+.. autoclass:: TFPlinear
+   :show-inheritance:
 .. autoclass:: TFPoly
    :show-inheritance:
