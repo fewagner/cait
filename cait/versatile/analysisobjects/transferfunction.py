@@ -1,3 +1,4 @@
+import warnings
 from abc import ABC, abstractmethod
 
 import numba
@@ -49,6 +50,43 @@ def find_root_secant(
     xn[~converged] = np.nan
             
     return xn
+
+def find_root_bisect(
+    f: callable, # accepts and returns shape (N, M) arrays
+    x0: np.ndarray, # shape (N, M)
+    x1: np.ndarray, # shape (N, M)
+    eps: float = 1e-4, 
+    max_iter: int = 100,
+):
+    
+    out = np.nan*np.zeros_like(x0)
+    fx0, fx1 = f(x0), f(x1)
+
+    # Check if the interval edges are already the solution
+    out[np.abs(fx0) < eps] = x0[np.abs(fx0) < eps]
+    out[np.abs(fx1) < eps] = x1[np.abs(fx1) < eps]
+
+    # Keep track of which searches converged. Those have
+    # to be stopped because repeated iterations might lead
+    # to numerical nonsense.
+    converged = ~np.isnan(out)
+
+    for _ in range(max_iter):
+        xm = ( x0 + x1 ) / 2
+        fxm = f(xm)
+
+        converged[np.abs(fxm)<eps] = True
+
+        if np.all(converged):
+            break
+
+        choose_left_flag = np.sign(fxm) == np.sign(fx1)
+        x1[choose_left_flag*(~converged)] = xm[choose_left_flag*(~converged)]
+        x0[~choose_left_flag*(~converged)] = xm[~choose_left_flag*(~converged)]
+
+    out[np.isnan(out)] = xm[np.isnan(out)]
+
+    return out
 
 @numba.njit
 def _find_interval_ascending(x: np.ndarray,
@@ -182,7 +220,9 @@ def _sanitize_inputs(arr1: np.ndarray,
                      ):
     # Checks all input arrays for shape consistency and enforces shapes if necessary
     orig_shape_arr1, orig_shape_arr2, orig_shape_arr3 = np.shape(arr1), np.shape(arr2), np.shape(arr3)
-    arr1, arr2, arr3 = np.atleast_1d(arr1), np.atleast_2d(arr2), np.atleast_2d(arr3)
+    arr1 = np.atleast_1d(arr1).astype(float)
+    arr2 = np.atleast_2d(arr2).astype(float)
+    arr3 = np.atleast_2d(arr3).astype(float)
 
     if not np.ndim(arr1)==1: 
         raise ValueError(f"Array '{name1}' has to be 1d. Got shape {orig_shape_arr1}.")
@@ -194,6 +234,12 @@ def _sanitize_inputs(arr1: np.ndarray,
         raise ValueError(f"The number of elements in '{name1}' must match the last dimension of '{name2}'. Need shapes (n_unique_tpas,) and (n_unique_tpas,) or (N, n_unique_tpas). Got shapes {orig_shape_arr1} and {orig_shape_arr2}.")
     if arr2.shape[0] != arr3.shape[0]:
         raise ValueError(f"The number of elements in the first dimension of '{name2}' must match the first dimension of '{name3}'. Need shapes (n_unique_tpas,) or (N, n_unique_tpas) and (M,) or (N, M). Got shapes {orig_shape_arr2} and {orig_shape_arr3}.")
+    
+    # Raise a warning if tp_phs are not monotonically increasing
+    sort_ind = np.argsort(arr1)
+    decreasing_flag = np.diff(arr2[:, sort_ind], axis=-1) < 0
+    if np.any(decreasing_flag):
+        warnings.warn(f"The testpulse pulse heights for {np.sum(decreasing_flag)} evaluation(s) is (are) not monotonically increasing. This could result in a nonsensical mapping between TPE and PH.")
     
     return (
         arr1, # shape (n_unique_tpas,)
@@ -214,7 +260,7 @@ class TransferFunction(SerializingMixin, ABC):
     - :func:`TestpulseResponse.__call__`: see its docstring. Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs' to perform those checks).
     - If the class attribute ``_PREVIEW_INPUTS`` is defined, it will be used for interactively changing the arguments passed to ``__init__`` in the preview methods. See below for how they must be structured. You can only allow a subset of the input arguments to be varied, but all field names in ``_PREVIEW_INPUTS`` must be input arguments to ``__init__``.
 
-    This base class provides a default implementation for :func:`TestpulseResponse.inverse`, which calculates the inverse of the fit numerically using the Secant Method, given the function :func:`TestpulseResponse.__call__`. The class attribute ``_DEFAULT_SECANT_ROOT_FIND_ARGS`` stores the configuration details of this method. If you wish to implement your own inverse (e.g. because there is a more efficient or analytical way to do it) you can override :func:`TestpulseResponse.inverse` in the child class. Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs' to perform those checks).
+    This base class provides a default implementation for :func:`TestpulseResponse.inverse`, which calculates the inverse of the fit numerically using the Secant and Bisection Method, given the function :func:`TestpulseResponse.__call__`. The class attribute ``_DEFAULT_ROOT_FIND_ARGS`` stores the configuration details of this method. If you wish to implement your own inverse (e.g. because there is a more efficient or analytical way to do it) you can override :func:`TestpulseResponse.inverse` in the child class. Must perform input shape validation and raise a ValueError in case of shape mismatch (you can use the function '_sanitize_inputs' to perform those checks).
 
     The usage of this class is demonstrated below for the specific implementation of :class:`TFPchip`. See the docstrings of the child classes for more information on the specific behavior. 
 
@@ -266,7 +312,7 @@ class TransferFunction(SerializingMixin, ABC):
     #    "arg2": {"dtype": float, "default": 3.0, "domain": (1.0, 5.0)}, # Results in Slider
     #    "arg3": {"dtype": int, "default": 1, "domain": (0, 4)} # Results in Dropdown
     #}
-    _DEFAULT_SECANT_ROOT_FIND_ARGS = {
+    _DEFAULT_ROOT_FIND_ARGS = {
         "eps": 1e-5,
         "max_iter": 100, 
     }
@@ -319,16 +365,84 @@ class TransferFunction(SerializingMixin, ABC):
         """
         in_shape = np.shape(phs)
         tpas, tp_phs, phs = _sanitize_inputs(tpas, tp_phs, phs, "tpas", "tp_phs", "phs")
-        return np.reshape(
-            find_root_secant(
-                f=lambda x: self(tpas=tpas, tp_phs=tp_phs, tpes=x) - phs, 
-                x0=np.zeros_like(phs), 
-                x1=np.max(tpas)*np.ones_like(phs), 
-                eps=self._DEFAULT_SECANT_ROOT_FIND_ARGS["eps"],
-                max_iter=self._DEFAULT_SECANT_ROOT_FIND_ARGS["max_iter"],
-            ),
-        in_shape,
+
+        # Bin values of interest into bins created by TPAs first.
+        # This is done by looking for sign changes in the difference
+        # tp_phs - phs. If the argmax is 0, this means that no sign
+        # changes were detected inside the bins (i.e. we cannot do
+        # bisection search).
+        # We also add the evaluation at 0 to the search.
+        if 0 not in tpas:
+            x = np.hstack([[0.], tpas])
+            y = np.hstack([
+                self(
+                    tpas=tpas, 
+                    tp_phs=tp_phs, 
+                    tpes=np.zeros((tp_phs.shape[0], 1))
+                    ), 
+                self(
+                    tpas=tpas, 
+                    tp_phs=tp_phs, 
+                    tpes=np.broadcast_to(
+                        tpas[None, :], 
+                        (tp_phs.shape[0], tpas.shape[0])
+                        )
+                    )
+                ])
+        else:
+            x = tpas
+            y = tp_phs
+
+        sign_changes = np.argmax(
+            np.sign(y[:, :, None] - phs[:, None, :]), 
+            axis=1
+        ).flatten()
+        bisec_possible = sign_changes > 0
+
+        bisec_x0 = x[sign_changes[bisec_possible]-1][:, None]
+        bisec_x1 = x[sign_changes[bisec_possible]][:, None]
+
+        secant_x0 = np.zeros(np.sum(~bisec_possible))[:, None]
+        secant_x1 = np.max(tpas)*np.ones(np.sum(~bisec_possible))[:, None]
+
+        # Reshape arrays of shape (N, n_unique_tpas) and (N, M)
+        # To (N*M, n_unique_tpas) and (N*M) so that we can easier slice them
+        tp_phs_reshaped = np.reshape(
+            np.broadcast_to(
+                tp_phs[:, None, :], 
+                (tp_phs.shape[0], phs.shape[1], tp_phs.shape[1])
+                ),
+            (tp_phs.shape[0]*phs.shape[1], tp_phs.shape[1])
         )
+        phs_reshaped = phs.flatten()
+
+        out = np.nan*np.zeros_like(phs_reshaped)
+
+        if np.any(bisec_possible):
+            out[bisec_possible] = find_root_bisect(
+                f=lambda x: self(
+                    tpas=tpas, 
+                    tp_phs=tp_phs_reshaped[bisec_possible, :], 
+                    tpes=x) - phs_reshaped[bisec_possible][:, None], 
+                x0=bisec_x0, 
+                x1=bisec_x1, 
+                eps=self._DEFAULT_ROOT_FIND_ARGS["eps"],
+                max_iter=self._DEFAULT_ROOT_FIND_ARGS["max_iter"],
+            ).flatten()
+
+        if np.any(~bisec_possible):
+            out[~bisec_possible] = find_root_secant(
+                f=lambda x: self(
+                    tpas=tpas, 
+                    tp_phs=tp_phs_reshaped[~bisec_possible, :], 
+                    tpes=x) - phs_reshaped[~bisec_possible][:, None], 
+                x0=secant_x0, 
+                x1=secant_x1, 
+                eps=self._DEFAULT_ROOT_FIND_ARGS["eps"],
+                max_iter=self._DEFAULT_ROOT_FIND_ARGS["max_iter"],
+            ).flatten()
+
+        return np.reshape(out, in_shape)
         
     @classmethod
     def preview(cls, 
@@ -405,9 +519,11 @@ class TFPchip(TransferFunction):
     Transfer function using a Piecewise Cubic Hermite Interpolating Polynomial (monotonic cubic splines).
     
     :param fix_at_yaxis: If True, the value when intercepting the y-axis is fixed to the value specified by ``y_intercept``. I.e. when True, the fit considers the additional point ``(0, y_intercept)``. Defaults to True.
-    :type fix_at_yaxis: bool
+    :type fix_at_yaxis: bool, optional
     :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
-    :type y_intercept: float
+    :type y_intercept: float, optional
+    :param extrapolate_tangent: If True, values outside the interpolation range (extrapolation) are calculated using the tangent of the polynomial at the last node. This can prevent nonsensical result due to extrapolating cubic polynomials too far. Defaults to True.
+    :type extrapolate_tangent: bool, optional
 
     This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.transferfunction.TransferFunction`.
 
@@ -429,16 +545,20 @@ class TFPchip(TransferFunction):
     _PREVIEW_INPUTS = {
         "fix_at_yaxis": {"dtype": bool, "default": True},
         "y_intercept": {"dtype": float, "default": 0, "domain": (-1, 1)},
+        "extrapolate_tangent": {"dtype": bool, "default": True},
     }
     def __init__(self, 
                  fix_at_yaxis: bool = True, 
                  y_intercept: float = 0,
+                 extrapolate_tangent: bool = True,
                  ):
         super().__init__(fix_at_yaxis=fix_at_yaxis, 
                          y_intercept=y_intercept,
+                         extrapolate_tangent=True,
                          )
         self._fix_at_yaxis = fix_at_yaxis
         self._y_intercept = y_intercept
+        self._extrapolate_tangent = extrapolate_tangent
         
     def _pchip(self, tpas: np.ndarray, tp_phs: np.ndarray):
         if self._fix_at_yaxis:
@@ -463,8 +583,110 @@ class TFPchip(TransferFunction):
         # We only want to evaluate a given polynomial for M points. For that
         # the call function of PchipInterpolator was modified and implemented
         # slightly differently in _ppolyval.
+        # Node array has shape (n_unique_tpa,)
+        x = iterp_objects.x
+        # Coefficient array has shape (4, n_unique_tpa-1, N)
+        c = iterp_objects.c
+
+        # Add polynomial coefficients to both ends of coefficient array c
+        # to extrapolate using a polynomial chosen to represent the slope
+        # at the boundary nodes.
+        if self._extrapolate_tangent:
+            # p(x) = ax^3 + bx^2 + cx + d
+            # p'(x) = 3ax^2 + 2bx + c
+            p_x = lambda i, dx: c[0, i, :]*dx**3 + c[1, i, :]*dx**2 + c[2, i, :]*dx + c[3, i, :]
+            p_prime_x = lambda i, dx: 3*c[0, i, :]*dx**2 + 2*c[1, i, :]*dx + c[2, i, :]
+
+            # Slopes at the first and last node
+            slopes_lower, slopes_upper = p_prime_x(0, 0), p_prime_x(-1, x[-1]-x[-2])
+            # Constant coefficients at the last node and the (first-1) node
+            const_lower, const_upper = p_x(0, 0)-slopes_lower, p_x(-1, x[-1]-x[-2])
+
+            # Add nodes (first-1) and (last+1). By adding exactly 1, we know that the
+            # y-difference is exactly the slope.
+            extended_nodes = np.hstack([[x[0]-1], x, [x[-1]+1]])
+            # Copy existing coefficient array and insert linear/constant coefficients
+            # for the edges.
+            new_c = np.zeros((c.shape[0], c.shape[1]+2, c.shape[2]))
+            new_c[:, 1:-1, :] = c
+            new_c[-1, 0, :] = const_lower
+            new_c[-2, 0, :] = slopes_lower
+            new_c[-1, -1, :] = const_upper
+            new_c[-2, -1, :] = slopes_upper
+            c = new_c
+            x = extended_nodes
+
         return np.reshape(
-            _ppolyval(iterp_objects.c, iterp_objects.x, tpes, extrapolate=True),
+            _ppolyval(c, x, tpes, extrapolate=True),
+            in_shape,
+        )
+    
+class TFPlinear(TransferFunction):
+    """
+    Transfer function using a Piecewise linear polynomial.
+    
+    :param fix_at_yaxis: If True, the value when intercepting the y-axis is fixed to the value specified by ``y_intercept``. I.e. when True, the fit considers the additional point ``(0, y_intercept)``. Defaults to True.
+    :type fix_at_yaxis: bool
+    :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
+    :type y_intercept: float
+
+    This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.transferfunction.TransferFunction`.
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        tpas = [1.0, 2.5, 4.0, 7.0]
+        tp_phs = [0.8, 1.5, 1.9, 2.3]
+
+        vai.TFPlinear().preview(tpas, tp_phs)
+
+    .. image:: media/TFPlinearPreview.png
+    """
+    _PREVIEW_INPUTS = {
+        "fix_at_yaxis": {"dtype": bool, "default": True},
+        "y_intercept": {"dtype": float, "default": 0, "domain": (-1, 1)},
+    }
+    def __init__(self, 
+                 fix_at_yaxis: bool = True, 
+                 y_intercept: float = 0,
+                 ):
+        super().__init__(fix_at_yaxis=fix_at_yaxis, 
+                         y_intercept=y_intercept,
+                         )
+        self._fix_at_yaxis = fix_at_yaxis
+        self._y_intercept = y_intercept
+    
+    def __call__(self, tpas: np.ndarray, tp_phs: np.ndarray, tpes: np.ndarray):
+        in_shape = np.shape(tpes) # Save shape for output
+        tpas, tp_phs, tpes = _sanitize_inputs(tpas, tp_phs, tpes, "tpas", "tp_phs", "tpes")
+
+        # Arrays now have shapes:
+        # tpas: (n_unique_tpas,), tp_phs: (N, n_unique_tpas), tpes: (N, M)
+
+        if self._fix_at_yaxis:
+            tpas = np.hstack(([0], tpas))
+            tp_phs = np.hstack((self._y_intercept*np.ones((tp_phs.shape[0], 1)), tp_phs))
+
+        if np.any(np.diff(tpas)<=0):
+            raise ValueError(f"Input argument 'tpas' must be strictly monotonically increasing. Got {tpas}.")
+        
+        # Constant polynomial coefficient.
+        # (just the y-values at the nodes)
+        p0 = tp_phs[:, :-1]
+        # Linear polynomial coefficient.
+        # (slopes between nodes)
+        p1 = np.diff(tp_phs, axis=-1)/np.diff(tpas)
+        # Build coefficient array to be evaluated by _ppolyval.
+        # (highest power first, has shape (2, n_unique_tpas-1, N))
+        c = np.vstack([p1.T[None, ...], p0.T[None, ...]])
+        
+        return np.reshape(
+            _ppolyval(c, tpas, tpes, extrapolate=True),
             in_shape,
         )
     

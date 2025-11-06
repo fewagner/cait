@@ -13,8 +13,9 @@ from .transferfunction import TransferFunction
 def _sanitize_inputs(arr1: np.ndarray, arr2: np.ndarray, name1: str, name2: str):
     # Check inputs and standardize arrays
     orig_shape_arr1, orig_shape_arr2 = np.shape(arr1), np.shape(arr2)
-    arr1 = np.atleast_1d(arr1)
+    arr1 = np.atleast_1d(arr1).astype(float)
     arr2 = np.atleast_2d(arr2).T if np.ndim(arr2)<2 else np.atleast_2d(arr2)
+    arr2 = arr2.astype(float)
 
     if not np.ndim(arr1)==1: 
         raise ValueError(f"Array '{name1}' has to be 1d. Got shape {orig_shape_arr1}.")
@@ -293,8 +294,7 @@ class EnergyCalibration(SerializingMixin):
 
     def _get_tpr_plot_dict(self, n_fit_grid_points: int, downsample_factor: int): 
         x_start, x_stop = np.min(self._tp_x), np.max(self._tp_x)
-        x_len = x_stop - x_start
-        x_fit = np.linspace(x_start-0.01*x_len, x_stop+0.01*x_len, n_fit_grid_points)
+        x_fit = np.linspace(x_start, x_stop, n_fit_grid_points)
         y_fit, _ = self.get_tp_phs(x_fit)
 
         return {
@@ -319,7 +319,7 @@ class EnergyCalibration(SerializingMixin):
         
         tpe_start, tpe_stop = 0, np.max(self._unique_tpas)
         tpe_len = tpe_stop - tpe_start
-        tpe_fit = np.linspace(tpe_start-0.01*tpe_len, tpe_stop+0.01*tpe_len, n_fit_grid_points)
+        tpe_fit = np.linspace(tpe_start-0.1*tpe_len, tpe_stop+0.2*tpe_len, n_fit_grid_points)
         y_fit = np.reshape(self(np.atleast_1d(x), np.atleast_2d(tpe_fit)), np.shape(tpe_fit))
         
         tp_phs = np.reshape(self.get_tp_phs(x)[0], np.shape(self._unique_tpas))
@@ -452,6 +452,7 @@ class EnergyCalibration(SerializingMixin):
             xlabel="Testpulse-equivalent Height",
             **viewer_kwargs
         )
+        tpr_viewer.show_legend(False)
 
         # Already draw pulse height scatter (will not be redrawn later) and fits (will be redrawn)
         tpr_viewer.plot(self._get_tpr_plot_dict(n_fit_grid_points, downsample_factor))
