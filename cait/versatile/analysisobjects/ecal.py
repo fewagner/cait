@@ -293,8 +293,7 @@ class EnergyCalibration(SerializingMixin):
 
     def _get_tpr_plot_dict(self, n_fit_grid_points: int, downsample_factor: int): 
         x_start, x_stop = np.min(self._tp_x), np.max(self._tp_x)
-        x_len = x_stop - x_start
-        x_fit = np.linspace(x_start-0.01*x_len, x_stop+0.01*x_len, n_fit_grid_points)
+        x_fit = np.linspace(x_start, x_stop, n_fit_grid_points)
         y_fit, _ = self.get_tp_phs(x_fit)
 
         return {
@@ -319,7 +318,7 @@ class EnergyCalibration(SerializingMixin):
         
         tpe_start, tpe_stop = 0, np.max(self._unique_tpas)
         tpe_len = tpe_stop - tpe_start
-        tpe_fit = np.linspace(tpe_start-0.01*tpe_len, tpe_stop+0.01*tpe_len, n_fit_grid_points)
+        tpe_fit = np.linspace(tpe_start-0.1*tpe_len, tpe_stop+0.2*tpe_len, n_fit_grid_points)
         y_fit = np.reshape(self(np.atleast_1d(x), np.atleast_2d(tpe_fit)), np.shape(tpe_fit))
         
         tp_phs = np.reshape(self.get_tp_phs(x)[0], np.shape(self._unique_tpas))
