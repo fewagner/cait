@@ -182,7 +182,9 @@ def _sanitize_inputs(arr1: np.ndarray,
                      ):
     # Checks all input arrays for shape consistency and enforces shapes if necessary
     orig_shape_arr1, orig_shape_arr2, orig_shape_arr3 = np.shape(arr1), np.shape(arr2), np.shape(arr3)
-    arr1, arr2, arr3 = np.atleast_1d(arr1), np.atleast_2d(arr2), np.atleast_2d(arr3)
+    arr1 = np.atleast_1d(arr1).astype(float)
+    arr2 = np.atleast_2d(arr2).astype(float)
+    arr3 = np.atleast_2d(arr3).astype(float)
 
     if not np.ndim(arr1)==1: 
         raise ValueError(f"Array '{name1}' has to be 1d. Got shape {orig_shape_arr1}.")
