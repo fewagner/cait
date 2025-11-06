@@ -102,7 +102,8 @@ def _check_npoints_and_outliers(phs: np.ndarray):
 
 def _sanitize_inputs_prepare(x: np.ndarray, tp_phs: np.ndarray, remove_outliers: bool = False):
     orig_shape_x, orig_shape_tp_phs = np.shape(x), np.shape(tp_phs)
-    x, tp_phs = np.atleast_1d(x), np.atleast_1d(tp_phs)
+    x = np.atleast_1d(x).astype(float)
+    tp_phs = np.atleast_1d(tp_phs).astype(float)
 
     if not np.ndim(x)==1: 
         raise ValueError(f"Array 'x' has to be 1d. Got shape {orig_shape_x}.")
@@ -123,7 +124,7 @@ def _sanitize_inputs_prepare(x: np.ndarray, tp_phs: np.ndarray, remove_outliers:
 
 def _sanitize_inputs_call(x: np.ndarray):
     orig_shape_x = np.shape(x)
-    x = np.atleast_1d(x)
+    x = np.atleast_1d(x).astype(float)
 
     if not np.ndim(x)==1: 
         raise ValueError(f"Array 'x' has to be 1d. Got shape {orig_shape_x}.")

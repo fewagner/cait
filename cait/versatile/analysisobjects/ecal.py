@@ -13,8 +13,9 @@ from .transferfunction import TransferFunction
 def _sanitize_inputs(arr1: np.ndarray, arr2: np.ndarray, name1: str, name2: str):
     # Check inputs and standardize arrays
     orig_shape_arr1, orig_shape_arr2 = np.shape(arr1), np.shape(arr2)
-    arr1 = np.atleast_1d(arr1)
+    arr1 = np.atleast_1d(arr1).astype(float)
     arr2 = np.atleast_2d(arr2).T if np.ndim(arr2)<2 else np.atleast_2d(arr2)
+    arr2 = arr2.astype(float)
 
     if not np.ndim(arr1)==1: 
         raise ValueError(f"Array '{name1}' has to be 1d. Got shape {orig_shape_arr1}.")
