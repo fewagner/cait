@@ -512,9 +512,11 @@ class TFPchip(TransferFunction):
     Transfer function using a Piecewise Cubic Hermite Interpolating Polynomial (monotonic cubic splines).
     
     :param fix_at_yaxis: If True, the value when intercepting the y-axis is fixed to the value specified by ``y_intercept``. I.e. when True, the fit considers the additional point ``(0, y_intercept)``. Defaults to True.
-    :type fix_at_yaxis: bool
+    :type fix_at_yaxis: bool, optional
     :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
-    :type y_intercept: float
+    :type y_intercept: float, optional
+    :param extrapolate_tangent: If True, values outside the interpolation range (extrapolation) are calculated using the tangent of the polynomial at the last node. This can prevent nonsensical result due to extrapolating cubic polynomials too far. Defaults to True.
+    :type extrapolate_tangent: bool, optional
 
     This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.transferfunction.TransferFunction`.
 
@@ -536,16 +538,20 @@ class TFPchip(TransferFunction):
     _PREVIEW_INPUTS = {
         "fix_at_yaxis": {"dtype": bool, "default": True},
         "y_intercept": {"dtype": float, "default": 0, "domain": (-1, 1)},
+        "extrapolate_tangent": {"dtype": bool, "default": True},
     }
     def __init__(self, 
                  fix_at_yaxis: bool = True, 
                  y_intercept: float = 0,
+                 extrapolate_tangent: bool = True,
                  ):
         super().__init__(fix_at_yaxis=fix_at_yaxis, 
                          y_intercept=y_intercept,
+                         extrapolate_tangent=True,
                          )
         self._fix_at_yaxis = fix_at_yaxis
         self._y_intercept = y_intercept
+        self._extrapolate_tangent = extrapolate_tangent
         
     def _pchip(self, tpas: np.ndarray, tp_phs: np.ndarray):
         if self._fix_at_yaxis:
@@ -570,8 +576,41 @@ class TFPchip(TransferFunction):
         # We only want to evaluate a given polynomial for M points. For that
         # the call function of PchipInterpolator was modified and implemented
         # slightly differently in _ppolyval.
+        # Node array has shape (n_unique_tpa,)
+        x = iterp_objects.x
+        # Coefficient array has shape (4, n_unique_tpa-1, N)
+        c = iterp_objects.c
+
+        # Add polynomial coefficients to both ends of coefficient array c
+        # to extrapolate using a polynomial chosen to represent the slope
+        # at the boundary nodes.
+        if self._extrapolate_tangent:
+            # p(x) = ax^3 + bx^2 + cx + d
+            # p'(x) = 3ax^2 + 2bx + c
+            p_x = lambda i, dx: c[0, i, :]*dx**3 + c[1, i, :]*dx**2 + c[2, i, :]*dx + c[3, i, :]
+            p_prime_x = lambda i, dx: 3*c[0, i, :]*dx**2 + 2*c[1, i, :]*dx + c[2, i, :]
+
+            # Slopes at the first and last node
+            slopes_lower, slopes_upper = p_prime_x(0, 0), p_prime_x(-1, x[-1]-x[-2])
+            # Constant coefficients at the last node and the (first-1) node
+            const_lower, const_upper = p_x(0, 0)-slopes_lower, p_x(-1, x[-1]-x[-2])
+
+            # Add nodes (first-1) and (last+1). By adding exactly 1, we know that the
+            # y-difference is exactly the slope.
+            extended_nodes = np.hstack([[x[0]-1], x, [x[-1]+1]])
+            # Copy existing coefficient array and insert linear/constant coefficients
+            # for the edges.
+            new_c = np.zeros((c.shape[0], c.shape[1]+2, c.shape[2]))
+            new_c[:, 1:-1, :] = c
+            new_c[-1, 0, :] = const_lower
+            new_c[-2, 0, :] = slopes_lower
+            new_c[-1, -1, :] = const_upper
+            new_c[-2, -1, :] = slopes_upper
+            c = new_c
+            x = extended_nodes
+
         return np.reshape(
-            _ppolyval(iterp_objects.c, iterp_objects.x, tpes, extrapolate=True),
+            _ppolyval(c, x, tpes, extrapolate=True),
             in_shape,
         )
     
