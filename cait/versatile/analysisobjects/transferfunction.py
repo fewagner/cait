@@ -391,7 +391,7 @@ class TransferFunction(SerializingMixin, ABC):
             axis=1
         ).flatten()
         bisec_possible = sign_changes > 0
-        
+
         bisec_x0 = x[sign_changes[bisec_possible]-1][:, None]
         bisec_x1 = x[sign_changes[bisec_possible]][:, None]
 
@@ -572,6 +572,75 @@ class TFPchip(TransferFunction):
         # slightly differently in _ppolyval.
         return np.reshape(
             _ppolyval(iterp_objects.c, iterp_objects.x, tpes, extrapolate=True),
+            in_shape,
+        )
+    
+class TFPlinear(TransferFunction):
+    """
+    Transfer function using a Piecewise linear polynomial.
+    
+    :param fix_at_yaxis: If True, the value when intercepting the y-axis is fixed to the value specified by ``y_intercept``. I.e. when True, the fit considers the additional point ``(0, y_intercept)``. Defaults to True.
+    :type fix_at_yaxis: bool
+    :param y_intercept: The y-intercept corresponding to the previous argument. Defaults to 0.
+    :type y_intercept: float
+
+    This example just demonstrates how the interpolation function looks. For a general description on how to use it, see :class:`cait.versatile.analysisobjects.transferfunction.TransferFunction`.
+
+    **Example:**
+
+    .. code-block:: python
+    
+        import numpy as np
+        import scipy as sp
+        import cait.versatile as vai
+
+        tpas = [1.0, 2.5, 4.0, 7.0]
+        tp_phs = [0.8, 1.5, 1.9, 2.3]
+
+        vai.TFPlinear().preview(tpas, tp_phs)
+
+    .. image:: media/TFPlinearPreview.png
+    """
+    _PREVIEW_INPUTS = {
+        "fix_at_yaxis": {"dtype": bool, "default": True},
+        "y_intercept": {"dtype": float, "default": 0, "domain": (-1, 1)},
+    }
+    def __init__(self, 
+                 fix_at_yaxis: bool = True, 
+                 y_intercept: float = 0,
+                 ):
+        super().__init__(fix_at_yaxis=fix_at_yaxis, 
+                         y_intercept=y_intercept,
+                         )
+        self._fix_at_yaxis = fix_at_yaxis
+        self._y_intercept = y_intercept
+    
+    def __call__(self, tpas: np.ndarray, tp_phs: np.ndarray, tpes: np.ndarray):
+        in_shape = np.shape(tpes) # Save shape for output
+        tpas, tp_phs, tpes = _sanitize_inputs(tpas, tp_phs, tpes, "tpas", "tp_phs", "tpes")
+
+        # Arrays now have shapes:
+        # tpas: (n_unique_tpas,), tp_phs: (N, n_unique_tpas), tpes: (N, M)
+
+        if self._fix_at_yaxis:
+            tpas = np.hstack(([0], tpas))
+            tp_phs = np.hstack((self._y_intercept*np.ones((tp_phs.shape[0], 1)), tp_phs))
+
+        if np.any(np.diff(tpas)<=0):
+            raise ValueError(f"Input argument 'tpas' must be strictly monotonically increasing. Got {tpas}.")
+        
+        # Constant polynomial coefficient.
+        # (just the y-values at the nodes)
+        p0 = tp_phs[:, :-1]
+        # Linear polynomial coefficient.
+        # (slopes between nodes)
+        p1 = np.diff(tp_phs, axis=-1)/np.diff(tpas)
+        # Build coefficient array to be evaluated by _ppolyval.
+        # (highest power first, has shape (2, n_unique_tpas-1, N))
+        c = np.vstack([p1.T[None, ...], p0.T[None, ...]])
+        
+        return np.reshape(
+            _ppolyval(c, tpas, tpes, extrapolate=True),
             in_shape,
         )
     
