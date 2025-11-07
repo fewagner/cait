@@ -58,10 +58,8 @@ class SerializingMixin:
         # If argument is a subclass, call its to_dict method
         if any([isinstance(item, msc) for msc in self._my_subclasses]):
             return item.to_dict()
-        # If argument is a list of subclasses, call their to_dict methods
-        # (this just checks if the first argument in the list is a subclass and
-        # assumes that all others are)
-        elif isinstance(item, list) and item:# and any([isinstance(item[0], msc) for msc in self._my_subclasses]):
+        # If argument is a list, recurse over its members
+        elif isinstance(item, list) and item:
             return [self._serialize(x) for x in item]
         # If any of the arguments are numpy arrays, we convert them to lists.
         # (because numpy arrays cannot be serialized)
