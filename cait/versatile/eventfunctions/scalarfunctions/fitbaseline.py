@@ -118,31 +118,42 @@ class FitBaseline(FitFncBaseClass):
 
             # Exponential fit
             if self._model in ['exponential', 'exp']:
-                if np.array(event).ndim > 1:
-                    self._fitpar = np.array(
-                        [
-                          curve_fit(exponential_decay,
-                                    self._xdata[self._where],
-                                    event[k, self._where],
-                                    bounds=([0, 0, -np.inf],[np.inf,np.inf,np.inf]))[0]
-                          for k in range(np.array(event).shape[0])
-                        ]
-                    )
+                try:
+                    if np.array(event).ndim > 1:
+                        self._fitpar = np.array(
+                            [
+                              curve_fit(exponential_decay,
+                                        self._xdata[self._where],
+                                        event[k, self._where],
+                                        bounds=([0, 0, -np.inf],[np.inf,np.inf,np.inf]))[0]
+                              for k in range(np.array(event).shape[0])
+                            ]
+                        )
 
-                    self._rms = np.array(
-                        [
-                            np.sqrt(np.mean((event[k, self._where] - exponential_decay(self._xdata[self._where], *self._fitpar[k]))**2))
-                            for k in range(np.array(event).shape[0])
-                        ]
-                    )
+                        self._rms = np.array(
+                            [
+                                np.sqrt(np.mean((event[k, self._where] - exponential_decay(self._xdata[self._where], *self._fitpar[k]))**2))
+                                for k in range(np.array(event).shape[0])
+                            ]
+                        )
 
-                else:
-                    self._fitpar, *_ = curve_fit(exponential_decay,
-                                                self._xdata[self._where],
-                                                event[self._where],
-                                                bounds=([0, 0, -np.inf],[np.inf, np.inf, np.inf]))
+                    else:
+                        self._fitpar, *_ = curve_fit(exponential_decay,
+                                                    self._xdata[self._where],
+                                                    event[self._where],
+                                                    bounds=([0, 0, -np.inf],[np.inf, np.inf, np.inf]))
 
-                    self._rms = np.sqrt(np.mean((event[self._where] - exponential_decay(self._xdata[self._where], *self._fitpar))**2))
+                        self._rms = np.sqrt(np.mean((event[self._where] - exponential_decay(self._xdata[self._where], *self._fitpar))**2))
+
+                except RuntimeError as e:
+                    # Failed to fit an exponential; fall back to model=0
+                    if event.ndim > 1:
+                        self._fitpar = np.array([(0, 0, np.mean(event[k, self._where])) for k in range(event.shape[0])])
+                        self._rms = np.array([np.std(event[k, self._where]) for k in range(event.shape[0])])
+                    else:
+                        self._fitpar = np.array([(0, 0, np.mean(event[self._where]))])
+                        self._rms = np.array([np.std(event[self._where])])
+
 
             # Polynomial fit
             else:
