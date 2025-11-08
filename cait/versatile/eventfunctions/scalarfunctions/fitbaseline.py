@@ -89,8 +89,7 @@ class FitBaseline(FitFncBaseClass):
         # Adapted model which is more stable in case of pre-trigger pile-up
         elif self._model == 'voltage_minimum':
             # Get onset
-            t0s = np.atleast_1d(np.astype(self._mp(event)[1], np.int32))
-            t0s += event.shape[-1] // 4  # Correct for difference in new MP
+            t0s = np.astype(np.atleast_1d(self._mp(event)[1]), np.int32)
             # Easily handle multiple channels
             events = np.atleast_2d(event)
             # Model was developed for a fixed record length. Here, the indices
@@ -111,8 +110,8 @@ class FitBaseline(FitFncBaseClass):
                 self._fitpar[i] = np.mean(event[t_min-k1:t_min-k2])
                 self._rms[i] = np.std(event[t_min-k1:t_min-k2])
 
-            self._fitpar = np.squeeze(self._fitpar)
-            self._rms = np.squeeze(self._rms)
+            self._fitpar = np.squeeze(self._fitpar)[..., None]
+            self._rms = np.squeeze(self._rms)[..., None]
 
         else:
 
