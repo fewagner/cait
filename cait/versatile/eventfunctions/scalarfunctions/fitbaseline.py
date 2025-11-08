@@ -61,8 +61,8 @@ class FitBaseline(FitFncBaseClass):
         self._A = None
 
         if isinstance(model, str) and model == 'voltage_minimum':
-            from .calcmp import CalcMP
-            self._mp = CalcMP()
+            from .mainparameters import MainParameters
+            self._mp = MainParameters()
 
     def __call__(self, event):
         event = np.array(event)
@@ -90,6 +90,7 @@ class FitBaseline(FitFncBaseClass):
         elif self._model == 'voltage_minimum':
             # Get onset
             t0s = np.atleast_1d(np.astype(self._mp(event)[1], np.int32))
+            t0s += event.shape[-1] // 4  # Correct for difference in new MP
             # Easily handle multiple channels
             events = np.atleast_2d(event)
             # Model was developed for a fixed record length. Here, the indices
