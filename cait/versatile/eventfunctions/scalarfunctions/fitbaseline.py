@@ -17,7 +17,7 @@ class FitBaseline(FitFncBaseClass):
     Fit voltage traces with a polynomial or decaying exponential and return the fit parameters as well as the RMS.
     Also works for multiple channels simultaneously.
 
-    :param model: Order of the polynomial, 'exponential'/'exp' (exponential baseline model), or 'voltage_minimum' (subtracting a constant value, which is close to the minimum of the voltage trace before the pulse -- with some fluctuation mitigation. This works better than the standard method when there is a pileup in the pre-trigger region), defaults to 0, i.e. a constant baseline.
+    :param model: Order of the polynomial, 'exponential'/'exp' (exponential baseline model; in the case of a failed fit, falls back to constant baseline, i.e. model=0), or 'voltage_minimum' (subtracting a constant value, which is close to the minimum of the voltage trace before the pulse -- with some fluctuation mitigation. This works better than the standard method when there is a pileup in the pre-trigger region), defaults to 0, i.e. a constant baseline.
     :type model: Union[int, str]
     :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where*record_length)` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None)`.
     :type where: Union[List[bool], slice, float]
