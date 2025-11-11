@@ -172,7 +172,7 @@ class FitBaseline(FitFncBaseClass):
 
     @property
     def batch_support(self):
-        return 'trivial'
+        return 'full'
 
     def model(self, x: List, par: List):
         """
