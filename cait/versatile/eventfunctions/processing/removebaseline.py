@@ -48,7 +48,7 @@ class RemoveBaseline(FncBaseClass):
 
     @property
     def batch_support(self):
-        return 'trivial'
+        return 'full'
 
     def preview(self, event) -> dict:
         self(event)
