@@ -34,7 +34,7 @@ class SerializingMixin:
         Return a dictionary representation of the object.
         """
         # Find all serializable classes
-        my_subclasses = get_serializable_classes()
+        self._my_subclasses = get_serializable_classes()
 
         # Replace serializable classes (subclasses of SerializingMixin)
         # by their dictionary representation
@@ -42,34 +42,39 @@ class SerializingMixin:
         kwargs = dict()
 
         for a in self._init_args:
-            # If argument is a subclass, call its to_dict method
-            if any([isinstance(a, msc) for msc in my_subclasses]):
-                args.append(a.to_dict())
-            # If argument is a list of subclasses, call their to_dict methods
-            # (this just checks if the first argument in the list is a subclass and
-            # assumes that all others are)
-            elif isinstance(a, list) and a and any([isinstance(a[0], msc) for msc in my_subclasses]):
-                args.append([x.to_dict() for x in a])
-            # If any of the arguments are numpy arrays, we convert them to lists.
-            # (because numpy arrays cannot be serialized)
-            elif isinstance(a, np.ndarray):
-                args.append(a.tolist())
-            # Else, just use the argument as is
-            else:
-                args.append(a)
+            args.append(self._serialize(a))
 
         # Same for keyword arguments
         for k,v in self._init_kwargs.items():
-            if any([isinstance(v, msc) for msc in my_subclasses]):
-                kwargs[k] = v.to_dict()
-            elif isinstance(v, list) and v and any([isinstance(v[0], msc) for msc in my_subclasses]):
-                kwargs[k] =  [x.to_dict() for x in v]
-            elif isinstance(v, np.ndarray):
-                kwargs[k] = v.tolist()
-            else:
-                kwargs[k] = v
+            kwargs[k] = self._serialize(v)
+
+        # clean up
+        del self._my_subclasses
         
         return {"class": self.__class__.__name__, "args": args, "kwargs": kwargs, "cait_version": __version__}
+
+
+    def _serialize(self, item):
+        # If argument is a subclass, call its to_dict method
+        if any([isinstance(item, msc) for msc in self._my_subclasses]):
+            return item.to_dict()
+        # If argument is a list, recurse over its members
+        elif isinstance(item, list) and item:
+            return [self._serialize(x) for x in item]
+        # If any of the arguments are numpy arrays, we convert them to lists.
+        # (because numpy arrays cannot be serialized)
+        elif isinstance(item, np.ndarray):
+            return item.tolist()
+        # If the item is a dictionary, recurse
+        elif isinstance(item, dict):
+            out = {}
+            for k, v in item.items():
+                out[k] = self._serialize(v)
+            return out
+        # Else, just use the argument as is
+        else:
+            return item
+
     
     @classmethod
     def from_dict(cls, d: dict):
