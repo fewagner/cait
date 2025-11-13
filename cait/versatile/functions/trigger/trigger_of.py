@@ -28,10 +28,9 @@ def filter_chunk(data: np.ndarray, of: np.ndarray, record_length: int):
     """
     # The scipy function 'oaconvolve' does NOT assume the response function to be in wrap-around order.
     # Therefore, we have to shift it such that the maximum position is again at 1/4 of the record window
-    offset = record_length // 4
-    return sp.signal.oaconvolve(np.roll(np.fft.irfft(of), offset), data, mode="full")[
-        record_length + offset : -2 * record_length + offset + 1
-    ]
+    omega = 2 * np.pi * np.fft.rfftfreq(record_length)
+    phase = np.exp(1j * record_length/4 * omega)
+    return sp.signal.oaconvolve(np.fft.irfft(of*phase), data, mode="valid")[record_length - record_length//4 + 1: -record_length//4]
 
 
 def filter_chunk_2d(data: np.ndarray, of: np.ndarray, record_length: int):
