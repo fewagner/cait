@@ -204,8 +204,20 @@ def _trigger_helper(dh,
         dh.set(f"event_building-{name_appendix}", cpas=final_cpas, dtype=np.float32, overwrite_existing=True)
         
     if n_noise > 0:
-        inds = stream.time.timestamp_to_ind(dh.get(f"event_building-{name_appendix}", "event_timestamps"))
-        noise_inds = vai.sample_noise(inds.tolist(), dh.record_length, n_samples=n_noise)
+        temp_ts = dh.get(f"event_building-{name_appendix}", "event_timestamps")
+        if dh.exists(f"event_building-{name_appendix}", "tp_ts"):
+            temp_ts = np.hstack([temp_ts, dh.get(f"event_building-{name_appendix}", "tp_ts")])
+        if dh.exists(f"event_building-{name_appendix}", "cp_ts"):
+            temp_ts = np.hstack([temp_ts, dh.get(f"event_building-{name_appendix}", "cp_ts")])
+
+        inds = stream.time.timestamp_to_ind(temp_ts)
+        # Remove timestamps which would result in a trace extending outside of the stream's domain.
+        # (We are a bit generous here and exclude a full record window in the beginning and in the end
+        # of the stream even though 1/4 and 3/4 of a record window would be enough, but then we have to 
+        # think about off-by-one errors and we are to lazy for that)
+        inside_flag = (inds > dh.record_length) * (inds < len(stream) - dh.record_length)
+        
+        noise_inds = vai.sample_noise(inds[inside_flag].tolist(), dh.record_length, n_samples=n_noise)
         dh.set(f"event_building-{name_appendix}", noise_ts=stream.time[noise_inds], dtype=np.int64, overwrite_existing=True)
 
     # save events in events group
