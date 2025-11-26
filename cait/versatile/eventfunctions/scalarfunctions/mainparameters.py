@@ -166,13 +166,6 @@ class MainParameters(FncBaseClass):
         _dt = self._dt_us / 1000 if self._dt_us is not None else 1
 
         par, bl_rms = self._fitbaseline(event)
-        if self._fitbaseline.model == 0:
-            # The RMS is retrieved from the residuals of np.linalg.lstsq,
-            # which is not divided by sqrt(N) (so it's the RSS, not RMS).
-            # Divide by sqrt(N) for RMS.
-            # If xdata is None (which is the case when model=0) then np.std
-            # is used, which does divide by sqrt(N).
-            bl_rms /= np.sqrt(self._fitbaseline.xdata[self._fitbaseline.where].shape[0])
 
         bl_rms = bl_rms.reshape(event.shape[:-1])
         bl_offset = self._fitbaseline.model(0, par).reshape(event.shape[:-1])
@@ -187,8 +180,9 @@ class MainParameters(FncBaseClass):
             # Approximate from endpoints of the `where` argument
             x0 = self._fitbaseline.where.start
             x1 = self._fitbaseline.where.stop
+            step = min(100, (x1 - x0) // 2)
             bl_slope = (
-                    (np.mean(event[..., x1:x1+100], axis=-1) - np.mean(event[..., x0:x0+100], axis=-1)) /
+                    (np.mean(event[..., x1-step:x1], axis=-1) - np.mean(event[..., x0:x0+step], axis=-1)) /
                     (x1 - x0)
                     )
 

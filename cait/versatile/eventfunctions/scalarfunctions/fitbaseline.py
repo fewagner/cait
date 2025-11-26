@@ -17,10 +17,10 @@ class FitBaseline(FitFncBaseClass):
     Fit voltage traces with a polynomial or decaying exponential and return the fit parameters as well as the RMS.
     Also works for multiple channels simultaneously.
 
-    :param model: Order of the polynomial, 'exponential'/'exp' (exponential baseline model), or 'voltage_minimum' (subtracting a constant value, which is close to the minimum of the voltage trace before the pulse -- with some fluctuation mitigation. This works better than the standard method when there is a pileup in the pre-trigger region), defaults to 0, i.e. a constant baseline.
+    :param model: Order of the polynomial, 'exponential'/'exp' (exponential baseline model; in the case of a failed fit, falls back to constant baseline, i.e. model=0), or 'voltage_minimum' (subtracting a constant value, which is close to the minimum of the voltage trace before the pulse -- with some fluctuation mitigation. This works better than the standard method when there is a pileup in the pre-trigger region), defaults to 0, i.e. a constant baseline.
     :type model: Union[int, str]
-    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where)*record_length` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None)`.
-    :type where: Union[List[bool], slice, int]
+    :param where: Specifies a subset of data points to be used in the fit: Either a boolean flag of the same length of the voltage traces, a slice object (e.g. slice(0,50) for using the first 50 data points), or a float. If a float `where` is passed, the first `int(where*record_length)` samples are used (e.g. if `where=1/8`, the first 1/8th of the record window is used). Defaults to `slice(None, None, None)`.
+    :type where: Union[List[bool], slice, float]
     :param xdata: x-data to use for the fit (has no effect for `order=0`). Specifying xdata is not necessary in general but if you want your fit parameters to have physical units (e.g. time constants) instead of just samples, you may use this option. Defaults to `None`, in which case `xdata=np.linspace(0,1,record_length)`.
     :type xdata: List[float]
 
@@ -61,8 +61,8 @@ class FitBaseline(FitFncBaseClass):
         self._A = None
 
         if isinstance(model, str) and model == 'voltage_minimum':
-            from .calcmp import CalcMP
-            self._mp = CalcMP()
+            from .mainparameters import MainParameters
+            self._mp = MainParameters()
 
     def __call__(self, event):
         event = np.array(event)
@@ -77,18 +77,19 @@ class FitBaseline(FitFncBaseClass):
             event = event.reshape(-1, event.shape[-1])
 
         # ATTENTION: this is set only once
-        if isinstance(self._where, float):
+        if isinstance(self._where, (float, int)):
+            assert self._where <= 1, ValueError(f"If 'where' is a float, must be <= 1.  Got {self._where}")
             self._where = slice(0, int(np.array(event).shape[-1]*self._where))
 
         # Shortcut for constant baseline model
         if self._model == 0:
-            self._fitpar =  np.mean(event[..., self._where], axis=-1)
+            self._fitpar =  np.mean(event[..., self._where], axis=-1)[..., None]
             self._rms = np.std(event[..., self._where], axis=-1)
 
         # Adapted model which is more stable in case of pre-trigger pile-up
         elif self._model == 'voltage_minimum':
             # Get onset
-            t0s = np.atleast_1d(np.astype(self._mp(event)[1], np.int32))
+            t0s = np.astype(np.atleast_1d(self._mp(event)[1]), np.int32)
             # Easily handle multiple channels
             events = np.atleast_2d(event)
             # Model was developed for a fixed record length. Here, the indices
@@ -109,13 +110,12 @@ class FitBaseline(FitFncBaseClass):
                 self._fitpar[i] = np.mean(event[t_min-k1:t_min-k2])
                 self._rms[i] = np.std(event[t_min-k1:t_min-k2])
 
-            self._fitpar = np.squeeze(self._fitpar)
-            self._rms = np.squeeze(self._rms)
+            self._fitpar = np.squeeze(self._fitpar)[..., None]
+            self._rms = np.squeeze(self._rms)[..., None]
 
-        else:
-
-            # Exponential fit
-            if self._model in ['exponential', 'exp']:
+        # Exponential fit
+        elif self._model in ['exponential', 'exp']:
+            try:
                 if np.array(event).ndim > 1:
                     self._fitpar = np.array(
                         [
@@ -142,14 +142,24 @@ class FitBaseline(FitFncBaseClass):
 
                     self._rms = np.sqrt(np.mean((event[self._where] - exponential_decay(self._xdata[self._where], *self._fitpar))**2))
 
-            # Polynomial fit
-            else:
-                if self._A is None:
-                    self._A = np.array([self._xdata[self._where]**k for k in range(self._model+1)]).T
+            except RuntimeError as e:
+                # Failed to fit an exponential; fall back to model=0
+                if event.ndim > 1:
+                    self._fitpar = np.array([(0, 0, np.mean(event[k, self._where])) for k in range(event.shape[0])])
+                    self._rms = np.array([np.std(event[k, self._where]) for k in range(event.shape[0])])
+                else:
+                    self._fitpar = np.array([(0, 0, np.mean(event[self._where]))])
+                    self._rms = np.array([np.std(event[self._where])])
 
-                par, err, *_ = np.linalg.lstsq(self._A, event[..., self._where].T, rcond=None)
-                self._fitpar = par.T
-                self._rms = np.sqrt(err)
+
+        # Polynomial fit
+        else:
+            if self._A is None:
+                self._A = np.array([self._xdata[self._where]**k for k in range(self._model+1)]).T
+
+            par, err, *_ = np.linalg.lstsq(self._A, event[..., self._where].T, rcond=None)
+            self._fitpar = par.T
+            self._rms = np.sqrt(err / self._xdata[self._where].shape[0])
 
 
         if orig_shape is not None:
@@ -160,7 +170,7 @@ class FitBaseline(FitFncBaseClass):
 
     @property
     def batch_support(self):
-        return 'trivial'
+        return 'full'
 
     def model(self, x: List, par: List):
         """
