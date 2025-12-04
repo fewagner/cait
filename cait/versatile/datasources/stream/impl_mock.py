@@ -226,7 +226,7 @@ class MockStream(StreamBaseClass):
         self._pulse_shape =  {f"Ch{k}": ps for k, ps in enumerate(new_pulse_shape)}
         
         # Set up testpulses
-        n_tp = int(duration_h*3600/(tp_interval_s*len(tpa))) - 1
+        n_tp = int(duration_h*3600/(tp_interval_s)) - 1
         self._tp_ts = self._start + np.arange(1, n_tp+1)*int(tp_interval_s*1e6)
         self._tpas = np.tile(tpa, n_tp//len(tpa) + 1)[:n_tp]
         self._tp_phs = {f"TP{k}": self._tpas/(c*cpe_tp_mod)  for k, c in enumerate([cpe] + cpe_add)}
