@@ -2,7 +2,6 @@ import numpy as np
 
 from ..functionbase import FncBaseClass
 from ..scalarfunctions.mainparameters import MainParameters
-from ..processing.removebaseline import RemoveBaseline
 
 class FluxQuantumLossCorrection(FncBaseClass):
     """
@@ -70,7 +69,6 @@ class FluxQuantumLossCorrection(FncBaseClass):
                  thresh: float = 0.2,
                  true_pulseheight: float = None,
                  return_shift_value: bool = False):
-        self._remove_baseline = RemoveBaseline(dict(model="voltage_minimum"))
         self._mp = MainParameters()
         self._method = method
         self._thresh = thresh
@@ -97,7 +95,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
         if isinstance(self._fql_voltage, (int, float)):
             self._thresh = np.full(event.shape[0], self._fql_voltage)
 
-        self._event_nobl = self._remove_baseline(event)
+        self._event_nobl = np.array(event)
         self._corrected_event = np.array(self._event_nobl)
 
         self._ph = np.zeros(event.shape[0])
@@ -166,6 +164,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
                 return self._flux_loss[ic]
 
             if self._flux_loss[ic] >= self._thresh[ic]: # only correct actual fql, not baseline drifts or the like
+                print("!")
                 mp = MainParameters(bcs={'length': 1}, fbl=dict(model=0, where=1/8)) # recalculate onset without smoothing to be more precise
                 self._t0[ic] = mp(event[ic])[2]
                 self._t0[ic] += event.shape[-1] // 4
