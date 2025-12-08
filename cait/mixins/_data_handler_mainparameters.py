@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, List, Callable
 from deprecation import deprecated
 
 import numpy as np
@@ -12,7 +12,9 @@ from ..styles._print_styles import txt_fmt
 class MainParametersMixin:
     def cmp(self,
             group: str = 'events',
-            batch_size = 2,
+            with_processing: List[Callable] = [],
+            prefix: str = None,
+            batch_size: int = 2,
             **kwargs,
             ):
         """
@@ -24,6 +26,22 @@ class MainParametersMixin:
         :param group: The group for which the main parameters are calculated,
             e.g. "events", "testpulses", "noise", etc.  Defaults to "events".
         :type group: str, optional
+
+        :param with_processing: Optional processing to apply to each event before
+            :class:`cait.versatile.MainParameters` is applied.  See
+            :func:`cait.versatile.iterators.IteratorBaseClass.add_processing`.
+        :type with_processing: callable or list of callable, optional
+
+        :param prefix: Optional prefix to prepend to the names normally written to
+            the DataHandler.  Useful e.g. in conjunction with `with_processing` or `kwargs`
+            arguments to separate different passses with.  The prefix is separated from the
+            name automatically by an underscore, i.e. `prefix=fqlc` will result in datasets
+            such as `fqlc_pulse_height`, `fqlc_onset`, etc.
+        :type prefix: str, optional
+
+        :param batch_size: Override the default batch size of 2 when using
+            :func:`cait.versatile.apply`.  May improve speed in certain circumstances.
+        :type batch_size: int, optional
 
         :param kwargs: Keyword arguments to pass to :class:`cait.versatile.MainParameters`.
         :type kwargs: Any
@@ -48,7 +66,7 @@ class MainParametersMixin:
             # CMP for group "testpulses"
             dh.cmp("testpulses")
         """
-        events = self.get_event_iterator(group, batch_size=batch_size)
+        events = self.get_event_iterator(group, batch_size=batch_size).with_processing(with_processing)
 
         mp = vai.MainParameters(self.dt_us, **kwargs)
         out = vai.apply(mp, events, pb_prefix='Calculating main parameters')
@@ -56,7 +74,7 @@ class MainParametersMixin:
         for n, t, d in zip(mp.names, mp.types, out):
             self.set(
                     group,
-                    **{n: np.atleast_2d(d.T)},
+                    **{f"{prefix}_{n}" if prefix is not None else n: np.atleast_2d(d.T)},
                     dtype=t,
                     overwrite_existing=True,
                     write_to_virtual=False,
