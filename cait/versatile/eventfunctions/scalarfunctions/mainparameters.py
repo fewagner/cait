@@ -69,8 +69,8 @@ class MainParameters(FncBaseClass):
     """
     params = (
             ("pulse_height", float),
-            ("peak_position", int),
-            ("onset", int),
+            ("peak_position", float),
+            ("onset", float),
             ("rise_time", float),
             ("decay_time", float),
             ("rms", float),
