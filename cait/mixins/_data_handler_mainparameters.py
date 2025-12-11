@@ -75,7 +75,7 @@ class MainParametersMixin:
         for n, t, d in zip(mp.names, mp.types, out):
             self.set(
                     group,
-                    **{f"{tag}_{n}" if tag is not None else n: np.atleast_2d(d.T)},
+                    **{f"{n}" + (f"_{tag}" if tag else ""): np.atleast_2d(d.T)},
                     dtype=t,
                     overwrite_existing=True,
                     write_to_virtual=False,
