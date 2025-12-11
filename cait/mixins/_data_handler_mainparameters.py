@@ -13,7 +13,7 @@ class MainParametersMixin:
     def cmp(self,
             group: str = 'events',
             with_processing: List[Callable] = [],
-            prefix: str = None,
+            tag: str = None,
             batch_size: int = 2,
             **kwargs,
             ):
@@ -32,12 +32,12 @@ class MainParametersMixin:
             :func:`cait.versatile.iterators.IteratorBaseClass.add_processing`.
         :type with_processing: callable or list of callable, optional
 
-        :param prefix: Optional prefix to prepend to the names normally written to
+        :param tag: Optional suffix to append to the names normally written to
             the DataHandler.  Useful e.g. in conjunction with `with_processing` or `kwargs`
-            arguments to separate different passses with.  The prefix is separated from the
-            name automatically by an underscore, i.e. `prefix=fqlc` will result in datasets
-            such as `fqlc_pulse_height`, `fqlc_onset`, etc.
-        :type prefix: str, optional
+            arguments to separate different passses.  The suffix is separated from the
+            name automatically by an underscore, i.e. `tag=fqlc` will result in datasets
+            such as `pulse_height_fqlc`, `onset_fqlc`, etc.
+        :type tag: str, optional
 
         :param batch_size: Override the default batch size of 2 when using
             :func:`cait.versatile.apply`.  May improve speed in certain circumstances.
