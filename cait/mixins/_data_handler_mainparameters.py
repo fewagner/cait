@@ -24,26 +24,27 @@ class MainParametersMixin:
         calculated here.
 
         :param group: The group for which the main parameters are calculated,
-            e.g. "events", "testpulses", "noise", etc.  Defaults to "events".
+            e.g. `"events"`, `"testpulses"`, `"noise"`, etc.  Defaults to `"events"`.
         :type group: str, optional
 
         :param with_processing: Optional processing to apply to each event before
-            :class:`cait.versatile.MainParameters` is applied.  See
-            :func:`cait.versatile.iterators.IteratorBaseClass.add_processing`.
+            :class:`~cait.versatile.MainParameters` is applied.  See
+            :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.add_processing`.
         :type with_processing: callable or list of callable, optional
 
         :param tag: Optional suffix to append to the names normally written to
             the DataHandler.  Useful e.g. in conjunction with `with_processing` or `kwargs`
             arguments to separate different passses.  The suffix is separated from the
-            name automatically by an underscore, i.e. `tag=fqlc` will result in datasets
-            such as `pulse_height_fqlc`, `onset_fqlc`, etc.
+            name automatically by an underscore, i.e. `tag="fqlc"` will result in datasets
+            such as `pulse_height_fqlc`, `onset_fqlc`, etc.  Defaults to `None`, in
+            which case no suffix is appended.
         :type tag: str, optional
 
         :param batch_size: Override the default batch size of 2 when using
-            :func:`cait.versatile.apply`.  May improve speed in certain circumstances.
+            :func:`~cait.versatile.apply`.  May improve speed in certain circumstances.
         :type batch_size: int, optional
 
-        :param kwargs: Keyword arguments to pass to :class:`cait.versatile.MainParameters`.
+        :param kwargs: Keyword arguments to pass to :class:`~cait.versatile.MainParameters`.
         :type kwargs: Any
 
         .. code-block:: python
