@@ -24,3 +24,4 @@ documantation page exists.
    mixins/simulate_mixin
    mixins/bin_mixin
    mixins/trigger_collection_mixin
+   mixins/mainparameters_mixin
