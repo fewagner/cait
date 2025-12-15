@@ -13,7 +13,7 @@ class MainParameters(FncBaseClass):
     Calculate main parameters for an event.  These parameters are:
 
         - **pulse height** (V): Height of the event
-        - **peak_position** (ms): Position of the peak.
+        - **peak position** (ms): Position of the peak.
         - **onset** (ms): Start of the pulse, which is assumed to be where the trace rises to 20% of the pulse height.  This value is shifted relative to 1/4 of the record length, so should be negative for normal pulses.
         - **rise time** (ms): Time from onset to reach 80% of the pulse height.
         - **decay time** (ms): Time (after pulse maximum) from 90% of pulse height to 36.8% (1/e) of pulse height.
