@@ -1,7 +1,7 @@
-from typing import Union
-from deprecation import deprecated
+from typing import Callable, List, Union
 
 import numpy as np
+from deprecation import deprecated
 
 import cait as ai
 import cait.versatile as vai
@@ -12,7 +12,9 @@ from ..styles._print_styles import txt_fmt
 class MainParametersMixin:
     def cmp(self,
             group: str = 'events',
-            batch_size = 2,
+            with_processing: List[Callable] = [],
+            tag: str = None,
+            batch_size: int = 2,
             **kwargs,
             ):
         """
@@ -21,11 +23,15 @@ class MainParametersMixin:
         See :class:`cait.versatile.MainParameters` for a description of the parameters
         calculated here.
 
-        :param group: The group for which the main parameters are calculated,
-            e.g. "events", "testpulses", "noise", etc.  Defaults to "events".
+        :param group: The group for which the main parameters are calculated, e.g. `"events"`, `"testpulses"`, `"noise"`, etc.  Defaults to `"events"`.
         :type group: str, optional
-
-        :param kwargs: Keyword arguments to pass to :class:`cait.versatile.MainParameters`.
+        :param with_processing: Optional processing to apply to each event before :class:`~cait.versatile.MainParameters` is applied. See :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.add_processing`.
+        :type with_processing: callable or list of callable, optional
+        :param tag: Optional suffix to append to the names normally written to the DataHandler.  Useful e.g. in conjunction with `with_processing` or `kwargs` arguments to separate different passes.  The suffix is separated from the name automatically by a dash, i.e. `tag="fqlc"` will result in datasets such as `pulse_height-fqlc`, `onset-fqlc`, etc.  Defaults to `None`, in which case no suffix is appended.
+        :type tag: str, optional
+        :param batch_size: Override the default batch size of 2 when using :func:`~cait.versatile.apply`.  May improve speed in certain circumstances.
+        :type batch_size: int, optional
+        :param kwargs: Keyword arguments to pass to :class:`~cait.versatile.MainParameters`.
         :type kwargs: Any
 
         .. code-block:: python
@@ -48,7 +54,7 @@ class MainParametersMixin:
             # CMP for group "testpulses"
             dh.cmp("testpulses")
         """
-        events = self.get_event_iterator(group, batch_size=batch_size)
+        events = self.get_event_iterator(group, batch_size=batch_size).with_processing(with_processing)
 
         mp = vai.MainParameters(self.dt_us, **kwargs)
         out = vai.apply(mp, events, pb_prefix='Calculating main parameters')
@@ -56,7 +62,7 @@ class MainParametersMixin:
         for n, t, d in zip(mp.names, mp.types, out):
             self.set(
                     group,
-                    **{n: np.atleast_2d(d.T)},
+                    **{f"{n}" + (f"-{tag}" if tag else ""): np.atleast_2d(d.T)},
                     dtype=t,
                     overwrite_existing=True,
                     write_to_virtual=False,
