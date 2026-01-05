@@ -9,6 +9,8 @@ from ..fixtures import tempdir
 
 LENGTH = 10
 RECORD_LENGTH = 2**14
+DT_US = 10
+SAMPLE_FREQUENCY = round(1/(DT_US*1e-6))
 
 #####################################
 ######## GENERATE TEST DATA #########
@@ -18,9 +20,10 @@ stream = vai.MockStream(
     rate_Hz=2,
     pulse_shape=[[0.5, 0.5, 0.3, 0.1, 10.0], [0.3, 0.5, 0.3, 0.01, 4.0], [0.9, 0.5, 0.3, 0.01, 10.0]],
     tp_shape=[[0.5, 0.5, 0.3, 0.01, 20.0], [0.5, 0.5, 0.3, 0.01, 10.0], [0.8, 0.5, 0.3, 0.01, 100.0]],
-    baseline_sig=[0.005, 0.001, 0.0002]
+    baseline_sig=[0.005, 0.001, 0.0002],
+    dt_us=DT_US,
     )
-md = vai.MockData()
+md = vai.MockData(dt_us=DT_US)
 sev, of = md.sev, md.of
 t = md.get_event_iterator().t
 
@@ -55,7 +58,11 @@ shifts = [
 #####################################
 @pytest.fixture(scope="module")
 def dh_test(tempdir):
-    dh = ai.DataHandler(record_length=RECORD_LENGTH, nmbr_channels=len(stream.keys))
+    dh = ai.DataHandler(
+        record_length=RECORD_LENGTH, 
+        nmbr_channels=len(stream.keys),
+        sample_frequency=SAMPLE_FREQUENCY,
+        )
     dh.set_filepath(path_h5=tempdir.name, fname="test_efficiency", appendix=False)
     dh.init_empty()
 

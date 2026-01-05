@@ -1,9 +1,10 @@
-import pytest
 import numpy as np
+import pytest
 
 import cait.versatile as vai
 
 from ..fixtures import datahandler, tempdir
+
 
 # Tests for input validation and no errors with 
 # various combinations of input arguments.
@@ -11,7 +12,7 @@ from ..fixtures import datahandler, tempdir
 @pytest.mark.filterwarnings("ignore:Ill-conditioned matrix")
 class TestApplyTemplateFit:
     def test_one_channel(self, datahandler):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()[0]
 
         group = "events_tf_one_ch"
@@ -27,7 +28,7 @@ class TestApplyTemplateFit:
         )
 
     def test_one_channel_of_two(self, datahandler):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
 
         group = "events_tf_two_ch"
@@ -45,7 +46,7 @@ class TestApplyTemplateFit:
 
     @pytest.mark.parametrize("correlated", [True, False])
     def test_two_channels(self, datahandler, correlated):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
 
         group = f"events_tf_two_ch_correlated_{correlated}"
@@ -63,7 +64,7 @@ class TestApplyTemplateFit:
 
     @pytest.mark.parametrize("correlated", [True, False])
     def test_two_channels_different_settings(self, datahandler, correlated):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
 
         group = f"events_tf_two_ch_diff_sett_correlated_{correlated}"
@@ -81,7 +82,7 @@ class TestApplyTemplateFit:
 
     @pytest.mark.parametrize("correlated", [True, False])
     def test_two_channels_with_flag(self, datahandler, correlated):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
 
         group = f"events_tf_flag_correlated_{correlated}"
@@ -103,7 +104,7 @@ class TestApplyTemplateFit:
 
     @pytest.mark.parametrize("poly_order", [None, 1, 3, [None, 1], [0, None], [3, 1]])
     def test_two_channels_different_poly_orders(self, datahandler, poly_order):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
 
         datahandler.include_event_iterator(f"events_tf_poly_order_{poly_order}", mock_it)
@@ -128,7 +129,7 @@ class TestApplyTemplateFit:
         )
 
     def test_input_validation(self, datahandler):
-        mock_data = vai.MockData()
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
 
         group = "events_tf_input_validation"
@@ -182,4 +183,4 @@ class TestApplyTemplateFit:
         with pytest.raises(KeyError):
             datahandler.apply_template_fit(group=group, sev=mock_data.sev)
 
-        
+                
