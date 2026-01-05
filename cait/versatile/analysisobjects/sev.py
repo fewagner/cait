@@ -183,7 +183,7 @@ class SEV(ArrayWithBenefits):
 
         return cls(arr, dt_us=dt_us)
 
-    def to_file(self, fname: str, out_dir: str = ""):
+    def to_file(self, fname: str, out_dir: str = "", info_str: str = ""):
         """
         Write SEV to xy-file.
 
@@ -191,6 +191,8 @@ class SEV(ArrayWithBenefits):
         :type fname: str
         :param out_dir: Directory to write to. Defaults to '' which means writing to current directory. Optional
         :type out_dir: str
+        :param info_str: An info string to be saved as a description of the SEV in the header of the file. Optional
+        :type info_str: str
         """
         if np.array_equal(self._array, np.empty(0)):
             raise Exception("Empty SEV cannot be saved.")
@@ -210,6 +212,7 @@ class SEV(ArrayWithBenefits):
                     "dt_us": self.dt_us,
                     "record_length": len(self.t),
                     "n_ch": self._n_channels,
+                    **({"info": str(info_str)} if info_str else {})
                 }
             )
             + "\n"
