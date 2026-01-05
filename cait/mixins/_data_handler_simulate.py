@@ -32,6 +32,7 @@ class SimulateMixin(object):
         sev: np.ndarray = None,
         sev_fitpars: List[List[float]] = None,
         shift_samples: List[List[int]] = None,
+        shift_subsamples: List[List[float]] = None,
         passive_channels: Union[str, List[str]] = None,
         testpulse_channels: Union[str, List[str]] = None,
         tolerance_samples: int = 10,
@@ -63,6 +64,8 @@ class SimulateMixin(object):
         :type sev_fitpars: List[List[float]], optional
         :param shift_samples: An array of shift values (in samples) by which the ``sev`` or ``sev_fitpars`` should be offset from ``sim_ts`` before superimposing onto the stream chunks. This can be used to simulate slight onset variations between different channels. In such a case one would probably want to set all offsets for the first channel to zero and only vary the values for the remaining channels. Has to have as many rows as there are trigger and passive channels. Defaults to None, i.e. no shifts are applied and all simulated pulses are aligned such that the first trigger channel's SEV maximum sits on ``sim_ts``.
         :type shift_samples: List[List[int]], optional
+        :param shift_subsamples: Simulates additional sub-sample shifts (as they would happen if the onset of the true pulse is not perfectly aligned with the sampling grid of the data acquisition). If you use a ``sev``, the array is linearly interpolated between samples. If you use ``sev_fitpars``, the model is evaluated at the intermediate points. Note that all values have to be in the interval [0, 1), corresponding to shifts between zero and one sample. The same shape requirements as for 'shift_samples' apply.
+        :type shift_subsamples: List[List[float]]
         :param passive_channels: A list of channel names to be read out as 'passives'. Have to be present in ``stream.keys``. Defaults to None
         :type passive_channels: List[str], optional
         :param testpulse_channels: A list of channel names to be used as testpulses. Have to be present in ``stream.tp_keys``. Defaults to None
@@ -276,6 +279,13 @@ class SimulateMixin(object):
             shift_samples = np.atleast_2d(shift_samples).astype(np.int32)
             if shift_samples.shape != sim_phs.shape:
                 raise ValueError(f"The shapes of 'shift_samples' and 'sim_phs' have to be identical. Got {shift_samples.shape} and {sim_phs.shape}.")
+            
+        if shift_subsamples is not None:
+            shift_subsamples = np.atleast_2d(shift_subsamples).astype(np.float32)
+            if shift_subsamples.shape != sim_phs.shape:
+                raise ValueError(f"The shapes of 'shift_subsamples' and 'sim_phs' have to be identical. Got {shift_subsamples.shape} and {sim_phs.shape}.")
+            if not np.all((shift_subsamples>=0)*(shift_subsamples<1)):
+                raise ValueError("All values in 'shift_subsamples' have to be in the interval [0, 1).")
 
         rl = self.record_length
             
@@ -370,6 +380,7 @@ class SimulateMixin(object):
             **iterator_kwargs,
             pulse_heights=sim_phs[:n_trig_ch,:],
             shift_samples=shift_samples[:n_trig_ch,:] if shift_samples is not None else None,
+            shift_subsamples=shift_subsamples[:n_trig_ch,:] if shift_subsamples is not None else None,
         )
         
         # DEFINE TARGET INDEX FOR TRIGGER SURVIVAL FUNCTION
@@ -506,6 +517,10 @@ class SimulateMixin(object):
                 **(
                     dict(simulated_shifts=np.atleast_2d(shift_samples)) 
                     if shift_samples is not None else dict()
+                ),
+                **(
+                    dict(simulated_subshifts=np.atleast_2d(shift_subsamples)) 
+                    if shift_subsamples is not None else dict()
                 )
             },
             dtype=np.int32,
@@ -556,6 +571,8 @@ class SimulateMixin(object):
             sev_fitpars=sev_fitpars,
             pulse_heights=sim_phs[..., event_flag],
             shift_samples=mod_shift_samples[..., event_flag],
+            # PulseSimIterator handles remaining sub-sample shifts
+            shift_subsamples=shift_subsamples[..., event_flag] if shift_subsamples is not None else None,
         )
         
         self.include_event_iterator(group_events, event_iterator, copy_events=False)

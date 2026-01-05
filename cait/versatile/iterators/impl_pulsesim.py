@@ -17,6 +17,8 @@ class PulseSimIterator(IteratorBaseClass):
     :type pulse_heights: List[List[float]]
     :param shift_samples: If specified for all elements in ``pulse_heights`` (i.e. also for all channels). The respective x-shift (in samples) is applied to the superimposed pulse. If you use a ``sev`` (see below), the edges of the shifted array are padded with the average of the first/last 10 samples. If you use ``sev_fitpars`` (see below), no padding is required because the fit can just be extrapolated.
     :type shift_samples: List[List[int]]
+    :param shift_subsamples: If specified for all elements in ``pulse_heights`` (i.e. also for all channels). The respective x-shift (in fractional samples) is applied to the superimposed pulse. If you use a ``sev`` (see below), the array is linearly interpolated between samples. If you use ``sev_fitpars`` (see below), the model is evaluated at the intermediate points. Note that all values have to be in the interval [0, 1), corresponding to shifts between zero and one sample.
+    :type shift_subsamples: List[List[float]]
     :param sev: The SEV to superimpose. Has to match the number of channels of ``iterator`` and its record length, i.e. requires shape ``(iterator.n_channels, iterator.record_length)``. Cannot be specified together with ``sev_fitpars``.
     :type sev: np.ndarray
     :param sev_fitpars: The fit parameters for the SEV to superimpose. Has to match the number of channels of ``iterator``. Cannot be specified together with ``sev``.
@@ -28,13 +30,62 @@ class PulseSimIterator(IteratorBaseClass):
     :param batch_size: The number of events to be returned at once (these are all read together). There will be a trade-off: large batch_sizes cause faster read speed but increase the memory usage.
     :type batch_size: int
 
-    :return: Iterable object
-    :rtype: PulseSimIterator
+    .. code-block:: python
+
+        import numpy as np
+        import scipy as sp
+
+        import cait.versatile as vai
+        from cait.versatile.iterators import PulseSimIterator
+
+        # Use mock data. You will have a more meaningful iterator.
+        md = vai.MockData()
+        sev = md.sev[0]
+
+        # This is just a cheeky way to get an iterator of random noise. 
+        # You will have actual noise.
+        noise_it = md.get_event_iterator()[0].with_processing(lambda x: sp.stats.norm.rvs(loc=0, scale=0.1, size=md.record_length))
+
+        # Define random pulse heights
+        sim_phs = sp.stats.uniform.rvs(size=len(noise_it))
+
+        # Set up the iterator containing simulated pulses on top of
+        # the noise traces.
+        # Check out the docstring to learn about advanced ways to 
+        # simulate events, e.g. by adding template shifts.
+        pulse_sim_it = PulseSimIterator(
+            iterator=noise_it, 
+            pulse_heights=sim_phs, 
+            sev=sev,
+        )
+
+        # Preview your pulses.
+        vai.Preview(pulse_sim_it)
+
+        # In a next step, you could for example filter the simulated
+        # events, determine their pulse heights, and estimate the baseline
+        # resolution (the code below is a minimal example and definitely not
+        # perfect!). In this case, it makes more sense to simulate a fixed
+        # pulse height:
+        pulse_sim_it_fixed_ph = PulseSimIterator(
+            iterator=noise_it, 
+            pulse_heights=0.5*np.ones_like(sim_phs), 
+            sev=sev,
+        )
+
+        reconstructed_phs = vai.apply(
+            np.max,
+            pulse_sim_it_fixed_ph.with_processing(vai.OptimumFiltering(md.of[0]))
+        )
+
+        # Plot a histogram of reconstructed pulse heights.
+        vai.Histogram(reconstructed_phs)
     """
     def __init__(self, 
                  iterator: IteratorBaseClass, 
                  pulse_heights: List[List[float]],
                  shift_samples: List[List[int]] = None,
+                 shift_subsamples: List[List[float]] = None,
                  sev: np.ndarray = None,
                  sev_fitpars: List[List[float]] = None,
                  channels: Union[int, List[int]] = None, 
@@ -75,6 +126,12 @@ class PulseSimIterator(IteratorBaseClass):
             shift_samples = np.atleast_2d(shift_samples).astype(np.int32)
             if shift_samples.shape != phs.shape:
                 raise ValueError(f"The shapes of 'shift_samples' and 'pulse_heights' have to be identical. Got {shift_samples.shape} and {phs.shape}.")
+        if shift_subsamples is not None:
+            shift_subsamples = np.atleast_2d(shift_subsamples).astype(np.float32)
+            if shift_subsamples.shape != phs.shape:
+                raise ValueError(f"The shapes of 'shift_subsamples' and 'pulse_heights' have to be identical. Got {shift_subsamples.shape} and {phs.shape}.")
+            if not np.all((shift_subsamples>=0)*(shift_subsamples<1)):
+                raise ValueError("All values in 'shift_subsamples' have to be in the interval [0, 1).")
             
         if channels is None: channels = list(range(iterator.n_channels)) 
 
@@ -99,7 +156,8 @@ class PulseSimIterator(IteratorBaseClass):
             sev_fitpars=np.array(sev_fitpars).tolist() if sev_fitpars is not None else None,
             pulse_heights=np.array(phs).tolist(),
             shift_samples=np.array(shift_samples).tolist() if shift_samples is not None else None,
-            channels=channels
+            shift_subsamples=np.array(shift_subsamples).tolist() if shift_subsamples is not None else None,
+            channels=channels,
         )
 
         # Save values to reconstruct iterator:
@@ -108,6 +166,7 @@ class PulseSimIterator(IteratorBaseClass):
                         'sev_fitpars': sev_fitpars,
                         'pulse_heights': phs,
                         'shift_samples': shift_samples,
+                        'shift_subsamples': shift_subsamples,
                         'channels': self._channels, 
                         'inds': inds, 
                         'batch_size': batch_size}
@@ -135,6 +194,11 @@ class PulseSimIterator(IteratorBaseClass):
         else:
             self._shift_samples = np.zeros(self._phs.shape, dtype=np.int32)
 
+        if shift_subsamples is not None:
+            self._shift_subsamples = shift_subsamples[self._channels]
+        else:
+            self._shift_subsamples = np.zeros(self._phs.shape, dtype=np.float32)
+
         # If fit pars are used, we have to evaluate the pulse model at some
         # point for which the time array of the iterator is used:
         self._fit_t = iterator.t
@@ -154,31 +218,39 @@ class PulseSimIterator(IteratorBaseClass):
         self._itit = self._it.__iter__()
         return self
     
-    def _shift_fit_pars_and_eval(self, pars: np.ndarray, ks: np.ndarray):
-        # for all fitpar-tuple in pars, the corresponding shift in ks is 
-        # applied and the parameters are evaluated on self.t 
+    def _shift_fit_pars_and_eval(self, pars: np.ndarray, ks: np.ndarray, zs: np.ndarray):
+        # for all fitpar-tuple in pars, the corresponding shift in ks (sample)
+        # and zs (subsample) is applied and the parameters are evaluated on self.t 
         temp_array = pars.reshape(-1, pars.shape[-1])
         temp_k = ks.flatten()
+        temp_z = zs.flatten()
 
         new_array = np.zeros((temp_array.shape[0], self.record_length))
 
         for j in range(temp_array.shape[0]):
             p = temp_array[j]
             k = temp_k[j]
-            new_array[j, :] = pulse_template(self.t, *(p[0] + k*self.dt_us/1000, *p[1:]))
+            z = temp_z[j]
+            new_array[j, :] = pulse_template(
+                self.t, 
+                *(p[0] + (k + z)*self.dt_us/1000, *p[1:]),
+            )
 
         return np.reshape(new_array, tuple(list(pars.shape)[:-1]+[self.record_length]))
     
-    def _shift_array(self, pulses: np.ndarray, ks: np.ndarray):
-        # return the input array with all pulses shifted by k samples
-        # according to the values in ks. If required, edges are padded.
+    def _shift_array(self, pulses: np.ndarray, ks: np.ndarray, zs: np.ndarray):
+        # return the input array with all pulses shifted by k (samples) 
+        # and z (subsample) according to the values in ks and zs. 
+        # If required, edges are padded.
         temp_array = pulses.reshape(-1, pulses.shape[-1])
         temp_k = ks.flatten()
+        temp_z = zs.flatten()
 
         new_array = np.zeros(temp_array.shape)
 
         for j in range(temp_array.shape[0]):
             k = temp_k[j]
+            z = temp_z[j]
             if k == 0:
                 new_array[j, :] = temp_array[j, :]
             elif k > 0:
@@ -188,6 +260,13 @@ class PulseSimIterator(IteratorBaseClass):
                 # Note that k is negative here
                 new_array[j, :k] = temp_array[j, -k:]
                 new_array[j, k:] = np.mean(temp_array[j, -10:])
+            
+            # Interpolate template if necessary (subsample shift)
+            if z > 0:
+                new_array[j] = np.hstack([
+                    new_array[j][0], 
+                    new_array[j][:-1] + (1 - z)*np.diff(new_array[j])
+                    ])
 
         return np.reshape(new_array, pulses.shape)
 
@@ -198,6 +277,7 @@ class PulseSimIterator(IteratorBaseClass):
             
             sim_phs = self._phs[..., event_inds_in_batch].T[..., None]
             shifts = self._shift_samples[..., event_inds_in_batch].T[..., None]
+            subshifts = self._shift_subsamples[..., event_inds_in_batch].T[..., None]
             events = next(self._itit)
 
             if self._using_fit:
@@ -208,14 +288,16 @@ class PulseSimIterator(IteratorBaseClass):
                         self._sev_or_pars, 
                         tuple(list(events.shape)[:-1] + [self._sev_or_pars.shape[-1]]) 
                     ),
-                    shifts
+                    shifts,
+                    subshifts,
                 )
             else:
                 pulse = self._shift_array(
                     # Extend the sev array so that we can easier treat different cases
                     # (batches, no batches, single channel, multi channel, ...)
                     np.broadcast_to(self._sev_or_pars, events.shape),
-                    shifts
+                    shifts,
+                    subshifts,
                 )
 
             return sim_phs*pulse + events
