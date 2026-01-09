@@ -1,5 +1,5 @@
-from typing import Union, List
 import warnings
+from typing import List, Union
 
 import numpy as np
 from scipy.optimize import curve_fit
@@ -148,7 +148,7 @@ class FitBaseline(FitFncBaseClass):
                     self._fitpar = np.array([(0, 0, np.mean(event[k, self._where])) for k in range(event.shape[0])])
                     self._rms = np.array([np.std(event[k, self._where]) for k in range(event.shape[0])])
                 else:
-                    self._fitpar = np.array([(0, 0, np.mean(event[self._where]))])
+                    self._fitpar = np.array((0, 0, np.mean(event[self._where])))
                     self._rms = np.array([np.std(event[self._where])])
 
 
@@ -246,8 +246,6 @@ class FitBaseline(FitFncBaseClass):
                 d[f'channel {i}'] = [self._xdata, event[i]]
                 d[f'baseline fit channel {i}'] = [self._xdata, fit[i]]
         else:
-
-
             d = {'event': [self._xdata, event],
                  'baseline fit': [self._xdata, fit]}
 
