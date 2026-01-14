@@ -83,7 +83,7 @@ def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_si
     # (that's why it's important to extend the chunks above)
     for i in range(n_chunks):
         out[i*chunk_size:(i+1)*chunk_size] = sp.stats.norm.rvs(
-            loc=0, scale=scale, size=chunk_size, random_state=(i+i_first_chunk)*base_seed
+            loc=0, scale=scale, size=chunk_size, random_state=((i+i_first_chunk)*base_seed) % 2**32
         )
     
     return out[recover_start:-recover_end:step][recovery_sl]
