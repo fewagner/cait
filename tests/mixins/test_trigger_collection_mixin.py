@@ -222,7 +222,7 @@ def test_trigger_of(tempdir, stream_csmpl):
                   of=of,
                   passive_channels="Ch1",
                   testpulse_channels=["0", "0"],
-                  thresholds=[0.1],
+                  thresholds=[0.001],
                   copy_events=True,
                   reuse_triggers=False,
                   f_noise=100)
@@ -240,7 +240,7 @@ def test_trigger_of(tempdir, stream_csmpl):
                   passive_channels="Ch1",
                   testpulse_channels=["0", "0"],
                   controlpulses_above=[0.5, 0.5],
-                  thresholds=[0.1],
+                  thresholds=[0.001],
                   copy_events=True,
                   reuse_triggers=False,
                   f_noise=100)
@@ -250,15 +250,27 @@ def test_trigger_of(tempdir, stream_csmpl):
     dh3.set_filepath(tempdir.name, "test_trigger_of_3", appendix=False)
     dh3.init_empty()
 
-    of2 = vai.OF(np.ones((2, int(dh3.record_length/2+1)), dtype=complex), dt_us=dh3.dt_us)
+    of3 = vai.OF(np.ones((2, int(dh3.record_length/2+1)), dtype=complex), dt_us=dh3.dt_us)
 
     dh3.trigger_of(stream_csmpl,
                   trigger_channels=[("Ch0", "Ch1")],
-                  of=of2,
+                  of=of3,
                   passive_channels=[],
                   testpulse_channels=["0", "0"],
                   controlpulses_above=[0.5, 0.5],
-                  thresholds=[0.1],
+                  thresholds=[0.001],
+                  copy_events=True,
+                  reuse_triggers=False,
+                  f_noise=100)
+    
+    # Run again without excluding TPs (otherwise we cannot guarantee that there
+    # will actually be events left in the events group)
+    dh3.drop("events", "event")
+    dh3.trigger_of(stream_csmpl,
+                  trigger_channels=[("Ch0", "Ch1")],
+                  of=of3,
+                  passive_channels=[],
+                  thresholds=[0.001],
                   copy_events=True,
                   reuse_triggers=False,
                   f_noise=100)
@@ -270,15 +282,27 @@ def test_trigger_of(tempdir, stream_csmpl):
     dh4.set_filepath(tempdir.name, "test_trigger_of_4", appendix=False)
     dh4.init_empty()
 
-    of2 = vai.OF(np.ones((2, int(dh3.record_length/2+1)), dtype=complex), dt_us=dh4.dt_us)
+    of4 = vai.OF(np.ones((2, int(dh3.record_length/2+1)), dtype=complex), dt_us=dh4.dt_us)
 
     dh4.trigger_of(stream_csmpl,
                   trigger_channels=[("Ch0", "Ch1")],
-                  of=of2,
+                  of=of4,
                   passive_channels=["Ch0"],
                   testpulse_channels=["0", "0", "0"],
                   controlpulses_above=[0.5, 0.5, 0.5],
-                  thresholds=[0.1],
+                  thresholds=[0.001],
+                  copy_events=True,
+                  reuse_triggers=False,
+                  f_noise=100)
+    
+    # Run again without excluding TPs (otherwise we cannot guarantee that there
+    # will actually be events left in the events group)
+    dh4.drop("events", "event")
+    dh4.trigger_of(stream_csmpl,
+                  trigger_channels=[("Ch0", "Ch1")],
+                  of=of4,
+                  passive_channels=["Ch0"],
+                  thresholds=[0.001],
                   copy_events=True,
                   reuse_triggers=False,
                   f_noise=100)
