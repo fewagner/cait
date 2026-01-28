@@ -1,24 +1,25 @@
 import warnings
 from functools import partial
 from multiprocessing import Pool
-from deprecation import deprecated
-from typing import Union, List
+from typing import List, Union
 
-import numpy as np
 import h5py
+import numpy as np
+from deprecation import deprecated
+from scipy.optimize import curve_fit
 from tqdm.auto import tqdm
 
-from ..fit._pm_fit import fit_pulse_shape
-from ..fit._templates import baseline_template_cubic, sev_fit_template
-from scipy.optimize import curve_fit
-from ..fit._bl_fit import get_rms
-from ..fit._noise import get_noise_parameters_binned, get_noise_parameters_unbinned, \
-    plot_noise_trigger_model, calc_threshold
-from ..fit._saturation import logistic_curve_zero, A_zero
-from ..fit._numerical_fit import array_fit, arr_fit_rms
-from ..styles._print_styles import txt_fmt
-
 import cait.versatile as vai
+
+from ..fit._bl_fit import get_rms
+from ..fit._noise import (calc_threshold, get_noise_parameters_binned,
+                          get_noise_parameters_unbinned,
+                          plot_noise_trigger_model)
+from ..fit._numerical_fit import arr_fit_rms, array_fit
+from ..fit._pm_fit import fit_pulse_shape
+from ..fit._saturation import A_zero, logistic_curve_zero
+from ..fit._templates import baseline_template_cubic, sev_fit_template
+from ..styles._print_styles import txt_fmt
 
 # -----------------------------------------------------------
 # CLASS
@@ -88,7 +89,7 @@ class FitMixin(object):
             h5f[type]['fitpar'][:, :, :] = fitpar_event
 
     # apply sev fit
-    @deprecated(deprecated_in='1.1.0', details="Use DataHandler.apply_template_fit() instead.")
+    @deprecated(deprecated_in='1.1.0', removed_in="2.0.0", details="Use DataHandler.apply_template_fit() instead.")
     def apply_sev_fit(self, type='events', only_channels=None, sample_length=None, down=1, order_bl_polynomial=3,
                       t0_bounds=(-20, 20), truncation_level=None, interval_restriction_factor=None,
                       verb=False, processes=4, name_appendix='', group_name_appendix='', first_channel_dominant=False,
@@ -225,7 +226,7 @@ class FitMixin(object):
             print('Done.')
 
     # apply array fit
-    @deprecated(deprecated_in='1.3.0', details="Use DataHandler.apply_template_fit() instead.")
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use DataHandler.apply_template_fit() instead.")
     def apply_array_fit(self, type='events', only_channels=None, sample_length=None,
                         max_shift=20,
                         truncation_level=None,
@@ -822,4 +823,5 @@ class FitMixin(object):
             plot_noise_trigger_model(**plot_dict)
 
         if return_plotting_data:
+            return plot_dict
             return plot_dict
