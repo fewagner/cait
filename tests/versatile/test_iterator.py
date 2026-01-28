@@ -716,3 +716,12 @@ class TestPulseSimIterator:
                 sev_fitpars=[[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
                 pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
             ) 
+
+        # subsample shifts not in [0, 1)
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev, 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+                shift_subsamples=-1.1*np.ones((mock_it.n_channels, len(mock_it))),
+            ) 

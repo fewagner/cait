@@ -33,7 +33,11 @@ def testdata(tempdir):
                                tempdir.name+'/mock_001.par'])
     rdt_file = vai.RDTFile(tempdir.name+'/mock_001.rdt')
 
-    dh = ai.DataHandler(channels=[0, 1], record_length=RECORD_LENGTH)
+    dh = ai.DataHandler(
+        channels=[0, 1], 
+        record_length=RECORD_LENGTH, 
+        sample_frequency=SAMPLE_FREQUENCY,
+        )
     dh.set_filepath(tempdir.name, "mock_001")
     dh.init_empty()
     dh.include_event_iterator("events", rdt_file[(0, 1)].get_event_iterator())
@@ -42,7 +46,10 @@ def testdata(tempdir):
 
 def test_datasources(testdata):
     stream, rdt_file, dh = testdata
-    mock = vai.MockData()
+    mock = vai.MockData(
+        record_length=RECORD_LENGTH,
+        dt_us=dh.dt_us,
+    )
 
     for obj in [
         stream,
@@ -72,7 +79,10 @@ def test_datasources(testdata):
 
 def test_iterators(testdata):
     stream, rdt_file, dh = testdata
-    mock = vai.MockData()
+    mock = vai.MockData(
+        record_length=RECORD_LENGTH,
+        dt_us=dh.dt_us,
+    )
 
     stream_it1 = stream.get_event_iterator("Ch0", 100, [1000, 2000, 3000, 4000])
     stream_it2 = stream.get_event_iterator("Ch0", 100, np.array([1000, 2000, 3000, 4000]))
@@ -99,7 +109,10 @@ def test_iterators(testdata):
         
 def test_externally_store_iterator_in_datahandler(testdata):
     stream, rdt_file, dh = testdata
-    mock = vai.MockData(record_length=RECORD_LENGTH)
+    mock = vai.MockData(
+        record_length=RECORD_LENGTH,
+        dt_us=stream.dt_us,
+    )
 
     stream_it = stream.get_event_iterator("Ch0", 
                                           RECORD_LENGTH, 
@@ -147,15 +160,34 @@ def test_combine_h5(tempdir):
         "combine_test5",
         "combine_test6"]
     its = [
-        vai.MockData(n_events=113, record_length=RECORD_LENGTH).get_event_iterator(),
-        vai.MockData(n_events=213, record_length=RECORD_LENGTH).get_event_iterator(),
-        vai.MockData(n_events=313, record_length=RECORD_LENGTH).get_event_iterator()[0],
-        vai.MockData(n_events=413, record_length=2*RECORD_LENGTH).get_event_iterator(),
+        vai.MockData(
+            n_events=113, 
+            record_length=RECORD_LENGTH,
+            dt_us=int(1e6/SAMPLE_FREQUENCY),
+        ).get_event_iterator(),
+        vai.MockData(
+            n_events=213, 
+            record_length=RECORD_LENGTH,
+            dt_us=int(1e6/SAMPLE_FREQUENCY),
+        ).get_event_iterator(),
+        vai.MockData(
+            n_events=313, 
+            record_length=RECORD_LENGTH,
+            dt_us=int(1e6/SAMPLE_FREQUENCY),
+        ).get_event_iterator()[0],
+        vai.MockData(
+            n_events=413, 
+            record_length=2*RECORD_LENGTH,
+            dt_us=int(1e6/SAMPLE_FREQUENCY),
+        ).get_event_iterator(),
         vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[0],
         vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[1]
     ]
     for fname, it in zip(h5_fnames, its):
-        dh = ai.DataHandler(channels=[0, 1])
+        dh = ai.DataHandler(
+            channels=[0, 1],
+            sample_frequency=SAMPLE_FREQUENCY,
+            )
         dh.set_filepath(tempdir.name, fname, appendix=False)
         dh.init_empty()
         dh.include_event_iterator("events", it, copy_events=False)
@@ -181,7 +213,10 @@ def test_combine_h5(tempdir):
         groups_combine=["events"],
     )
     # Does it 'combine' correctly?
-    dh = ai.DataHandler(channels=[0])
+    dh = ai.DataHandler(
+        channels=[0],
+        sample_frequency=SAMPLE_FREQUENCY,
+        )
     dh.set_filepath(tempdir.name, "combined_test2", appendix=False)
     it = dh.get_event_iterator("events")
     assert len(it) == len(its[4]), "Combined iterator has wrong length"
@@ -208,7 +243,10 @@ def test_combine_h5(tempdir):
         groups_combine=["events"],
     )
     # Does it combine correctly?
-    dh = ai.DataHandler(channels=[0])
+    dh = ai.DataHandler(
+        channels=[0],
+        sample_frequency=SAMPLE_FREQUENCY,
+        )
     dh.set_filepath(tempdir.name, "combined_test4", appendix=False)
     it = dh.get_event_iterator("events")
     assert len(it) == len(its[4]+its[5]), "Combined iterator has wrong length"
@@ -247,7 +285,7 @@ def test_merge_h5(tempdir):
         vai.RDTFile(tempdir.name+'/mock_001.rdt')[(0,1)].get_event_iterator()[1]
     ]
     for fname, it in zip(h5_fnames, its):
-        dh = ai.DataHandler(channels=[0, 1])
+        dh = ai.DataHandler(channels=[0, 1], sample_frequency=SAMPLE_FREQUENCY)
         dh.set_filepath(tempdir.name, fname, appendix=False)
         dh.init_empty()
         dh.include_event_iterator("events", it, copy_events=False)
@@ -261,7 +299,7 @@ def test_merge_h5(tempdir):
         groups_merge=["events"],
     )
     # Does it 'merge' correctly?
-    dh = ai.DataHandler(channels=[0])
+    dh = ai.DataHandler(channels=[0], sample_frequency=SAMPLE_FREQUENCY)
     dh.set_filepath(tempdir.name, "merged_test1", appendix=False)
     it = dh.get_event_iterator("events")
     assert len(it) == len(its[0]), "Merged iterator has wrong length"
@@ -277,7 +315,7 @@ def test_merge_h5(tempdir):
         groups_merge=["events"],
     )
     # Does it merge correctly?
-    dh = ai.DataHandler(channels=[0])
+    dh = ai.DataHandler(channels=[0], sample_frequency=SAMPLE_FREQUENCY)
     dh.set_filepath(tempdir.name, "merged_test2", appendix=False)
     it = dh.get_event_iterator("events")
     assert len(it) == len(its[0]+its[1]), "Combined iterator has wrong length"

@@ -351,7 +351,8 @@ def merge_h5(fname: str,
 ##### OLD MERGE FUNCTION (DEPRECATED) #####
 ###########################################
 
-@deprecated(deprecated_in='1.2.3', 
+@deprecated(deprecated_in='1.3.0',
+            removed_in="2.0.0", 
             details="Use 'cait.data.combine_h5' or 'cait.data.merge_h5', which let's you combine more than two files at a time.")
 def merge_h5_sets(path_h5_a, path_h5_b, path_h5_merged,
                   groups_to_merge=['events', 'testpulses', 'noise', 'controlpulses', 'stream'],

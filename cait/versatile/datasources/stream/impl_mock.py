@@ -32,18 +32,18 @@ def _pulse_vec(t, t0, An, At, tau_n, tau_in, tau_t):
     return _pulse(t, t0, An, At, tau_n, tau_in, tau_t)
 
 @numba.guvectorize([
-    (numba.float64, numba.float64[:], numba.float64[:], *(5*[numba.float64]), numba.float64[:])
+    (numba.float64[:], numba.float64[:], numba.float64[:], *(5*[numba.float64]), numba.float64[:])
     ], 
-    '(),(m),(m),(),(),(),(),()->()',
+    '(n),(m),(m),(),(),(),(),()->(n)',
     target="parallel",
 )
 def _pulse_sum(t, ts, phs, An, At, tau_n, tau_in, tau_t, res):
     """Numba accelerated _pulse shape evaluation for array-input and multiple _pulses placed at 'ts' with _pulse heights 'phs'."""
-    res[0] = 0.0
-    relevant = (ts <= t)*(t-ts < 10*tau_t)
+    res[:] = 0.0
+    relevant = (ts <= t[-1])*(ts > t[0] - 10*tau_t)
     for i in numba.prange(len(ts)):
         if relevant[i]:
-            res[0] += phs[i]*_pulse(t, ts[i], An, At, tau_n, tau_in, tau_t)
+            res[:] += phs[i]*_pulse_vec(t, ts[i], An, At, tau_n, tau_in, tau_t)
 
 def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_size: int = 100000):
     """Generate random but reproducible noise for a part 'sl' of a stream with length 'len_stream'."""
@@ -83,7 +83,7 @@ def gen_noise(sl: slice, len_stream: int, base_seed: int, scale: float, chunk_si
     # (that's why it's important to extend the chunks above)
     for i in range(n_chunks):
         out[i*chunk_size:(i+1)*chunk_size] = sp.stats.norm.rvs(
-            loc=0, scale=scale, size=chunk_size, random_state=(i+i_first_chunk)*base_seed
+            loc=0, scale=scale, size=chunk_size, random_state=((i+i_first_chunk)*base_seed) % 2**32
         )
     
     return out[recover_start:-recover_end:step][recovery_sl]
@@ -266,7 +266,6 @@ class MockStream(StreamBaseClass):
             np.array(self._phs[key], dtype=np.float64), 
             *self._pulse_shape[key]
         )
-        
         tps = _pulse_sum(
             np.array(self.time[where]/1000, dtype=np.float64), 
             np.array(self._tp_ts/1000, dtype=np.float64), 

@@ -1,14 +1,16 @@
 from typing import Callable
-#from itertools import cycle
 
 import numpy as np
-from ipywidgets import widgets
-from IPython.display import display
 import plotly.graph_objects as go
-#import plotly.express as px
+from IPython.display import display
+from ipywidgets import widgets
 
 from .backendbase import BackendBaseClass
 from .helper import EmptyRep
+
+#from itertools import cycle
+#import plotly.express as px
+
 
 class BaseClassPlotly(BackendBaseClass):
     """
@@ -438,7 +440,7 @@ class BaseClassPlotly(BackendBaseClass):
             dat_min, dat_max = np.min(y_vals), np.max(y_vals)
             dat_diff = dat_max - dat_min
             dat_mean, dat_std = np.mean(y_vals), np.std(y_vals)
-            out_str = f"ȳ: {dat_mean:6.3f}, yₘᵢₙ: {dat_min:6.3f}, Δᵧ: {dat_diff:5.3f}\nσᵧ: {dat_std:5.3f}, yₘₐₓ: {dat_max:6.3f}"
+            out_str = f"ȳ: {dat_mean: 6.3g}, yₘᵢₙ: {dat_min: 6.3g}, Δᵧ: {dat_diff: 5.3g}\nσᵧ: {dat_std: 5.3g}, yₘₐₓ: {dat_max: 6.3g}"
         
         with self._output:
             self._output.clear_output()
@@ -474,5 +476,7 @@ class BaseClassPlotly(BackendBaseClass):
         return self._histogram_names
     
     @property
+    def heatmap_names(self):
+        return self._heatmap_names    @property
     def heatmap_names(self):
         return self._heatmap_names

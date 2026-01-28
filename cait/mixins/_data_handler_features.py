@@ -70,7 +70,7 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
-    @deprecated(deprecated_in='1.3.0', details="This method is deprecated. Use DataHandler.cmp() instead.")
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use DataHandler.cmp() instead.")
     def calc_mp(self, 
                 type: str = 'events', 
                 path_h5: str = None, 
@@ -807,7 +807,7 @@ class FeaturesMixin(object):
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
 
-    @deprecated(deprecated_in='1.3.0', details="This method is deprecated. Use DataHandler.cmp() instead.")
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use DataHandler.cmp() instead.")
     def calc_additional_mp(self, 
                            type: str = 'events', 
                            path_h5: str = None, 
@@ -918,7 +918,7 @@ class FeaturesMixin(object):
 
         print('Applied logical cut.')
 
-    @deprecated(details="This method is deprecated. Use DataHandler.set() instead.")
+    @deprecated(deprecated_in='1.2.0', removed_in="2.0.0", details="Use DataHandler.set() instead.")
     def include_values(self,
                        values: list,
                        naming: str,

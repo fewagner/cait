@@ -22,6 +22,13 @@ def _ensure_not_array(x):
     return x
 
 class IteratorBaseClass(SerializingMixin, ABC):
+    """
+    Baseclass for all iterators. Defines behavior shared among all event iterators.
+
+    .. automethod:: __len__
+    .. automethod:: __add__
+    .. automethod:: __getitem__
+    """
     def __init__(self, inds: List[int], batch_size: int = None, **kwargs):
         super().__init__(inds=inds, batch_size=batch_size, **kwargs)
 
@@ -44,6 +51,7 @@ class IteratorBaseClass(SerializingMixin, ABC):
         self._n_batches = len(self._inds)
 
     def __len__(self):
+        """Return the number of events in the iterator."""
         return self.__n_events
 
     def __enter__(self):
@@ -81,6 +89,25 @@ class IteratorBaseClass(SerializingMixin, ABC):
         return out
     
     def __getitem__(self, val):
+        """
+        Slice iterator as if it was laid out as a numpy.ndarray and return a new iterator. The first argument slices the channel, the second slices the list of events in the iterator.
+
+        **Example:**
+
+        .. code-block:: python
+
+            # Starting from an iterator 'it' of multiple channels, you can
+            # - access only the first channel
+            it[0]
+
+            # - access the last 1000 events of the first channel
+            it[0, -1000:]
+
+            # - access every second event from all channels
+            it[:, ::2]
+
+            # ... etc. 
+        """
         # Slice Iterator as if it was layed out as a numpy.ndarray. 
         # The first argument slices the channel/key/... and the second slices the remaining list of events in the iterator.
 
@@ -109,6 +136,17 @@ class IteratorBaseClass(SerializingMixin, ABC):
         return new_iterator
     
     def __add__(self, other):
+        """
+        Add two iterators sequentially. E.g. given two iterators ``it1`` and ``it2``, the sum ``it1 + it2`` returns an iterator that first iterates through ``it1``, and then through ``it2``, once ``it1`` is consumed.
+        
+        **Example:**
+        
+        .. code-block:: python
+
+            # Given two iterators 'it1' and 'it2', they can be sequentially combined into
+            # a single iterator by
+            combined_it = it1 + it2
+        """
         if isinstance(self, IteratorCollection):
             l = [i.with_processing(self.fncs) for i in self.iterators]
         else:

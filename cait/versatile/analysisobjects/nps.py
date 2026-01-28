@@ -161,7 +161,7 @@ class NPS(ArrayWithBenefits):
 
         return cls(arr, dt_us=dt_us)
 
-    def to_file(self, fname: str, out_dir: str = ""):
+    def to_file(self, fname: str, out_dir: str = "", info_str: str = ""):
         """
         Write NPS to xy-file.
 
@@ -169,6 +169,8 @@ class NPS(ArrayWithBenefits):
         :type fname: str
         :param out_dir: Directory to write to. Defaults to '' which means writing to current directory. Optional
         :type out_dir: str
+        :param info_str: An info string to be saved as a description of the NPS in the header of the file. Optional
+        :type info_str: str
         """
         if np.array_equal(self._array, np.empty(0)):
             raise Exception("Empty NPS cannot be saved.")
@@ -188,6 +190,7 @@ class NPS(ArrayWithBenefits):
                     "dt_us": self.dt_us,
                     "record_length": 2 * (self._nps.shape[-1] - 1),
                     "n_ch": self._n_channels,
+                    **({"info": str(info_str)} if info_str else {})
                 }
             )
             + "\n"
@@ -431,7 +434,7 @@ class NCM(ArrayWithBenefits):
 
         return cls(out, dt_us=dt_us)
 
-    def to_file(self, fname: str, out_dir: str = ""):
+    def to_file(self, fname: str, out_dir: str = "", info_str: str = ""):
         """
         Write NCM to xy-file.
 
@@ -439,6 +442,8 @@ class NCM(ArrayWithBenefits):
         :type fname: str
         :param out_dir: Directory to write to. Defaults to '' which means writing to current directory. Optional
         :type out_dir: str
+        :param info_str: An info string to be saved as a description of the NCM in the header of the file. Optional
+        :type info_str: str
         """
         if np.array_equal(self._array, np.empty((0, 0, 0))):
             raise Exception("Empty NCM cannot be saved.")
@@ -464,6 +469,7 @@ class NCM(ArrayWithBenefits):
                     "dt_us": self.dt_us,
                     "record_length": 2 * (self._ncm.shape[-1] - 1),
                     "n_ch": self._n_channels,
+                    **({"info": str(info_str)} if info_str else {})
                 }
             )
             + "\n"

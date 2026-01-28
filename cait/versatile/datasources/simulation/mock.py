@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import numpy as np
 
 from ....fit._templates import pulse_template
@@ -98,6 +100,7 @@ class MockData(DataSourceBaseClass):
         return SEV(self._template, dt_us=self.dt_us)
 
     @property
+    @lru_cache(maxsize=None)
     def nps(self):
         rand = np.random.normal(size=(100, 2, self._record_length))
         nps = np.mean(np.abs(np.fft.rfft(rand))**2, axis=0)

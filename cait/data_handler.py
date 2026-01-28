@@ -17,12 +17,12 @@ from .mixins._data_handler_bin import BinMixin
 from .mixins._data_handler_csmpl import CsmplMixin
 from .mixins._data_handler_features import FeaturesMixin
 from .mixins._data_handler_fit import FitMixin
+from .mixins._data_handler_mainparameters import MainParametersMixin
 from .mixins._data_handler_ml import MachineLearningMixin
 from .mixins._data_handler_plot import PlotMixin
 from .mixins._data_handler_rdt import RdtMixin
 from .mixins._data_handler_simulate import SimulateMixin
 from .mixins._data_handler_trigger_collection import TriggerCollectionMixin
-from .mixins._data_handler_mainparameters import MainParametersMixin
 from .serialize import SerializingMixin
 from .styles._print_styles import (datetime_fmt, fmt_ds, fmt_gr, fmt_virt,
                                    sizeof_fmt, txt_fmt)
@@ -461,6 +461,12 @@ class DataHandler(SimulateMixin,
         :type dtype: str, optional
         :param copy_events: If True, voltage traces of all events are copied to the HDF5 file. If False, only a reference for where to find the original traces is saved so that they can be reached in their original location. Defaults to True
         """
+        if not isinstance(it, IteratorBaseClass):
+            raise TypeError(f"Input argument 'it' needs to be of type 'IteratorBaseClass', not '{type(it).__name__}'.")
+        
+        if it.dt_us != self.dt_us:
+            raise ValueError(f"The timebase of the iterator 'it' has to match the timebase of the DataHandler. Got {it.dt_us} and {self.dt_us}.")
+        
         # Check if dataset exists (this function does not support overwriting).
         # Note that references are ALWAYS overwritten.
         with self.get_filehandle(mode="r+") as f:

@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
+from inspect import _empty, signature
 
 import numpy as np
 
+
 class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     def __repr__(self):
-        return f"{self.__class__.__name__}({self._array})"
+        return f"{self.__class__.__name__}({self._array}, shape={self.shape}, dt_us={self.dt_us})"
     
     def __len__(self):
         return len(self._array)
@@ -25,7 +27,14 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
         }
         args = (a._array if isinstance(a, self.__class__) else a for a in args)
         
-        if method == "__call__":
+        # Number of required arguments of the __init__ method.
+        n_req_init_args = np.sum([
+            x.default is _empty for x in signature(self.__init__).parameters.values()
+        ])
+
+        # For call methods and only if the constructor of the class
+        # does NOT require special input.
+        if method == "__call__" and n_req_init_args == 0:
             out = self.__class__()
             out._array = f[method](*args, **kwargs)
             out._dt_us = self.dt_us
@@ -59,11 +68,6 @@ class ArrayWithBenefits(ABC, np.lib.mixins.NDArrayOperatorsMixin):
     @_array.setter
     @abstractmethod
     def _array(self, array):
-        ...
-
-    @property
-    @abstractmethod
-    def _n_channels(self):
         ...
         
     @property
