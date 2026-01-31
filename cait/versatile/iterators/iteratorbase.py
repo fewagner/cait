@@ -4,6 +4,9 @@ from typing import Callable, List, Union
 
 import numpy as np
 
+# Have to import like this to avoid circular import
+import cait.versatile as vai
+
 from ...serialize import SerializingMixin
 from .batchresolver import BatchResolver
 
@@ -506,6 +509,23 @@ class IteratorCollection(IteratorBaseClass):
         new_iterator.add_processing(self.fncs.copy())
 
         return new_iterator
+    
+    # Ensure that a collection of (only) stream iterators may have their windows extended.
+    def with_extended_window(self):
+        """
+        Return an iterator for identical timestamps but with the window size increased to include one additional record length before and after the previous window.
+
+        ```{warning}
+        This only works for IteratorCollections containing exclusively StreamIterators!
+        ```
+        """
+        if not all(isinstance(x, vai.iterators.StreamIterator) for x in self.iterators):
+            raise NotImplementedError(f"Only the windows of StreamIterators can be extended. At least one of the iterators in this IteratorCollection is NOT a StreamIterator. Got iterators {[it.__class__.__name__ for it in self.iterators]}.")
+        
+        if self.has_processing:
+            raise NotImplementedError("Cannot extend iterator which has processing because processing might depend on window size and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call 'extend_window' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size, or add it again after adjusting its parameters to work with the extended window size.")
+        
+        return self.__class__([it.with_extended_window() for it in self.iterators])
 
     @property
     def record_length(self):

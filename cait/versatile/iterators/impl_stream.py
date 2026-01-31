@@ -60,6 +60,7 @@ class StreamIterator(IteratorBaseClass):
                         'alignment': alignment,
                         'batch_size': batch_size}
 
+        self._alignment = alignment
         self._interval = (int(alignment*record_length), record_length - int(alignment*record_length))
 
     def __iter__(self):
@@ -105,6 +106,60 @@ class StreamIterator(IteratorBaseClass):
             
         else:
             raise StopIteration
+    
+    def with_extended_window(self):
+        """Return an iterator for identical timestamps but with the window size increased to include one additional record length before and after the previous window."""
+        if self.has_processing:
+            raise NotImplementedError("Cannot extend iterator which has processing because processing might depend on window size and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call 'extend_window' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size, or add it again after adjusting its parameters to work with the extended window size.")
+        
+        al = self.alignment
+        rl = self.record_length
+        ts = self.timestamps
+        dt = self.dt_us
+        # Timestamps of the first and last samples of 
+        # the records currently in the iterator.
+        record_start_ts = ts - dt * int(al * rl)
+        record_time = dt * rl
+        record_end_ts = record_start_ts + ( record_time - dt )
+        
+        # Check if any of the windows would extend outside the stream samples.
+        flag_inside = (
+              ( record_start_ts - record_time >= self.ds_start_us )
+            * ( record_end_ts + record_time <= self._stream.time[-1] )
+        )
+        n_outside = np.sum(~flag_inside)
+
+        if n_outside > 0:
+            raise IndexError(f"If windows were extended, {n_outside} of the events would have record windows extending outside of the valid sample range of the stream.")
+
+        # The entire process is handled by changing the record length
+        # and adjusting the alignment.
+        params, _ = self._slice_info
+        new_params = params.copy()
+        
+        new_params["record_length"] = 3 * rl
+        new_params["alignment"] = 1/3 + al/3
+
+        return self.__class__(**new_params)
+        
+    @property
+    def alignment(self):
+        """
+        The time axis alignment of the iterator. 
+        
+        For most event iterators, this is 1/4, i.e. the timestamp of an event corresponds to the sample at 1/4th of the record window. However, when constructing a StreamIterator, you may choose the alignment. Therefore, for StreamIterators, this value may be anything in the interval [0, 1].
+        """
+        return self._alignment
+    
+    # Overridden here because StreamIterator may define different alignment
+    @property
+    def t(self):
+        """
+        Return the time axis (record window) of the events in the iterator. 
+        
+        It is a millisecond array with 0 aligned according to the 'alignment' argument used when constructing the StreamIterator.
+        """
+        return (np.arange(self.record_length) - self.alignment*self.record_length)*self.dt_us/1000
     
     @property
     def record_length(self):

@@ -378,6 +378,63 @@ class TestStreamIterator:
 
         assert np.array_equal(next(iter(it))[0], next(iter(it2)))
 
+    def test_extend_window(self):
+        rl = 2**13
+        stream = MockStream()
+
+        # inds that work exactly (last available sample).
+        for al in [0, 1/4, 1/2]:
+            for inds in [
+                [rl + int(al*rl)], 
+                [len(stream) - 2*rl + int(al*rl)]
+            ]:
+                new_it = stream.get_event_iterator(
+                    "Ch0", 
+                    inds=inds,
+                    record_length=rl,
+                    alignment=al,
+                ).with_extended_window()
+                assert new_it.record_length == 3 * rl
+
+        # inds that just fall outside the valid samples.
+        for al in [0, 1/4, 1/2]:
+            for inds in [
+                [rl + int(al*rl) - 1], 
+                [len(stream) - 2*rl + int(al*rl) + 1]
+            ]:
+                with pytest.raises(IndexError):
+                    stream.get_event_iterator(
+                        "Ch0", 
+                        inds=inds,
+                        record_length=rl,
+                        alignment=al,
+                    ).with_extended_window()
+        
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["TP0"])
+
+        for al in [0, 1/4, 1/2]:
+            it = stream.get_event_iterator(
+                "Ch0", 
+                inds=inds[:25],
+                record_length=rl,
+                alignment=al,
+            )
+            it_extended = it.with_extended_window()
+            basic_checks(it_extended)
+
+            assert it_extended.record_length == 3 * rl
+            assert it.grab(0)[0] == it_extended.grab(0)[rl]
+            assert it.grab(0)[-1] == it_extended.grab(0)[2*rl-1]
+
+        # Check if error is raised if processing is present
+        with pytest.raises(NotImplementedError):
+            stream.get_event_iterator(
+                "Ch0", 
+                inds=inds[:25],
+                record_length=rl,
+                alignment=al,
+            ).with_processing(lambda x: x).with_extended_window()
+
 class TestRDTIterator:
     def test_basic(self, testdata):
         _, f, *_ = testdata
@@ -434,6 +491,28 @@ class TestIteratorCollection:
         with pytest.raises(ValueError): it1 + it2[0]
         
         with pytest.raises(ValueError): it1 + it3
+
+    def test_extend_window(self):
+        rl = 2**13
+        # should only work for stream iterators
+        mock_it = MockData().get_event_iterator()
+        stream_it = MockStream().get_event_iterator(
+            "Ch0", 
+            inds=[10*rl, 20*rl],
+            record_length=rl,
+            alignment=1/4,
+        )
+
+        with pytest.raises(NotImplementedError):
+            (mock_it + mock_it).with_extended_window()
+
+        sum_it = stream_it + stream_it
+
+        assert sum_it.with_extended_window().record_length == 3*rl
+
+        # Check if error is raised if processing is present
+        with pytest.raises(NotImplementedError):
+            sum_it.with_processing(lambda x: x).with_extended_window()
 
 class TestMockIterator:
     def test_basic(self):
