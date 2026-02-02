@@ -63,6 +63,9 @@ Scalar functions
 .. autoclass:: TemplateFit
    :member-order: bysource
    :exclude-members: batch_support
+.. autoclass:: OFPulseHeight
+   :member-order: bysource
+   :exclude-members: batch_support
 .. autoclass:: TemplateFitCorrelated
    :member-order: bysource
    :exclude-members: batch_support

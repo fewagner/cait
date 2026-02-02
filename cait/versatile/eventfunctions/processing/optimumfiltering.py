@@ -29,9 +29,6 @@ class OptimumFiltering(FncBaseClass):
     Apply an optimum filter to a voltage trace.
     Works for multiple channels simultaneously if optimum filter is also given for multiple channels.
 
-    .. warning::
-        For filters that were built from a SEV whose maximum is not aligned at 1/4th of the record window, methods 'circular' and 'linear' might yield different results. In particular, the peak positions of the filtered traces might be offset. When using 'linear', it is recommended to have the SEV's maximum aligned at 1/4th of the record window.
-
     :param of: The optimum filter to use.
     :type of: np.ndarray
     :param method: The method by which the filter is convolved with an event. Can be either 'circular' in which case the event is Fourier transformed, multiplied by the filter kernel, and back transformed, 'linear' in which case the event is convolved without warp-around (samples which would require wrap-around are removed), and 'linear_pad' which is the same as 'linear' but the trace is first zero-padded (retaining the same number of samples in the output trace). 'linear' and 'linear_pad' also support events that are larger than the filter kernel permits in the 'circular' case. Defaults to 'circular'.
@@ -39,6 +36,12 @@ class OptimumFiltering(FncBaseClass):
 
     :return: Filtered event.
     :rtype: np.ndarray
+
+    .. warning::
+        For filters that were built from a SEV whose maximum is not aligned at 1/4th of the record window, methods 'circular' and 'linear' might yield different results. In particular, the peak positions of the filtered traces might be offset. When using 'linear', it is recommended to have the SEV's maximum aligned at 1/4th of the record window.
+
+    .. warning::
+        When choosing to zero-pad your events (method 'linear_pad'), you should first remove any constant baseline from your event traces (``it.with_processing(vai.RemoveBaseline())``).
 
     **Example:**
 
@@ -82,8 +85,7 @@ class OptimumFiltering(FncBaseClass):
         event = np.atleast_2d(event)
 
         if (
-            (self._of.shape[0] == 1 and event.ndim == 3)
-            or (self._of.shape[0] > 1 and (event.shape[-2] != self._of.shape[0]))
+            (self._of.shape[0] > 1 and (event.shape[-2] != self._of.shape[0]))
             or (self._of.shape[-1] != event.shape[-1]//2 + 1)
         ):
             raise ValueError(

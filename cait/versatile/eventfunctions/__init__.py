@@ -10,6 +10,7 @@ from .scalarfunctions.calcmp import CalcMP
 from .scalarfunctions.fitbaseline import FitBaseline
 from .scalarfunctions.mainparameters import MainParameters
 from .scalarfunctions.npeaks import NPeaks
+from .scalarfunctions.ofpulseheight import OFPulseHeight
 from .scalarfunctions.saturationtime import SaturationTime
 from .scalarfunctions.templatefit import TemplateFit
 from .scalarfunctions.templatefit_fqlc import TemplateFit_FQLC
