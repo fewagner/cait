@@ -1,5 +1,5 @@
 from functools import partial
-from typing import List, Tuple
+from typing import Callable, List, Tuple, Union
 from warnings import warn
 
 import h5py
@@ -23,10 +23,12 @@ from ..trigger._peakdet import get_triggers
 
 
 # convenience function used in calc_mp
+@deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Helper functions for dh.calc_mp will be removed together with dh.calc_mp")
 def _calc_mp_helper(event, down, max_bounds):
     return calc_main_parameters(event, down, max_bounds).getArray()
 
 # convenience function used in apply_of
+@deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Helper functions for dh.apply_of will be removed together with dh.apply_of")
 def _apply_of_helper(events, 
                      functions: List[callable], 
                      correlated: bool, 
@@ -454,6 +456,7 @@ class FeaturesMixin(object):
             print('OF updated.')
 
     # apply the optimum filter
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use dh.apply_ofilter instead.")
     def apply_of(self, 
                  type: str = 'events', 
                  name_appendix_group: str = '', 
@@ -567,6 +570,201 @@ class FeaturesMixin(object):
                  overwrite_existing=True,
                  write_to_virtual=False)
         print("\n")
+
+    def apply_ofilter(
+            self,
+            group: str,
+            of: np.ndarray,
+            sev: np.ndarray,
+            *,
+            only_channels: Union[int, List[int]] = None,
+            with_processing: Union[Callable, List[Callable]] = None,
+            on_stream: bool = False,
+            tag: str = "",
+            batch_size: int = 100,
+            preview: bool = False,
+            **kwargs,
+    ):
+        """
+        Calculate optimum filter pulse heights.
+
+        See below for some common pitfalls and refer to the documentation of :class:`cait.versatile.OFPulseHeight` for more details.
+
+        :param group: The DataHandler group with the events to which we want to apply the filter. The results will be saved to this group, too (see :class:`cait.versatile.OFPulseHeight` for a description of the outputs).
+        :type group: str
+        :param of: The optimum filter(s) to use. One for each channel, i.e. has shape ``(N, M//2+1)`` where ``N`` is the number of channels and ``M`` is the record length. Using 2D filters is no exception here: The filters have to be supplied as shape ``(N, M//2+1)`` arrays.
+        :type of: np.ndarray
+        :param sev: The standard events corresponding to the filters. They are used as reference to calculate the filter (peak) RMS. One standard event per entry in ``of`` is needed. I.e. has to be of shape ``(N, M)``.
+        :type sev: np.ndarray
+        :param only_channels: If you only want to filter some of the channels in 'group', you can specify the channel index/indices here. Note that the sizes of ``sev`` and ``of`` have to match the number of channels to be filtered, i.e. if you filter two channels, the ``of`` also has to have two channels. Defaults to None, i.e. filtering all channels in 'group'. Note that if you select a subset of channels here, the arguments ``filter_groups``, ``max_search`` and ``relative_to`` that you can pass as keyword arguments to :class:`cait.versatile.OFPulseHeight` (see below) refer to the channel indices **of the remaining channels**.
+        :type only_channels: Union[int, List[int]], optional
+        :param with_processing: Optional processing to be applied to the event traces before calculating the optimum filter heights. See :func:`cait.versatile.iterators.IteratorBaseClass.with_processing` for details. A processing worth mentioning is :class:`cait.versatile.TukeyWindow`.
+        :type with_processing: Union[Callable, List[Callable]], optional
+        :param on_stream: If True, the event traces are extended on the original stream, adding samples outside the record window. This allows for filtering without edge effects. Of course, this only works if the reference to the stream is saved in the DataHandler, which happens automatically if you use :func:`cait.mixins.TriggerCollectionMixin.trigger_of` or :func:`cait.mixins.TriggerCollectionMixin.trigger_zscore` for triggering. Adding the reference manually after triggering is painful and is not recommended. If you nevertheless want to perform such a calculation, you can use :func:`cait.versatile.OFPulseHeight` and `cait.versatile.iterators.StreamIterator.with_extended_window` to achieve the same. Defaults to False.
+        :type on_stream: bool, optional
+        :param tag: A string that is appended to the datasets when they are saved to the DataHandler (e.g. if you want to apply different filters). This string is appended with a hyphen, i.e. for ``tag="wafer"`` this would result in datasets like ``of_ph-wafer``. Defaults to an empty string, i.e. no tag.
+        :type tag: str, optional
+        :param batch_size: The number of events to process at once.
+        :type batch_size: int, optional
+        :param preview: If True, an interactive preview illustrating the filter evaluation using the current input arguments on the event traces opens up. Defaults to False
+        :type preview: bool, optional
+        :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.OFPulseHeight`. Notable arguments are ``max_search`` (to specify where to search for maxima), ``relative_to`` (to specify relative to which channels the filtered traces should be evaluated), ``peak_rms_width`` (number of samples for peak RMS calculation) and ``filter_groups`` (used to specify which channels should be treated together using a 2D filter). Refer to its documentation page for more details.
+        :type kwargs: any, optional
+
+        .. note::
+            If you have two channels and you want to search the maximum of the first channel around 1/4th of the record window and evaluate the second channel ``k`` samples *before* the maximum found in the first channel, you have to pass the arguments ``max_search=[(0.2, 0.4), -k]`` and ``relative_to=[None, 0]``.
+
+        .. note::
+            To apply a 2d optimum filter to channels 0 and 1 and search for the maximum in channel 2 at most ``k`` samples away from the 2d filter maximum of the first two channels, pass arguments ``filter_groups=[(0, 1), 2]``, ``max_search=[(0.2, 0.4), (-k, k)]``, and ``relative_to=[None, 0]``. Notice here that the elements of ``relative_to`` refer to the entries in ``filter_groups``.
+
+        .. note::
+            If you see weird edge effects in your filtered traces, it might be a good idea to apply the filter on an extended window (on the initial stream) using ``on_stream=True``. This only works if a reference to the initial stream is still available in the DataHandler. 
+            If it is not, you can also try adding ``with_processing=[vai.RemoveBaseline(), vai.TukeyWindow()]`` which should reduce edge effects (especially for events which do not fully decay within the record window).
+
+        .. warning::
+            If you start using ``only_channels``, ``relative_to``, ``max_search``, and ``filter_groups`` together, you have to be careful with what the indices are referring to: Once you specify ``only_channels``, the entries of the remaining arguments refer to the indices **of the remaining channels**. I.e. if ``only_channels=[0, 2]``, the first entries in ``relative_to`` and ``max_search`` refer to channel 0, wherease the second entries refer to (the old) channel 2. Likewise, if you already chose ``only_channels=[0, 2]``, a valid 2d filter group would be ``filter_groups=[(0, 1)]`` (**not** ``[(0, 2)]``!). 
+
+        .. warning::
+            The output arrays **always** have as many channels as the events in the specified ``group``. If you select a subset of channels using ``only_channels``, the remaining channels will be filled with -404, indicating missing values. **However**, if you also set ``filter_groups`` (in order to apply a 2D filter), you inherently lose the channel-index correspondence. To keep things consistent, the output values of any 2D filters are **duplicated** into the channels that were filtered together. E.g. if you choose ``filter_groups=[(0, 1), 2]``, the first and second row of the output arrays will have identical data (results of the 2D filtering), while the third row will have the data from channel 2.
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait as ai
+            import cait.versatile as vai
+
+            record_length = 2**14
+
+            # Generate mock data (two cannels)
+            md = vai.MockData(record_length=record_length)
+            it = md.get_event_iterator()
+            sev, of = md.sev, md.of
+
+            # Generate mock stream (two channels)
+            s = vai.MockStream(rate_Hz=1, seed=137)
+
+            # Initialize DataHandler
+            dh = ai.DataHandler(record_length=record_length, 
+                                nmbr_channels=2, 
+                                sample_frequency=s.sample_frequency)
+            dh.set_filepath(path_h5="", 
+                            fname="apply_ofilter_test", 
+                            appendix=False)
+            dh.init_empty()
+
+            # Trigger to get traces in DataHandler
+            dh.trigger_zscore(s, trigger_channels=["Ch0"], passive_channels=["Ch1"])
+
+            # Calculate filter pulse heights (evaluate channel 1 relative
+            # to channel 0). For more examples, see vai.OFPulseHeight.
+            dh.apply_ofilter(
+                "events", 
+                of=of, 
+                sev=sev,
+                max_search=[(0.2, 0.4), (-1000, 0)],
+                relative_to=[None, 0], 
+                # preview=True, # set to True to get a preview before commiting
+            )
+        """
+        if only_channels is None:
+            only_channels = slice(None)
+
+        if with_processing is None:
+            with_processing = []
+
+        # Load events for specified group. If 'on_stream=True', the resulting
+        # iterator is a StreamIterator (if available).
+        events = self.get_event_iterator(
+            group=group, 
+            channel=only_channels,
+            prefer_external=on_stream,
+        )
+
+        if len(set([
+            a := events.n_channels, 
+            b := np.atleast_2d(of).shape[0], 
+            c := np.atleast_2d(sev).shape[0],
+            ])) > 1:
+            raise ValueError(f"The number of OF and SEV channels must match the number of selected channels for filtering. Got {a}, {b}, {c}.")
+
+        if on_stream:
+            if not isinstance(events, vai.iterators.StreamIterator):
+                raise Exception("Unable to load StreamIterator. There seems to be no reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
+            # If we can load events from stream, we use linear convolution
+            # and extend the iterator
+            if "method" in kwargs:
+                raise KeyError("When using 'on_stream=True', you cannot additionally set 'method', as it is overridden by 'method='linear''.")
+            
+            kwargs["method"] = "linear"
+            events = events.with_extended_window()
+
+        # Processing needs to be added after a potential increase of the window size
+        events = events.with_processing(with_processing)
+
+        # Configuration of filter evaluation is handled by OFPulseHeight
+        f = vai.OFPulseHeight(of=of, sev=sev, **kwargs)
+
+        if preview:
+            return vai.Preview(events.with_processing(vai.RemoveBaseline()), f)
+
+        of_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating OF pulse heights")
+        of_res_dict = {k: v for k, v in zip(f.names, of_res)}
+    
+        # NOTE: The next step assumes that the outputs of OFPulseHeight are all scalar,
+        # meaning that the arrays returned are 1D for single channel data and 2D else.
+        # This allows for a simple construction of the output arrays.
+        n_ev = len(events)
+        n_ch_total = self.get_event_iterator(group=group).n_channels
+
+        # See docstring for how we treat 'missing channels' in the output arrays.
+        if only_channels == slice(None):
+            selected_channels = list(range(n_ch_total))
+        else:
+            # Those may be unordered.
+            selected_channels = only_channels
+
+        if "filter_groups" in kwargs:
+            filter_groups = kwargs["filter_groups"]
+        else:
+            filter_groups = selected_channels
+
+        # Sanitize data (such that all of the datasets have shape (n_events, n_channels), even if n_channels=1)
+        of_res_dict = {k: (v if v.ndim>1 else np.atleast_2d(v).T) for k, v in of_res_dict.items()}
+
+        for n, t in zip(f.names, f.types):
+            out = -404*np.ones((n_ch_total, n_ev), dtype=t)
+
+            # NOTE: It is important to distinguish the position of the channels in the of_res_dict
+            # from the actual channel indices in the DataHandler.
+
+            # Some 2D filter has been applied
+            if len(filter_groups) != len(selected_channels):
+                for i, fg in enumerate(filter_groups):
+                    if isinstance(fg, int):
+                        actual_ch_id = selected_channels[fg]
+                        out[actual_ch_id, :] = of_res_dict[n][:, i].flatten()
+                    elif isinstance(fg, tuple):
+                        for ch_id in fg:
+                            actual_ch_id = selected_channels[ch_id]
+                            out[actual_ch_id, :] = of_res_dict[n][:, i].flatten()
+                    else:
+                        # This should never be raised because OFPulseHeight validates the input.
+                        # Nevertheless, this could prevent headaches in case that mechanism ever fails.
+                        raise TypeError(f"Unsupported type '{type(fg)}' for entry in 'filter_groups'.")
+            # Simple treatment: only separate channels (I know that this can be considered
+            # a special case of the nested abomination above but I think it's cleaner this way).
+            else:
+                for i, ch_id in enumerate(selected_channels):
+                    out[ch_id, :] = of_res_dict[n][:, i].flatten()
+
+            self.set(
+                group=group,
+                **{f"{n}" + (f"-{tag}" if tag else ""): out},
+                dtype=t,
+                overwrite_existing=True,
+                write_to_virtual=False,
+            )
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
