@@ -19,4 +19,4 @@ Furthermore, the :class:`cait.versatile.iterators.StreamIterator` has additional
 .. autoclass:: cait.versatile.iterators.PulseSimIterator
 
 .. autoclass:: cait.versatile.iterators.StreamIterator
-   :members: with_extended_window, alignment, t
+   :members: with_alignment, with_record_length, with_extended_window, alignment, t

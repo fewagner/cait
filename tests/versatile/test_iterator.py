@@ -393,8 +393,12 @@ class TestStreamIterator:
                     inds=inds,
                     record_length=rl,
                     alignment=al,
-                ).with_extended_window()
-                assert new_it.record_length == 3 * rl
+                )
+                assert new_it.with_extended_window().record_length == 3 * rl
+                assert new_it.with_record_length(2 * rl).record_length == 2 * rl
+                assert new_it.with_record_length(2 * rl).alignment == al
+                assert new_it.with_alignment(1/2).record_length == rl
+                assert new_it.with_alignment(1/2).alignment == 1/2
 
         # inds that just fall outside the valid samples.
         for al in [0, 1/4, 1/2]:
@@ -505,14 +509,24 @@ class TestIteratorCollection:
 
         with pytest.raises(NotImplementedError):
             (mock_it + mock_it).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            (mock_it + mock_it).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            (mock_it + mock_it).with_record_length(2**13)
 
         sum_it = stream_it + stream_it
 
         assert sum_it.with_extended_window().record_length == 3*rl
+        assert sum_it.with_record_length(2*rl).record_length == 2*rl
+        assert sum_it.with_alignment(1/2).record_length == rl
 
         # Check if error is raised if processing is present
         with pytest.raises(NotImplementedError):
             sum_it.with_processing(lambda x: x).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            sum_it.with_processing(lambda x: x).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            sum_it.with_processing(lambda x: x).with_record_length(2**13)
 
 class TestMockIterator:
     def test_basic(self):

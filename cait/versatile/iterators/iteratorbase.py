@@ -497,6 +497,20 @@ class IteratorCollection(IteratorBaseClass):
 
         return new_collection
     
+    # Forwards .with_record_length, .with_alignment, and .with_extended_window
+    # to StreamIterator.
+    def __getattr__(self, name):
+        if name in ["with_record_length", "with_alignment", "with_extended_window"]:
+            if not all(isinstance(x, vai.iterators.StreamIterator) for x in self.iterators):
+                raise NotImplementedError(f"Method '{name}' is only available if all iterators in the IteratorCollection are StreamIterators. At least one of the iterators in this IteratorCollection is NOT a StreamIterator. Got iterators {[it.__class__.__name__ for it in self.iterators]}.")
+            
+            if self.has_processing:
+                raise NotImplementedError(f"Cannot use method '{name}' on iterators with processing because processing might depend on window size and/or alignment and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call '{name}' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size and/or alignment, or add it again after adjusting its parameters to work with the new size/alignment.")
+            
+            return lambda *args, **kwargs: self.__class__([getattr(it, name)(*args, **kwargs) for it in self.iterators])
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
+    
     # overrides default behavior
     def with_batchsize(self, batch_size: int):
         """
@@ -509,23 +523,6 @@ class IteratorCollection(IteratorBaseClass):
         new_iterator.add_processing(self.fncs.copy())
 
         return new_iterator
-    
-    # Ensure that a collection of (only) stream iterators may have their windows extended.
-    def with_extended_window(self):
-        """
-        Return an iterator for identical timestamps but with the window size increased to include one additional record length before and after the previous window.
-
-        ```{warning}
-        This only works for IteratorCollections containing exclusively StreamIterators!
-        ```
-        """
-        if not all(isinstance(x, vai.iterators.StreamIterator) for x in self.iterators):
-            raise NotImplementedError(f"Only the windows of StreamIterators can be extended. At least one of the iterators in this IteratorCollection is NOT a StreamIterator. Got iterators {[it.__class__.__name__ for it in self.iterators]}.")
-        
-        if self.has_processing:
-            raise NotImplementedError("Cannot extend iterator which has processing because processing might depend on window size and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call 'extend_window' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size, or add it again after adjusting its parameters to work with the extended window size.")
-        
-        return self.__class__([it.with_extended_window() for it in self.iterators])
 
     @property
     def record_length(self):

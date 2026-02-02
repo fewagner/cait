@@ -5,6 +5,25 @@ import numpy as np
 from .iteratorbase import IteratorBaseClass
 
 
+def _validate_new_window(stream, name, new_alignment, new_record_length):
+    ts = stream.timestamps
+    dt = stream.dt_us
+    # Timestamps of the first and last samples of 
+    # the records currently in the iterator.
+    record_start_ts = ts - dt * int(new_alignment * new_record_length)
+    record_time = dt * new_record_length
+    record_end_ts = record_start_ts + ( record_time - dt )
+    
+    # Check if any of the windows would extend outside the stream samples.
+    flag_inside = (
+        ( record_start_ts >= stream.ds_start_us )
+        * ( record_end_ts <= stream._stream.time[-1] )
+    )
+    n_outside = np.sum(~flag_inside)
+
+    if n_outside > 0:
+        raise IndexError(f"If {name} was changed, {n_outside} of the events would have record windows extending outside of the valid sample range of the stream.")
+
 class StreamIterator(IteratorBaseClass):
     """
     Iterator object that returns voltage traces for given trigger indices of a stream file. 
@@ -106,41 +125,55 @@ class StreamIterator(IteratorBaseClass):
             
         else:
             raise StopIteration
+        
+    def with_alignment(self, alignment: float):
+        """
+        Return an iterator for identical timestamps but with different alignment.
+
+        :param alignment: A number in the interval [0,1] which determines the alignment of the record window (of length `record_length`) relative to the specified index. E.g. if `alignment=1/2`, the record window is centered around the index.
+        :type alignment: float
+
+        .. warning::
+            Requires that all event traces are still within the stream boundaries after changing alignment.
+        """
+        if 0 > alignment or 1 < alignment:
+            raise ValueError("'alignment' has to be in the interval [0,1]")
+        
+        if self.has_processing:
+            raise NotImplementedError("Cannot change alignment for iterators with processing because processing might depend on alignment and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call 'with_alignment' on the iterator without processing, then add the 'old_processing' again if it does not depend on alignment, or add it again after adjusting its parameters to work with the new alignment.")
+        
+        _validate_new_window(self, "alignment", new_alignment=alignment, new_record_length=self.record_length)
+
+        params, _ = self._slice_info
+        new_params = params.copy()
+        new_params["alignment"] = alignment
+
+        return self.__class__(**new_params)
+
+    def with_record_length(self, record_length: int):
+        """
+        Return an iterator for identical timestamps but with different record length.
+
+        :param record_length: The number of samples to be returned for each event. Usually, those are powers of 2, e.g. 16384
+        :type record_length: int
+
+        .. warning::
+            Requires that all event traces are still within the stream boundaries after changing record length.
+        """
+        if self.has_processing:
+            raise NotImplementedError("Cannot change record_length for iterators with processing because processing might depend on window size and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call 'with_record_length' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size, or add it again after adjusting its parameters to work with the new window size.")
+        
+        _validate_new_window(self, "record_length", new_alignment=self.alignment, new_record_length=record_length)
+        
+        params, _ = self._slice_info
+        new_params = params.copy()
+        new_params["record_length"] = record_length
+
+        return self.__class__(**new_params)
     
     def with_extended_window(self):
         """Return an iterator for identical timestamps but with the window size increased to include one additional record length before and after the previous window."""
-        if self.has_processing:
-            raise NotImplementedError("Cannot extend iterator which has processing because processing might depend on window size and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call 'extend_window' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size, or add it again after adjusting its parameters to work with the extended window size.")
-        
-        al = self.alignment
-        rl = self.record_length
-        ts = self.timestamps
-        dt = self.dt_us
-        # Timestamps of the first and last samples of 
-        # the records currently in the iterator.
-        record_start_ts = ts - dt * int(al * rl)
-        record_time = dt * rl
-        record_end_ts = record_start_ts + ( record_time - dt )
-        
-        # Check if any of the windows would extend outside the stream samples.
-        flag_inside = (
-              ( record_start_ts - record_time >= self.ds_start_us )
-            * ( record_end_ts + record_time <= self._stream.time[-1] )
-        )
-        n_outside = np.sum(~flag_inside)
-
-        if n_outside > 0:
-            raise IndexError(f"If windows were extended, {n_outside} of the events would have record windows extending outside of the valid sample range of the stream.")
-
-        # The entire process is handled by changing the record length
-        # and adjusting the alignment.
-        params, _ = self._slice_info
-        new_params = params.copy()
-        
-        new_params["record_length"] = 3 * rl
-        new_params["alignment"] = 1/3 + al/3
-
-        return self.__class__(**new_params)
+        return self.with_alignment(1 / 3 + self.alignment / 3).with_record_length(3 * self.record_length)
         
     @property
     def alignment(self):
