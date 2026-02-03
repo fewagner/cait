@@ -685,6 +685,16 @@ class FeaturesMixin(object):
             prefer_external=on_stream,
         )
 
+        n_ev = len(events)
+        n_ch_total = self.get_event_iterator(group=group).n_channels
+
+        # In case we use on_stream=True, we will extend the record windows.
+        # Sometimes, this results in extending windows outside the valid range
+        # of the stream. This is to be expected and intentionally throws and 
+        # error. However, in this 'convenience' DataHandler function, we detect
+        # such issues and set the offending events' output to -404.
+        valid_flag = np.ones(len(events), dtype=bool)
+
         if len(set([
             a := events.n_channels, 
             b := np.atleast_2d(of).shape[0], 
@@ -700,14 +710,70 @@ class FeaturesMixin(object):
                     vai.iterators.IteratorCollection,
                 ),
             ):
-                raise Exception("Unable to load StreamIterator. There seems to be no reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
+                raise Exception("Unable to load StreamIterator. There seems to be no stream reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
+            # If IteratorCollection, check right away if the contents are StreamIterators. This 
+            # can be done easily by checking for the existance of the 'with_record_length' function:
+            try:
+                events.with_record_length(events.record_length)
+            except NotImplementedError:
+                raise Exception("Unable to load StreamIterator. There seems to be no stream reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
+            
             # If we can load events from stream, we use linear convolution
             # and extend the iterator
             if "method" in kwargs:
                 raise KeyError("When using 'on_stream=True', you cannot additionally set 'method', as it is overridden by 'method='linear''.")
             
             kwargs["method"] = "linear"
-            events = events.with_extended_window()
+
+            # It is possible, that some of the extended windows fall outside the valid stream range 
+            # because the trigger algorithm may still find triggers close to the end of a stream.
+            # The exception raised by 'with_extended_window()' in such a case is intentional.
+            # However, from a convenience perspective, it would be much nicer, if such events were
+            # just removed from the analysis. What we do here is set their RMS values to -404 but 
+            # don't throw an error.
+            # The offending events are always among the first/last events, so we only have to check
+            # them. For an IteratorCollection, however, the check is a bit more annoying.
+
+            def find_offending_indices(it):
+                # Check at most 10 events (per stream) to be removed.
+                try_max = min(len(it), 10)
+                offending_indices = []
+                inds = np.argsort(it.timestamps)
+                # Check smallest timestamps.
+                for i in range(try_max):
+                    try:
+                        # If the specified timestamp causes an error ...
+                        it[:, inds[i]].with_extended_window()
+                    except IndexError:
+                        # ... it is considered offending
+                        offending_indices.append(inds[i])
+                    # Check largest timestamps.
+                    try:
+                        it[:, inds[-i]].with_extended_window()
+                    except IndexError:
+                        offending_indices.append(inds[-i])
+                
+                # For very short interators, there could be an overlap 
+                # when looking from the front and the back of the list.
+                # Using list(set()) gets rid of potential duplicates.
+                return list(set(offending_indices))
+
+            if isinstance(events, vai.iterators.StreamIterator):
+                inds = find_offending_indices(events)
+
+            else: # must be Collection because of the check above
+                inds = []
+                offset = 0
+                for it in events.iterators:
+                    sub_inds = find_offending_indices(it)
+                    inds.extend([i + offset for i in sub_inds])
+                    offset += len(it)
+
+            if len(inds) > 0:
+                print(f"Found {len(inds)} events that have record windows outside the stream's boundaries after extending their windows. Those will have RMS values of -404 in the final datasets.")
+
+            valid_flag[inds] = False
+            events = events[:, valid_flag].with_extended_window()
 
         # Processing needs to be added after a potential increase of the window size
         if with_processing:
@@ -725,12 +791,6 @@ class FeaturesMixin(object):
 
         of_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating OF pulse heights")
         of_res_dict = {k: v for k, v in zip(f.names, of_res)}
-    
-        # NOTE: The next step assumes that the outputs of OFPulseHeight are all scalar,
-        # meaning that the arrays returned are 1D for single channel data and 2D else.
-        # This allows for a simple construction of the output arrays.
-        n_ev = len(events)
-        n_ch_total = self.get_event_iterator(group=group).n_channels
 
         # See docstring for how we treat 'missing channels' in the output arrays.
         if only_channels == slice(None):
@@ -743,7 +803,11 @@ class FeaturesMixin(object):
             filter_groups = kwargs["filter_groups"]
         else:
             filter_groups = selected_channels
-
+    
+        # NOTE: The next step assumes that the outputs of OFPulseHeight are all scalar,
+        # meaning that the arrays returned are 1D for single channel data and 2D else.
+        # This allows for a simple construction of the output arrays.
+    
         # Sanitize data (such that all of the datasets have shape (n_events, n_channels), even if n_channels=1)
         of_res_dict = {k: (v if v.ndim>1 else np.atleast_2d(v).T) for k, v in of_res_dict.items()}
 
@@ -758,11 +822,11 @@ class FeaturesMixin(object):
                 for i, fg in enumerate(filter_groups):
                     if isinstance(fg, int):
                         actual_ch_id = selected_channels[fg]
-                        out[actual_ch_id, :] = of_res_dict[n][:, i].flatten()
+                        out[actual_ch_id, valid_flag] = of_res_dict[n][:, i].flatten()
                     elif isinstance(fg, tuple):
                         for ch_id in fg:
                             actual_ch_id = selected_channels[ch_id]
-                            out[actual_ch_id, :] = of_res_dict[n][:, i].flatten()
+                            out[actual_ch_id, valid_flag] = of_res_dict[n][:, i].flatten()
                     else:
                         # This should never be raised because OFPulseHeight validates the input.
                         # Nevertheless, this could prevent headaches in case that mechanism ever fails.
@@ -771,7 +835,7 @@ class FeaturesMixin(object):
             # a special case of the nested abomination above but I think it's cleaner this way).
             else:
                 for i, ch_id in enumerate(selected_channels):
-                    out[ch_id, :] = of_res_dict[n][:, i].flatten()
+                    out[ch_id, valid_flag] = of_res_dict[n][:, i].flatten()
 
             self.set(
                 group=group,
@@ -780,6 +844,9 @@ class FeaturesMixin(object):
                 overwrite_existing=True,
                 write_to_virtual=False,
             )
+
+        if np.any(self.get(group, "of_rms" + (f"-{tag}" if tag else "")) == -404):
+            print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding filter values should not be trusted! If you set 'on_stream=True' it is possible that some of the events extended outside of the stream range after expanding them. Such events cannot be reliably filtered and were removed from the calculation and their RMS value was set to -404. Likewise, if you chose only to filter a subset of channels using the 'only_channels' argument, channels which were not filtered had their RMS values set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,

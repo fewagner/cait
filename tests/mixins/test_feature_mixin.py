@@ -429,3 +429,90 @@ def test_apply_ofilter_triple_ch(tempdir_fnc):
     assert np.array_equal(out[0], out[1])
     assert np.allclose(out[0], -404)
     assert not np.allclose(out[2], -404)
+
+# Test dh.apply_ofilter
+def test_apply_ofilter_extend_fails(tempdir_fnc):
+    dh1 = create_dh(
+        tempdir_fnc.name, 
+        name="dh1",
+        record_length=record_length, 
+        sample_frequency=s.sample_frequency,
+        n_ch=1,
+    )
+
+    dh1.include_event_iterator(
+        "events",
+        s.get_event_iterator(
+            "Ch0",
+            record_length=record_length,
+            inds=[10*record_length, len(s) - record_length - record_length//2],
+        )
+    )
+
+    # Check if the error is raised by the iterator ...
+    with pytest.raises(IndexError):
+        dh1.get_event_iterator("events", prefer_external=True).with_extended_window()
+
+    # ... but is handled correctly by the datahandler function.
+    dh1.apply_ofilter(
+        "events", 
+        of=of[0], 
+        sev=sev[0],
+        on_stream=True,
+    )
+    assert dh1["events/of_ph"].shape == (1, 2)
+    assert dh1["events/of_rms", 0][-1] == -404.
+
+    # IDENTICAL CHECKS FOR COMBINED DATAHANDLER
+    dh2 = create_dh(
+        tempdir_fnc.name, 
+        name="dh2",
+        record_length=record_length, 
+        sample_frequency=s.sample_frequency,
+        n_ch=1,
+    )
+    dh3 = create_dh(
+        tempdir_fnc.name, 
+        name="dh3",
+        record_length=record_length, 
+        sample_frequency=s.sample_frequency,
+        n_ch=1,
+    )
+    for dh in [dh2, dh3]:
+        dh.include_event_iterator(
+            "events",
+            s.get_event_iterator(
+                "Ch0",
+                record_length=record_length,
+                inds=[10*record_length, len(s) - record_length - record_length//2],
+            )
+        )
+
+    ai.data.combine_h5(
+        "combined", 
+        ["dh2", "dh3"], 
+        src_dir=tempdir_fnc.name,
+        out_dir=tempdir_fnc.name,
+        groups_combine=["events"],
+    )
+    dh_combined = ai.DataHandler(
+        record_length=dh1.record_length,
+        sample_frequency=dh1.sample_frequency,
+        nmbr_channels=1
+    )
+    dh_combined.set_filepath(tempdir_fnc.name, "combined", appendix=False)
+
+    # Check if the error is raised by the iterator ...
+    with pytest.raises(IndexError):
+        dh_combined.get_event_iterator("events", prefer_external=True).with_extended_window()
+
+    # ... but is handled correctly by the datahandler function.
+    dh_combined.apply_ofilter(
+        "events", 
+        of=of[0], 
+        sev=sev[0],
+        on_stream=True,
+    )
+    assert dh_combined["events/of_ph"].shape == (1, 4)
+    assert dh_combined["events/of_rms", 0][1] == -404.
+    assert dh_combined["events/of_rms", 0][3] == -404.
