@@ -23,6 +23,11 @@ def test_filtering_circ_lin_pad(method):
     expected_shapes = [
         (it_short[0].grab(0), (it_short.record_length,)),
         (it_short[0].grab([0, 1, 2]), (3, it_short.record_length)),
+        (np.reshape(
+            it_short[0].grab([0, 1, 2]),
+            (3, 1, it_short.record_length)), 
+            (3, 1, it_short.record_length)
+        ),
     ]
     for ev, shape in expected_shapes:
         assert f1(ev).shape == shape
@@ -31,6 +36,11 @@ def test_filtering_circ_lin_pad(method):
     expected_shapes = [
         (it_long[0].grab(0), (it_long.record_length,)),
         (it_long[0].grab([0, 1, 2]), (3, it_long.record_length)),
+        (np.reshape(
+            it_long[0].grab([0, 1, 2]),
+            (3, 1, it_long.record_length)), 
+            (3, 1, it_long.record_length)
+        ),
     ]
     for ev, shape in expected_shapes:
         if method == "circular":
@@ -102,6 +112,11 @@ def test_filtering_lin():
     expected_shapes = [
         (it_long[0].grab(0), (record_length,)),
         (it_long[0].grab([0, 1, 2]), (3, record_length)),
+        (np.reshape(
+            it_long[0].grab([0, 1, 2]),
+            (3, 1, it_long.record_length)), 
+            (3, 1, it_long.record_length//3)
+        ),
     ]
     for ev, shape in expected_shapes:
         assert f1(ev).shape == shape
@@ -145,6 +160,10 @@ def test_ofpulseheight_docstring_example():
     vai.apply(f1, it[0])
     of_res = vai.apply(f1, it[0].with_batchsize(7))
     of_res_dict = {k: v for k, v in zip(f1.names, of_res)}
+
+    # Try with processing
+    vai.apply(f1, it[0].with_processing(vai.RemoveBaseline()))
+    vai.apply(f1, it[0].with_batchsize(3).with_processing(vai.RemoveBaseline()))
     # ------------------------- #
 
     f2 = vai.OFPulseHeight(
@@ -155,6 +174,10 @@ def test_ofpulseheight_docstring_example():
     )
     vai.apply(f2, it)
     vai.apply(f2, it.with_batchsize(7))
+
+    # Try with processing
+    vai.apply(f2, it.with_processing(vai.RemoveBaseline()))
+    vai.apply(f2, it.with_batchsize(3).with_processing(vai.RemoveBaseline()))
 
     vai.Preview(it, f2, backend="plotly")
     # ------------------------- #

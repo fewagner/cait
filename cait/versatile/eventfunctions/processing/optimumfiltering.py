@@ -102,8 +102,7 @@ class OptimumFiltering(FncBaseClass):
         event = np.atleast_2d(event)
 
         if (
-            (self._of.shape[0] == 1 and event.ndim == 3)
-            or (self._of.shape[0] > 1 and (event.shape[-2] != self._of.shape[0]))
+            self._of.shape[0] > 1 and (event.shape[-2] != self._of.shape[0])
         ):
             raise ValueError(
                 f"Shape mismatch of OF ({self._of.shape}) and event ({event.shape}). For filters of shape (K, ...), where K is the number of channels, the event must have dimension (L, K, ...)."

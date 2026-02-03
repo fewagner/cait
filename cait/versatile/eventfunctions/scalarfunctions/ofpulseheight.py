@@ -568,12 +568,12 @@ class OFPulseHeight(FncBaseClass):
         rms, peak_rms = self._rms(self._filtered_event, eval_ph, eval_pos)
         
         return (
-            eval_ph.squeeze(), 
-            max_ph.squeeze(), 
-            eval_pos.squeeze(), 
-            max_pos.squeeze(), 
-            rms.squeeze(), 
-            peak_rms.squeeze(),
+            eval_ph, 
+            max_ph, 
+            eval_pos, 
+            max_pos, 
+            rms, 
+            peak_rms,
         )
 
     @property

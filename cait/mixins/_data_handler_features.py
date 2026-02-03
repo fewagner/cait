@@ -669,9 +669,13 @@ class FeaturesMixin(object):
         """
         if only_channels is None:
             only_channels = slice(None)
+        elif isinstance(only_channels, int):
+            only_channels = [only_channels]
 
         if with_processing is None:
             with_processing = []
+        elif callable(with_processing):
+            with_processing = [with_processing]
 
         # Load events for specified group. If 'on_stream=True', the resulting
         # iterator is a StreamIterator (if available).
@@ -689,7 +693,13 @@ class FeaturesMixin(object):
             raise ValueError(f"The number of OF and SEV channels must match the number of selected channels for filtering. Got {a}, {b}, {c}.")
 
         if on_stream:
-            if not isinstance(events, vai.iterators.StreamIterator):
+            if not isinstance(
+                events, 
+                (
+                    vai.iterators.StreamIterator, 
+                    vai.iterators.IteratorCollection,
+                ),
+            ):
                 raise Exception("Unable to load StreamIterator. There seems to be no reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
             # If we can load events from stream, we use linear convolution
             # and extend the iterator
@@ -700,13 +710,18 @@ class FeaturesMixin(object):
             events = events.with_extended_window()
 
         # Processing needs to be added after a potential increase of the window size
-        events = events.with_processing(with_processing)
+        if with_processing:
+            events = events.with_processing(with_processing)
 
         # Configuration of filter evaluation is handled by OFPulseHeight
         f = vai.OFPulseHeight(of=of, sev=sev, **kwargs)
 
         if preview:
-            return vai.Preview(events.with_processing(vai.RemoveBaseline()), f)
+            return vai.Preview(
+                events.with_processing(
+                    with_processing + [vai.RemoveBaseline()]
+                    ), f
+                )
 
         of_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating OF pulse heights")
         of_res_dict = {k: v for k, v in zip(f.names, of_res)}
