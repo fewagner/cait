@@ -619,8 +619,8 @@ class OFPulseHeight(FncBaseClass):
                 "Search": [[aw[0], aw[0], aw[1], aw[1], aw[0]], [lb, ub, ub, lb, lb]]
             }
             s = {
-                "eval_pos": [[out_dict["of_eval_pos"]], [out_dict["of_ph"]]],
-                "max_pos": [[out_dict["of_max_pos"]], [out_dict["of_max_val"]]],
+                "eval_pos": [np.atleast_1d(out_dict["of_eval_pos"]), np.atleast_1d(out_dict["of_ph"])],
+                "max_pos": [np.atleast_1d(out_dict["of_max_pos"]), np.atleast_1d(out_dict["of_max_val"])],
             }
         
         fmt_arr = lambda l: ", ".join([f"{x:.2g}" for x in np.atleast_1d(l)])
