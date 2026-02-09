@@ -146,7 +146,11 @@ class GOF(OF):
 
     The generalized filter has to be constructed form a template (SEV) and a noise power spectrum (NPS), as well as a basis which describes the baseline. If you intend to build a traditional optimum filter, use :class:`cait.versatile.OF` instead. 
 
-    Note that ``vai.OF(sev, nps)`` is equivalent to ``vai.GOF(sev, nps, basis='poly', bspec=0, phase='argmax')``.
+    .. note::
+        ``vai.OF(sev, nps)`` is equivalent to ``vai.GOF(sev, nps, basis='poly', bspec=0, phase='argmax')``.
+
+    .. warning::
+        If the maximum of your SEV is not aligned at 1/4th of the record window, choosing the correct ``phase`` argument (depending on the situation) is important. See below.
 
     :param sev: The template to be used for the filter. Note that only single channel SEVs are supported, i.e. has to be of shape ``(N,)``.
     :type sev: SEV
@@ -190,11 +194,11 @@ class GOF(OF):
 
     For finite record windows, the chosen lag acts **circularly**. You can picture it like moving the SEV in the time domain sample by sample. Samples that fall outside the record window enter again on the other side. For a flat baseline model (which is trivially periodic) and SEVs that decay completely within the record window such shifts usually don't cause problems. **However**, if you describe the baseline using non-constant functions (e.g. polynomials) and/or your SEV is non-zero at the end of the record window, this wrap-around is an issue.
 
-    There are two cases to consider::
-        
-        If you just Fourier transform a voltage trace, then multiply it by the filter in frequency domain, then **evaluate the result at a fixed sample**, the phase is irrelevant **as long as** the sample where you evaluate it matches the chosen phase. E.g. if you choose ``phase='argmax'`` and you evaluate the result at ``np.argmax(sev)``, you're good. Likewise, choosing ``phase='1/4`` and evaluating at ``sev.shape[-1]//4`` is fine. 
+    There are two cases to consider:
 
-        If you want to **slide** the filter (like e.g. in :func:`cait.versatile.trigger_of` or :func:`cait.DataHandler.trigger_of`), the phase has to be zero. Otherwise the wrap-around would spoil the result. For backwards compatibility with traditional OFs (phase aligned with argmax of SEV, usually very close to 1/4th of the record window), those sliding trigger functions *automatically account for a phase of 1/4th of the record window*! This means that if you intend to use the filter for a sliding trigger, ``phase='1/4'`` has to be set when constructing the filter such that it is compensated in the trigger function and the resulting phase is zero again (I agree that this appears cumbersome and confusing, but while implementing this seemed like the best tradeoff between usability, clarity, and backwards compatibility).
+    - If you just Fourier transform a voltage trace, then multiply it by the filter in frequency domain, then **evaluate the result at a fixed sample**, the phase is irrelevant **as long as** the sample where you evaluate it matches the chosen phase. E.g. if you choose ``phase='argmax'`` and you evaluate the result at ``np.argmax(sev)``, you're good. Likewise, choosing ``phase='1/4`` and evaluating at ``sev.shape[-1]//4`` is fine. 
+
+    - If you want to **slide** the filter (like e.g. in :func:`cait.versatile.trigger_of` or :func:`cait.DataHandler.trigger_of`), the phase has to be zero. Otherwise the wrap-around would spoil the result. For backwards compatibility with traditional OFs (phase aligned with argmax of SEV, usually very close to 1/4th of the record window), those sliding trigger functions *automatically account for a phase of 1/4th of the record window*! This means that if you intend to use the filter for a sliding trigger, ``phase='1/4'`` has to be set when constructing the filter such that it is compensated in the trigger function and the resulting phase is zero again (I agree that this appears cumbersome and confusing, but while implementing this seemed like the best tradeoff between usability, clarity, and backwards compatibility).
 
     Trivially, if ``np.argmax(sev) == sev.shape[-1]//4``, phase arguments '1/4' and 'argmax' are equivalent.
 
@@ -363,8 +367,10 @@ class GOF(OF):
         # ... then construct the GOF:
         # Placeholder GOF (GOF cannot be constructed from an array
         # directly as OF can)
+        mock_sev = np.zeros(16)
+        mock_sev[4] = 10
         gof = cls(
-            sev=SEV(np.linspace(0, 1, 16), dt_us=of.dt_us), 
+            sev=SEV(mock_sev, dt_us=of.dt_us), 
             nps=NPS(np.ones(9), dt_us=of.dt_us), 
             basis="custom", 
             bspec=[np.ones(16)]

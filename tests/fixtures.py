@@ -1,6 +1,7 @@
-import pytest
 import tempfile
+
 import numpy as np
+import pytest
 
 import cait as ai
 
@@ -12,6 +13,12 @@ RDT_LENGTH = 100
 # Sets up a multi-purpose temporary directory and cleans it up after each module
 @pytest.fixture(scope="module")
 def tempdir():
+    d = tempfile.TemporaryDirectory()
+    yield d
+    d.cleanup()
+
+@pytest.fixture(scope="function")
+def tempdir_fnc():
     d = tempfile.TemporaryDirectory()
     yield d
     d.cleanup()

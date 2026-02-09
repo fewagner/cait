@@ -383,7 +383,14 @@ class DataHandler(SimulateMixin,
                 f = h5py.File(path, mode)
             return f
     
-    def get_event_iterator(self, group: str, channel: int = None, flag: List[bool] = None, batch_size: int = None):
+    def get_event_iterator(
+            self, 
+            group: str, 
+            channel: int = None, 
+            flag: List[bool] = None, 
+            batch_size: int = None,
+            prefer_external: bool = False,
+            ):
         """
         Returns H5Iterator object that can be used to iterate events in a dataset called 'event' of a given group and channel. When used within a with statement, the corresponding HDF5 file is kept open for faster access.
 
@@ -393,6 +400,10 @@ class DataHandler(SimulateMixin,
         :type channel: int
         :param flag: A boolean flag of events to include in the iterator
         :type flag: list of bool
+        :param batch_size: The batch size to use for the iterator.
+        :type batch_size: int
+        :param prefer_external: If True, the original iterator object is returned if available. E.g. if you included events after triggering and the reference is still stored in the DataHandler and available, the StreamIterator object is returned instead of the H5Iterator. Defaults to False, i.e. returns H5Iterator if events are (physically) stored in the HDF5 file and falls back to external data ONLY IF no events are (physically) stored in the HDF5 file.
+        :type prefer_external: bool
 
         :return: H5Iterator
         :rtype: Context Manager / Iterator
@@ -412,7 +423,7 @@ class DataHandler(SimulateMixin,
         # Check if the events in the specified group are stored externally.
         # This step is skipped if the 'event' dataset is present in the group.
         # Therefore, the physically stored events are always preferred but if they are missing, we fall back to the externally stored ones.
-        if not self.exists(group+"/event") and _events_exist_virtually(self, group):
+        if (prefer_external or not self.exists(group+"/event")) and _events_exist_virtually(self, group):
             try:
                 # If the 'iterator' field contains a list (rather than a simple dictionary),
                 # it is understood to be a collection of iterators, i.e. we deserialize the

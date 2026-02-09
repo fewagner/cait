@@ -4,6 +4,9 @@ from typing import Callable, List, Union
 
 import numpy as np
 
+# Have to import like this to avoid circular import
+import cait.versatile as vai
+
 from ...serialize import SerializingMixin
 from .batchresolver import BatchResolver
 
@@ -409,11 +412,12 @@ class IteratorCollection(IteratorBaseClass):
             else:
                 raise TypeError(f"Unsupported type '{type(iterators)}' for input argument 'iterators'.")
             
-        # Check if batch usage, number of channels, record_length and dt_us are consistent
+        # Check if batch usage, number of channels, record_length, dt_us and the time axis are consistent
         batch_usage = [it.uses_batches for it in iterators]
         channel_usage = [it.n_channels for it in iterators]
         rec_usage = [it.record_length for it in iterators]
         dt_usage = [it.dt_us for it in iterators]
+        t_usage = [it.t for it in iterators]
         if len(set(batch_usage)) != 1:
             raise ValueError(f"Either all iterators must use batches or none of them. Got {batch_usage}")
         if len(set(channel_usage)) != 1:
@@ -422,12 +426,15 @@ class IteratorCollection(IteratorBaseClass):
             raise ValueError(f"All iterators must have the same record length. Got {rec_usage}")
         if len(set(dt_usage)) != 1:
             raise ValueError(f"All iterators must have the same time base. Got {dt_usage}")
+        if not np.all(np.isclose(t_usage, t_usage[0])):
+            raise ValueError(f"All iterators must have the same time axis (it.t).")
         
         self._iterators = iterators
         self._uses_batches = batch_usage[0] # made sure that batch usage is consistent above
         self._n_channels = channel_usage[0] # made sure that number of channels is consistent above
         self._dt_us = dt_usage[0] # made sure that time base is consistent above
         self._record_length = rec_usage[0] # made sure that record length is consistent above
+        self._t = t_usage[0] # made sure that all time arrays are consistent above
 
     # Overrides superclass
     def __len__(self):
@@ -494,6 +501,23 @@ class IteratorCollection(IteratorBaseClass):
 
         return new_collection
     
+    # Forwards .with_record_length, .with_alignment, and .with_extended_window
+    # to StreamIterator.
+    def __getattr__(self, name):
+        if name in ["with_record_length", "with_alignment", "with_extended_window"]:
+            if not all(
+                    isinstance(x, (vai.iterators.StreamIterator, vai.iterators.PulseSimIterator)) 
+                    for x in self.iterators
+                ):
+                raise NotImplementedError(f"Method '{name}' is only available if all iterators in the IteratorCollection are StreamIterators or PulseSimIterators (based on StreamIterators). At least one of the iterators in this IteratorCollection is neither. Got iterators {[it.__class__.__name__ for it in self.iterators]}.")
+            
+            if self.has_processing:
+                raise NotImplementedError(f"Cannot use method '{name}' on iterators with processing because processing might depend on window size and/or alignment and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call '{name}' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size and/or alignment, or add it again after adjusting its parameters to work with the new size/alignment.")
+            
+            return lambda *args, **kwargs: self.__class__([getattr(it, name)(*args, **kwargs) for it in self.iterators])
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
+    
     # overrides default behavior
     def with_batchsize(self, batch_size: int):
         """
@@ -507,6 +531,11 @@ class IteratorCollection(IteratorBaseClass):
 
         return new_iterator
 
+    @property
+    def t(self):
+        """Return the time axis (record window) of the events in the iterator."""
+        return self._t
+    
     @property
     def record_length(self):
         return self._record_length
