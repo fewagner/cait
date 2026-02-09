@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import scipy as sp
 
 import cait as ai
 import cait.versatile as vai
@@ -516,3 +517,55 @@ def test_apply_ofilter_extend_fails(tempdir_fnc):
     assert dh_combined["events/of_ph"].shape == (1, 4)
     assert dh_combined["events/of_rms", 0][1] == -404.
     assert dh_combined["events/of_rms", 0][3] == -404.
+
+def test_apply_ofilter_pulse_sim(tempdir_fnc):
+    dh = create_dh(
+        tempdir_fnc.name, 
+        name="dh",
+        record_length=record_length, 
+        sample_frequency=s.sample_frequency,
+        n_ch=1,
+    )
+    
+    N_sim = 1000
+    md = vai.MockData(record_length=record_length)
+    of, sev = md.of[0], md.sev
+
+    dh.efficiency_sim_trigger_of(
+        sim_ts=np.sort(
+            sp.stats.randint.rvs(
+                s.time[0] + 10*s.dt_us*record_length, 
+                s.time[-1] - 10*s.dt_us*record_length, 
+                size=N_sim
+            )
+        ),
+        sim_phs=[
+            sp.stats.uniform.rvs(size=N_sim),
+            sp.stats.uniform.rvs(size=N_sim),
+        ], 
+        stream=s,
+        trigger_channels=["Ch0"],
+        passive_channels=["Ch1"],
+        testpulse_channels=["TP0", "TP1"],
+        thresholds=[0.01],
+        of=of,
+        sev=sev,
+        record_placement=3,
+    )
+
+    # Once normally
+    dh.apply_ofilter(
+        "events-eff-sim",
+        of=of,
+        sev=sev[0],
+        only_channels=0,
+    )
+    # Once on stream
+    dh.apply_ofilter(
+        "events-eff-sim",
+        of=of,
+        sev=sev[0],
+        only_channels=0,
+        on_stream=True,
+        tag="on_stream",
+    )

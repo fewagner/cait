@@ -499,14 +499,30 @@ class TestIteratorCollection:
     def test_extend_window(self):
         rl = 2**13
         # should only work for stream iterators
-        mock_it = MockData().get_event_iterator()
+        mock_it = MockData(record_length=rl).get_event_iterator()
         stream_it = MockStream().get_event_iterator(
             "Ch0", 
             inds=[10*rl, 20*rl],
             record_length=rl,
             alignment=1/4,
         )
+        mock_pulse_it = PulseSimIterator(
+            iterator=mock_it, 
+            pulse_heights=np.ones((2, len(mock_it))), 
+            sev=MockData(record_length=rl).sev
+        )
+        stream_pulse_it = PulseSimIterator(
+            iterator=MockStream().get_event_iterator(
+                ["Ch0", "Ch1"], 
+                inds=[10*rl, 20*rl],
+                record_length=rl,
+                alignment=1/4,
+            ), 
+            pulse_heights=np.ones((2, 2)), 
+            sev=MockData(record_length=rl).sev
+        )
 
+        # Regular IteratorCollection
         with pytest.raises(NotImplementedError):
             (mock_it + mock_it).with_extended_window()
         with pytest.raises(NotImplementedError):
@@ -514,11 +530,24 @@ class TestIteratorCollection:
         with pytest.raises(NotImplementedError):
             (mock_it + mock_it).with_record_length(2**13)
 
-        sum_it = stream_it + stream_it
+        # IteratorCollection of PulseSimIterators (not on stream)
+        with pytest.raises(NotImplementedError):
+            (mock_pulse_it + mock_pulse_it).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            (mock_pulse_it + mock_pulse_it).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            (mock_pulse_it + mock_pulse_it).with_record_length(2**13)
 
+        # Regular IteratorCollection
+        sum_it = stream_it + stream_it
         assert sum_it.with_extended_window().record_length == 3*rl
         assert sum_it.with_record_length(2*rl).record_length == 2*rl
         assert sum_it.with_alignment(1/2).record_length == rl
+
+        sum_pulse_it = stream_pulse_it + stream_pulse_it
+        assert sum_pulse_it.with_extended_window().record_length == 3*rl
+        assert sum_pulse_it.with_record_length(2*rl).record_length == 2*rl
+        assert sum_pulse_it.with_alignment(1/2).record_length == rl
 
         # Check if error is raised if processing is present
         with pytest.raises(NotImplementedError):
@@ -527,6 +556,13 @@ class TestIteratorCollection:
             sum_it.with_processing(lambda x: x).with_alignment(1/2)
         with pytest.raises(NotImplementedError):
             sum_it.with_processing(lambda x: x).with_record_length(2**13)
+
+        with pytest.raises(NotImplementedError):
+            sum_pulse_it.with_processing(lambda x: x).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            sum_pulse_it.with_processing(lambda x: x).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            sum_pulse_it.with_processing(lambda x: x).with_record_length(2**13)
 
 class TestMockIterator:
     def test_basic(self):
@@ -818,3 +854,72 @@ class TestPulseSimIterator:
                 pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
                 shift_subsamples=-1.1*np.ones((mock_it.n_channels, len(mock_it))),
             ) 
+
+    def test_extend_window(self):
+        rl = 2**13
+        stream = MockStream()
+        md = MockData(record_length=rl)
+
+        # inds that work exactly (last available sample).
+        for sev in [
+            {"sev": md.sev},
+            {"sev_fitpars": [[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]]}
+            ]:
+            for al in [0, 1/4, 1/2]:
+                for inds in [
+                    [rl + int(al*rl)], 
+                    [len(stream) - 2*rl + int(al*rl)]
+                ]:
+                    stream_it = stream.get_event_iterator(
+                        ["Ch0", "Ch1"], 
+                        inds=inds,
+                        record_length=rl,
+                        alignment=al,
+                    )
+                    new_it = PulseSimIterator(
+                        iterator=stream_it, 
+                        pulse_heights=np.ones((2, len(stream_it))), 
+                        **sev,
+                    )
+                    assert new_it.with_extended_window().record_length == 3 * rl
+                    assert new_it.with_record_length(2 * rl).record_length == 2 * rl
+                    assert new_it.with_alignment(1/2).record_length == rl
+        
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["TP0"])
+
+        for sev in [
+            {"sev": md.sev[0]},
+            {"sev_fitpars": [0, 0.5, 0.5, 0.3, 0.1, 10.0]}
+            ]:
+            for al in [0, 1/4, 1/2]:
+                stream_it = stream.get_event_iterator(
+                    "Ch0", 
+                    inds=inds[:25],
+                    record_length=rl,
+                    alignment=al,
+                )
+                it = PulseSimIterator(
+                    iterator=stream_it, 
+                    pulse_heights=np.ones(len(stream_it)), 
+                    **sev,
+                )
+                it_extended = it.with_extended_window()
+                basic_checks(it_extended)
+
+                assert it_extended.record_length == 3 * rl
+                assert it.grab(0)[0] == it_extended.grab(0)[rl]
+                assert it.grab(0)[-1] == it_extended.grab(0)[2*rl-1]
+
+        # Check if error is raised if processing is present
+        with pytest.raises(NotImplementedError):
+            stream_it = stream.get_event_iterator(
+                "Ch0", 
+                inds=inds[:25],
+                record_length=rl,
+                alignment=al,
+            )
+            PulseSimIterator(
+                iterator=stream_it, 
+                pulse_heights=np.ones(len(stream_it)), 
+                sev=md.sev[0],
+            ).with_processing(lambda x: x).with_extended_window()
