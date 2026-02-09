@@ -2,6 +2,8 @@ from typing import List, Union
 
 import numpy as np
 
+import cait.versatile as vai
+
 from ...fit import pulse_template
 from .iteratorbase import IteratorBaseClass
 
@@ -218,6 +220,88 @@ class PulseSimIterator(IteratorBaseClass):
         self._itit = self._it.__iter__()
         return self
     
+    # Forwards .with_record_length, .with_alignment, and .with_extended_window
+    # to StreamIterator/IteratorCollection.
+    def __getattr__(self, name):
+        if name in ["with_record_length", "with_alignment", "with_extended_window"]:
+            if not isinstance(self._it, (vai.iterators.StreamIterator, vai.iterators.IteratorCollection)):
+                raise NotImplementedError(f"Method '{name}' is only available if the PulseSimIterator is based on a StreamIterator or IteratorCollection thereof. Instead based on {self._it.__class__.__name__}.")
+            
+            if self.has_processing:
+                raise NotImplementedError(f"Cannot use method '{name}' on iterators with processing because processing might depend on window size and/or alignment and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call '{name}' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size and/or alignment, or add it again after adjusting its parameters to work with the new size/alignment.")
+
+            params, _ = self._slice_info
+            new_params = params.copy()
+            old_it = new_params.pop("iterator")
+            old_sev = new_params.pop("sev", None)
+
+            # If fit parameters are given, we don't have to do anything
+            # (because they will just be evaluated on a new time array,
+            # which is 0-aligned with the previous one). If the SEV is
+            # given as an array, we pad it as required.
+            if old_sev is None:
+                return lambda *args, **kwargs: self.__class__(
+                    **{
+                        **new_params, 
+                        **dict(iterator=getattr(old_it, name)(*args, **kwargs)),
+                    }
+                )
+
+            # Now do careful handling:
+            
+            # Helper variables that let us correctly
+            # modify the SEV
+            ind0 = np.argmin(np.abs(self.t))
+            rl = self.record_length
+            al = ind0/rl
+            k = np.ndim(params["sev"]) - 1
+            
+            if name == "with_record_length":
+                def new_sev(record_length, *args, **kwargs):
+                    new_ind0 = int(al * record_length)
+                    diff0 = new_ind0 - ind0
+                    if record_length > rl: # diff0 > 0
+                        sev = np.zeros((*old_sev.shape[:-1], record_length))
+                        sev[..., diff0:diff0+rl] = old_sev
+                        return sev
+                    elif record_length < rl: # diff0 < 0
+                        return old_sev[..., -diff0:ind0+int((1-al) * record_length)]
+                    else:
+                        return old_sev
+
+            if name == "with_alignment":
+                def new_sev(alignment, *args, **kwargs):
+                    new_ind0 = int(alignment * rl)
+                    diff0 = new_ind0 - ind0
+                    sev = np.roll(old_sev, diff0, axis=-1)
+                    if alignment > al: # diff0 > 0
+                        sev[..., :diff0] = 0
+                        return sev
+                    elif alignment < al: # diff0 < 0
+                        sev[..., diff0:] = 0
+                        return sev
+                    else:
+                        return old_sev
+
+            if name == "with_extended_window":
+                def new_sev(*args, **kwargs):
+                    # Pad with zeros left and right
+                    return np.pad(old_sev, (*([(0, 0)]*k), (rl, rl)))
+                
+            return lambda *args, **kwargs: self.__class__(
+                    **{
+                        **new_params, 
+                        **dict(
+                            iterator=getattr(old_it, name)(*args, **kwargs),
+                            sev=new_sev(*args, **kwargs),
+                        ),
+                    }
+                )
+
+            
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
+    
     def _shift_fit_pars_and_eval(self, pars: np.ndarray, ks: np.ndarray, zs: np.ndarray):
         # for all fitpar-tuple in pars, the corresponding shift in ks (sample)
         # and zs (subsample) is applied and the parameters are evaluated on self.t 
@@ -305,6 +389,11 @@ class PulseSimIterator(IteratorBaseClass):
         else:
             raise StopIteration
         
+    @property
+    def t(self):
+        """Return the time axis (record window) of the events in the iterator."""
+        return self._it.t
+    
     @property
     def record_length(self):
         return self._it.record_length

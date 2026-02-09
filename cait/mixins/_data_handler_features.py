@@ -708,6 +708,7 @@ class FeaturesMixin(object):
                 (
                     vai.iterators.StreamIterator, 
                     vai.iterators.IteratorCollection,
+                    vai.iterators.PulseSimIterator,
                 ),
             ):
                 raise Exception("Unable to load StreamIterator. There seems to be no stream reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
@@ -758,7 +759,7 @@ class FeaturesMixin(object):
                 # Using list(set()) gets rid of potential duplicates.
                 return list(set(offending_indices))
 
-            if isinstance(events, vai.iterators.StreamIterator):
+            if isinstance(events, (vai.iterators.StreamIterator, vai.iterators.PulseSimIterator)):
                 inds = find_offending_indices(events)
 
             else: # must be Collection because of the check above
