@@ -316,20 +316,19 @@ class SimulateMixin(object):
             # The time=0 of the fitpars is adjusted to fall onto
             # pulse_sim_index
             # The (extended) iterator's time array is used to 
-            # evaluate the fitpars. Its 0 is aligned at 1/4th as
-            # usual. We compensate for that.
-            shifted_pars = np.atleast_2d(sev_or_pars[:n_trig_ch,:].copy())
-            shifted_pars[:,0] += (record_placement - n_record_lens/4)*rl*stream.dt_us/1000
+            # evaluate the fitpars.
+            used_pars = np.atleast_2d(sev_or_pars[:n_trig_ch,:].copy())
             of_trigger = [np.squeeze(x) for x in np.split(of, np.cumsum(of_lens), axis=0)[:-1]]
-
-            pulse_sim_index = np.argmax(
+            
+            pulse_sim_index = record_placement * rl + np.argmax(
                 pulse_template(
-                    (np.arange(n_record_lens*rl) - n_record_lens*rl/4)*stream.dt_us/1000, 
-                    *shifted_pars[0]
+                    (np.arange(rl) - rl/4)*stream.dt_us/1000, 
+                    *used_pars[0]
                     )
                 )
+
             peak_t = _compensate_t[np.argmax(pulse_template(_compensate_t, *sev_or_pars[0]))]
-            iterator_kwargs = dict(sev_fitpars=shifted_pars)
+            iterator_kwargs = dict(sev_fitpars=used_pars)
         else:
             # The SEV that is placed on the stream chunks for triggering
             # is first sanitized with a window function (this prevents
@@ -394,7 +393,7 @@ class SimulateMixin(object):
         if using_fit:
             _target_inds = [
                 np.argmax(pulse_template(chunk_iterator.t, *p)) 
-                for p in shifted_pars
+                for p in used_pars
             ]
         else:
             _target_inds = [np.argmax(ps) for ps in padded_sev]
