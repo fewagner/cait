@@ -114,7 +114,7 @@ class Stream_CSMPL(StreamBaseClass):
 
         if any([x.endswith('.par') for x in files]):
             self._par_path = [x for x in files if x.endswith('.par')][0]
-            self._par_file = PARFile(par_path)
+            self._par_file = PARFile(self._par_path)
             self._start = int(1e6*self._par_file.start_s + self._par_file.start_us - offset)
             self._dt = self._par_file.time_base_us
         elif any([x.endswith('.json') for x in files]):
