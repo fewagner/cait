@@ -144,10 +144,10 @@ class Stream_TPStream(Stream_CSMPL):
 
         super().__init__(files=files)
 
-        if hasattr(self, "tpas"):
-            del self.tpas
-        if hasattr(self, "tp_timestamps"):
-            del self.tp_timestamps
+        if hasattr(self, "_tpas"):
+            del self._tpas
+        if hasattr(self, "_tp_timestamps"):
+            del self._tp_timestamps
 
         self._tp_stream_data = dict(
             tp_path = tp_stream_file,
