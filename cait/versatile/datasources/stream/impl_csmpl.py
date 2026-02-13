@@ -113,13 +113,13 @@ class Stream_CSMPL(StreamBaseClass):
         offset = 0 if not dig_path else int(get_offset(dig_path[0])/10)
 
         if any([x.endswith('.par') for x in files]):
-            par_path = [x for x in files if x.endswith('.par')][0]
+            self._par_path = [x for x in files if x.endswith('.par')][0]
             self._par_file = PARFile(par_path)
             self._start = int(1e6*self._par_file.start_s + self._par_file.start_us - offset)
             self._dt = self._par_file.time_base_us
         elif any([x.endswith('.json') for x in files]):
-            json_path = [x for x in files if x.endswith('.json')][0]
-            with open(json_path, 'r') as f:
+            self._par_path = [x for x in files if x.endswith('.json')][0]
+            with open(self._par_path, 'r') as f:
                 self._config = json.load(f)
 
             if "start_ts" in self._config:
