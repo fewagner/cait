@@ -126,12 +126,15 @@ class Stream_TPStream(Stream_CSMPL):
         #if isinstance(tp_stream_data, (str, list)):
         #    tp_stream_data = {"tp_path": tp_stream_data}
 
+        super().__init__(files)
+
         self._tp_stream_file = tp_stream_file
 
         self._trigger_threshold = trigger_threshold
         self._confidence_threshold = confidence_threshold
         self._record_length = record_length
 
+        self._unique_tpas = unique_tpas
         if unique_tpas is not None:
             self._unique_tpas = unique_tpas
         elif daq_file is not None:
@@ -141,8 +144,6 @@ class Stream_TPStream(Stream_CSMPL):
                     daq["TestPulses"]["tp_params"]["tp_amplitudes"] +
                     [daq["TestPulses"]["tp_params"]["cp_amplitude"]]
                     )
-
-        super().__init__(files=files)
 
         if hasattr(self, "_tpas"):
             del self._tpas
