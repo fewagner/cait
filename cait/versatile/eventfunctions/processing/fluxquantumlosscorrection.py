@@ -174,7 +174,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
         if was_1d:
             return self._corrected_event[0]
         elif orig_shape is not None:
-            self._corrected_event.reshape(orig_shape)
+            self._corrected_event = self._corrected_event.reshape(orig_shape)
         return self._corrected_event
 
     def preview(self, event):
