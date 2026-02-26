@@ -167,7 +167,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
             if self._flux_loss[ic] >= self._thresh[ic]: # only correct actual fql, not baseline drifts or the like
                 mp = MainParameters(bcs={'length': 1}, fbl=dict(model=0, where=1/8))(event[ic]) # recalculate onset without smoothing to be more precise
                 #self._t0[ic] = mp(event[ic])[2]
-                self._t0[ic] = min(mp[10], mp[12])
+                self._t0[ic] = mp[1]#0]
                 #self._t0[ic] += event.shape[-1] // 4
                 self._corrected_event[ic, int(self._t0[ic])+1:] += self._flux_loss[ic]
 

@@ -13,7 +13,7 @@ from .impl_csmpl import Stream_CSMPL
 from ...functions import apply
 from ...functions.trigger.trigger_zscore import zscore_chunk
 from ...functions.trigger.triggerbase import trigger_base
-from ...eventfunctions import RemoveBaseline
+from ...eventfunctions import RemoveBaseline, MainParameters
 
 
 def get_offset(path_dig_stamps):
@@ -125,7 +125,8 @@ class Stream_TPStream(Stream_CSMPL):
             ):
         #if isinstance(tp_stream_data, (str, list)):
         #    tp_stream_data = {"tp_path": tp_stream_data}
-
+        if tp_stream_file is not None:
+            files += [tp_stream_file]
         super().__init__(files)
 
         self._tp_stream_file = tp_stream_file
@@ -304,7 +305,9 @@ class CSMPL_TP_Helper:
         # Calculate amplitude
         it = self._tp_stream.get_event_iterator(key, record_length=self._rl, inds=inds).with_processing(RemoveBaseline())
 
-        argmaxs, ph = apply(_max_and_argmax, it, pb_prefix="Calculating pulse heights")
+        #argmaxs, ph = apply(_max_and_argmax, it, pb_prefix="Calculating pulse heights")
+        mp = apply(MainParameters(bcs=dict(length=1)), it.with_processing(lambda x: abs(x)), pb_prefix="Calculating pulse heights")
+        ph, argmaxs = mp[0], mp[1]
         inds = inds + argmaxs - self._rl // 4
 
         # Ensure uniqueness (for some reason there are doubles sometimes)
@@ -316,8 +319,10 @@ class CSMPL_TP_Helper:
             cut = ph > self._tpas.min() / 2
             ph = ph[cut]
             inds = np.array(inds)[cut]
+            _tpas = np.array(self._tpas[kindex])
+            _tpas.sort()
 
-            tpas = self._tpa_fnc(ph, self._tpas[kindex], self._conf)
+            tpas = self._tpa_fnc(ph, _tpas, self._conf)
 
         else:
             # If TPAs are not available, just return the pulse heights
@@ -346,6 +351,28 @@ class CSMPL_TP_Helper:
         if np.any(conf[conf<1] > threshold):
             return -1.
         return tpas[most_likely]
+
+
+    @staticmethod
+    def get_tpa_from_stream2(ph, tpas, threshold):
+        """
+        Get the most likely TP amplitude that was sent, from the pulse height of
+        an event in the testpulse stream.  If the "confidence" (the ratio of the
+        difference between the pulse height and most likely TPA to the rest of
+        the TPAs) is greater than the threshold for any other TPA, then the event
+        is TPA inconclusive and the value is set to -1.
+
+        Note that the pulse height should not have been calculated from a smoothed
+        stream.
+
+        :param ph: Pulse height from the triggered stream.
+        """
+        if ph > tpas.max():
+            return -1
+        most_likely = tpas[np.where(ph > 0.75 * tpas)][-1]
+        return most_likely
+
+
 
 
 class CSMPL_TPAS(CSMPL_TP_Helper):
