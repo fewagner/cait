@@ -136,6 +136,7 @@ class Stream_TPStream(Stream_CSMPL):
         self._record_length = record_length
 
         self._unique_tpas = unique_tpas
+        self._tp_rate = None
         if unique_tpas is not None:
             self._unique_tpas = unique_tpas
         elif daq_file is not None:
@@ -145,6 +146,9 @@ class Stream_TPStream(Stream_CSMPL):
                     daq["TestPulses"]["tp_params"]["tp_amplitudes"] +
                     [daq["TestPulses"]["tp_params"]["cp_amplitude"]]
                     )
+            tp_rate_s = daq["TestPulses"]["tp_params"]["tp_interval"]
+            sample_rate = daq["DAQTab"]["sample_rate"]
+            self._tp_rate = int(tp_rate_s * sample_rate) // 2  # Alternating TPs
 
         if hasattr(self, "_tpas"):
             del self._tpas
@@ -157,6 +161,7 @@ class Stream_TPStream(Stream_CSMPL):
             trigger_threshold = trigger_threshold,
             confidence_threshold = confidence_threshold,
             record_length = record_length,
+            tp_rate = self._tp_rate
             )
 
 
@@ -233,9 +238,10 @@ class CSMPL_TP_Helper:
             stream: Stream_TPStream,
             tp_path: Union[str, List[str]] = None,
             tpas: Union[List[float], List[List[float]]] = None,
-            trigger_threshold: float = 10,
+            trigger_threshold: float = 5,
             confidence_threshold: float = 0.5,
             record_length = 2**15,
+            tp_rate = None,
             ):
         if tp_path is None:
             raise ValueError("This clas requires at least one path to a stream containing testpulses.")
@@ -250,7 +256,9 @@ class CSMPL_TP_Helper:
         self._conf = np.atleast_1d(confidence_threshold)
         self._rl = int(record_length)
 
-        self._tpa_fnc = np.vectorize(self.get_tpa_from_stream, excluded=[1, 2], signature='()->()')
+        self._tp_rate = tp_rate
+
+        self._tpa_fnc = np.vectorize(self.get_tpa_from_stream2, excluded=[1, 2], signature='()->()')
 
 
     def __repr__(self):
@@ -266,7 +274,10 @@ class CSMPL_TP_Helper:
             self._stream._tp_timestamps = {}
 
         if key not in self._stream._tpas:
-            tpas, timestamps = self.trigger_tp_stream(key)
+            if self._tp_rate is None:
+                tpas, timestamps = self.trigger_tp_stream(key)
+            else:
+                tpas, timestamps = self.tps_by_rate(key)
 
             self._stream.tpas[key] = tpas
             self._stream.tp_timestamps[key] = timestamps
@@ -331,6 +342,58 @@ class CSMPL_TP_Helper:
         return tpas, self._stream.time[inds]
 
 
+    def tps_by_rate(self, key):
+        kindex = self.keys.index(key)
+        tp_inds = []
+
+        last_sample = self._tp_stream.time.timestamp_to_ind(self._tp_stream.time[-1])[0]
+        this_cp = self._tp_stream[key][:2 * self._tp_rate].argmax()
+
+        if this_cp > self._tp_rate:
+            tp = self._tp_stream[key][0:this_cp - self._tp_rate // 10].argmax()
+            tp_inds.append(tp)
+
+        tp_inds.append(this_cp)
+        while this_cp + self._tp_rate < last_sample:
+            search_index = this_cp + self._tp_rate // 10
+            next_cp = search_index + self._tp_stream[key][search_index:this_cp + int(2.5 * self._tp_rate)].argmax()
+            tp = search_index + self._tp_stream[key][search_index:next_cp - self._tp_rate // 10].argmax()
+
+            tp_inds.append(tp)
+            tp_inds.append(next_cp)
+
+            this_cp = next_cp
+            print(f"\r{this_cp / last_sample:%}", end='')
+
+
+        inds = np.array(tp_inds)
+        it = self._tp_stream.get_event_iterator(key, record_length=self._rl, inds=inds).with_processing(RemoveBaseline())
+
+        mp = apply(MainParameters(bcs=dict(length=1)), it.with_processing(lambda x: abs(x)), pb_prefix="Calculating pulse heights")
+        ph, argmaxs = mp[0], mp[1]
+        inds = inds + argmaxs - self._rl // 4
+
+
+        # Ensure uniqueness (for some reason there are doubles sometimes)
+        inds, _idx = np.unique(inds, return_index=True)
+        ph = ph[_idx]
+
+        # Cut out noise and associate TP events with the TPAs sent, if available
+        if self._tpas is not None:
+            _tpas = np.array(self._tpas[kindex])
+            _tpas.sort()
+
+            tpas = self._tpa_fnc(ph, _tpas, self._conf)
+
+        else:
+            # If TPAs are not available, just return the pulse heights
+            tpas = ph
+
+
+        return tpas, self._stream.time[inds]
+
+
+
     @staticmethod
     def get_tpa_from_stream(ph, tpas, threshold):
         """
@@ -369,7 +432,10 @@ class CSMPL_TP_Helper:
         """
         if ph > tpas.max():
             return -1
-        most_likely = tpas[np.where(ph > 0.75 * tpas)][-1]
+        try:
+            most_likely = tpas[np.where(ph > 0.75 * tpas)][-1]
+        except:
+            return tpas.max()
         return most_likely
 
 
