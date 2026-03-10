@@ -350,16 +350,18 @@ class CSMPL_TP_Helper:
         this_cp = self._tp_stream[key][:2 * self._tp_rate].argmax()
 
         if this_cp > self._tp_rate:
-            tp = self._tp_stream[key][0:this_cp - self._tp_rate // 10].argmax()
+            tp = np.abs(self._tp_stream[key][0:this_cp - self._tp_rate // 10]).argmax()
             tp_inds.append(tp)
 
         tp_inds.append(this_cp)
         while this_cp + self._tp_rate < last_sample:
             search_index = this_cp + self._tp_rate // 10
-            next_cp = search_index + self._tp_stream[key][search_index:this_cp + int(2.5 * self._tp_rate)].argmax()
-            tp = search_index + self._tp_stream[key][search_index:next_cp - self._tp_rate // 10].argmax()
+            next_cp = search_index + np.abs(self._tp_stream[key][search_index:this_cp + int(2.5 * self._tp_rate)]).argmax()
 
-            tp_inds.append(tp)
+            if next_cp - self._tp_rate // 10 > search_index:
+                tp = search_index + np.abs(self._tp_stream[key][search_index:next_cp - self._tp_rate // 10]).argmax()
+
+                tp_inds.append(tp)
             tp_inds.append(next_cp)
 
             this_cp = next_cp
