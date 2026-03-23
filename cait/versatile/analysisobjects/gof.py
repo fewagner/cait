@@ -228,6 +228,7 @@ class GOF(OF):
             *,
             basis: str = "poly",
             bspec: Union[int, Tuple[List[float], bool], List[List[float]]] = 3,
+            ltc: bool = False,
             bcc: np.ndarray = None,
             window_sev: bool = False,
             phase: str = "1/4",
@@ -278,9 +279,17 @@ class GOF(OF):
         # We now have a list of basis functions B. Next, we calculate
         # the corresponding frequency representations and the Gram matrix.
         dt = sev.dt_us*1e-6
+        omega = 2 * np.pi * np.fft.rfftfreq(sev.shape[-1])
         B_tilde = [np.fft.rfft(b) for b in B]
-        G = gram_matrix(B_tilde=B_tilde, nps=nps, dt=dt)
 
+        # Add SEV's first derivative as additional 'baseline component'
+        if ltc:
+            K += 1
+            B_tilde = [1j * omega * np.fft.rfft(sev - np.mean(sev))] + B_tilde
+            # The corresponding coefficient needs to stay unconstrained
+            bcc_inv = np.pad(bcc_inv, [(1, 0), (1, 0)])
+
+        G = gram_matrix(B_tilde=B_tilde, nps=nps, dt=dt)
         G_inv = sp.linalg.solve(G + bcc_inv, np.eye(K), assume_a="her")
 
         # Project basis out of template.
@@ -331,7 +340,6 @@ class GOF(OF):
             self._var_optimal = 1/inner_product(sev_tilde, sev_tilde, nps, dt)
             h_tilde = 2 * dt * self._var * sev_tilde_eff / nps
 
-        omega = 2 * np.pi * np.fft.rfftfreq(sev.shape[-1])
         if phase.lower() == "argmax":
             # Multiply phase such that the filtered maximum and the pulse
             # maximum are aligned (convention also for regular OF).
