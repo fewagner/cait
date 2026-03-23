@@ -1,12 +1,13 @@
 from typing import List
 
 import numpy as np
-from scipy.optimize import minimize
 from scipy.linalg import LinAlgError
+from scipy.optimize import minimize
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 from ..processing.removebaseline import RemoveBaseline
-from .templatefit import _TemplateCacheSimple, _TemplateCachePoly, shift_arrays
+from .templatefit import _TemplateCachePoly, _TemplateCacheSimple, shift_arrays
+
 
 ############################
 ###### HELPER CLASSES ######
@@ -174,7 +175,7 @@ class _TemplateCacheCorrelated:
 ########################
 ### CLASS DEFINITION ###
 ########################
-class TemplateFitCorrelated(FncBaseClass):
+class TemplateFitCorrelated(ScalarFncBaseclass):
     """
     Perform a correlated template fit for multi-channel data, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model (for each channel individually) and a truncation limit (for each channel individually).
     The 'correlated' in this context means that you can choose which of the channel's onset should be fitted (possibly multiple, see below).
@@ -222,6 +223,12 @@ class TemplateFitCorrelated(FncBaseClass):
 
     .. image:: media/TemplateFitCorrelated.png
     """
+    _outputs = [
+        ("pars", float),
+        ("shift", int),
+        ("rms", float),
+    ]
+    
     def __init__(self, 
                  sev: np.ndarray,
                  bl_poly_order: List[int] = 0,

@@ -4,13 +4,13 @@ import numpy as np
 
 import cait.versatile as vai
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 
 
 def is_same_function(f1, f2):
     return (f1.__module__ == f2.__module__) and (f1.__name__ == f2.__name__)
 
-class TriggerSurvival(FncBaseClass):
+class TriggerSurvival(ScalarFncBaseclass):
     """
     Function that checks whether or not a given event would have survived triggering.
 
@@ -72,6 +72,12 @@ class TriggerSurvival(FncBaseClass):
 
     .. image:: media/TriggerSurvival_preview.png
     """
+    _outputs = [
+        ("triggered", bool),
+        ("trigger_val", float),
+        ("trigger_ind", int),
+    ]
+
     def __init__(self,
                  trigger_fnc: callable,
                  target_ind: int,

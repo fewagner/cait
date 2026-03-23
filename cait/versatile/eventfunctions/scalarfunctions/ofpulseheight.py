@@ -3,7 +3,7 @@ from typing import List, Tuple, Union
 import numba
 import numpy as np
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 from ..processing.optimumfiltering import OptimumFiltering, OptimumFiltering2D
 from ..processing.removebaseline import RemoveBaseline
 
@@ -255,7 +255,7 @@ def _mixed_of_helper(event, of_list, filter_groups):
 
     return out
 
-class OFPulseHeight(FncBaseClass):
+class OFPulseHeight(ScalarFncBaseclass):
     """
     Calculate optimum filter pulse heights.
 
@@ -323,7 +323,7 @@ class OFPulseHeight(FncBaseClass):
         # Always (!) access them like this as the number of output values
         # might increase in the future. By accessing them like this, you make
         # sure that your code doesn't break.
-        of_res_dict = {k: v for k, v in zip(f1.names, of_res)}
+        of_res_dict = {k: v for k, v in zip(f1.names(), of_res)}
 
     .. image:: media/OFPulseHeight_preview1.png
 
@@ -581,7 +581,7 @@ class OFPulseHeight(FncBaseClass):
         return "full"
     
     def preview(self, event):
-        out_dict = {k: v for k, v in zip(self.names, self(event))}
+        out_dict = {k: v for k, v in zip(self.names(), self(event))}
         ev_filtered = self._filtered_event.squeeze()
         event_x = np.arange(event.shape[-1])
         filtered_x = np.arange(event.shape[-1])
@@ -627,12 +627,3 @@ class OFPulseHeight(FncBaseClass):
         label = f"ph=[{fmt_arr(out_dict['of_ph'])}] V, rms=[{fmt_arr(out_dict['of_rms'])}] V, peak_rms=[{fmt_arr(out_dict['of_peak_rms'])}] V"
 
         return dict(line=d, scatter=s, axes=dict(xaxis=dict(label=label)))
-        
-    @property
-    def names(self):
-        return [x[0] for x in OFPulseHeight._outputs]
-
-
-    @property
-    def types(self):
-        return [x[1] for x in OFPulseHeight._outputs]

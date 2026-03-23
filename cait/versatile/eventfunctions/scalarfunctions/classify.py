@@ -1,8 +1,9 @@
 import numpy as np
 
-from ..functionbase import FncBaseClass
 from ....models import CNNModule
 from ....resources import get_resource_path
+from ..functionbase import ScalarFncBaseclass
+
 
 # Helper function
 def _check_CNNModule_availability():
@@ -12,7 +13,7 @@ def _check_CNNModule_availability():
     CNNModule(512,2,'k',0,0.1)
 
 # Needs explanation of the models
-class AIClassifyBool(FncBaseClass):
+class AIClassifyBool(ScalarFncBaseclass):
     """
     Use a pre-trained neural network to classify a voltage trace into "particle pulse" and "not particle pulse" and return True if the output is "particle pulse".
     Also works for multiple channels simultaneously.
@@ -23,6 +24,10 @@ class AIClassifyBool(FncBaseClass):
     :return: True or False, depending on whether the voltage trace is classified as event pulse or artefact.
     :rtype: boolean
     """
+    _outputs = [
+        ("prediction", bool),
+    ]
+
     def __init__(self, model: str = "cnn-clf-binary-v2.ckpt"):
         # First check if module is available
         _check_CNNModule_availability()
@@ -51,7 +56,7 @@ class AIClassifyBool(FncBaseClass):
         return dict(line = d, axes=dict(xaxis={"label": f"Is event pulse: {self._prediction}"}))
     
 # Needs explanation of the models
-class AIClassifyProb(FncBaseClass):
+class AIClassifyProb(ScalarFncBaseclass):
     """
     Use a pre-trained neural network to classify a voltage trace into "particle pulse" and "not particle pulse" and return the percentage of it being a "particle pulse".
     Also works for multiple channels simultaneously.
@@ -62,6 +67,10 @@ class AIClassifyProb(FncBaseClass):
     :return: Probability (0 to 1), depending on how probable it is that the voltage trace is an event pulse.
     :rtype: boolean
     """
+    _outputs = [
+        ("prediction", float),
+    ]
+
     def __init__(self, model: str = "cnn-clf-binary-v2.ckpt"):
         # First check if module is available
         _check_CNNModule_availability()

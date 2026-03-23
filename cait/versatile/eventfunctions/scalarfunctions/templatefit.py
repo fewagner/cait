@@ -1,13 +1,13 @@
+import warnings
 from typing import List
 
 import numpy as np
+from scipy.linalg import LinAlgError, solve
 from scipy.optimize import minimize
-from scipy.linalg import solve, LinAlgError
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 from ..processing.removebaseline import RemoveBaseline
 
-import warnings
 warnings.filterwarnings('ignore', r'Ill-conditioned matrix')
 
 ########################
@@ -329,7 +329,7 @@ class _TemplateCachePoly:
 ########################
 ### CLASS DEFINITION ###
 ########################
-class TemplateFit(FncBaseClass):
+class TemplateFit(ScalarFncBaseclass):
     """
     Perform a template fit for single-channel data, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model and a truncation limit.
     See https://edoc.ub.uni-muenchen.de/23762/ for details.
@@ -376,6 +376,12 @@ class TemplateFit(FncBaseClass):
 
     .. image:: media/TemplateFit.png
     """
+    _outputs = [
+        ("pars", float),
+        ("shift", int),
+        ("rms", float),
+    ]
+
     def __init__(self, 
                  sev: np.ndarray,
                  bl_poly_order: int = 0,

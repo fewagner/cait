@@ -5,8 +5,10 @@ import pytest
 import scipy as sp
 
 from cait.versatile import (BoxCarSmoothing, CalcMP, Downsample, FitBaseline,
-                            MainParameters, MockData, OptimumFiltering,
-                            Preview, RemoveBaseline, TriggerSurvival,
+                            MainParameters, MockData, NPeaks, OFPulseHeight,
+                            OptimumFiltering, Preview, RemoveBaseline,
+                            SaturationTime, TemplateFit, TemplateFit_FQLC,
+                            TemplateFitCorrelated, TriggerSurvival,
                             TukeyWindow, apply, trigger_of, trigger_zscore)
 from cait.versatile.iterators import PulseSimIterator
 
@@ -30,6 +32,24 @@ mp = MainParameters()
 mp_scalar = MainParameters(dt_us=mock.dt_us)
 mp_int = MainParameters(peak_loc=it1.record_length//4)
 mp_float = MainParameters(peak_loc=1/4)
+
+@pytest.mark.parametrize(
+        "fnc", 
+        [
+            TriggerSurvival, 
+            TemplateFitCorrelated,
+            TemplateFit_FQLC,
+            TemplateFit,
+            SaturationTime,
+            OFPulseHeight,
+            NPeaks,
+            MainParameters,
+            FitBaseline,
+        ],
+)
+def test_scalar_function(fnc):
+    fnc.names()
+    fnc.dtypes()
 
 @pytest.mark.parametrize("fnc", [bcs, ds, rmbl, tf, calcmp, mp, mp_int, mp_float])
 def test_batches_processing(fnc):

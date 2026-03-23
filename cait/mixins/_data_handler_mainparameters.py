@@ -1,17 +1,13 @@
-from typing import Callable, List, Union
+from typing import Callable, List
 
 import numpy as np
-from deprecation import deprecated
 
-import cait as ai
 import cait.versatile as vai
-
-from ..styles._print_styles import txt_fmt
 
 
 class MainParametersMixin:
     def cmp(self,
-            group: str = 'events',
+            group: str = "events",
             with_processing: List[Callable] = [],
             tag: str = None,
             batch_size: int = 2,
@@ -57,9 +53,9 @@ class MainParametersMixin:
         events = self.get_event_iterator(group, batch_size=batch_size).with_processing(with_processing)
 
         mp = vai.MainParameters(self.dt_us, **kwargs)
-        out = vai.apply(mp, events, pb_prefix='Calculating main parameters')
+        out = vai.apply(mp, events, pb_prefix="Calculating main parameters")
 
-        for n, t, d in zip(mp.names, mp.types, out):
+        for n, t, d in zip(mp.names(), mp.dtypes(), out):
             self.set(
                     group,
                     **{f"{n}" + (f"-{tag}" if tag else ""): np.atleast_2d(d.T)},
@@ -67,5 +63,6 @@ class MainParametersMixin:
                     overwrite_existing=True,
                     write_to_virtual=False,
                     )
+
 
 

@@ -1,12 +1,14 @@
-from typing import Union
 from functools import partial
+from typing import Union
 
 import numpy as np
+
 import cait.versatile as vai
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 
-class NPeaks(FncBaseClass):
+
+class NPeaks(ScalarFncBaseclass):
     """
     Determine the number of peaks in an event by applying a moving z-score trigger to the trace.
 
@@ -45,6 +47,10 @@ class NPeaks(FncBaseClass):
 
     .. image:: media/NPeaks_preview.png
     """
+    _outputs = [
+        ("n_peaks", int),
+    ]
+
     def __init__(self, window_size: Union[int, float] = 1/20, threshold: float = 3.5):
         self._window_size = window_size
         self._threshold = threshold
