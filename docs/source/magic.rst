@@ -1,10 +1,11 @@
 Magic Numbers
 =============
 
-There are several places in the Cait code, where so-called "magic" number appear, e.g. a hard-coded integer as index
-to an array, with no or only short explanation why this number is taken here. Most of the time, this is due to the
-numbering of labels, main parameters or fit parameters. These numbers are written as attributes in the HDF5 files,
-however we also provide lists here.
+There are several places in the ``cait`` code, where so-called "magic" numbers appear, e.g. a hard-coded integer as index to an array, with no or only short explanation why this number is taken here. Most of the time, this is due to the numbering of labels, main parameters or fit parameters. These numbers are written as attributes in the HDF5 files, however we also provide lists here.
+
+.. warning::
+
+  Note that the numbers for **main parameters** and **additional main parameters** only apply for those that were calculated with the (now deprecated) functions ``dh.calc_mp`` and ``dh.calc_additional_mp``. You should start using ``dh.cmp``, which saves datasets with descriptive names such that we will not need these "magic" numbers anymore in the future.
 
 Main Parameters
 ~~~~~~~~~~~~~~~

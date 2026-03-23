@@ -2,73 +2,38 @@
 Quick Start
 ***********
 
-The quickest way to install Cait is via the Python package index:
+The quickest way to install ``cait`` is via the Python package index:
 
 .. code:: console
 
     $ pip install cait
 
-For your first steps, you can create a standard event of data from a given `*.rdt` file with a few lines
-of code. In this example, we create a mock data set to demonstrate the calculation of main parameters and the
-creation of the standard event.
+To get something working quickly, you can use simulated *mock data*, copy it to the work horse of ``cait`` -- the ``DataHandler``, which stores your analysis results -- calculate pulse shape parameters, and have a look at the pulses and a first pulse height spectrum.
 
 .. code:: python
 
-    >>> import cait as ai
-    >>> test_data = ai.data.TestData(filepath='test_data/mock_001', duration=1800)
-    >>> test_data._generate_rdt_file()
-    Rdt file written.
-    >>> dh = ai.DataHandler(channels=[0,1])
-    DataHandler Instance created.
-    >>> dh.convert_dataset(path_rdt='test_data/', fname='mock_001', path_h5='test_data/', tpa_list=[1., 0., -1.])
-    Start converting.
+    import cait as ai
+    import cait.versatile as vai
 
-    READ EVENTS FROM RDT FILE.
-    Total Records in File:  800
-    Getting good idx. (Depending on OS and drive reading speed, this might take some minutes!)
-    Event Counts Channel 0: 400
-    Event Counts Channel 1: 400
-    Getting good tpas.
-    Good consecutive counts: 400
+    # Set up a DataHandler instance
+    dh = ai.DataHandler(nmbr_channels=2)
+    dh.set_filepath(path_h5="", fname="my_first_dh", appendix=False)
+    dh.init_empty()
 
-    WORKING ON EVENTS WITH TPA = 0.
-    CREATE DATASET WITH EVENTS.
-    100%|████████████████████████████████████████████████████████████| 160/160 [00:00<00:00, 668.69it/s]
+    # Fill it with Mock data and calculate pulse shape parameters
+    dh.include_event_iterator("events", vai.MockData(dt_us=dh.dt_us, n_events=1000).get_event_iterator())
+    dh.cmp("events")
 
-    WORKING ON EVENTS WITH TPA = -1.
-    CREATE DATASET WITH NOISE.
-    100%|███████████████████████████████████████████████████████████| 160/160 [00:00<00:00, 2426.41it/s]
+    # Have a look at the events
+    vai.Preview(dh.get_event_iterator("events").with_processing(vai.RemoveBaseline()))
 
-    WORKING ON EVENTS WITH TPA > 0.
-    CREATE DATASET WITH TESTPULSES.
-    100%|███████████████████████████████████████████████████████████| 480/480 [00:00<00:00, 4532.36it/s]
-    Hdf5 dataset created in  test_data/
-    Filepath and -name saved.
-    >>> dh.calc_mp()
-    CALCULATE MAIN PARAMETERS.
-    >>> dh.calc_sev(decay_time_interval=[(5, 6), (0, 100)])
+.. image:: documentation/pics/getting_started_preview.png
 
-    Calculating SEV for Channel 0
-    80 Events handed.
-    43 left after decay time cut.
-    43 Events used to generate Standardevent.
-    Parameters [t0, An, At, tau_n, tau_in, tau_t]:
-     [-1.10013111  3.19462707 -0.12586458  4.73959075  2.08445536  0.36166834]
+.. code:: python
 
-    Calculating SEV for Channel 1
-    80 Events handed.
-    80 left after decay time cut.
-    80 Events used to generate Standardevent.
-    Parameters [t0, An, At, tau_n, tau_in, tau_t]:
-     [6.36436168e-01 1.60604957e+00 3.09349466e-03 3.27436757e+01
-     4.43479367e+00 1.00000068e-02]
-    events SEV calculated.
-    >>> dh.show_sev(channel=0)
+    # Have a look at pulse heights
+    vai.Histogram(dh["events/pulse_height", 0], xlabel="Pulse height (V)")
 
-.. image:: documentation/pics/test_sev.png
+.. image:: documentation/pics/getting_started_spectrum.png
 
-Once you accomplished this first step into the world of raw data analysis,  start going through the tutorial notebooks,
-that demonstrate most of the functionality of Cait.
-
-For producing efficient and fast physics results, check out or hardware- and stream data analysis templates, and the
-trigger script! These include the essential steps of the analysis, easily adaptable to any detector.
+Once you accomplished this first step into the world of raw data analysis, start going through the tutorial notebooks, that demonstrate most of the functionality of ``cait``.
