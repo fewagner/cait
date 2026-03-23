@@ -1,12 +1,14 @@
 from typing import List, Union
 
 import numpy as np
+
 import cait.versatile as vai
 
 from ..processing.fluxquantumlosscorrection import FluxQuantumLossCorrection
 from ..processing.removebaseline import RemoveBaseline
 from .calcmp import CalcMP
-from .templatefit import shift_arrays, TemplateFit
+from .templatefit import TemplateFit, shift_arrays
+
 
 ########################
 ### CLASS DEFINITION ###
@@ -90,6 +92,13 @@ class TemplateFit_FQLC(TemplateFit):
 
     .. image:: media/TemplateFit_FQLC_preview.png
     """
+    _outputs = [
+        ("fitpar", float),
+        ("opt_shift", int),
+        ("rms", float),
+        ("discard", bool),
+    ]
+
     def __init__(self, 
                  sev: np.ndarray,
                  bl_poly_order: int = None,

@@ -353,6 +353,8 @@ class FitMixin(object):
         The 'correlated' in this context means that you can choose which of the channel's onset should be fitted (possibly multiple, see below).
         See https://edoc.ub.uni-muenchen.de/23762/ and https://mediatum.ub.tum.de/?id=1294132 for details.
 
+        See :class:`cait.versatile.TemplateFit` and :class:`cait.versatile.TemplateFitCorrelated` for more details.
+
         :param group: The DataHandler group with the events that should be fitted. The fit parameters will be saved to this group, too.
         :type group: str
         :param sev: The template (SEV) to use in the fit (with as many channels as you want to fit).
@@ -458,9 +460,8 @@ class FitMixin(object):
             raise KeyError(f"Group '{group}' is not available in this DataHandler.")
         
         _ds_to_be_written = [
-            "templatefit_pars" + (f"-{tag}" if tag else ""), 
-            "templatefit_rms" + (f"-{tag}" if tag else ""), 
-            "templatefit_shift" + (f"-{tag}" if tag else ""),
+            f"templatefit_{name}" + (f"-{tag}" if tag else "")
+            for name in vai.TemplateFit.names()
         ]
         if any([self.exists(group, ds) for ds in _ds_to_be_written]):
             raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')', or rename them using the 'dh.rename' function.")
@@ -512,6 +513,14 @@ class FitMixin(object):
         output_shift = np.zeros((n_channels, len(events)), dtype=np.int16)
         output_rms = -404*np.ones((n_channels, len(events)))
 
+        # NOTE: Given how special the output arrays have to be arranged for different channels
+        # and different degrees of polynomials, we cannot easily make use of the extensibility
+        # of ScalarFncBaseclass (i.e. using .names() and .dtypes() to generate HDF5 datasets 
+        # like in dh.cmp() or dh.apply_ofilter() for example). However, to not break this 
+        # function if additional outputs to vai.TemplateFit are added, we nevertheless read the
+        # outputs as dictionaries below. Nevertheless, those additional datasets will have to be
+        # manually added if desired.
+
         if correlated:
             tf = vai.TemplateFitCorrelated(
                     sev=sev,
@@ -524,11 +533,12 @@ class FitMixin(object):
             if preview: 
                 vai.Preview(events_used.with_processing(vai.RemoveBaseline()), tf)
             else:
-                fitpar, opt_shift, rms = vai.apply(tf, events_used.with_batchsize(_batch_size))
+                tf_out = vai.apply(tf, events_used.with_batchsize(_batch_size))
+                tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
 
-                output_pars[np.ix_(channels_used, event_flag)] = np.transpose(fitpar, [1,0,2])
-                output_shift[np.ix_(channels_used, event_flag)] = opt_shift[None, :]
-                output_rms[np.ix_(channels_used, event_flag)] = rms.T
+                output_pars[np.ix_(channels_used, event_flag)] = np.transpose(tf_out_dict["pars"], [1,0,2])
+                output_shift[np.ix_(channels_used, event_flag)] = tf_out_dict["shift"][None, :]
+                output_rms[np.ix_(channels_used, event_flag)] = tf_out_dict["rms"].T
 
         else:
             for i in range(n_channels_used):
@@ -545,11 +555,12 @@ class FitMixin(object):
                 if preview:
                     vai.Preview(events_used[i].with_processing(vai.RemoveBaseline()), tf)
                 else:
-                    fitpar, opt_shift, rms = vai.apply(tf, events_used[i].with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
+                    tf_out = vai.apply(tf, events_used[i].with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
+                    tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
 
-                    output_pars[ch, event_flag, :n_pars] = fitpar
-                    output_shift[ch, event_flag] = opt_shift
-                    output_rms[ch, event_flag] = rms
+                    output_pars[ch, event_flag, :n_pars] = tf_out_dict["pars"]
+                    output_shift[ch, event_flag] = tf_out_dict["shift"]
+                    output_rms[ch, event_flag] = tf_out_dict["rms"]
 
         if not preview:
             self.set(group, 

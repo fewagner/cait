@@ -1,12 +1,13 @@
 import numpy as np
-from ..functionbase import FncBaseClass
-from ..processing.removebaseline import RemoveBaseline
+
+from ..functionbase import ScalarFncBaseclass
 from ..processing.boxcarsmoothing import BoxCarSmoothing
-from .calcmp import CalcMP
 from ..processing.fluxquantumlosscorrection import FluxQuantumLossCorrection
+from ..processing.removebaseline import RemoveBaseline
+from .calcmp import CalcMP
 
 
-class SaturationTime(FncBaseClass):
+class SaturationTime(ScalarFncBaseclass):
     """
     Calculates the saturation time for a pulse (one channel), given by the time that the pulse spends above the saturation level, calculated around the pulse maximum. The point in time where the pulse falling flank of the pulse dips below the saturation level is calculated after moving-average smoothing, if the parameter "smoothing_length" is set to a positive (integer) value, while the corresponding value for the rising edge is always calculated without smoothing, due to the rise typically being much faster than the decay. If the pulse does not fall below the saturation level before and/or after its maximum, a saturation time of -1 is returned as a flag that reconstruction did not work, while keeping the float nature of the return values for a smoother workflow.
 
@@ -71,6 +72,10 @@ class SaturationTime(FncBaseClass):
 
     .. image:: media/SaturationTime_preview.png
     """
+    _outputs = [
+        ("sat_time", float),
+    ]
+
     def __init__(self, 
                  saturation_level_mode: str = "relative", 
                  saturation_level: float = 0.9, 

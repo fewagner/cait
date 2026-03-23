@@ -4,7 +4,7 @@ from typing import List, Union
 import numpy as np
 from scipy.optimize import curve_fit
 
-from ..functionbase import FitFncBaseClass
+from ..functionbase import ScalarFncBaseclass
 
 # We do not use scipy's parameter error estimation anyways so we can suppress this warning
 warnings.filterwarnings("ignore", "Covariance of the parameters could not be estimated")
@@ -12,7 +12,7 @@ warnings.filterwarnings("ignore", "Covariance of the parameters could not be est
 def exponential_decay(x, a, b, c):
     return a*np.exp(-b*x) + c
 
-class FitBaseline(FitFncBaseClass):
+class FitBaseline(ScalarFncBaseclass):
     """
     Fit voltage traces with a polynomial or decaying exponential and return the fit parameters as well as the RMS.
     Also works for multiple channels simultaneously.
@@ -45,6 +45,11 @@ class FitBaseline(FitFncBaseClass):
 
     .. image:: media/FitBaseline_preview.png
     """
+    _outputs = [
+        ("fitpar", float),
+        ("rms", float),
+    ]
+
     def __init__(self, model: Union[int, str] = 0, where: Union[List[bool], slice, float] = slice(None, None, None), xdata: List[float] = None):
         if not isinstance(model, (str, int)):
             raise NotImplementedError(f"Unsupported type '{type(model)}' for input 'order'.")

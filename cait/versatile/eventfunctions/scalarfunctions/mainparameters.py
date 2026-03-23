@@ -3,12 +3,12 @@ from typing import List, Union
 import numpy as np
 from scipy.integrate import trapezoid
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 from ..processing.boxcarsmoothing import BoxCarSmoothing
 from .fitbaseline import FitBaseline
 
 
-class MainParameters(FncBaseClass):
+class MainParameters(ScalarFncBaseclass):
     """
     Calculate main parameters for an event.  These parameters are:
 
@@ -63,33 +63,32 @@ class MainParameters(FncBaseClass):
 
         # Generate a directory where the keys correspond to the names
         # of the main parameters and the values to the calculated values
-        mp_dict = {k: v for k, v in zip(f.names, mp)}
+        mp_dict = {k: v for k, v in zip(f.names(), mp)}
 
     .. image:: media/MainParameters_preview.png
     """
-    params = (
-            ("pulse_height", float),
-            ("peak_position", float),
-            ("onset", float),
-            ("rise_time", float),
-            ("decay_time", float),
-            ("rms", float),
-            ("baseline_slope", float),
-            ("baseline_offset", float),
-            ("baseline_difference", float),
-            ("min_deriv", float),
-            ("min_deriv_index", int),
-            ("max_deriv", float),
-            ("max_deriv_index", int),
-            ("maximum", float),
-            ("integral", float),
-            ("variance", float),
-            # CAT parameters
-            ("onset_CAT", float),
-            ("rise_time_CAT", float),
-            ("decay_time_CAT", float),
-            )
-
+    _outputs = [
+        ("pulse_height", float),
+        ("peak_position", float),
+        ("onset", float),
+        ("rise_time", float),
+        ("decay_time", float),
+        ("rms", float),
+        ("baseline_slope", float),
+        ("baseline_offset", float),
+        ("baseline_difference", float),
+        ("min_deriv", float),
+        ("min_deriv_index", int),
+        ("max_deriv", float),
+        ("max_deriv_index", int),
+        ("maximum", float),
+        ("integral", float),
+        ("variance", float),
+        # CAT parameters
+        ("onset_CAT", float),
+        ("rise_time_CAT", float),
+        ("decay_time_CAT", float),
+    ]
 
     def __init__(
             self,
@@ -326,13 +325,3 @@ class MainParameters(FncBaseClass):
             d2 = {'MP': [x[mp], self._smoothing(event)[mp]]}
 
         return dict(line=d1, scatter=d2, axes=dict(xaxis={"label": "time (ms)" if self._dt_us is not None else "index"}))
-
-
-    @property
-    def names(self):
-        return (x[0] for x in MainParameters.params)
-
-
-    @property
-    def types(self):
-        return (x[1] for x in MainParameters.params)

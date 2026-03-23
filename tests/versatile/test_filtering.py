@@ -159,7 +159,7 @@ def test_ofpulseheight_docstring_example():
 
     vai.apply(f1, it[0])
     of_res = vai.apply(f1, it[0].with_batchsize(7))
-    of_res_dict = {k: v for k, v in zip(f1.names, of_res)}
+    of_res_dict = {k: v for k, v in zip(f1.names(), of_res)}
 
     # Try with processing
     vai.apply(f1, it[0].with_processing(vai.RemoveBaseline()))
@@ -293,5 +293,5 @@ def test_rms():
     ]:
         for shift in [-13, -10, -5, 0, 5, 10, 13]:
             out = f(np.roll(ev, shift, axis=-1))
-            of_dict = {k: v for k, v in zip(f.names, out)}
+            of_dict = {k: v for k, v in zip(f.names(), out)}
             assert np.allclose([of_dict["of_rms"], of_dict["of_peak_rms"]], 0)

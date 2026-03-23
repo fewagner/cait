@@ -19,6 +19,12 @@ There are three different kinds of functions:
    it = vai.MockData().get_event_iterator().with_processing(vai.RemoveBaseline())
    mp = vai.apply(vai.MainParameters(dt_us=it.dt_us), it)
 
+A cool thing about scalar functions is that they come with ``.names()`` and ``.dtypes()`` functions which lets you conveniently arrange the outputs into an easy to read dictionary: 
+
+.. code-block:: python
+
+   mp_dict = {k: v for k, v in zip(f.names(), mp)}
+
 *  `Utility functions`_ don't fall into those two categories (e.g. ``apply`` or `Trigger functions`_).
 
 Processing functions

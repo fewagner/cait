@@ -791,7 +791,7 @@ class FeaturesMixin(object):
                 )
 
         of_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating OF pulse heights")
-        of_res_dict = {k: v for k, v in zip(f.names, of_res)}
+        of_res_dict = {k: v for k, v in zip(f.names(), of_res)}
 
         # See docstring for how we treat 'missing channels' in the output arrays.
         if only_channels == slice(None):
@@ -812,7 +812,7 @@ class FeaturesMixin(object):
         # Sanitize data (such that all of the datasets have shape (n_events, n_channels), even if n_channels=1)
         of_res_dict = {k: (v if v.ndim>1 else np.atleast_2d(v).T) for k, v in of_res_dict.items()}
 
-        for n, t in zip(f.names, f.types):
+        for n, t in zip(f.names(), f.dtypes()):
             out = -404*np.ones((n_ch_total, n_ev), dtype=t)
 
             # NOTE: It is important to distinguish the position of the channels in the of_res_dict
