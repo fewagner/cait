@@ -422,6 +422,8 @@ class TPRCubicSpline(TestpulseResponse):
     def __call__(self, x: np.ndarray):
         if self._fit_poly is None:
             raise Exception("Need to run prepare first.")
+
+        x = np.clip(x, self._fit_poly.x.min(), self._fit_poly.x.max())
         
         return np.reshape(
             self._fit_poly(_sanitize_inputs_call(x)),
