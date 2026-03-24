@@ -55,11 +55,11 @@ class MainParametersMixin:
             # CMP for group "testpulses"
             dh.cmp("testpulses")
 
-
         The `with_processing` argument can be used to calculate the main parameters after applying a transform, such as after application of an optimum filter.  This can be done in the following way (assuming the above code snippet has been used to create mock data in the DataHandler):
 
         .. code-block:: python
-            of = md.of
+
+            of = md.of  # Retrieve OF from mock data
             dh.cmp(
                     "events",
                     with_processing=vai.OptimumFiltering(of),  # Apply optimum filtering
