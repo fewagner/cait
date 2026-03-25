@@ -41,7 +41,8 @@ class MainParametersMixin:
             dh.init_empty()
 
             # Create mock data and add it to the handler
-            it = vai.MockData(record_length=2**14).get_event_iterator()
+            md = vai.MockData(record_length=2**14, dt_us=dh.dt_us)
+            it = md.get_event_iterator()
             dh.include_event_iterator("events", it, copy_events=False)
 
             # CMP for group "events" with DataHandler's dt_us
@@ -49,6 +50,18 @@ class MainParametersMixin:
 
             # CMP for group "testpulses"
             dh.cmp("testpulses")
+
+        The `with_processing` argument can be used to calculate the main parameters after applying a transform, such as after application of an optimum filter.  This can be done in the following way (assuming the above code snippet has been used to create mock data in the DataHandler):
+
+        .. code-block:: python
+
+            of = md.of  # Retrieve OF from mock data
+            dh.cmp(
+                    "events",
+                    with_processing=vai.OptimumFiltering(of),  # Apply optimum filtering
+                    tag="of",  # Append this to field names so as not to overwrite old data
+                    )
+
         """
         events = self.get_event_iterator(group, batch_size=batch_size).with_processing(with_processing)
 
