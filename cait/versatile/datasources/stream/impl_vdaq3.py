@@ -70,18 +70,13 @@ class Stream_VDAQ3(StreamBaseClass):
 
             if uuid == UUID_SINGLE_CH:
                 # The first two bytes give the offset to the sample data
-                offset_samples = BinaryFile(path=f, dtype=np.dtype(np.int16), count=1)[0]
+                offset_samples = int(BinaryFile(path=f, dtype=np.dtype(np.int16), count=1)[0])
                 offset_json = UINT16_SIZE + UUID_SIZE
                 size_json = offset_samples - offset_json
-                trailer = dict()
-                # This format doesn't save any additional testpulse information
-                tp_ts = list()
-                tpas = list()
 
-                # These attributes are needed for triggering the TP channels
-                self._dac_trig_thr = dac_trig_thr
-                self._dac_trig_win_len_ms = dac_trig_win_len_ms
-                self._dac_trig_win_len = int(1000*dac_trig_win_len_ms/self._dt)
+                # This format doesn't save a trailer
+                trailer = dict()
+                size_trailer = 0
                 
             elif uuid == UUID_SINGLE_CH_WITH_TRAILER:
                 # The first 8 bytes after the uuid give the offset to the sample data
@@ -173,6 +168,12 @@ class Stream_VDAQ3(StreamBaseClass):
         self._prec = precs[0]
         # The file type
         self._uuid = uuids[0]
+
+        if self._uuid == UUID_SINGLE_CH:
+            # These attributes are needed for triggering the TP channels
+            self._dac_trig_thr = dac_trig_thr
+            self._dac_trig_win_len_ms = dac_trig_win_len_ms
+            self._dac_trig_win_len = int(1000*dac_trig_win_len_ms/self._dt)
         
     def __len__(self):
         return self._len
