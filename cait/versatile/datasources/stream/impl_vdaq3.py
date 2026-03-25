@@ -70,7 +70,7 @@ class Stream_VDAQ3(StreamBaseClass):
 
             if uuid == UUID_SINGLE_CH:
                 # The first two bytes give the offset to the sample data
-                offset_samples = BinaryFile(path=f, dtype=np.dtype(np.int16), count=1)[0]
+                offset_samples = int(BinaryFile(path=f, dtype=np.dtype(np.int16), count=1)[0])
                 offset_json = UINT16_SIZE + UUID_SIZE
                 size_json = offset_samples - offset_json
 
