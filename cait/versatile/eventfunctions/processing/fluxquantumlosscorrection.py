@@ -113,7 +113,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
         for ic in range(event.shape[0]):
             # Calculate main parameters
             mp = np.array(self._mp(event[ic]))
-            self._t0[ic] = mp[12]
+            self._t0[ic] = mp[16]
             self._ph[ic], self._t_max[ic], self._lin_drift[ic] = \
                     mp[np.array([0, 1, 6])]
             # The old t_end was relative to the record window, this is lost in the
@@ -121,7 +121,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
             # be close enough
             self._t_end[ic] = mp[4] + mp[1]
             # t0 also needs to be relative to the record window
-            self._t0[ic] += event.shape[-1] // 4
+            #self._t0[ic] += event.shape[-1] // 4
 
             # Find minima of voltage trace before and after pulse, take difference
             if self._method == "mmd":
@@ -166,7 +166,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
 
             if self._flux_loss[ic] >= self._thresh[ic]: # only correct actual fql, not baseline drifts or the like
                 mp = MainParameters(bcs={'length': 1}, fbl=dict(model=0, where=1/8))(event[ic]) # recalculate onset without smoothing to be more precise
-                self._t0[ic] = mp[12]
+                self._t0[ic] = mp[16]
                 self._corrected_event[ic, int(self._t0[ic])+1:] += self._flux_loss[ic]
 
         if was_1d:
