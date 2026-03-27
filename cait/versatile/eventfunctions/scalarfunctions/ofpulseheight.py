@@ -278,7 +278,7 @@ class OFPulseHeight(ScalarFncBaseclass):
     :param kwargs: Additional keyword arguments for :class:`cait.versatile.OptimumFiltering` (or :class:`cait.versatile.OptimumFiltering2D`). Most notably, you can set ``method='linear'`` for a linear convolution of event traces larger than the one dictated by ``sev``.
     :type kwargs: Any
 
-    :return: Tuple of calculated values. See ``vai.OFPulseHeight(...).names`` and ``vai.OFPulseHeight(...).types`` for what they are and which data types they have. Their description is given below.
+    :return: Tuple of calculated values. See ``vai.OFPulseHeight.names()`` and ``vai.OFPulseHeight.dtypes`` for what they are and which data types they have. Their description is given below.
     :rtype: Tuple[Union[float, int]]
 
     Output parameters are:
@@ -291,7 +291,7 @@ class OFPulseHeight(ScalarFncBaseclass):
     - **of_peak_rms** (V): Same as **of_rms** but only the number of samples specified by argument ``peak_rms_width`` before and after the **of_eval_pos** is used for the calculation.
 
     .. warning::
-        If you directly use this function, make sure to retrieve its results by first applying it to an iterator ``of_res = vai.apply(f, it)`` and unpacking it into a dictionary ``of_res_dict = {k: v for k, v in zip(f.names, of_res)}`` (as explained in the example below). By doing so, you future-proof your code as more outputs might be added to the function in the future.
+        If you directly use this function, make sure to retrieve its results by first applying it to an iterator ``of_res = vai.apply(f, it)`` and unpacking it into a dictionary ``of_res_dict = {k: v for k, v in zip(f.names(), of_res)}`` (as explained in the example below). By doing so, you future-proof your code as more outputs might be added to the function in the future.
 
     **Example:**
 
@@ -301,7 +301,7 @@ class OFPulseHeight(ScalarFncBaseclass):
 
         record_length = 2**14
 
-        # Generate mock data (two cannels)
+        # Generate mock data (two channels)
         md = vai.MockData(record_length=record_length)
         it = md.get_event_iterator()
         sev, of = md.sev, md.of
