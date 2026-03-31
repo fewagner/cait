@@ -196,6 +196,7 @@ class TestpulseResponse(SerializingMixin, ABC):
     def __init__(self, remove_outliers: bool = False, extrapolation_method = ExtrapolationMethod.CONSTANT, **kwargs):
         super().__init__(remove_outliers=remove_outliers, **kwargs)
         self._init_kwargs = dict(remove_outliers=remove_outliers, extrapolation_method=extrapolation_method, **kwargs)
+        self._bounds = None
 
     def __repr__(self):
         return f"{self.__class__.__name__}({', '.join([f'{k}={v}' for k, v in self._init_kwargs.items()])})"
@@ -290,14 +291,14 @@ class TestpulseResponse(SerializingMixin, ABC):
 
 
     def impose_extrapolation(self, x):
-        if not hasattr(self, "_fit_poly") or self._fit_poly is None:
+        if self._bounds is None:
             return x
 
         em = self._init_kwargs['extrapolation_method']
         x = np.array(x)
         if em == self.ExtrapolationMethod.CONSTANT:
             # If there is a fit method with bounds, clip the input to the bounds
-            x = np.clip(x, self._fit_poly.x.min(), self._fit_poly.x.max())
+            x = np.clip(x, self._bounds[0], self._bounds[1])
         return x
 
 
@@ -316,6 +317,7 @@ class TPRUnity(TestpulseResponse):
 
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
         x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
+        self._bounds = (x.min(), x.max())
         self._mean_ph = np.mean(tp_phs)
         return self
 
@@ -361,6 +363,7 @@ class TPRPoly(TestpulseResponse):
 
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
         x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
+        self._bounds = (x.min(), x.max())
 
         # Scale so that x-axis has values in (0, 1) to improve stability
         self._scale_ts = lambda X: (X-np.min(x))/(np.max(x)-np.min(x))
@@ -426,6 +429,7 @@ class TPRCubicSpline(TestpulseResponse):
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
         # Sanitize data
         x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
+        self._bounds = (x.min(), x.max())
 
         sort_inds = np.argsort(x)
         x, tp_phs = x[sort_inds], tp_phs[sort_inds]
