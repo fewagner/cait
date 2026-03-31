@@ -72,7 +72,7 @@ class SerializingMixin:
                 out[k] = self._serialize(v)
             return out
         # Cast numpy types to python types
-        elif isinstance(item, np.integer):
+        elif isinstance(item, (np.integer, int)):
             return int(item)
         elif isinstance(item, np.floating):
             return float(item)
