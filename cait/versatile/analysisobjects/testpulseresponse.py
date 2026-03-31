@@ -189,11 +189,11 @@ class TestpulseResponse(SerializingMixin, ABC):
     #}
 
     class ExtrapolationMethod(enum.IntEnum):
-        CONSTANT = enum.auto()
-        EXTRAPOLATE = enum.auto()
+        CONST = enum.auto()
+        EXT = enum.auto()
 
 
-    def __init__(self, remove_outliers: bool = False, extrapolation_method = ExtrapolationMethod.CONSTANT, **kwargs):
+    def __init__(self, remove_outliers: bool = False, extrapolation_method = ExtrapolationMethod.CONST, **kwargs):
         super().__init__(remove_outliers=remove_outliers, **kwargs)
         self._init_kwargs = dict(remove_outliers=remove_outliers, extrapolation_method=extrapolation_method, **kwargs)
         self._bounds = None
@@ -295,8 +295,14 @@ class TestpulseResponse(SerializingMixin, ABC):
             return x
 
         em = self._init_kwargs['extrapolation_method']
+        if em not in vars(self.ExtrapolationMethod).values():
+            raise ValueError(f"extrapolation_method must be one of "
+                             f'{str([f"ExtrapolationMethod.{x.name}" for x in self.ExtrapolationMethod])}'
+                             f' (i.e. {str([x.value for x in self.ExtrapolationMethod])})'
+                             f", got {em}"
+                             )
         x = np.array(x)
-        if em == self.ExtrapolationMethod.CONSTANT:
+        if em == self.ExtrapolationMethod.CONST:
             # If there is a fit method with bounds, clip the input to the bounds
             x = np.clip(x, self._bounds[0], self._bounds[1])
         return x
