@@ -188,14 +188,14 @@ class TestpulseResponse(SerializingMixin, ABC):
     #    "arg3": {"dtype": int, "default": 1, "domain": (0, 4)} # Results in Dropdown
     #}
 
-    class ExtrapolationMethod(enum.IntEnum):
+    class Extrapolation(enum.IntEnum):
         CONST = enum.auto()
         EXT = enum.auto()
 
 
-    def __init__(self, remove_outliers: bool = False, extrapolation_method = ExtrapolationMethod.CONST, **kwargs):
+    def __init__(self, remove_outliers: bool = False, extrapolation = Extrapolation.CONST, **kwargs):
         super().__init__(remove_outliers=remove_outliers, **kwargs)
-        self._init_kwargs = dict(remove_outliers=remove_outliers, extrapolation_method=extrapolation_method, **kwargs)
+        self._init_kwargs = dict(remove_outliers=remove_outliers, extrapolation=extrapolation, **kwargs)
         self._bounds = None
 
     def __repr__(self):
@@ -294,15 +294,15 @@ class TestpulseResponse(SerializingMixin, ABC):
         if self._bounds is None:
             return x
 
-        em = self._init_kwargs['extrapolation_method']
-        if em not in vars(self.ExtrapolationMethod).values():
-            raise ValueError(f"extrapolation_method must be one of "
-                             f'{str([f"ExtrapolationMethod.{x.name}" for x in self.ExtrapolationMethod])}'
-                             f' (i.e. {str([x.value for x in self.ExtrapolationMethod])})'
+        em = self._init_kwargs['extrapolation']
+        if em not in vars(self.Extrapolation).values():
+            raise ValueError(f"extrapolation must be one of "
+                             f'{str([f"Extrapolation.{x.name}" for x in self.Extrapolation])}'
+                             f' (i.e. {str([x.value for x in self.Extrapolation])})'
                              f", got {em}"
                              )
         x = np.array(x)
-        if em == self.ExtrapolationMethod.CONST:
+        if em == self.Extrapolation.CONST:
             # If there is a fit method with bounds, clip the input to the bounds
             x = np.clip(x, self._bounds[0], self._bounds[1])
         return x
@@ -323,7 +323,6 @@ class TPRUnity(TestpulseResponse):
 
     def prepare(self, x: np.ndarray, tp_phs: np.ndarray):
         x, tp_phs = _sanitize_inputs_prepare(x, tp_phs, self._init_kwargs["remove_outliers"])
-        self._bounds = (x.min(), x.max())
         self._mean_ph = np.mean(tp_phs)
         return self
 
