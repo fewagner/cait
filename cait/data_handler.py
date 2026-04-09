@@ -469,7 +469,7 @@ class DataHandler(SimulateMixin,
         :type group: str
         :param it: The iterator whose events we want to include.
         :type it: IteratorBaseClass
-        :param dtype: The datatype which the events should be stored as. Either 'float32' or 'float64'. Some `cait` methods expect 'float32' event datasets. Has no effect if 'copy_events'=False. Defaults to 'float32'
+        :param dtype: The datatype which the events should be stored as. Either 'float32', 'float64', or 'int16'. Some `cait` methods expect 'float32' event datasets. If set to 'int16', the data are converted to 16-bit integers before being saved (and back from int16 to voltage automatically when calling :func:`~cait.DataHandler.get_event_iterator`). This reduces the final file size by a factor 2 compared to the default 'float32', however this has implications for precision: if the original data were stored as 16-bit integers (as for CSMPL files), there is no drawback to saving as 'int16'; however, precision will be lost if the data were stored with larger ints (e.g. VDAQ3 saves as either 24 or 32 bits, this will cause a reduction in precision). Has no effect if 'copy_events'=False. Defaults to 'float32'
         :type dtype: str, optional
         :param copy_events: If True, voltage traces of all events are copied to the HDF5 file. If False, only a reference for where to find the original traces is saved so that they can be reached in their original location. Defaults to True
         """
@@ -499,7 +499,7 @@ class DataHandler(SimulateMixin,
         # COPY ALL EVENTS
         if copy_events:
             if dtype not in ['float32', 'float64', 'int16']:
-                raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64']")
+                raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64', 'int16']")
 
             # Cast to correct datatype:
             if dtype == 'int16':
