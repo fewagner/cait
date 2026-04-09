@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 import cait as ai
 
-from .fixtures import tempdir, datahandler, testdata_1D_2D_3D_s_mus, RECORD_LENGTH
+from .fixtures import tempdir, datahandler, testdata_1D_2D_3D_s_mus, testdata_1D_2D_3D_s_mus_int16, RECORD_LENGTH
 
 class TestDataHandler:
     # tests all methods directly defined in DataHandler (not within mixins) except:
@@ -173,8 +173,8 @@ class TestDataHandler:
         datahandler.content()
  
     # The correct functioning of EventIterator is tested in the respective test file
-    def test_event_iterator(self, datahandler, testdata_1D_2D_3D_s_mus): 
-        *_ , d3, s, mus = testdata_1D_2D_3D_s_mus
+    def test_event_iterator(self, datahandler, testdata_1D_2D_3D_s_mus_int16): 
+        *_ , d3, s, mus = testdata_1D_2D_3D_s_mus_int16
         ts = s*int(1e6) + mus
 
         # Prepare datasets
@@ -195,6 +195,16 @@ class TestDataHandler:
             datahandler.get("iterator_testing_out", "hours")
             datahandler.drop("iterator_testing_out")
 
+            # Test saving as int16
+            datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
+            datahandler.get("iterator_testing_int", "time_s")
+            datahandler.get("iterator_testing_int", "time_mus")
+            datahandler.get("iterator_testing_int", "hours")
+            assert datahandler.get("iterator_testing_int", "event").shape == (2, 100, RECORD_LENGTH)
+            iti = datahandler.get_event_iterator("iterator_testing_int")
+            assert np.all([it.grab(x) == iti.grab(x) for x in range(len(iti))])
+            datahandler.drop("iterator_testing_int")
+
         for it in [it3, it4]:
             datahandler.include_event_iterator("iterator_testing_out", it)
             assert datahandler.get("iterator_testing_out", "event").shape == (1, 100, RECORD_LENGTH)
@@ -202,6 +212,17 @@ class TestDataHandler:
             datahandler.get("iterator_testing_out", "time_mus")
             datahandler.get("iterator_testing_out", "hours")
             datahandler.drop("iterator_testing_out")
+
+            # Test saving as int16
+            datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
+            datahandler.get("iterator_testing_int", "time_s")
+            datahandler.get("iterator_testing_int", "time_mus")
+            datahandler.get("iterator_testing_int", "hours")
+            assert datahandler.get("iterator_testing_int", "event").shape == (1, 100, RECORD_LENGTH)
+            iti = datahandler.get_event_iterator("iterator_testing_int")
+            assert np.all([it.grab(x) == iti.grab(x) for x in range(len(iti))])
+            datahandler.drop("iterator_testing_int")
+
 
         with pytest.raises(Exception): # already existing dataset
             it = datahandler.get_event_iterator("iterator_testing")
