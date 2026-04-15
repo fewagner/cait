@@ -58,8 +58,8 @@ def testdata_1D_2D_3D_s_mus():
 
 # Provides random 1D, 2D and 3D data (converted from int16) as well as s and mus timestamps.
 # This is in principle the same as testdata_1D_2D_3D_s_mus (and should be interchangeable),
-# but used for testing iterators saved as int16, and therefore the "raw" data needs to be
-# drawn from int16 as well.
+# but used for testing iterators saved as and loaded from int16, and therefore the "raw" data
+# needs to be drawn from int16 as well.
 @pytest.fixture(scope="module")
 def testdata_1D_2D_3D_s_mus_int16():
     data_1d = ai.data.convert_to_V((np.random.rand(100) * 32768).astype(np.int16))

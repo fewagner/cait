@@ -199,6 +199,7 @@ class TestDataHandler:
             # The iterators it1/it2 are produced using int16 data converted to "voltage" using
             # convert_to_V(), so saving this iterator in the int16 format and retrieving it from
             # the data handler should produce an exact copy of the initial iterator.
+            # First check the same parameters as above.
             datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
             datahandler.get("iterator_testing_int", "time_s")
             datahandler.get("iterator_testing_int", "time_mus")
@@ -219,9 +220,10 @@ class TestDataHandler:
             datahandler.drop("iterator_testing_out")
 
             # Test saving as int16
-            # The iterators it1/it2 are produced using int16 data converted to "voltage" using
+            # The iterators it3/it4 are produced using int16 data converted to "voltage" using
             # convert_to_V(), so saving this iterator in the int16 format and retrieving it from
             # the data handler should produce an exact copy of the initial iterator.
+            # First check the same parameters as above.
             datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
             datahandler.get("iterator_testing_int", "time_s")
             datahandler.get("iterator_testing_int", "time_mus")
