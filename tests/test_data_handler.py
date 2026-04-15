@@ -196,11 +196,16 @@ class TestDataHandler:
             datahandler.drop("iterator_testing_out")
 
             # Test saving as int16
+            # The iterators it1/it2 are produced using int16 data converted to "voltage" using
+            # convert_to_V(), so saving this iterator in the int16 format and retrieving it from
+            # the data handler should produce an exact copy of the initial iterator.
             datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
             datahandler.get("iterator_testing_int", "time_s")
             datahandler.get("iterator_testing_int", "time_mus")
             datahandler.get("iterator_testing_int", "hours")
             assert datahandler.get("iterator_testing_int", "event").shape == (2, 100, RECORD_LENGTH)
+            # Retrieve the iterator saved in the int16 format, and compare it event-by-event to
+            # the initial iterator.  The assumption is that it should exactly match.
             iti = datahandler.get_event_iterator("iterator_testing_int")
             assert np.all([it.grab(x) == iti.grab(x) for x in range(len(iti))])
             datahandler.drop("iterator_testing_int")
@@ -214,11 +219,16 @@ class TestDataHandler:
             datahandler.drop("iterator_testing_out")
 
             # Test saving as int16
+            # The iterators it1/it2 are produced using int16 data converted to "voltage" using
+            # convert_to_V(), so saving this iterator in the int16 format and retrieving it from
+            # the data handler should produce an exact copy of the initial iterator.
             datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
             datahandler.get("iterator_testing_int", "time_s")
             datahandler.get("iterator_testing_int", "time_mus")
             datahandler.get("iterator_testing_int", "hours")
             assert datahandler.get("iterator_testing_int", "event").shape == (1, 100, RECORD_LENGTH)
+            # Retrieve the iterator saved in the int16 format, and compare it event-by-event to
+            # the initial iterator.  The assumption is that it should exactly match.
             iti = datahandler.get_event_iterator("iterator_testing_int")
             assert np.all([it.grab(x) == iti.grab(x) for x in range(len(iti))])
             datahandler.drop("iterator_testing_int")
