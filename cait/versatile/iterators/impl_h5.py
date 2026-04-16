@@ -58,7 +58,8 @@ class H5Iterator(IteratorBaseClass):
 
         n_events_total = shape[1]
 
-        if channels is None: channels = list(range(shape[0])) 
+        if channels is None or channels == slice(None): 
+            channels = list(range(shape[0])) 
 
         if isinstance(channels, int):
             self._channels = channels
