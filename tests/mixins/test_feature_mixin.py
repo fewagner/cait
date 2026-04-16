@@ -44,14 +44,14 @@ def create_dh(filepath, name, record_length, sample_frequency, n_ch):
 
 # Test dh.apply_ofilter
 @pytest.mark.parametrize(
-        "tag,batch_size,peak_rms_width,max_search", 
+        "tag,batch_size,peak_rms_width,max_search,copy_events", 
         [
-            ("", 10, 5, (0.2, 0.4)),
-            ("test1", 10, 5, (0.2, 0.4)),
-            ("test2", 13, 50, (100, 200)),
-            ("test3", 23, 0, (100, 0.5)),
-            ("test4", 23, 0, 0.5),
-            ("test5", 10, 1, 1000),
+            ("", 10, 5, (0.2, 0.4), True),
+            ("test1", 10, 5, (0.2, 0.4), False),
+            ("test2", 13, 50, (100, 200), True),
+            ("test3", 23, 0, (100, 0.5), False),
+            ("test4", 23, 0, 0.5, True),
+            ("test5", 10, 1, 1000, False),
         ]
     )
 def test_apply_ofilter_single_ch(
@@ -60,6 +60,7 @@ def test_apply_ofilter_single_ch(
     batch_size,
     peak_rms_width,
     max_search,
+    copy_events,
     ):
     dh1 = create_dh(
         tempdir_fnc.name, 
@@ -73,6 +74,7 @@ def test_apply_ofilter_single_ch(
         s, 
         trigger_channels=["Ch0"],
         testpulse_channels=["TP0"],
+        copy_events=copy_events,
     )
     n_ev = len(dh1.get_event_iterator("events"))
     n_tp = len(dh1.get_event_iterator("testpulses"))
@@ -176,11 +178,12 @@ def test_apply_ofilter_single_ch(
 
 # Test dh.apply_ofilter
 @pytest.mark.parametrize(
-        "tag,batch_size,peak_rms_width,max_search,relative_to", 
+        "tag,batch_size,peak_rms_width,max_search,relative_to,copy_events", 
         [
-            ("", 10, 5, (0.2, 0.4), None),
-            ("test1", 10, 5, [(0.2, 0.4), -10], [None, 0]),
-            ("test2", 13, 50, [-100, (0.2, 0.4)], [1, None]),
+            ("", 10, 5, (0.2, 0.4), None, False),
+            ("test1", 10, 5, [(0.2, 0.4), -10], [None, 0], False),
+            ("test2", 13, 50, [-100, (0.2, 0.4)], [1, None], False),
+            ("test3", 13, 50, [-100, (0.2, 0.4)], [1, None], True),
         ]
     )
 def test_apply_ofilter_double_ch(
@@ -190,6 +193,7 @@ def test_apply_ofilter_double_ch(
     peak_rms_width,
     max_search,
     relative_to,
+    copy_events,
     ):
     # One datahandler that is used to store triggered data.
     dh1 = create_dh(
@@ -205,6 +209,7 @@ def test_apply_ofilter_double_ch(
         trigger_channels=["Ch0"],
         passive_channels=["Ch1"],
         testpulse_channels=["TP0", "TP1"],
+        copy_events=copy_events,
     )
     n_ev = len(dh1.get_event_iterator("events"))
     n_tp = len(dh1.get_event_iterator("testpulses"))
