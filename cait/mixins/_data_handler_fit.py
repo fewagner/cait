@@ -344,9 +344,9 @@ class FitMixin(object):
                            max_shift: int = 50,
                            only_channels: Union[int, List[int]] = None,
                            event_flag: np.ndarray = None,
+                           with_processing = [],
                            tag: str = "",
                            preview: bool = False,
-                           with_processing = [],
                            **kwargs
                            ):
         """
@@ -375,6 +375,8 @@ class FitMixin(object):
         :type only_channels: Union[int, List[int]], optional
         :param event_flag: A boolean flag. If you don't want to fit all events in 'group', you can specify a flag for which to fit here. Events that were not fit, receive an RMS value of -404 in the output dataset. Has to have the same length as there are events in 'group' and applies to all channels. Defaults to None, i.e. fit all events.
         :type event_flag: np.ndarray, optional
+        :param with_processing: Optional processing to apply to each event before :class:`~cait.versatile.TemplateFit` is applied. See :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.add_processing`.
+        :type with_processing: callable or list of callable, optional
         :param tag: A string that is appended to the datasets when they are saved to the DataHandler (e.g. if you want to perform fits for different pulse shapes). This string is appended with a hyphen, i.e. for ``tag="wafer"`` this would result in datasets like ``templatefit_pars-wafer``. Defaults to an empty string, i.e. no tag.
         :type tag: str, optional
         :param preview: If True, an interactive preview illustrating the fit using the current input arguments on the event traces opens up. Defaults to False
@@ -453,6 +455,14 @@ class FitMixin(object):
                 correlated=True,
                 fit_onset=[True, True] # Onset of both channels is fitted together
             )
+            drop_tf_ds()
+
+            # Example 5: Correct pulses for flux quantum losses before fitting
+            dh.apply_template_fit(
+                    "events",
+                    sev,
+                    with_processing = vai.FluxQuantumLossCorrection(),
+                    )
         """
         # 10 is a good trade off for copying data to processes and file access speed
         _batch_size = 10
@@ -509,9 +519,6 @@ class FitMixin(object):
             with_processing = with_processing.tolist()
         elif not isinstance(with_processing, list):
             raise ValueError(f"'with_processing' must be a Callable or list of Callables, not {type(with_processing)}")
-        # Make sure RemoveBaseline is in the list
-        if not np.any([isinstance(x, vai.RemoveBaseline) for x in with_processing]):
-            with_processing.append(vai.RemoveBaseline())
 
 
         # Construct the output array (to be filled later)
@@ -543,7 +550,7 @@ class FitMixin(object):
                     **kwargs)
 
             if preview:
-                vai.Preview(events_used.with_processing(with_processing), tf)
+                vai.Preview(events_used.with_processing(with_processing + [vai.RemoveBaseline()]), tf)
             else:
                 tf_out = vai.apply(tf, events_used.with_processing(with_processing).with_batchsize(_batch_size))
                 tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
@@ -565,7 +572,7 @@ class FitMixin(object):
                         **kwargs)
 
                 if preview:
-                    vai.Preview(events_used[i].with_processing(with_processing), tf)
+                    vai.Preview(events_used[i].with_processing(with_processing + [vai.RemoveBaseline()]), tf)
                 else:
                     tf_out = vai.apply(tf, events_used[i].with_processing(with_processing).with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
                     tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
