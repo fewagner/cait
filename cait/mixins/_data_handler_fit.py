@@ -376,7 +376,7 @@ class FitMixin(object):
         :param event_flag: A boolean flag. If you don't want to fit all events in 'group', you can specify a flag for which to fit here. Events that were not fit, receive an RMS value of -404 in the output dataset. Has to have the same length as there are events in 'group' and applies to all channels. Defaults to None, i.e. fit all events.
         :type event_flag: np.ndarray, optional
         :param with_processing: Optional processing to apply to each event before :class:`~cait.versatile.TemplateFit` is applied. See :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.add_processing`.
-        :type with_processing: callable or list of callable, optional
+        :type with_processing: Union[Callable, List[Callable]], optional
         :param tag: A string that is appended to the datasets when they are saved to the DataHandler (e.g. if you want to perform fits for different pulse shapes). This string is appended with a hyphen, i.e. for ``tag="wafer"`` this would result in datasets like ``templatefit_pars-wafer``. Defaults to an empty string, i.e. no tag.
         :type tag: str, optional
         :param preview: If True, an interactive preview illustrating the fit using the current input arguments on the event traces opens up. Defaults to False

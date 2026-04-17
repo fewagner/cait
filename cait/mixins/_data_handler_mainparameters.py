@@ -22,7 +22,7 @@ class MainParametersMixin:
         :param group: The group for which the main parameters are calculated, e.g. `"events"`, `"testpulses"`, `"noise"`, etc.  Defaults to `"events"`.
         :type group: str, optional
         :param with_processing: Optional processing to apply to each event before :class:`~cait.versatile.MainParameters` is applied. See :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.add_processing`.
-        :type with_processing: callable or list of callable, optional
+        :type with_processing: Union[Callable, List[Callable]], optional
         :param tag: Optional suffix to append to the names normally written to the DataHandler.  Useful e.g. in conjunction with `with_processing` or `kwargs` arguments to separate different passes.  The suffix is separated from the name automatically by a dash, i.e. `tag="fqlc"` will result in datasets such as `pulse_height-fqlc`, `onset-fqlc`, etc.  Defaults to `None`, in which case no suffix is appended.
         :type tag: str, optional
         :param batch_size: Override the default batch size of 2 when using :func:`~cait.versatile.apply`.  May improve speed in certain circumstances.
