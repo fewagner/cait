@@ -1,4 +1,5 @@
 from typing import Callable, Union, List
+from readchar import readkey
 
 import numpy as np
 
@@ -289,11 +290,13 @@ class BaseClassUniplot(BackendBaseClass):
                 print(f"other actions: {', '.join([b['text'] for b in self.buttons])}")
                 
             # Get key input
-            key = uniplot.getch.getch().lower()
+            key = readkey()
 
-            if key in ["q", "\x1b"] + hot_keys: 
+            if key in ["q", "\x1b", "\x1b\x1b"] + hot_keys: 
                 # Break out of loop (below, we distinguish between hot
                 # keys and q/ESC)
+                # Note: for some reason, a single ESC is not registered,
+                # so a double esc was added above to the check above.
                 break
             elif key == "i":
                 self.plt_opt.zoom_in()
