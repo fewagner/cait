@@ -210,14 +210,14 @@ def _trigger_helper(dh,
         if dh.exists(f"event_building-{name_appendix}", "cp_ts"):
             temp_ts = np.hstack([temp_ts, dh.get(f"event_building-{name_appendix}", "cp_ts")])
 
-        inds = stream.time.timestamp_to_ind(temp_ts)
         # Remove timestamps which would result in a trace extending outside of the stream's domain.
         # (We are a bit generous here and exclude a full record window in the beginning and in the end
         # of the stream even though 1/4 and 3/4 of a record window would be enough, but then we have to 
         # think about off-by-one errors and we are to lazy for that)
-        inside_flag = (inds > dh.record_length) * (inds < len(stream) - dh.record_length)
-        
-        noise_inds = vai.sample_noise(inds[inside_flag].tolist(), dh.record_length, n_samples=n_noise)
+        inside_flag = (temp_ts > stream.time[dh.record_length]) * (temp_ts < stream.time[-dh.record_length])
+
+        inds = stream.time.timestamp_to_ind(temp_ts[inside_flag])
+        noise_inds = vai.sample_noise(inds.tolist(), dh.record_length, n_samples=n_noise)
         dh.set(f"event_building-{name_appendix}", noise_ts=stream.time[noise_inds], dtype=np.int64, overwrite_existing=True)
 
     # save events in events group
@@ -252,6 +252,7 @@ def _trigger_helper(dh,
 
         # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
         valid_tp_flag = all_tp_ts < stream.time[-3*dh.record_length//4]
+        valid_tp_flag *= (all_tp_ts > stream.time[dh.record_length//4])
         if not all(valid_tp_flag): 
             print("One or more testpulses could not be included because they fall (partially) outside the stream's range!!")
 
@@ -279,6 +280,7 @@ def _trigger_helper(dh,
         if len(all_cp_ts)>0:
             # make sure all timestamps written in the tp file are actually within the stream file (and their voltage traces can be read completely)
             valid_cp_flag = all_cp_ts < stream.time[-3*dh.record_length//4]
+            valid_tp_flag *= (all_tp_ts > stream.time[dh.record_length//4])
             if not all(valid_cp_flag): 
                 print("One or more controlpulses could not be included because they fall (partially) outside the stream's range!!")
 
@@ -306,6 +308,7 @@ def _trigger_helper(dh,
             copy_this = copy_events
         
         noise_ts = dh.get(f"event_building-{name_appendix}", "noise_ts")
+
         if len(noise_ts)>0:
             dh.include_event_iterator("noise", 
                                         stream.get_event_iterator(
