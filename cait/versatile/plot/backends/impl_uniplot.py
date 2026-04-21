@@ -1,5 +1,4 @@
 from typing import Callable, Union, List
-from readchar import readkey
 
 import numpy as np
 
@@ -7,6 +6,7 @@ from .backendbase import BackendBaseClass
 
 try:
     import uniplot
+    from uniplot.uniplot import readkey
 except ImportError:
     uniplot = None
 
@@ -65,7 +65,7 @@ class BaseClassUniplot(BackendBaseClass):
                  show_controls: bool = True):
         
         if uniplot is None: 
-            raise RuntimeError("Install 'uniplot>=0.12.2' to use this feature.")
+            raise RuntimeError("Install 'uniplot>=0.21.2' to use this feature.")
 
         # Height/width in characters
         self.height = int(height)
