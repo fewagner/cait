@@ -8,7 +8,7 @@ import cait.versatile as vai
 class MainParametersMixin:
     def cmp(self,
             group: str = "events",
-            with_processing: List[Callable] = [],
+            with_processing: Union[Callable, List[Callable]] = None,
             tag: str = None,
             batch_size: int = 2,
             **kwargs,
@@ -63,6 +63,13 @@ class MainParametersMixin:
                     )
 
         """
+        if with_processing is None:
+            with_processing = []
+        elif callable(with_processing):
+            with_processing = [with_processing]
+        else:
+            raise ValueError(f"'with_processing' must be a Callable or list of Callables, not {type(with_processing)}")
+
         events = self.get_event_iterator(group, batch_size=batch_size).with_processing(with_processing)
 
         mp = vai.MainParameters(self.dt_us, **kwargs)

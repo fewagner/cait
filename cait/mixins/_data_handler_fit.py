@@ -344,7 +344,7 @@ class FitMixin(object):
                            max_shift: int = 50,
                            only_channels: Union[int, List[int]] = None,
                            event_flag: np.ndarray = None,
-                           with_processing = [],
+                           with_processing: Union[Callable, List[Callable]] = None,
                            tag: str = "",
                            preview: bool = False,
                            **kwargs
@@ -513,7 +513,9 @@ class FitMixin(object):
         if sev.shape[0] != n_channels_used:
             raise ValueError(f"'sev' must have as many channels as you want to fit. Got {sev.shape[0]} and {n_channels_used}.")
 
-        if isinstance(with_processing, Callable):
+        if with_processing is None:
+            with_processing = []
+        elif callable(with_processing):
             with_processing = [with_processing]
         elif isinstance(with_processing, np.ndarray):
             with_processing = with_processing.tolist()
