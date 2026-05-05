@@ -1,3 +1,5 @@
+from typing import Union, List
+
 import numpy as np
 
 from ..functionbase import FncBaseClass
@@ -63,119 +65,145 @@ class FluxQuantumLossCorrection(FncBaseClass):
 
     .. image:: media/FQLC_preview.png
     """
+    _locations = [
+            "peak_position",
+            "onset",
+            "min_deriv_index",
+            "max_deriv_index",
+            "onset_CAT",
+            ]
     def __init__(self,
                  method: str = "mmd",
                  fql_voltage: float = None,
                  thresh: float = 0.2,
                  true_pulseheight: float = None,
-                 return_shift_value: bool = False):
+                 return_shift_value: bool = False,
+                 location: Union[str, List[str]] = "onset_CAT",
+                 ):
         self._mp = MainParameters()
         self._method = method
         self._thresh = thresh
         self._true_pulseheight = true_pulseheight
         self._fql_voltage = fql_voltage
         self._return_shift_value = return_shift_value
+        self._loc = location
 
     def __call__(self, event):
         event = np.array(event)
 
+        # We will work in batches
         orig_shape = None
         was_1d = False
-        if event.ndim < 2:
+        if event.ndim == 1:
             was_1d = True
-            event = event[None, ...]
-        elif event.ndim > 2:
             orig_shape = event.shape
-            event = event.reshape(-1, event.shape[-1])
+            event = event[None, None, :]
+        elif event.ndim == 2:
+            # Could either be batched or multiple channels, doesn't really matter
+            orig_shape = event.shape
+            event = event[None, ...]
+
 
         if isinstance(self._thresh, (int, float)):
-            self._thresh = np.full(event.shape[0], self._thresh)
+            self._thresh = np.full(event.shape[1], self._thresh)
         if isinstance(self._true_pulseheight, (int, float)):
-            self._thresh = np.full(event.shape[0], self._true_pulseheight)
+            self._thresh = np.full(event.shape[1], self._true_pulseheight)
         if isinstance(self._fql_voltage, (int, float)):
-            self._thresh = np.full(event.shape[0], self._fql_voltage)
+            self._thresh = np.full(event.shape[1], self._fql_voltage)
+
+        if isinstance(self._loc, str):
+            # Make sure there is one for each channel
+            self._loc = [self._loc] * event.shape[1]
+        else:
+            assert len(self._loc) == event.shape[1], f"Incorrect shape to parameter 'loccation'; must either be a single string, or a list with the same length as the number of channels, got {len(self._loc)} and {event.shape[1]}."
+
+        assert np.all([x in self._locations for x in self._loc]), f"Incorrect value to parameter 'location'; got {self._loc}, all values must be in {self._locations}"
 
         self._event_nobl = np.array(event)
         self._corrected_event = np.array(self._event_nobl)
 
-        self._ph = np.zeros(event.shape[0])
-        self._t0 = np.zeros(event.shape[0])
-        self._t_max = np.zeros(event.shape[0])
-        self._t_end = np.zeros(event.shape[0])
-        self._lin_drift = np.zeros(event.shape[0])
-        self._t_min_1 = np.zeros(event.shape[0], dtype=int)
-        self._t_min_2 = np.zeros(event.shape[0], dtype=int)
-        self._baseline_mean_1 = np.zeros(event.shape[0])
-        self._baseline_mean_2 = np.zeros(event.shape[0])
-        self._flux_loss = np.zeros(event.shape[0])
-        self._slope = np.zeros(event.shape[0])
+        self._ph = np.zeros(event.shape[:-1])
+        self._t0 = np.zeros(event.shape[:-1])
+        self._t_max = np.zeros(event.shape[:-1])
+        self._t_end = np.zeros(event.shape[:-1])
+        self._lin_drift = np.zeros(event.shape[:-1])
+        self._t_min_1 = np.zeros(event.shape[:-1], dtype=int)
+        self._t_min_2 = np.zeros(event.shape[:-1], dtype=int)
+        self._baseline_mean_1 = np.zeros(event.shape[:-1])
+        self._baseline_mean_2 = np.zeros(event.shape[:-1])
+        self._flux_loss = np.zeros(event.shape[:-1])
+        self._slope = np.zeros(event.shape[:-1])
 
-        for ic in range(event.shape[0]):
-            # Calculate main parameters
-            mp = np.array(self._mp(event[ic]))
-            self._t0[ic] = mp[16]
-            self._ph[ic], self._t_max[ic], self._lin_drift[ic] = \
-                    mp[np.array([0, 1, 6])]
-            # The old t_end was relative to the record window, this is lost in the
-            # new MainParameters, but the position relative to the peak position should
-            # be close enough
-            self._t_end[ic] = mp[4] + mp[1]
-            # t0 also needs to be relative to the record window
-            #self._t0[ic] += event.shape[-1] // 4
+        mp = np.array(self._mp(event))
+        locs = [self._mp.names().index(x) for x in self._loc]
 
-            # Find minima of voltage trace before and after pulse, take difference
-            if self._method == "mmd":
-                # Model was developed for a fixed record length. Here, the indices
-                # 600 and 100 were found to work well. Consequently, we scale the
-                # indices now for an arbitrary record length.
-                k1, k2 = int(600/2**14*event.shape[-1]), int(100/2**14*event.shape[-1])
+        for ic in range(event.shape[1]):
+            for ib in range(event.shape[0]):
+                # Calculate main parameters
+                self._t0[ib, ic] = mp[locs[ic], ib, ic]
+                self._ph[ib, ic], self._t_max[ib, ic], self._lin_drift[ib, ic] = \
+                        mp[np.array([0, 1, 6]), ib, ic]
+                # The old t_end was relative to the record window, this is lost in the
+                # new MainParameters, but the position relative to the peak position should
+                # be close enough
+                self._t_end[ib, ic] = mp[4, ib, ic] + mp[1, ib, ic]
+                # t0 also needs to be relative to the record window
+                #self._t0[ic] += event.shape[-1] // 4
 
-                if int(self._t_max[ic]) > k1:
-                    self._t_min_1[ic] = k1 + np.argmin(self._event_nobl[ic, k1:int(self._t_max[ic])]) # start at 600 so we don't end up out of bounds when averaging later
+                # Find minima of voltage trace before and after pulse, take difference
+                if self._method == "mmd":
+                    # Model was developed for a fixed record length. Here, the indices
+                    # 600 and 100 were found to work well. Consequently, we scale the
+                    # indices now for an arbitrary record length.
+                    k1, k2 = int(600/2**14*event.shape[-1]), int(100/2**14*event.shape[-1])
+
+                    if int(self._t_max[ib, ic]) > k1:
+                        self._t_min_1[ib, ic] = k1 + np.argmin(self._event_nobl[ib, ic, k1:int(self._t_max[ib, ic])]) # start at 600 so we don't end up out of bounds when averaging later
+                    else:
+                        self._t_min_1[ib, ic] = k1
+                    if int(self._t_max[ib, ic]) < event.shape[-1]:
+                        self._t_min_2[ib, ic] = max(k1,int(self._t_max[ib, ic])) + np.argmin(self._event_nobl[ib, ic, max(k1,int(self._t_max[ib, ic])):])
+                    else:
+                        self._t_min_2[ib, ic] = event.shape[-1]
+                    # here, the 600 catches the case of a faulty or non-event with tmax before sample #600
+                    # take the values for the average not around the minima as the minima are subject to fluctuations.
+                    # also don't take values after the minima as the (/another) pulse (pileup) might come into play there.
+                    self._baseline_mean_1[ib, ic] = np.mean(self._event_nobl[ib, ic, self._t_min_1[ib, ic]-k1:self._t_min_1[ib, ic]-k2])
+                    self._baseline_mean_2[ib, ic] = np.mean(self._event_nobl[ib, ic, self._t_min_2[ib, ic]-k1:self._t_min_2[ib, ic]-k2])
+                    self._flux_loss[ib, ic] = self._baseline_mean_1[ib, ic]-self._baseline_mean_2[ib, ic]
+
+                elif self._method == "slope":
+                    self._slope[ib, ic] = self._lin_drift[ib, ic] * event.shape[-1]
+                    self._flux_loss[ib, ic] = -self._slope[ib, ic]
+
+                elif self._method == "true_ph":
+                    if self._true_pulseheight is None:
+                        raise ValueError('True pulse height needs to be provided for the fqlc method "true_ph".')
+
+                    self._flux_loss[ib, ic] = self._true_pulseheight[ic] - self._ph[ib, ic]
+
                 else:
-                    self._t_min_1[ic] = k1
-                if int(self._t_max[ic]) < event.shape[-1]:
-                    self._t_min_2[ic] = max(k1,int(self._t_max[ic])) + np.argmin(self._event_nobl[ic, max(k1,int(self._t_max[ic])):])
-                else:
-                    self._t_min_2[ic] = event.shape[-1]
-                # here, the 600 catches the case of a faulty or non-event with tmax before sample #600
-                # take the values for the average not around the minima as the minima are subject to fluctuations.
-                # also don't take values after the minima as the (/another) pulse (pileup) might come into play there.
-                self._baseline_mean_1[ic] = np.mean(self._event_nobl[ic, self._t_min_1[ic]-k1:self._t_min_1[ic]-k2])
-                self._baseline_mean_2[ic] = np.mean(self._event_nobl[ic, self._t_min_2[ic]-k1:self._t_min_2[ic]-k2])
-                self._flux_loss[ic] = self._baseline_mean_1[ic]-self._baseline_mean_2[ic]
+                    raise ValueError('Choose fqlc method from "mmd" (minimum-minimum difference), "slope" or "true_ph".')
 
-            elif self._method == "slope":
-                self._slope[ic] = self._lin_drift[ic] * event.shape[-1]
-                self._flux_loss[ic] = -self._slope[ic]
+                if self._fql_voltage is not None: # FQL voltage is known and provided -> correct only for integer multiples
+                    self._flux_loss[ib, ic] = self._fql_voltage[ib, ic] * np.ceil((self._flux_loss[ib, ic] - self._thresh[ic])/self._fql_voltage[ib, ic])
 
-            elif self._method == "true_ph":
-                if self._true_pulseheight is None:
-                    raise ValueError('True pulse height needs to be provided for the fqlc method "true_ph".')
+                if self._return_shift_value:
+                    return self._flux_loss[ib, ic]
 
-                self._flux_loss[ic] = self._true_pulseheight[ic] - self._ph[ic]
-
-            else:
-                raise ValueError('Choose fqlc method from "mmd" (minimum-minimum difference), "slope" or "true_ph".')
-
-            if self._fql_voltage is not None: # FQL voltage is known and provided -> correct only for integer multiples
-                self._flux_loss[ic] = self._fql_voltage[ic] * np.ceil((self._flux_loss[ic] - self._thresh[ic])/self._fql_voltage[ic])
-
-            if self._return_shift_value:
-                return self._flux_loss[ic]
-
-            if self._flux_loss[ic] >= self._thresh[ic]: # only correct actual fql, not baseline drifts or the like
-                mp = MainParameters(bcs={'length': 1}, fbl=dict(model=0, where=1/8))(event[ic]) # recalculate onset without smoothing to be more precise
-                self._t0[ic] = mp[16]
-                self._corrected_event[ic, int(self._t0[ic])+1:] += self._flux_loss[ic]
+                if self._flux_loss[ib, ic] >= self._thresh[ic]: # only correct actual fql, not baseline drifts or the like
+                    _mp = MainParameters(bcs={'length': 1}, fbl=dict(model=0, where=1/8))(event[ib, ic]) # recalculate onset without smoothing to be more precise
+                    self._t0[ib, ic] = int(_mp[locs[ic]])
+                    self._corrected_event[ib, ic, int(self._t0[ib, ic])+1:] += self._flux_loss[ib, ic]
 
         if was_1d:
-            return self._corrected_event[0]
+            return self._corrected_event[0, 0]
         elif orig_shape is not None:
             self._corrected_event = self._corrected_event.reshape(orig_shape)
         return self._corrected_event
 
     def preview(self, event):
+        event = np.atleast_2d(event)
         self(event)
         t = (np.arange(event.shape[-1])-event.shape[-1]/4)*0.04 # convert samples to ms
 
@@ -184,11 +212,12 @@ class FluxQuantumLossCorrection(FncBaseClass):
             d = {}
             ax = {}
             for ic in range(event.shape[0]):
-                d[f"channel {ic} uncorrected"] = [t, self._event_nobl[ic]]
+                print(self._event_nobl.shape, self._corrected_event.shape)
+                d[f"channel {ic} uncorrected"] = [t, self._event_nobl[0, ic]]
                 d[f"channel {ic} FQL-corrected"] = [t, self._corrected_event[ic]]
         else:
-            d = {'Event': [t, self._event_nobl[0]],
-                 'FQL corrected event': [t, self._corrected_event[0]]}
+            d = {'Event': [t, self._event_nobl[0, 0]],
+                 'FQL corrected event': [t, self._corrected_event[0, 0]]}
         ax = {"xaxis": {"label": "Time [ms]"},
               "yaxis": {"label": "Voltage [V]"}}
 
