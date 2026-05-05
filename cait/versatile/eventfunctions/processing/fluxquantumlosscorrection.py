@@ -19,6 +19,8 @@ class FluxQuantumLossCorrection(FncBaseClass):
     :type true_pulseheight: float, optional
     :param return_shift_value: If True, not the shifted event, but instead the shift value is returned. Defaults to False.
     :type return_shift_value: bool
+    :param location: Name(s) of the parameter(s) from :class:`cait.versatile.MainParameters` to use to determine where the correction should be applied. May be a string (in which case this method is applied to all channels), or a list with the same number of entries as the number of channels being processed. Must be one of `"onset_CAT"`, `"onset"`, `"min_deriv_index"`, `"max_deriv_index"`, or `"peak_loc"`. Defaults to `"onset_CAT"`.
+    :param location: Union[str, List[str]], optional
 
     :return: Event with FQL corrected, or value of shift if return_shift_value is set to True.
     :rtype: Union[numpy.ndarray, float]
