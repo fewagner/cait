@@ -23,7 +23,7 @@ class Stream(StreamBaseClass):
         with stream:
             trigger_inds, amplitudes = vai.trigger_zscore(stream["ADC1"], 2**14)
 
-    :param hardware: The hardware which was used to record the stream file. Valid options are ['csmpl', 'vdaq2']
+    :param hardware: The hardware which was used to record the stream file. Valid options are ['csmpl', 'vdaq2', 'vdaq3']
     :type hardware: str
     :param src: The source for the stream. Depending on how the data is taken, this can either be the path to one file or a list of paths to multiple files. This input is handled by the specific implementation of the Stream Object. See below for examples.
     :type src: Union[str, List[str]]
@@ -149,3 +149,15 @@ class Stream(StreamBaseClass):
     @property
     def tp_timestamps(self):
         return self._stream.tp_timestamps
+    
+    @property
+    def calp_keys(self):
+        return self._stream.calp_keys
+
+    @property
+    def calpas(self):
+        return self._stream.calpas
+
+    @property
+    def calp_timestamps(self):
+        return self._stream.calp_timestamps

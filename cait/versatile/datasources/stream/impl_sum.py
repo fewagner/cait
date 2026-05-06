@@ -90,3 +90,15 @@ class StreamSum(StreamBaseClass):
     @property
     def tp_timestamps(self):
         return self._stream.tp_timestamps
+    
+    @property
+    def calp_keys(self):
+        return self._stream.calp_keys
+    
+    @property
+    def calpas(self):
+        return self._stream.calpas
+
+    @property
+    def calp_timestamps(self):
+        return self._stream.calp_timestamps
