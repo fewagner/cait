@@ -118,7 +118,7 @@ class Stream_VDAQ3(StreamBaseClass):
                                 tpas.append(ip["energy"])
                 
                 # This format stores calpulse information in the trailer
-                # THESE LINES BELOW MUST BE REVISED ONCE THE LED PULSE SIGNAL WILL ACTUALLY BE IMPLEMENTED IN VDAQ3.
+                # NOTE: THESE LINES BELOW MUST BE REVISED ONCE THE LED PULSE INFORMATION WILL BE INCLUDED IN VDAQ3 TRAILER.
                 # FOR NOW, THEY ARE JUST A COPY-PASTE OF WHAT IS DONE WITH TESTPULSES
                 calp_ts = list()
                 calpas = list()
@@ -165,7 +165,7 @@ class Stream_VDAQ3(StreamBaseClass):
                 self._tp_timestamps[f"TP_Ch{channel_name}"] = tp_ts
                 self._tpas[f"TP_Ch{channel_name}"] = tpas
             
-            # THESE LINES BELOW MUST BE REVISED ONCE THE LED PULSE SIGNAL WILL ACTUALLY BE IMPLEMENTED IN VDAQ3.
+            # NOTE: THESE LINES BELOW MUST BE REVISED ONCE THE LED PULSE INFORMATION WILL BE INCLUDED IN VDAQ3 TRAILER.
             # FOR NOW, THEY ARE JUST A COPY-PASTE OF WHAT IS DONE WITH TESTPULSES
             if uuid == UUID_SINGLE_CH_WITH_TRAILER and len(calp_ts)>0:
                 self._calp_timestamps[f"CALP_Ch{channel_name}"] = calp_ts
@@ -201,15 +201,18 @@ class Stream_VDAQ3(StreamBaseClass):
         self._uuid = uuids[0]
 
         if self._uuid == UUID_SINGLE_CH:
-            # These attributes are needed for triggering the TP and calibration channels
+            # These attributes are needed for triggering the TP channels
             self._dac_trig_thr = dac_trig_thr
             self._dac_trig_win_len_ms = dac_trig_win_len_ms
             self._dac_trig_win_len = int(1000*dac_trig_win_len_ms/self._dt)
 
-            self._cal_trig_thr = cal_trig_thr
-            self._cal_trig_win_len_ms = cal_trig_win_len_ms
-            self._cal_trig_win_len = int(1000*cal_trig_win_len_ms/self._dt)
-        
+        # These attributes are needed for triggering the calibration channels
+        # NOTE: The lines below are not part of the 'if' clause above, as calibration pulses information is not yet included into the VDAQ3 file trailer.
+        # Once it will be implemented we will have to modify them
+        self._cal_trig_thr = cal_trig_thr
+        self._cal_trig_win_len_ms = cal_trig_win_len_ms
+        self._cal_trig_win_len = int(1000*cal_trig_win_len_ms/self._dt)
+            
     def __len__(self):
         return self._len
     
@@ -290,8 +293,9 @@ class Stream_VDAQ3(StreamBaseClass):
             # Allow all 'regular' channels to be calibration channels (like in VDAQ2)
             return self.keys
         elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
-            # Return calibration pulses information from trailer
-            return list(self._calp_timestamps.keys())
+            # NOTE: As long as the calibration pulses information in the trailer is not implemented for VDAQ3, we always retrieve it by triggering the ADC stream.
+            # Once it will be implemented in the trailer, we will have to modify the line below to 'return list(self._calp_timestamps.keys())'
+            return self.keys
         else:
             return []
 
@@ -300,7 +304,9 @@ class Stream_VDAQ3(StreamBaseClass):
         if self._uuid == UUID_SINGLE_CH:
             return VDAQ2_CALPAS(self)
         elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
-            return self._calpas
+            # NOTE: As long as the calibration pulses information in the trailer is not implemented for VDAQ3, we always retrieve it by triggering the ADC stream.
+            # Once it will be implemented in the trailer, we will have to modify the line below to 'return self._calpas'
+            return VDAQ2_CALPAS(self)
         else:
             return {}
 
@@ -309,6 +315,8 @@ class Stream_VDAQ3(StreamBaseClass):
         if self._uuid == UUID_SINGLE_CH:
             return VDAQ2_CALP_TS(self)
         elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
-            return self._calp_timestamps
+            # NOTE: As long as the calibration pulses information in the trailer is not implemented for VDAQ3, we always retrieve it by triggering the ADC stream.
+            # Once it will be implemented in the trailer, we will have to modify the line below to 'return self._calp_timestamps'
+            return VDAQ2_CALP_TS(self)
         else:
             return {}
