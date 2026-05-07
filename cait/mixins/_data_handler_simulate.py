@@ -213,7 +213,7 @@ class SimulateMixin(object):
             # 'events-eff-sim' group and also calculate the cut efficiency.
         """
         # Ensures that all inputs are lists
-        trigger_channels, passive_channels, testpulse_channels, _, thresholds = _sanitize_input(
+        trigger_channels, passive_channels, testpulse_channels, *_, thresholds = _sanitize_input(
             stream=stream,
             trigger_channels=trigger_channels,
             passive_channels=passive_channels,
