@@ -97,6 +97,7 @@ class SimulateMixin(object):
         The algorithm described above applies to a single trigger channel. If you trigger multiple, the *target index* is individually defined for each channel as the maximum of the (non-shifted) SEV of that channel (Note, however, that the *simulation timestamp* is still defined by the maximum of the (non-shifted) SEV of the first channel). The triggering step is performed for all channels individually. A simulated pulse is considered *triggered* if **either** of the channels triggered (i.e. had a trigger within ``tolerance_samples`` of the *target index*). In case more than one channel triggers, the *event timestamp* is aligned at the maximum of the **first** channel that triggered (i.e. the first if it triggered, the second if the second triggered but the first one didn't, etc.). 
 
         If testpulse channels are specified, an additional step marks all simulated pulses **not triggered** if they are within half a record window of a testpulse, regardless of whether they triggered or not. 
+        Calibration channel handling for the efficiency calculation is not yet implemented, and can be added in the future if necessary.
 
         **Example:**
 
@@ -218,6 +219,7 @@ class SimulateMixin(object):
             passive_channels=passive_channels,
             testpulse_channels=testpulse_channels,
             controlpulses_above=None,
+            calibration_channels=None,
             thresholds=thresholds,
         )
 
