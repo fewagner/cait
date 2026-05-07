@@ -96,7 +96,7 @@ class Stream(StreamBaseClass):
         elif hardware.lower() == "vdaq2":
             self._stream = Stream_VDAQ2(src, *args, **kwargs)
         elif hardware.lower() == "vdaq3":
-           self._stream = Stream_VDAQ3(src)
+           self._stream = Stream_VDAQ3(src, *args, **kwargs)
         else:
             raise NotImplementedError(
                 "Only csmpl, vdaq2, and vdaq3 files are supported at the moment."

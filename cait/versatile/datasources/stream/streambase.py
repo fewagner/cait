@@ -130,7 +130,7 @@ class StreamBaseClass(DataSourceBaseClass):
         ...
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, tp_keys={self.tp_keys}, measuring_time_h={self.__len__() * int(self.dt_us) / 1e6 / 3600:.2f})"
+        return f"{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, tp_keys={self.tp_keys}, calp_keys={self.calp_keys}, measuring_time_h={self.__len__() * int(self.dt_us) / 1e6 / 3600:.2f})"
 
     def __getitem__(
         self,

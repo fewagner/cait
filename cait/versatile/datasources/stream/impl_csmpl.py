@@ -210,15 +210,12 @@ class Stream_CSMPL(StreamBaseClass):
 
     @property
     def calp_keys(self):
-        raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")
         return []
 
     @property
     def calpas(self):
         raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")
-        return {}
 
     @property
     def calp_timestamps(self):
         raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")
-        return {}
