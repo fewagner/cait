@@ -15,11 +15,13 @@ def _sanitize_input(stream,
                     passive_channels,
                     testpulse_channels,
                     controlpulses_above,
+                    calibration_channels,
                     thresholds):
     # Allow string input if only one channel
     trigger_channels = [trigger_channels] if isinstance(trigger_channels, str) else trigger_channels
     passive_channels = [passive_channels] if isinstance(passive_channels, str) else passive_channels
     testpulse_channels = [testpulse_channels] if isinstance(testpulse_channels, str) else testpulse_channels
+    calibration_channels = [calibration_channels] if isinstance(calibration_channels, str) else calibration_channels
     
     # Make sure that thresholds are a list (allow scalar input, to be used for all channels)
     thresholds = [thresholds]*len(trigger_channels) if isinstance(thresholds, (int, float)) else thresholds
@@ -40,11 +42,18 @@ def _sanitize_input(stream,
 
     if ( testpulse_channels is not None ) and ( not all([x in stream.tp_keys for x in testpulse_channels]) ):
         raise KeyError(f"All 'testpulse_channels' have to be valid channel names. Available: {stream.tp_keys}")
+    
+    if ( calibration_channels is not None ) and ( not all([x in stream.calp_keys for x in calibration_channels]) ):
+        raise KeyError(f"All 'calibration_channels' have to be valid channel names. Available: {stream.calp_keys}")
 
     if testpulse_channels is not None:
         if len(trigger_channels_flat) + (0 if passive_channels is None else len(passive_channels)) != len(testpulse_channels):
-            raise ValueError(f"Testpulse channels are required for all channels (including passive channels). I.e. len(testpulse_channels)' must match 'len(np.hstack(trigger_channels))+len(passive_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels_flat)}+{0 if passive_channels is None else len(passive_channels)}")
-        
+            raise ValueError(f"Testpulse channels are required for all channels (including passive channels). I.e. 'len(testpulse_channels)' must match 'len(np.hstack(trigger_channels))+len(passive_channels)'. Received {len(testpulse_channels)} and {len(trigger_channels_flat)}+{0 if passive_channels is None else len(passive_channels)}")
+    
+    if calibration_channels is not None:
+        if len(calibration_channels) != (len(trigger_channels_flat) + (0 if passive_channels is None else len(passive_channels))):
+            raise ValueError(f"Calibration channels are required for all channels (including passive channels). I.e. 'len(calibration_channels)' must match 'len(np.hstack(trigger_channels))+len(passive_channels)'. Received {len(calibration_channels)} and {len(trigger_channels_flat)}+{0 if passive_channels is None else len(passive_channels)}")
+
     # Make sure that controlpulses_above is a list (allow scalar input, to be used for all channels)
     # Also check if it is specified for all testpulse channels
     if controlpulses_above is not None:
@@ -56,7 +65,7 @@ def _sanitize_input(stream,
         if not (len(testpulse_channels) == len(controlpulses_above)):
             raise ValueError(f"The length of 'controlpulses_above' and 'testpulse_channels' has to match. Got {len(controlpulses_above)} and {len(testpulse_channels)}.")
         
-    return trigger_channels, passive_channels, testpulse_channels, controlpulses_above, thresholds
+    return trigger_channels, passive_channels, testpulse_channels, controlpulses_above, calibration_channels, thresholds
 
 # Helper function that is used in both trigger_of and trigger_zscore
 def _trigger_helper(dh, 
@@ -65,6 +74,7 @@ def _trigger_helper(dh,
                     passive_channels, 
                     testpulse_channels, 
                     controlpulses_above,
+                    calibration_channels,
                     copy_events, 
                     reuse_triggers,
                     interval,
@@ -156,6 +166,26 @@ def _trigger_helper(dh,
     else:
         tp_ts, tpas = None, None
 
+    if calibration_channels is not None:
+        for key in calibration_channels:
+            if reuse_triggers and dh.exists(f"triggers-{name_appendix}", f"calp_ts_{key}"):
+                print(f"Read existing calibration pulses for channel {key}.")
+            else:
+                dh.set(f"triggers-{name_appendix}", 
+                         **{f"calp_ts_{key}": np.array(stream.calp_timestamps[key])},
+                         dtype=np.int64,
+                         overwrite_existing=True)
+                dh.set(f"triggers-{name_appendix}", 
+                         **{f"calpas_{key}": np.array(stream.calpas[key])},
+                         dtype=np.float32,
+                         overwrite_existing=True)
+
+        calp_ts = [list(dh.get(f"triggers-{name_appendix}", f"calp_ts_{key}")) for key in calibration_channels]
+        calpas = [list(dh.get(f"triggers-{name_appendix}", f"calpas_{key}")) for key in calibration_channels]
+    
+    else:
+        calp_ts, calpas = None, None
+
     print("Building events ...")
     event_ts, trig_flag, orig_ts, orig_ph, all_tp_ts, final_tpas = vai.event_building(
                                                                 trigger_ts=trigger_ts, 
@@ -166,6 +196,25 @@ def _trigger_helper(dh,
                                                                 tpas=tpas,
                                                                 n_passive_ch=0 if passive_channels is None else len(passive_channels),
                                                                 interval=interval)
+    
+    if (calp_ts is not None) and (calpas is not None):
+        
+        # After excluding events in coincidence with testpulses, we now exclude events in coincidence with calpulses.
+
+        # If a channel did not trigger separately on an event, the ts and ph of such event were set to -1 while building the events.
+        # Here, we remove those events before feeding them into the calpulses event_building
+        trigger_ts_notp = [[ts for ts in timestamps if (ts != -1)] for timestamps in orig_ts]
+        trigger_ph_notp = [[ph for ph in pulse_heights if (ph != -1)] for pulse_heights in orig_ph]
+
+        event_ts, trig_flag, orig_ts, orig_ph, all_calp_ts, final_calpas = vai.event_building(
+                                                                        trigger_ts=trigger_ts_notp, 
+                                                                        trigger_phs=trigger_ph_notp, 
+                                                                        record_length=dh.record_length, 
+                                                                        dt_us=stream.dt_us,
+                                                                        tp_ts=calp_ts,
+                                                                        tpas=calpas,
+                                                                        n_passive_ch=0 if passive_channels is None else len(passive_channels),
+                                                                        interval=interval)
 
     if controlpulses_above is not None:
         # due to the input validation in the top-level functions 
@@ -202,6 +251,10 @@ def _trigger_helper(dh,
     if controlpulses_above is not None:
         dh.set(f"event_building-{name_appendix}", cp_ts=all_cp_ts, dtype=np.int64, overwrite_existing=True)
         dh.set(f"event_building-{name_appendix}", cpas=final_cpas, dtype=np.float32, overwrite_existing=True)
+    
+    if calibration_channels is not None:
+        dh.set(f"event_building-{name_appendix}", calp_ts=all_calp_ts, dtype=np.int64, overwrite_existing=True)
+        dh.set(f"event_building-{name_appendix}", calpas=final_calpas, dtype=np.float32, overwrite_existing=True)
         
     if n_noise > 0:
         temp_ts = dh.get(f"event_building-{name_appendix}", "event_timestamps")
@@ -209,6 +262,8 @@ def _trigger_helper(dh,
             temp_ts = np.hstack([temp_ts, dh.get(f"event_building-{name_appendix}", "tp_ts")])
         if dh.exists(f"event_building-{name_appendix}", "cp_ts"):
             temp_ts = np.hstack([temp_ts, dh.get(f"event_building-{name_appendix}", "cp_ts")])
+        if dh.exists(f"event_building-{name_appendix}", "calp_ts"):
+            temp_ts = np.hstack([temp_ts, dh.get(f"event_building-{name_appendix}", "calp_ts")])
 
         # Remove timestamps which would result in a trace extending outside of the stream's domain.
         # (We are a bit generous here and exclude a full record window in the beginning and in the end
@@ -299,7 +354,34 @@ def _trigger_helper(dh,
                 print("No controlpulses found to write to DataHandler.")
         else:
             print("No controlpulses found to write to DataHandler.")
-        
+
+    # do the same for calibration pulses if respective information is provided
+    if calibration_channels is not None:
+        if copy_events and dh.exists("calpulses/event"): 
+            warnings.warn("Could not copy events to DataHandler because dataset 'event' in group 'calpulses' already exists. To delete it, use 'dh.drop('calpulses', 'event')'.")
+            copy_this = False
+        else:
+            copy_this = copy_events
+
+        # make sure all timestamps written in the calibration file are actually within the stream file (and their voltage traces can be read completely)
+        valid_cal_flag = all_calp_ts < stream.time[-3*dh.record_length//4]
+        if not all(valid_cal_flag): 
+            print("One or more calpulses could not be included because they fall (partially) outside the stream's range!!")
+
+        # save calpulses and calpas
+        calp_ts = all_calp_ts[valid_cal_flag]
+        if len(calp_ts)>0:
+            dh.include_event_iterator("calpulses", 
+                                        stream.get_event_iterator(
+                                            all_channels_flat, 
+                                            dh.record_length, 
+                                            timestamps=calp_ts
+                                        ),
+                                        copy_events=copy_this)
+            dh.set("calpulses", calpulseamplitude=final_calpas[..., valid_cal_flag], overwrite_existing=True)
+        else:
+            print("No calpulses found to write to DataHandler.")
+
     if n_noise>0:
         if copy_events and dh.exists("noise/event"): 
             warnings.warn("Could not copy noise to DataHandler because dataset 'event' in group 'noise' already exists. To delete it, use 'dh.drop('noise', 'event')'.")
@@ -331,6 +413,7 @@ class TriggerCollectionMixin:
                        passive_channels: List[str] = None,
                        testpulse_channels: List[str] = None,
                        controlpulses_above: List[Union[float, Tuple[float]]] = None,
+                       calibration_channels: List[str] = None,
                        copy_events: bool = False,
                        reuse_triggers: bool = False,
                        interval: Tuple[float] = None,
@@ -358,6 +441,8 @@ class TriggerCollectionMixin:
         :type testpulse_channels: List[str], optional
         :param controlpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels' (as a list). If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. If you want to enforce an upper limit as well (i.e. count testpulses as controlpulses for testpulse amplitudes between ``a`` and ``b``), you can do so by passing a tuple ``(a, b)``. Defaults to None, i.e. no testpulse is counted as controlpulse.
         :type controlpulses_above: List[Union[float, Tuple[float]]], optional
+        :param calibration_channels: A list of channel names to be used as calibration channels. Have to be present in ``stream.calp_keys``. Defaults to None
+        :type calibration_channels: List[str], optional
         :param copy_events: If True, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). If False, only a reference to the original data is saved. Defaults to False.
         :type copy_events: bool, optional
         :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
@@ -395,12 +480,13 @@ class TriggerCollectionMixin:
                               copy_events=True)
         """
         
-        trigger_channels, passive_channels, testpulse_channels, controlpulses_above, thresholds = _sanitize_input(
+        trigger_channels, passive_channels, testpulse_channels, controlpulses_above, calibration_channels, thresholds = _sanitize_input(
             stream=stream,
             trigger_channels=trigger_channels,
             passive_channels=passive_channels,
             testpulse_channels=testpulse_channels,
             controlpulses_above=controlpulses_above,
+            calibration_channels=calibration_channels,
             thresholds=thresholds,
         )
         
@@ -410,8 +496,8 @@ class TriggerCollectionMixin:
                                **kwargs) 
                        for thresh in thresholds]
         
-        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, copy_events, reuse_triggers,
-                        interval, trigger_fncs, f_noise, "z-score")
+        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, calibration_channels,
+                        copy_events, reuse_triggers, interval, trigger_fncs, f_noise, "z-score")
         
     def trigger_of(self,
                    stream: StreamBaseClass,
@@ -421,6 +507,7 @@ class TriggerCollectionMixin:
                    passive_channels: List[str] = None,
                    testpulse_channels: List[str] = None,
                    controlpulses_above: List[Union[float, Tuple[float]]] = None,
+                   calibration_channels: List[str] = None,
                    copy_events: bool = False,
                    reuse_triggers: bool = False,
                    interval: Tuple[float] = None,
@@ -452,6 +539,8 @@ class TriggerCollectionMixin:
         :type testpulse_channels: List[str], optional
         :param controlpulses_above: If specified, all testpulses with testpulse amplitudes above this value are considered to be controlpulses (i.e. they are saved in their own group in the DataHandler). You have to specify as many values as in 'testpulse_channels' (as a list). If you want to enable this feature for only one channel, just set the values for the other channels to some which cannot be exceeded, e.g. 1000. If you want to enforce an upper limit as well (i.e. count testpulses as controlpulses for testpulse amplitudes between ``a`` and ``b``), you can do so by passing a tuple ``(a, b)``. Defaults to None, i.e. no testpulse is counted as controlpulse.
         :type controlpulses_above: List[Union[float, Tuple[float]]], optional
+        :param calibration_channels: A list of channel names to be used as calibration channels. Have to be present in ``stream.calp_keys``. Defaults to None
+        :type calibration_channels: List[str], optional
         :param copy_events: If True, the voltage traces of the events which were built are saved in the DataHandler (i.e. copied from the stream files). If False, only a reference to the original data is saved. Defaults to False.
         :type copy_events: bool, optional
         :param reuse_triggers: If true, the triggers from a previous call of this function (which were saved in the DataHandler) are reused and only the event building is performed again (possibly with a different coincidence interval). Defaults to False.
@@ -494,12 +583,13 @@ class TriggerCollectionMixin:
                               testpulse_channels=["DAC1", "DAC3"],
                               copy_events=True)
         """
-        trigger_channels, passive_channels, testpulse_channels, controlpulses_above, thresholds = _sanitize_input(
+        trigger_channels, passive_channels, testpulse_channels, controlpulses_above, calibration_channels, thresholds = _sanitize_input(
             stream=stream,
             trigger_channels=trigger_channels,
             passive_channels=passive_channels,
             testpulse_channels=testpulse_channels,
             controlpulses_above=controlpulses_above,
+            calibration_channels=calibration_channels,
             thresholds=thresholds,
         )
             
@@ -528,5 +618,5 @@ class TriggerCollectionMixin:
                 )
         ]
         
-        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, copy_events, reuse_triggers,
-                        interval, trigger_fncs, f_noise, "of")
+        _trigger_helper(self, stream, trigger_channels, passive_channels, testpulse_channels, controlpulses_above, calibration_channels,
+                        copy_events, reuse_triggers, interval, trigger_fncs, f_noise, "of")
