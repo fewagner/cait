@@ -574,9 +574,9 @@ class FitMixin(object):
                         **kwargs)
 
                 if preview:
-                    vai.Preview(events_used[i].with_processing(with_processing + [vai.RemoveBaseline()]), tf)
+                    vai.Preview(events_used[ch].with_processing(with_processing + [vai.RemoveBaseline()]), tf)
                 else:
-                    tf_out = vai.apply(tf, events_used[i].with_processing(with_processing).with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
+                    tf_out = vai.apply(tf, events_used[ch].with_processing(with_processing).with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
                     tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
 
                     output_pars[ch, event_flag, :n_pars] = tf_out_dict["pars"]
