@@ -225,25 +225,42 @@ class Stream_VDAQ3(StreamBaseClass):
     
     def get_trace(self, key: str, where: slice, voltage: bool = True):
         data = self._data[key][where]
+        out_shape = data.shape
  
         if self._prec == 3:
             # If written as 24bit values, here, we convert them to 32 bits such that numpy can handle them
-            adc_32bit = np.vstack([
-                    np.zeros_like(data["byte1"]),
-                    data["byte1"], 
-                    data["byte2"], 
-                    data["byte3"]
-                ]).flatten("F").view("<i4")
+            adc_32bit = np.reshape(
+                np.ravel(
+                    np.vstack(
+                        [
+                            np.ravel(np.zeros_like(data["byte1"]), "C"),
+                            np.ravel(data["byte1"], "C"),
+                            np.ravel(data["byte2"], "C"),
+                            np.ravel(data["byte3"], "C"),
+                        ]
+                    ),
+                    "F",
+                ).view("<i4"),
+                out_shape,
+            )
 
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
         
         elif self._prec == 4:
-            adc_32bit = np.vstack([
-                    data["byte4"] ,
-                    data["byte1"], 
-                    data["byte2"], 
-                    data["byte3"]
-                ]).flatten("F").view("<i4")
+            adc_32bit = np.reshape(
+                np.ravel(
+                    np.vstack(
+                        [
+                            np.ravel(data["byte4"], "C"),
+                            np.ravel(data["byte1"], "C"),
+                            np.ravel(data["byte2"], "C"),
+                            np.ravel(data["byte3"], "C"),
+                        ]
+                    ),
+                    "F"
+                ).view("<i4"),
+                out_shape,
+            )
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
     
     @property
