@@ -116,11 +116,11 @@ class FluxQuantumLossCorrection(FncBaseClass):
         if isinstance(self._loc, str):
             # Make sure there is one for each channel
             self._loc = [self._loc] * event.shape[1]
-        elif isinstance(self._loc, list) and len(self._loc) == 1:
+        elif isinstance(self._loc, list) and len(self._loc) == 1 and event.shape[1] > 1:
             # Treat a length-1 list the same as a str
             self._loc = [self._loc[0]] * event.shape[1]
         else:
-            assert len(self._loc) == event.shape[1], f"Incorrect shape to parameter 'loccation'; must either be a single string, or a list with the same length as the number of channels, got {len(self._loc)} and {event.shape[1]}."
+            assert len(self._loc) == event.shape[1], f"Incorrect shape to parameter 'location'; must either be a single string, or a list with the same length as the number of channels, got {len(self._loc)} and {event.shape[1]}."
 
         assert np.all([x in self._locations for x in self._loc]), f"Incorrect value to parameter 'location'; got {self._loc}, all values must be in {self._locations}"
 
