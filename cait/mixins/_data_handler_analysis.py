@@ -131,7 +131,7 @@ class AnalysisMixin(object):
         return np.array(resolutions), np.array(mus)
 
     def calc_rate_cut(self, interval: float = 10, significance: float = 3,
-                      min: float = 0, max: float = 60, intervals: list = None, use_poisson=True):
+                      min: float = 0, max: float = 60, intervals: list = None, use_poisson=True, group="events"):
         """
         Calculate a rate cut on the events.
 
@@ -161,6 +161,9 @@ class AnalysisMixin(object):
         :param intervals: A list of the stable intervals, in hours. If this is handed, these intervals are used instead of
             calculating them from scratch. This is useful e.g. for the cut efficiency.
         :type intervals: list of 2-tuples
+        :param group: Which group to apply the rate cut to. The values for the cut on the rate are always determined from the
+            "events" group, while this argument allows one to apply the same rate cut to other datasets (e.g. for simulations).
+        :type group: str
         """
 
         if intervals is not None:
@@ -181,6 +184,12 @@ class AnalysisMixin(object):
                 flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours, hours_cp, hours_tp,
                                                                 interval=interval, significance=significance, min=min, max=max,
                                                                 use_poisson=use_poisson, intervals=intervals, )
+                if group != "events":
+                    hours_grp = self[f"{group}/hours"] * 60
+                    _, _, flag_ev, _ = rate_cut(hours, hours_cp, hours_grp,
+                                                                interval=interval, significance=significance, min=min, max=max,
+                                                                use_poisson=use_poisson, intervals=intervals, )
+
             except AssertionError:
                 raise AttributeError('If you do not hand intervals, you need to have controul pulses included in the'
                                      'HDf5 file!')
@@ -191,10 +200,10 @@ class AnalysisMixin(object):
             h5['metainfo'].create_dataset(name='rate_stable',
                                           data=np.array(intervals)/60)  # this is now in hours
 
-            h5['events'].require_dataset(name='rate_cut',
+            h5[group].require_dataset(name='rate_cut',
                                          shape=(flag_ev.shape),
                                          dtype=bool)
-            h5['events']['rate_cut'][...] = flag_ev
+            h5[group]['rate_cut'][...] = flag_ev
             if flag_cp is not None:
                 h5['controlpulses'].require_dataset(name='rate_cut',
                                                     shape=(flag_cp.shape),
