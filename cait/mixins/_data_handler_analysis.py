@@ -163,6 +163,8 @@ class AnalysisMixin(object):
         :type intervals: list of 2-tuples
         :param group: Which group to apply the rate cut to. The values for the cut on the rate are always determined from the
             "events" group, while this argument allows one to apply the same rate cut to other datasets (e.g. for simulations).
+            Note that if a group other than "events" is given, the cut is calculated twice, and as a result some of the
+            statistics will be printed twice.
         :type group: str
         """
 
