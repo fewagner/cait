@@ -115,14 +115,15 @@ class FluxQuantumLossCorrection(FncBaseClass):
 
         if isinstance(self._loc, str):
             # Make sure there is one for each channel
-            self._loc = [self._loc] * event.shape[1]
+            _loc = [self._loc] * event.shape[1]
         elif isinstance(self._loc, list) and len(self._loc) == 1 and event.shape[1] > 1:
             # Treat a length-1 list the same as a str
-            self._loc = [self._loc[0]] * event.shape[1]
+            _loc = [self._loc[0]] * event.shape[1]
         else:
-            assert len(self._loc) == event.shape[1], f"Incorrect shape to parameter 'location'; must either be a single string, or a list with the same length as the number of channels, got {len(self._loc)} and {event.shape[1]}."
+            assert len(self._loc) == event.shape[1], f"Incorrect shape to parameter 'location'; must either be a single string, or a list with the same length as the number of channels, got {len(self._loc)} and {event.shape[1]}.\nNOTE: if you have constructed an iterator with multiple channels and an explicit location for each, you will not be able to index specific channels; in this case, loop over the channels instead."
+            _loc = self._loc
 
-        assert np.all([x in self._locations for x in self._loc]), f"Incorrect value to parameter 'location'; got {self._loc}, all values must be in {self._locations}"
+        assert np.all([x in self._locations for x in _loc]), f"Incorrect value to parameter 'location'; got {_loc}, all values must be in {self._locations}"
 
         self._event_nobl = np.array(event)
         self._corrected_event = np.array(self._event_nobl)
@@ -140,7 +141,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
         self._slope = np.zeros(event.shape[:-1])
 
         mp = np.array(self._mp(event))
-        locs = [self._mp.names().index(x) for x in self._loc]
+        locs = [self._mp.names().index(x) for x in _loc]
 
         for ic in range(event.shape[1]):
             for ib in range(event.shape[0]):
