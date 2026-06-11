@@ -21,6 +21,10 @@ class FluxQuantumLossCorrection(FncBaseClass):
     :type return_shift_value: bool
     :param location: Name(s) of the parameter(s) from :class:`cait.versatile.MainParameters` to use to determine where the correction should be applied. May be a string (in which case this method is applied to all channels), or a list with the same number of entries as the number of channels being processed. Must be one of `"onset_CAT"`, `"onset"`, `"min_deriv_index"`, `"max_deriv_index"`, or `"peak_loc"`. Defaults to `"onset_CAT"`.
     :param location: Union[str, List[str]], optional
+    :param reset_thresh: Threshold for the `"min_deriv"` value from :class:`cait.versatile.MainParameters`, above which it is assumed that a SQUID reset has occurred, and a correction is applied.
+    :type reset_thresh: float
+    :param reset_mask: A number of samples on either side of the `"min_deriv_index"` from from :class:`cait.versatile.MainParameters` used to calculcate the correction.  In addition, **twice** this number of samples will be masked during the correction, which can be used to mask out artifacts caused by the reset.
+    :type reset_mask: int
 
     :return: Event with FQL corrected, or value of shift if return_shift_value is set to True.
     :rtype: Union[numpy.ndarray, float]
@@ -81,14 +85,18 @@ class FluxQuantumLossCorrection(FncBaseClass):
                  true_pulseheight: float = None,
                  return_shift_value: bool = False,
                  location: Union[str, List[str]] = "onset_CAT",
+                 reset_thresh: float = 4,
+                 reset_mask: int = 20,
                  ):
-        self._mp = MainParameters()
+        self._mp = MainParameters()#bcs=dict(length=1))
         self._method = method
         self._thresh = thresh
         self._true_pulseheight = true_pulseheight
         self._fql_voltage = fql_voltage
         self._return_shift_value = return_shift_value
         self._loc = location
+        self._rthresh = reset_thresh
+        self._rmask = int(reset_mask)
 
     def __call__(self, event):
         event = np.array(event)
@@ -141,10 +149,26 @@ class FluxQuantumLossCorrection(FncBaseClass):
         self._slope = np.zeros(event.shape[:-1])
 
         mp = np.array(self._mp(event))
+        mpd = {k:v for k, v in zip(self._mp.names(), mp)}
         locs = [self._mp.names().index(x) for x in _loc]
 
         for ic in range(event.shape[1]):
             for ib in range(event.shape[0]):
+                # Determine if there was a SQUID reset (a jump from the lowest baseline
+                # to the highest)
+                if mpd["max_deriv"][ib, ic] > self._rthresh:
+                    # SQUID reset occurred; fix the reset before applying the FQL correction
+                    idx0 = int(mpd["max_deriv_index"] - self._rmask)
+                    idx1 = int(mpd["max_deriv_index"] + self._rmask)
+                    event[ib, ic, idx0:idx1] = event[ib, ic, idx0]
+                    event[ib, ic, idx1:] -= event[ib, ic, idx1] - event[ib, ic, idx0]
+
+                    self._event_nobl[ib, ic] = event[ib, ic]
+                    self._corrected_event[ib, ic] = self._event_nobl[ib, ic]
+                    mp[:, ib, ic] = self._mp(event[ib, ic])
+                    mpd = {k:v for k, v in zip(self._mp.names(), mp)}
+
+
                 # Calculate main parameters
                 self._t0[ib, ic] = mp[locs[ic], ib, ic]
                 self._ph[ib, ic], self._t_max[ib, ic], self._lin_drift[ib, ic] = \
