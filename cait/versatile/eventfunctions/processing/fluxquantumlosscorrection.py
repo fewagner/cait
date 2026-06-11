@@ -23,7 +23,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
     :param location: Union[str, List[str]], optional
     :param reset_thresh: Threshold for the `"min_deriv"` value from :class:`cait.versatile.MainParameters`, above which it is assumed that a SQUID reset has occurred, and a correction is applied.
     :type reset_thresh: float
-    :param reset_mask: A number of samples on either side of the `"min_deriv_index"` from from :class:`cait.versatile.MainParameters` used to calculcate the correction.  In addition, **twice** this number of samples will be masked during the correction, which can be used to mask out artifacts caused by the reset.
+    :param reset_mask: A number of samples on either side of the `"min_deriv_index"` from from :class:`cait.versatile.MainParameters` used to calculcate the correction.  In addition, **twice** this number of samples will be interpolated during the correction (around `"min_deriv_index"`), which can be used to mask out artifacts caused by the reset.
     :type reset_mask: int
 
     :return: Event with FQL corrected, or value of shift if return_shift_value is set to True.
@@ -160,9 +160,17 @@ class FluxQuantumLossCorrection(FncBaseClass):
                     # SQUID reset occurred; fix the reset before applying the FQL correction
                     idx0 = int(mpd["max_deriv_index"] - self._rmask)
                     idx1 = int(mpd["max_deriv_index"] + self._rmask)
-                    event[ib, ic, idx0:idx1] = event[ib, ic, idx0]
-                    event[ib, ic, idx1:] -= event[ib, ic, idx1] - event[ib, ic, idx0]
 
+                    # Interpolate across masked region
+                    m0 = (event[ib, ic, idx0] - event[ib, ic, idx0 - self._rmask]) / self._rmask
+                    m1 = (event[ib, ic, idx1 + self._rmask] - event[ib, ic, idx1]) / self._rmask
+                    m = 0.5 * (m0 + m1)
+                    event[ib, ic, idx0:idx1] = event[ib, ic, idx0] + m * np.arange(idx1 - idx0)
+
+                    # Apply correction
+                    event[ib, ic, idx1:] -= event[ib, ic, idx1] - event[ib, ic, idx0] - m * (idx1 - idx0)
+
+                    # Update stored event information
                     self._event_nobl[ib, ic] = event[ib, ic]
                     self._corrected_event[ib, ic] = self._event_nobl[ib, ic]
                     mp[:, ib, ic] = self._mp(event[ib, ic])
