@@ -158,8 +158,8 @@ class FluxQuantumLossCorrection(FncBaseClass):
                 # to the highest)
                 if mpd["max_deriv"][ib, ic] > self._rthresh:
                     # SQUID reset occurred; fix the reset before applying the FQL correction
-                    idx0 = int(mpd["max_deriv_index"] - self._rmask)
-                    idx1 = int(mpd["max_deriv_index"] + self._rmask)
+                    idx0 = int(mpd["max_deriv_index"][ib, ic] - self._rmask)
+                    idx1 = int(mpd["max_deriv_index"][ib, ic] + self._rmask)
 
                     # Interpolate across masked region
                     m0 = (event[ib, ic, idx0] - event[ib, ic, idx0 - self._rmask]) / self._rmask
