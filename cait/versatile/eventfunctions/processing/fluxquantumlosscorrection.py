@@ -158,23 +158,29 @@ class FluxQuantumLossCorrection(FncBaseClass):
                 # to the highest)
                 if mpd["max_deriv"][ib, ic] > self._rthresh:
                     # SQUID reset occurred; fix the reset before applying the FQL correction
-                    idx0 = int(mpd["max_deriv_index"][ib, ic] - self._rmask)
-                    idx1 = int(mpd["max_deriv_index"][ib, ic] + self._rmask)
+                    idx0 = max(0, int(mpd["max_deriv_index"][ib, ic] - self._rmask))
+                    idx1 = min(event.shape[-1] - 1, int(mpd["max_deriv_index"][ib, ic] + self._rmask))
+                    idxm0 = max(0, int(mpd["max_deriv_index"][ib, ic] - 2*self._rmask))
+                    idxm1 = min(event.shape[-1] - 1, int(mpd["max_deriv_index"][ib, ic] + 2*self._rmask))
 
-                    # Interpolate across masked region
-                    m0 = (event[ib, ic, idx0] - event[ib, ic, idx0 - self._rmask]) / self._rmask
-                    m1 = (event[ib, ic, idx1 + self._rmask] - event[ib, ic, idx1]) / self._rmask
-                    m = 0.5 * (m0 + m1)
-                    event[ib, ic, idx0:idx1] = event[ib, ic, idx0] + m * np.arange(idx1 - idx0)
+                    # Check that we can interapolate.  If the following condition isn't true,
+                    # we're already at the trace boundary and it doesn't make sense to correct
+                    # it anyway.
+                    if idx0 != idxm0 and idx1 != idxm1:
+                        # Interpolate across masked region
+                        m0 = (event[ib, ic, idx0] - event[ib, ic, idxm0]) / (idx0 - idxm0)
+                        m1 = (event[ib, ic, idxm1] - event[ib, ic, idx1]) / (idxm1 - idx1)
+                        m = 0.5 * (m0 + m1)
+                        event[ib, ic, idx0:idx1] = event[ib, ic, idx0] + m * np.arange(idx1 - idx0)
 
-                    # Apply correction
-                    event[ib, ic, idx1:] -= event[ib, ic, idx1] - event[ib, ic, idx0] - m * (idx1 - idx0)
+                        # Apply correction
+                        event[ib, ic, idx1:] -= event[ib, ic, idx1] - event[ib, ic, idx0] - m * (idx1 - idx0)
 
-                    # Update stored event information
-                    self._event_nobl[ib, ic] = event[ib, ic]
-                    self._corrected_event[ib, ic] = self._event_nobl[ib, ic]
-                    mp[:, ib, ic] = self._mp(event[ib, ic])
-                    mpd = {k:v for k, v in zip(self._mp.names(), mp)}
+                        # Update stored event information
+                        self._event_nobl[ib, ic] = event[ib, ic]
+                        self._corrected_event[ib, ic] = self._event_nobl[ib, ic]
+                        mp[:, ib, ic] = self._mp(event[ib, ic])
+                        mpd = {k:v for k, v in zip(self._mp.names(), mp)}
 
 
                 # Calculate main parameters
