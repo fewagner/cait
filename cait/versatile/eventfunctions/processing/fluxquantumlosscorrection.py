@@ -7,7 +7,7 @@ from ..scalarfunctions.mainparameters import MainParameters
 
 class FluxQuantumLossCorrection(FncBaseClass):
     """
-    Correct event for flux quantum loss (FQL). Works only for one channel at a time.
+    Correct event for flux quantum loss (FQL) and squid resets. Works for multiple channels at a time.
 
     :param method: One of three methods: "mmd", "slope" or "true_ph". "mmd" (mininmum-minimum difference) calculates the FQL as difference between the minima before and after the pulse (with some fluctuation mitigation). "slope" calculates the FQL as the slope of the event. "true_ph" assumes that the true pulse height (without FQL) is known - and provided in the parameter true_pulseheight - and calculates the FQL as the difference between true and apparent pulse height. Defaults to the recommended "mmd".
     :type method: str
@@ -19,11 +19,11 @@ class FluxQuantumLossCorrection(FncBaseClass):
     :type true_pulseheight: float, optional
     :param return_shift_value: If True, not the shifted event, but instead the shift value is returned. Defaults to False.
     :type return_shift_value: bool
-    :param location: Name(s) of the parameter(s) from :class:`cait.versatile.MainParameters` to use to determine where the correction should be applied. May be a string (in which case this method is applied to all channels), or a list with the same number of entries as the number of channels being processed. Must be one of `"onset_CAT"`, `"onset"`, `"min_deriv_index"`, `"max_deriv_index"`, or `"peak_loc"`. Defaults to `"onset_CAT"`.
+    :param location: Name(s) of the parameter(s) from :class:`~cait.versatile.MainParameters` to use to determine where the correction should be applied. May be a string (in which case this method is applied to all channels), or a list with the same number of entries as the number of channels being processed. Must be one of `"onset_CAT"`, `"onset"`, `"min_deriv_index"`, `"max_deriv_index"`, or `"peak_loc"`. Defaults to `"onset_CAT"`.  **NOTE**: if a list of locations is passed, and this class is used with the :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.with_processing` method of an iterator, it is not then possible to index only one channel. This is important to know when using this with certain functions, e.g. :func:`~cait.mixins._data_handler_fit.apply_template_fit`. In these cases, you must loop over the channels with the appropriate location for each channel.
     :param location: Union[str, List[str]], optional
-    :param reset_thresh: Threshold for the `"min_deriv"` value from :class:`cait.versatile.MainParameters`, above which it is assumed that a SQUID reset has occurred, and a correction is applied.
+    :param reset_thresh: Threshold for the `"min_deriv"` value from :class:`~cait.versatile.MainParameters`, above which it is assumed that a SQUID reset has occurred, and a correction is applied.
     :type reset_thresh: float
-    :param reset_mask: A number of samples on either side of the `"min_deriv_index"` from from :class:`cait.versatile.MainParameters` used to calculcate the correction.  In addition, **twice** this number of samples will be interpolated during the correction (around `"min_deriv_index"`), which can be used to mask out artifacts caused by the reset.
+    :param reset_mask: A number of samples on either side of the `"min_deriv_index"` from from :class:`~cait.versatile.MainParameters` used to calculcate the correction.  In addition, **twice** this number of samples will be interpolated during the correction (around `"min_deriv_index"`), which can be used to mask out artifacts caused by the reset.
     :type reset_mask: int
 
     :return: Event with FQL corrected, or value of shift if return_shift_value is set to True.
