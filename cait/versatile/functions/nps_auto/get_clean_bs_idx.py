@@ -1,6 +1,7 @@
 from typing import List, Any, Tuple
 from functools import partial
 from multiprocessing import Pool
+from collections import deque
 
 import numpy as np
 import numba as nb
@@ -11,6 +12,11 @@ import random
 
 from ..trigger.trigger_zscore import zscore_chunk
 
+PRE_TRIGGER_GUARD = 8000   # samples before event excluded from clean interval
+POST_TRIGGER_GUARD = 32000 # samples after event before next clean interval starts
+DEAD_TIME_SAMPLES = 40000  # dead-time skip after trigger in original stream samples
+RECORD_LENGTH = 2**15      # samples per record; also used as post-event skip distance in zscore trigger
+
 # STILL NEEDS DOCSTRING
 @nb.jit
 def search_zscores(zscores: ArrayLike, begin: int, threshold: float, window_size: int):
@@ -19,15 +25,10 @@ def search_zscores(zscores: ArrayLike, begin: int, threshold: float, window_size
 
     i = 0
     while i < (data_len - window_size - 1):
-        # Check if next value exceeds threshold
-        if zscores[i] > threshold or zscores[i] < -threshold:
-            j = i 
-            if j - 8000 + begin > 0:
-                ends.append(j - window_size - 8000 + begin)
-            else:
-                ends.append(0)
-            beginnings.append(j + 2**15 + begin)
-            i = j + int(32768)
+        if abs(zscores[i]) > threshold:
+            ends.append(max(0, i - window_size - PRE_TRIGGER_GUARD + begin))
+            beginnings.append(i + RECORD_LENGTH + begin)
+            i += RECORD_LENGTH
         i += 1
 
     return beginnings, ends
@@ -42,24 +43,14 @@ def search_deltastream(delta_stream: ArrayLike,
                        stepsize: int):
     ends, beginnings = [], []
     k = 0
-    #Apply mean trigger for delta stream
     while k < (len(delta_stream) - window_size_mean - 1):
         window = delta_stream[k:k+window_size_mean]
-        window_mean = np.mean(window)
-        window_std = np.std(window)
-        next_value = delta_stream[k + window_size_mean + 1]
-
-        if next_value > (window_mean + sigma*window_std):
-            k = k + window_size_mean + 1
-            j = k*stepsize + window_size
-            #add begin and end of stream without event
-            if (j - 8000 + begin)>0:
-                ends.append(j - 8000 + begin)
-            else:
-                ends.append(begin)
-            beginnings.append(j + 32000 + begin)
-            k = k + 40000//stepsize
-            
+        if delta_stream[k + window_size_mean + 1] > np.mean(window) + sigma * np.std(window):
+            k += window_size_mean + 1
+            trigger_pos = k * stepsize + window_size
+            ends.append(max(begin, trigger_pos - PRE_TRIGGER_GUARD + begin))
+            beginnings.append(trigger_pos + POST_TRIGGER_GUARD + begin)
+            k += DEAD_TIME_SAMPLES // stepsize
         k += 1
 
     return beginnings, ends
@@ -133,20 +124,18 @@ def level_shift_detector(stream: ArrayLike, record_length: int):
     stream_length = len(stream)
 
     # First rough Levelshift Search
-    five_windows = []
+    five_windows = deque(maxlen=5)
     std_widows = []
     idx = []
 
-    # jump trough data with step size 300000
+    # jump through data with step size 300000
     for i in tqdm(range(0, stream_length, 300000), desc="Rough Level-Shift-Search"):
         # load data from stream
         window = stream[i:i+32000]
         # save index number
         idx.append(i)
 
-        # add new window to the five windows array
-        add_and_discard(five_windows, np.median(window), 5)
-        # calculate the std
+        five_windows.append(np.median(window))
         std_widows.append(np.std(five_windows))
 
     # search for large difference in  std
@@ -158,16 +147,16 @@ def level_shift_detector(stream: ArrayLike, record_length: int):
     
     #search with smaller step size close to the tagged levelshifts
     for anomaly in tqdm(anomalies, desc="Fine Level-Shift-Search"):
-        five_windows = []         
-        std_widows = []     
-        idx = []    
+        five_windows = deque(maxlen=5)
+        std_widows = []
+        idx = []
         for i in (range(anomaly - int(0.8e6), anomaly, 8000)):
             window = stream[i:i + 16500]
-            add_and_discard(five_windows, np.median(window))
+            five_windows.append(np.median(window))
             std_widows.append(np.std(five_windows))
         #Search for maximum change in std
         peak = np.argmax(std_widows)
-        peak = peak + (anomaly - int(0.8e6))
+        peak = peak * 8000 + (anomaly - int(0.8e6))
         #add begin and end of stream without level-shift
         int_starts.append(peak + 32000)
         int_ends.append(peak - 32000)
