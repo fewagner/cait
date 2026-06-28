@@ -5,6 +5,7 @@ import h5py
 import numpy as np
 
 from .iteratorbase import IteratorBaseClass
+from ...data import convert_to_V
 
 
 class H5Iterator(IteratorBaseClass):
@@ -12,8 +13,8 @@ class H5Iterator(IteratorBaseClass):
     Iterator object for HDF5 datasets that iterates along the "event-dimension" (second dimension of 3-dimensional events data) of a dataset and returns the event voltage traces.
     If the Iterator is used as a context manager, the HDF5 file is not closed during iteration which improves file access speed.
 
-    The datasets in the HDF5 file are assumed to have shape `(channels, events, data)` but the iterator *always* returns data event by event. If batches are used (see below), they are returned with the events dimension being the first dimension. To explain the returned shapes we start from a general dataset with shape `(n_channels, n_events, n_data)`. Note that `n_channels`, `n_events`, or `n_data` could be 1, but in total, a 3-dimensional dataset is needed. 
-    For a batch size of 1, the iterator in this case returns shapes `(n_channels, n_data)`. 
+    The datasets in the HDF5 file are assumed to have shape `(channels, events, data)` but the iterator *always* returns data event by event. If batches are used (see below), they are returned with the events dimension being the first dimension. To explain the returned shapes we start from a general dataset with shape `(n_channels, n_events, n_data)`. Note that `n_channels`, `n_events`, or `n_data` could be 1, but in total, a 3-dimensional dataset is needed.
+    For a batch size of 1, the iterator in this case returns shapes `(n_channels, n_data)`.
     For a batch size > 1, the iterator in this case returns shapes `(batch_size, n_channels, n_data)`. Notice that the first dimension always has the events (batch_size).
 
     :param dh: DataHandler instance connected to the HDF5 file.
@@ -37,7 +38,7 @@ class H5Iterator(IteratorBaseClass):
         it = H5Iterator(dh, "events", batch_size=100, channels=1, inds=[0,2,19,232])
         for i in it:
             print(i.shape)
-    
+
         with it as opened_it:
             for i in opened_it:
                 print(i.shape)
@@ -69,23 +70,23 @@ class H5Iterator(IteratorBaseClass):
             self._n_channels = len(channels)
         else:
             raise TypeError(f"Unsupported type {type(channels)} for input argument 'channels'")
-            
+
         if inds is None: inds = np.arange(n_events_total)
         inds = [inds] if isinstance(inds, int) else [int(i) for i in inds]
 
         # Does batch handling and creates properties self._inds, self.uses_batches, and self.n_batches
         # Also sets up serializing.
-        super().__init__(inds=inds, 
-                         batch_size=batch_size, 
-                         dh=dh, 
+        super().__init__(inds=inds,
+                         batch_size=batch_size,
+                         dh=dh,
                          group=group,
                          channels=channels)
 
         # Save values to reconstruct iterator:
-        self._params = {'dh': dh, 
-                        'group': group, 
-                        'channels': self._channels, 
-                        'inds': inds, 
+        self._params = {'dh': dh,
+                        'group': group,
+                        'channels': self._channels,
+                        'inds': inds,
                         'batch_size': batch_size}
 
         # If list specifies all channels, we replace it by a None-slice to bypass h5py's restriction on fancy indexing
@@ -102,11 +103,11 @@ class H5Iterator(IteratorBaseClass):
         self._f = h5py.File(self._path, 'r')
         self._file_open = True
         return self
-    
+
     def __exit__(self, typ, val, tb):
         self._f.close()
         self._file_open = False
-    
+
     def __iter__(self):
         self._current_batch_ind = 0
         return self
@@ -122,20 +123,24 @@ class H5Iterator(IteratorBaseClass):
 
                 # transpose data when using batches such that first dimension is ALWAYS the event dimension
                 if self._should_be_transposed: out = np.transpose(out, axes=[1,0,2])
-                    
+
+                # Convert back from int to float
+                if out.dtype == np.int16:
+                    out = convert_to_V(out)
+
                 return out
-        
+
         else:
             raise StopIteration
-        
+
     @property
     def record_length(self):
         return self._dh.record_length
-    
+
     @property
     def dt_us(self):
         return self._dh.dt_us
-    
+
     @property
     def ds_start_us(self):
         # calculate start from existing hours relative to timestamps
@@ -153,11 +158,11 @@ class H5Iterator(IteratorBaseClass):
             mus = np.array(f[self._group]["time_mus"], dtype=np.int64)[self._params["inds"]]
 
         return sec*int(1e6) + mus
-    
+
     @property
     def n_channels(self):
         return self._n_channels
-    
+
     @property
     def _slice_info(self):
         return (self._params, ('channels', 'inds'))

@@ -207,4 +207,15 @@ class Stream_CSMPL(StreamBaseClass):
         if not hasattr(self, '_tp_timestamps'):
             raise KeyError("Testpulse timestamps not available. Include a '.test_stamps' and a '.dig_stamps' file when constructing this class to use this feature.")
         return self._tp_timestamps
-        return self._tp_timestamps
+
+    @property
+    def calp_keys(self):
+        return []
+
+    @property
+    def calpas(self):
+        raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")
+
+    @property
+    def calp_timestamps(self):
+        raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")

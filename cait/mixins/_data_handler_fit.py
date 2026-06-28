@@ -1,7 +1,7 @@
 import warnings
 from functools import partial
 from multiprocessing import Pool
-from typing import List, Union
+from typing import List, Union, Callable
 
 import h5py
 import numpy as np
@@ -344,6 +344,7 @@ class FitMixin(object):
                            max_shift: int = 50,
                            only_channels: Union[int, List[int]] = None,
                            event_flag: np.ndarray = None,
+                           with_processing: Union[Callable, List[Callable]] = None,
                            tag: str = "",
                            preview: bool = False,
                            **kwargs
@@ -363,7 +364,7 @@ class FitMixin(object):
         :type bl_poly_order: Union[int, List[int]], optional
         :param truncation_limit: List with as many entries as there are channels to fit. For each entry that is not None, a truncated fit is performed: all samples between the first and the last sample above 'truncation_limit' are ignored in the fit. To determine these samples, the baseline of the event is removed by fitting a linear polynomial to the beginning of the record window. If only None or a float is provided, this value is used for all fitted channels. Defaults to None, i.e. not performing a truncated fit in any channel.
         :type truncation_limit: Union[float, List[float]], optional
-        :param correlated: If True, a correlated fit is performed, i.e. the SEV is shifted for all channels simultaneously. Depending on 'fit_onset' (see below and also examples), different behavior can be achieved. If False, each channel is fitted independently of the others, defaults to False. 
+        :param correlated: If True, a correlated fit is performed, i.e. the SEV is shifted for all channels simultaneously. Depending on 'fit_onset' (see below and also examples), different behavior can be achieved. If False, each channel is fitted independently of the others, defaults to False.
         :type correlated: bool, optional
         :param fit_onset: List with as many entries as there are channels to fit. For each entry that is True, the onset value of the respective channel is fitted. If ``correlated=False``, the onsets are fitted independently. If ``correlated=True``, all channels for which ``fit_onset=True`` participate in the onset fit (common minimization): If only one of the entries is True, this channel is the 'dominant' one, i.e. its onset is fitted and all other channels are moved (passively) in unison (and only their pulse height + baseline is fitted). If multiple are True, their chi-squared for the fit is combined, i.e. the template is still moved in unison, but the minimizer considers all channels. If only one boolean is provided, it is used for all fitted channels. Defaults to True, i.e. fit onset in all channels
         :type fit_onset: Union[bool, List[bool]], optional
@@ -374,6 +375,8 @@ class FitMixin(object):
         :type only_channels: Union[int, List[int]], optional
         :param event_flag: A boolean flag. If you don't want to fit all events in 'group', you can specify a flag for which to fit here. Events that were not fit, receive an RMS value of -404 in the output dataset. Has to have the same length as there are events in 'group' and applies to all channels. Defaults to None, i.e. fit all events.
         :type event_flag: np.ndarray, optional
+        :param with_processing: Optional processing to apply to each event before :class:`~cait.versatile.TemplateFit` is applied. See :func:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass.add_processing`.
+        :type with_processing: Union[Callable, List[Callable]], optional
         :param tag: A string that is appended to the datasets when they are saved to the DataHandler (e.g. if you want to perform fits for different pulse shapes). This string is appended with a hyphen, i.e. for ``tag="wafer"`` this would result in datasets like ``templatefit_pars-wafer``. Defaults to an empty string, i.e. no tag.
         :type tag: str, optional
         :param preview: If True, an interactive preview illustrating the fit using the current input arguments on the event traces opens up. Defaults to False
@@ -389,9 +392,9 @@ class FitMixin(object):
             import cait.versatile as vai
 
             # You should have a DataHandler (dh) and a SEV by now.
-            # If you saved your SEV in a file, load it using 
+            # If you saved your SEV in a file, load it using
             # sev = vai.SEV.from_file('path/to/sev')
-            # if you saved it in the dh, use 
+            # if you saved it in the dh, use
             # sev = vai.SEV.from_dh(dh)
             # if you want to use a numpy array 'sev', that is also fine.
 
@@ -425,7 +428,7 @@ class FitMixin(object):
             # Example 2: Fit only one of the two channels (the results of the other channel will
             # be padded)
             dh.apply_template_fit(
-                "events", 
+                "events",
                 sev[0], # select only one of the SEV (corresponding to chosen channel)
                 bl_poly_order=3, # specify only one
                 only_channel=0, # choose one of the channels
@@ -448,29 +451,37 @@ class FitMixin(object):
             dh.apply_template_fit(
                 "events",
                 sev,
-                bl_poly_order=3, 
+                bl_poly_order=3,
                 correlated=True,
                 fit_onset=[True, True] # Onset of both channels is fitted together
             )
+            drop_tf_ds()
+
+            # Example 5: Correct pulses for flux quantum losses before fitting
+            dh.apply_template_fit(
+                    "events",
+                    sev,
+                    with_processing = vai.FluxQuantumLossCorrection(),
+                    )
         """
         # 10 is a good trade off for copying data to processes and file access speed
         _batch_size = 10
-        
+
         if not self.exists(group):
             raise KeyError(f"Group '{group}' is not available in this DataHandler.")
-        
+
         _ds_to_be_written = [
             f"templatefit_{name}" + (f"-{tag}" if tag else "")
             for name in vai.TemplateFit.names()
         ]
         if any([self.exists(group, ds) for ds in _ds_to_be_written]):
             raise KeyError(f"One or more of the datasets {_ds_to_be_written} are already present in the '{group}' group, and would be overwritten by this function call. If you intend to do so, please manually delete the respective datasets first by calling 'dh.drop('{group}', '<dataset>')', or rename them using the 'dh.rename' function.")
-        
+
         events = self.get_event_iterator(group)
 
         if only_channels is None: only_channels = slice(None, None, None)
         if event_flag is None: event_flag = np.ones(len(events), dtype=bool)
-        
+
         n_channels = events.n_channels
         n_channels_used = events[only_channels].n_channels
         channels_used = np.atleast_1d(np.arange(n_channels)[only_channels])
@@ -501,13 +512,23 @@ class FitMixin(object):
 
         if sev.shape[0] != n_channels_used:
             raise ValueError(f"'sev' must have as many channels as you want to fit. Got {sev.shape[0]} and {n_channels_used}.")
-        
+
+        if with_processing is None:
+            with_processing = []
+        elif callable(with_processing):
+            with_processing = [with_processing]
+        elif isinstance(with_processing, np.ndarray):
+            with_processing = with_processing.tolist()
+        elif not isinstance(with_processing, list):
+            raise ValueError(f"'with_processing' must be a Callable or list of Callables, not {type(with_processing)}")
+
+
         # Construct the output array (to be filled later)
         non_none_orders = [x for x in bl_poly_order if x is not None]
         max_order = np.max(non_none_orders) if len(non_none_orders)>0 else -1
         output_shape = (n_channels, len(events), 2+max_order)
 
-        # For unused channels, the RMS is set to -404 and the 
+        # For unused channels, the RMS is set to -404 and the
         # fit parameters are all 0
         output_pars = np.zeros(output_shape)
         output_shift = np.zeros((n_channels, len(events)), dtype=np.int16)
@@ -515,8 +536,8 @@ class FitMixin(object):
 
         # NOTE: Given how special the output arrays have to be arranged for different channels
         # and different degrees of polynomials, we cannot easily make use of the extensibility
-        # of ScalarFncBaseclass (i.e. using .names() and .dtypes() to generate HDF5 datasets 
-        # like in dh.cmp() or dh.apply_ofilter() for example). However, to not break this 
+        # of ScalarFncBaseclass (i.e. using .names() and .dtypes() to generate HDF5 datasets
+        # like in dh.cmp() or dh.apply_ofilter() for example). However, to not break this
         # function if additional outputs to vai.TemplateFit are added, we nevertheless read the
         # outputs as dictionaries below. Nevertheless, those additional datasets will have to be
         # manually added if desired.
@@ -527,13 +548,13 @@ class FitMixin(object):
                     bl_poly_order=bl_poly_order,
                     truncation_limit=truncation_limit,
                     fit_onset=fit_onset,
-                    max_shift=max_shift, 
+                    max_shift=max_shift,
                     **kwargs)
-            
-            if preview: 
-                vai.Preview(events_used.with_processing(vai.RemoveBaseline()), tf)
+
+            if preview:
+                vai.Preview(events_used.with_processing(with_processing + [vai.RemoveBaseline()]), tf)
             else:
-                tf_out = vai.apply(tf, events_used.with_batchsize(_batch_size))
+                tf_out = vai.apply(tf, events_used.with_processing(with_processing).with_batchsize(_batch_size))
                 tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
 
                 output_pars[np.ix_(channels_used, event_flag)] = np.transpose(tf_out_dict["pars"], [1,0,2])
@@ -549,13 +570,13 @@ class FitMixin(object):
                         bl_poly_order=bl_poly_order[i],
                         truncation_limit=truncation_limit[i],
                         fit_onset=fit_onset[i],
-                        max_shift=max_shift, 
+                        max_shift=max_shift,
                         **kwargs)
 
                 if preview:
-                    vai.Preview(events_used[i].with_processing(vai.RemoveBaseline()), tf)
+                    vai.Preview(events_used[ch].with_processing(with_processing + [vai.RemoveBaseline()]), tf)
                 else:
-                    tf_out = vai.apply(tf, events_used[i].with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
+                    tf_out = vai.apply(tf, events_used[ch].with_processing(with_processing).with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
                     tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
 
                     output_pars[ch, event_flag, :n_pars] = tf_out_dict["pars"]
@@ -563,11 +584,11 @@ class FitMixin(object):
                     output_rms[ch, event_flag] = tf_out_dict["rms"]
 
         if not preview:
-            self.set(group, 
+            self.set(group,
                     **{
-                        _ds_to_be_written[0]: output_pars, 
+                        _ds_to_be_written[0]: output_pars,
                         _ds_to_be_written[2]: output_rms
-                    }, 
+                    },
                     dtype=np.float32)
             self.set(group, **{_ds_to_be_written[1]: output_shift}, dtype=np.int16)
 

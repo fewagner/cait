@@ -298,3 +298,15 @@ class MockStream(StreamBaseClass):
     @property
     def tp_timestamps(self):
         return {f"TP{k}": self._tp_ts for k in range(self._n_ch)}
+    
+    @property
+    def calp_keys(self):
+        return []
+
+    @property
+    def calpas(self):
+        raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")
+
+    @property
+    def calp_timestamps(self):
+        raise NotImplementedError("Calibration channels treatment is only implemented for 'vdaq2' and 'vdaq3' hardware.")
