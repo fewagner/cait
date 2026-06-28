@@ -388,3 +388,6 @@ class StreamTime:
             raise IndexError("Requested timestamp is out of range.")
 
         return out
+
+    def __len__(self):
+        return self._n

@@ -28,6 +28,7 @@ sev, of = md.sev, md.of
 t = md.get_event_iterator().t
 
 sev = vai.SEV([sev[0], sev[1], sev[1]], dt_us=sev.dt_us)
+of = vai.OF([of[0], of[1], of[1]], dt_us=of.dt_us)
 
 sev_fitpars = [
     [0, 0.5, 0.5, 0.3*stream.dt_us, 0.1*stream.dt_us, 1*stream.dt_us], 
@@ -52,6 +53,14 @@ shifts = [
     sp.stats.randint.rvs(-300, 300, size=len(sim_ts)),
     sp.stats.randint.rvs(-10, 10, size=len(sim_ts)),
 ]
+
+#####################################
+############# HELPER ################
+#####################################
+def event_class_integrity(dh, group, of, sev, **kwargs):
+    dh.cmp(group)
+    dh.apply_ofilter(group, of, sev, **kwargs)
+    dh.apply_template_fit(group, sev)
 
 #####################################
 ############## TESTS ################
@@ -121,6 +130,15 @@ def test_trigger_efficiency_of(dh_test, kwargs):
         **kwargs,
     )
 
+    # Run analysis steps as if they were actual events
+    appendix = f"-{kwargs['tag']}" if kwargs["tag"] else ""
+    event_class_integrity(
+        dh_test, 
+        "events-eff-sim"+appendix, 
+        of[:n_tot], 
+        sev[:n_tot],
+        )
+
     # With SEV fitpars input
     kwargs["tag"] += ".1"
     dh_test.efficiency_sim_trigger_of(
@@ -135,6 +153,15 @@ def test_trigger_efficiency_of(dh_test, kwargs):
         record_placement=3,
         **kwargs,
     )
+        
+    # Run analysis steps as if they were actual events
+    appendix = f"-{kwargs['tag']}" if kwargs["tag"] else ""
+    event_class_integrity(
+        dh_test, 
+        "events-eff-sim"+appendix, 
+        of[:n_tot], 
+        sev[:n_tot],
+        )
 
 @pytest.mark.parametrize(
         "kwargs", 
@@ -142,14 +169,14 @@ def test_trigger_efficiency_of(dh_test, kwargs):
             dict(trigger_channels=[("Ch0", "Ch1")], 
                  tag="test2dof1",
                  sim_phs=sim_phs[:2],
-                 of=of,
+                 of=of[:2],
                  sev=sev[:2],
                  ),
             dict(trigger_channels=[("Ch0", "Ch1")],
                  testpulse_channels=["TP0", "TP1"],
                  tag="test2dof2",
                  sim_phs=sim_phs[:2],
-                 of=of,
+                 of=of[:2],
                  sev=sev[:2],
                  ),
             dict(trigger_channels=[("Ch0", "Ch1")],
@@ -157,7 +184,7 @@ def test_trigger_efficiency_of(dh_test, kwargs):
                  tag="test2dof3",
                  sim_phs=sim_phs[:2],
                  shift_samples=shifts[:2],
-                 of=of,
+                 of=of[:2],
                  sev=sev[:2],
                  ),
             dict(trigger_channels=[("Ch0", "Ch1")],
@@ -166,7 +193,7 @@ def test_trigger_efficiency_of(dh_test, kwargs):
                  tag="test2dof4",
                  sim_phs=sim_phs,
                  shift_samples=shifts,
-                 of=of,
+                 of=of[:2],
                  sev=sev,
                  ),
         ]

@@ -566,10 +566,10 @@ class FitMixin(object):
             self.set(group, 
                     **{
                         _ds_to_be_written[0]: output_pars, 
-                        _ds_to_be_written[1]: output_rms
+                        _ds_to_be_written[2]: output_rms
                     }, 
                     dtype=np.float32)
-            self.set(group, **{_ds_to_be_written[2]: output_shift}, dtype=np.int16)
+            self.set(group, **{_ds_to_be_written[1]: output_shift}, dtype=np.int16)
 
             if np.any(output_rms == -404):
                 print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding fit values should not be trusted! If you provided an 'event_flag', the events which were excluded from the fit received an RMS value of -404. Likewise, if you chose only to fit a subset of channels using the 'only_channels' argument, channels which were not fitted had their RMS values set to -404. Finally, if the fit failed for any of the fitted events, the respective RMS was also set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
