@@ -787,7 +787,7 @@ class FeaturesMixin(object):
             return vai.Preview(
                 events.with_processing(
                     with_processing + [vai.RemoveBaseline()]
-                    ), f
+                    ), f, backend="plotly",
                 )
 
         of_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating OF pulse heights")

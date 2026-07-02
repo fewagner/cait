@@ -431,7 +431,7 @@ class SimulateMixin(object):
         
         if preview:
             for ch, f in zip(chs, fns):
-                vai.Preview(chunk_iterator[ch], f)
+                vai.Preview(chunk_iterator[ch], f, backend="plotly")
             return
         
         # Initialize array with as many channels as total channels (including passive).

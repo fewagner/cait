@@ -1,7 +1,7 @@
 import warnings
 from functools import partial
 from multiprocessing import Pool
-from typing import List, Union, Callable
+from typing import Callable, List, Union
 
 import h5py
 import numpy as np
@@ -552,7 +552,7 @@ class FitMixin(object):
                     **kwargs)
 
             if preview:
-                vai.Preview(events_used.with_processing(with_processing + [vai.RemoveBaseline()]), tf)
+                vai.Preview(events_used.with_processing(with_processing + [vai.RemoveBaseline()]), tf, backend="plotly")
             else:
                 tf_out = vai.apply(tf, events_used.with_processing(with_processing).with_batchsize(_batch_size))
                 tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
@@ -574,7 +574,7 @@ class FitMixin(object):
                         **kwargs)
 
                 if preview:
-                    vai.Preview(events_used[ch].with_processing(with_processing + [vai.RemoveBaseline()]), tf)
+                    vai.Preview(events_used[ch].with_processing(with_processing + [vai.RemoveBaseline()]), tf, backend="plotly")
                 else:
                     tf_out = vai.apply(tf, events_used[ch].with_processing(with_processing).with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
                     tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}

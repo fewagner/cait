@@ -1,12 +1,13 @@
-from typing import List
 import datetime
+from typing import List
 
 import numpy as np
-from ipywidgets import widgets
 from IPython.display import display
+from ipywidgets import widgets
 
-from ..viewer import Viewer
 from ...iterators.iteratorbase import IteratorBaseClass
+from ..viewer import Viewer
+
 
 class ScatterPreview:
     """
@@ -41,7 +42,7 @@ class ScatterPreview:
 
         # create a Viewer for scatter and event preview plots
         self.scatter = Viewer(**kwargs)
-        self.preview = Viewer(xlabel="time (ms)", **{k:kwargs[k] for k in ["width", "height", "template"] if k in kwargs.keys()})
+        self.preview = Viewer(xlabel="time (ms)", **{k:kwargs[k] for k in ["width", "height", "template", "backend"] if k in kwargs.keys()})
         
         # setup functionality of scatter plot
         self.scatter.add_scatter(x=self._xdata, y=self._ydata, name="scatter")
