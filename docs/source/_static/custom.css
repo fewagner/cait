@@ -1,0 +1,6 @@
+.cell_output {
+    max-height: none !important;
+    overflow-x: auto;
+    overflow-y: visible;
+    white-space: normal;
+}

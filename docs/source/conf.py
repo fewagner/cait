@@ -67,6 +67,12 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Currently, the only customization is to not truncate cell outputs
+# in notebooks (which would make plots look ugly)
+html_css_files = [
+    "custom.css",
+]
+
 html_logo = "logo/logo_wide.png"
 html_theme_options = {
     'logo_only': True,

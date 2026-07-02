@@ -18,28 +18,29 @@
    :maxdepth: 1
 
    tutorials/abouttutorials
-   tutorials/tutorial_trigger
-   tutorials/00datahandler_baseFeatures
-   tutorials/01conversion
-   tutorials/02features
-   tutorials/03simulation
-   tutorials/05calibration
-   tutorials/06labeling
-   tutorials/07classification
-   tutorials/08ptl_classification
-   tutorials/09regression
-   tutorials/10limit
-   tutorials/11viztool
-   tutorials/12cryoaug
-   tutorials/13universaltrainingset
-   tutorials/14pileupseparation
+   tutorials/00tutorial_trigger
+   tutorials/01datahandler_baseFeatures
+   tutorials/02sev_nps_of_blres
+   tutorials/03amplitude_reconstruction
+   tutorials/04energy_calibration
+   tutorials/05efficiency_simulation
+   tutorials/06slurm
+   tutorials/07labeling
+   tutorials/08classification
+   tutorials/09ptl_classification
+   tutorials/10regression
+   tutorials/11limit
+   tutorials/12viztool
+   tutorials/13cryoaug
+   tutorials/14universaltrainingset
+   tutorials/15pileupseparation
 
 .. toctree::
    :caption: Templates
    :maxdepth: 1
 
    templates/abouttemplates
-   templates/conversion
+..   templates/conversion
    templates/viewer
    templates/tsne
    templates/hw_analysis

@@ -182,6 +182,9 @@ To submit the job, you run
 
 To see running jobs, use ``squeue -u <your>.<username>``. To attach to a running job, use ``sattach <jobID>.0`` (you can exit after attaching using ``CTRL+C``).
 
+.. seealso::
+    Have a look at the **Processing many files using SLURM jobs** tutorial for a convenient workflow!
+
 Notebooks on a Server
 =====================
 

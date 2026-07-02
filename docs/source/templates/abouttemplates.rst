@@ -2,18 +2,7 @@
 About the Templates
 *******************
 
-We provide here a set of template scripts and notebooks for standard data analysis tasks with Cait. This e.g. includes:
+.. note::
+    Currently, there are no templates. The ones prior to the `1.3.0` release were removed because they were outdated.
 
-- the conversion of RDT files to HDF5 files,
-- the event viewing inside a notebook and with an interactive t-SNE plot,
-- the processing of HDF5 files for standard events and trigger thresholds,
-- the triggering of CSMPL files,
-- the processing of HDF5 files for energy spectra and light yield plots,
-- the simulation of cut efficiencies.
-
-All scripts come with instructions on top of the script. All notebooks come with a detailed walk-through as
-markdown text.
-
-Once you pulled or installed Cait, you can find all these scripts and notebooks in the directory cait/docs/source/templates.
-
-Please forward any questions to felix.wagner(at)oeaw.ac.at.
+    In the future, we will add templates again. If you have an idea on what would make a good template, feel free to reach out to the developers!

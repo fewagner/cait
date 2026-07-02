@@ -21,6 +21,9 @@ Top level classes
 .. autoclass:: MockData
    :members:
    :member-order: bysource
+.. autoclass:: MockStream
+   :members:
+   :member-order: bysource
 
 Related classes and base classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
