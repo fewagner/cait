@@ -1,3 +1,5 @@
+.. _api-reference:
+
 ***********************
 About the Documentation
 ***********************

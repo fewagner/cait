@@ -1,15 +1,24 @@
 Community and Contributing
 ==========================
 
-This page is to credit significant contributions to the ``cait`` software package. Today, most contributions come from a small team at the Institute of High Energy Physics in Vienna and the CRESST/COSINUS collaborations. However, the project is still in an early stage and we are actively looking for people willing to contribute, especially also from diverse institutions and backgrounds. If you are interested in the software and motivated to contribute, please get in touch with one of our correspondents, listed below. For feature requests, please also get in touch or open an issue on GitLab/GitHub including the label "Feature Request" in its headline.
+This page is to credit significant contributions to the ``cait`` software package. Today, most contributions come from a small team at the Marietta Blau Institute for Particle Physics in Vienna and the CRESST/COSINUS collaborations. We are actively looking for people willing to contribute, especially also from diverse institutions and backgrounds. If you are interested in the software and motivated to contribute, please get in touch with one of our correspondents, listed below. For feature requests, please also get in touch or open an issue on GitLab/GitHub including the label "Feature Request" in its headline.
 
 Core developers (alphabetical list):
 
 - Philipp Schreiner (development coordination, philipp.schreiner(at)oeaw.ac.at)
-- Felix Wagner
+- Felix Wagner (project founder)
 
+Thanks to everyone who reported bugs, tested code, added features, wrote tutorials, etc. (alphabetical list):
 
-Currently all contributors are part of the CRESST and COSINUS collaborations.
+- Samir Banik
+- Daniel Bartolot
+- Janina Hakenmueller
+- Colin Moore
+- Julius Tesarek
+- Danaé Valdenaire
+- Lorenzo Valla
+
+(We hope that we haven't forgot anyone. If so, let us know!) Currently all contributors are part of the COSINUS, CRESST and NUCLEUS collaborations.
 
 You want to contribute? Read the following
 

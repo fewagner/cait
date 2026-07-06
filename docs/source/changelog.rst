@@ -1,21 +1,29 @@
 Features and Changelog
 ======================
 
-On this page we assemble the features of current Cait releases and changes from the past versions.
+On this page we assemble the features of current ``cait`` releases and changes from the past versions.
 
 development
 ~~~~~~~~~~~
+- Features:
+    - Release of :ref:`cait.versatile <caitversatile>`, the flexible cait. With many new functions that will make your life easier -- have a look!
+    - New/updated :ref:`tutorials <tutorials>` **Triggering stream data**, **Interacting with HDF5 files**, **Creating SEV, NPS, OF**, **Reconstructing the pulse amplitude**, **Energy Calibration**, **Efficiency Simulation**, **Processing many files using SLURM jobs**.
+    - Added :func:`dh.trigger_zscore <cait.mixins.TriggerCollectionMixin.trigger_zscore>` and :func:`dh.trigger_of <cait.mixins.TriggerCollectionMixin.trigger_of>` for triggering independent of hardware (also included VDAQ3 hardware)
+    - Added short-cut notation for :func:`dh.get <cait.DataHandler.get>`: Now you can slice a DataHandler object using ``dh['<group>/<dataset>']``. Additionally, this syntax supports iPython's TAB-completion, i.e. you can start typing ``dh[`` and hit 'TAB' to preview a list of possible datasets.
+    - Added :func:`dh.apply_template_fit <cait.mixins.FitMixin.apply_template_fit>` which replaces :func:`dh.apply_array_fit <cait.mixins.FitMixin.apply_array_fit>` (now deprecated). In the new method, you have more control over the level of correlation between multiple channels, you can provide flags (for only fitting a subset), and you can preview the effect of the fit before applying it.
+    - Added :func:`dh.apply_ofilter <cait.mixins.FeaturesMixin.apply_ofilter>` which replaces :func:`dh.apply_of <cait.mixins.FeaturesMixin.apply_of>` (now deprecated). In the new method, you have more control over the level of correlation between multiple channels, and you can preview the effect of the pulse height determination before applying the function.
+    - Added :func:`dh.cmp <cait.mixins.MainParametersMixin.cmp>` which replaces :func:`dh.calc_cmp <cait.mixins.FeaturesMixin.calc_mp>` (now deprecated).
+    - Added :func:`dh.efficiency_sim_trigger_of <cait.mixins.SimulateMixin.efficiency_sim_trigger_of>` for performing efficiency simulations.
+    - Added dcache file reading support (dcap, WebDAV and XRootD protocol; recommended protocol: XRootD)
+    - Added pipeline to build containers for released versions and development branch (on CERN gitlab)
 
-- Added dcache file reading support (dcap, WebDAV and XRootD protocol; recommended protocol: XRootD)
-- Added pipeline to build containers for released versions and development branch (on CERN gitlab)
-- Added ``dh.trigger_zscore`` and ``dh.trigger_of`` for triggering independent of hardware
-- Added short-cut notation for ``dh.get``: Now you can slice a DataHandler object using ``dh['<group>/<dataset>']``. Additionally, this syntax supports iPython's TAB-completion, i.e. you can start typing ``dh[`` and hit 'TAB' to preview a list of possible datasets.
-- Added ``dh.apply_template_fit`` which replaces ``dh.apply_array_fit`` (now deprecated). In the new method, you have more control over the level of correlation between multiple channels, you can provide flags (for only fitting a subset), and you can preview the effect of the fit before applying it.
-- Moved functions to combine/merge hdf5 files to ``cait.data.combine_h5`` and ``cait.data.merge_h5``. The previous implementation ``ai.data.merge_h5_sets`` has been deprecated.
-- Minor improvements
-- Minor fixes (including OverflowError in ``numpy>=2``)
-- New features in ``cait.versatile`` (notably ``vai.Heatmap``, back-button in vai.Preview)
-- Changes to ``cait.versatile`` (notably ``TukeyFiltering`` -> ``TukeyWindow``)
+- Changes:
+    - Moved functions to combine/merge hdf5 files to :func:`cait.data.combine_h5 <cait.data.combine_h5>` and :func:`cait.data.merge_h5 <cait.data.merge_h5>`. The previous implementation :func:`cait.data.merge_h5_sets <cait.data.merge_h5_sets>` has been deprecated.
+    - The templates were removed from the documentation page as they do not reflect the current best-practice usage of ``cait`` anymore. We are working on new templates.
+    - Deprecated :func:`dh.show_values <cait.mixins.PlotMixin.show_values>`, :func:`dh.show_sev <cait.mixins.PlotMixin.show_sev>`, :func:`dh.show_exceptional_sev <cait.mixins.PlotMixin.show_exceptional_sev>`, :func:`dh.show_nps <cait.mixins.PlotMixin.show_nps>`, :func:`dh.show_of <cait.mixins.PlotMixin.show_of>`, :func:`dh.show_scatter <cait.mixins.PlotMixin.show_scatter>`, :func:`dh.show_hist <cait.mixins.PlotMixin.show_hist>`, :func:`dh.show_scatter <cait.mixins.PlotMixin.show_scatter>`, :func:`dh.include_values <cait.mixins.FeaturesMixin.include_values>` (in addition to the ones mentioned above). Will be removed in version 2.0.0.
+
+- Fixes:
+    - Minor fixes (including OverflowError in ``numpy>=2``)
 
 v.1.2.2
 ~~~~~~~

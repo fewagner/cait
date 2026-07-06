@@ -1,3 +1,5 @@
+.. _tutorials:
+
 *******************
 About the Tutorials
 *******************
