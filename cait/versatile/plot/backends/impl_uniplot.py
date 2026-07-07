@@ -6,6 +6,7 @@ from .backendbase import BackendBaseClass
 
 try:
     import uniplot
+    from uniplot.uniplot import readkey
 except ImportError:
     uniplot = None
 
@@ -64,7 +65,7 @@ class BaseClassUniplot(BackendBaseClass):
                  show_controls: bool = True):
         
         if uniplot is None: 
-            raise RuntimeError("Install 'uniplot>=0.12.2' to use this feature.")
+            raise RuntimeError("Install 'uniplot>=0.21.2' to use this feature.")
 
         # Height/width in characters
         self.height = int(height)
@@ -289,11 +290,13 @@ class BaseClassUniplot(BackendBaseClass):
                 print(f"other actions: {', '.join([b['text'] for b in self.buttons])}")
                 
             # Get key input
-            key = uniplot.getch.getch().lower()
+            key = readkey()
 
-            if key in ["q", "\x1b"] + hot_keys: 
+            if key in ["q", "\x1b", "\x1b\x1b"] + hot_keys: 
                 # Break out of loop (below, we distinguish between hot
                 # keys and q/ESC)
+                # Note: for some reason, a single ESC is not registered,
+                # so a double esc was added above to the check above.
                 break
             elif key == "i":
                 self.plt_opt.zoom_in()
