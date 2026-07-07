@@ -36,4 +36,4 @@ To get something working quickly, you can use simulated *mock data*, copy it to 
 
 .. image:: documentation/pics/getting_started_spectrum.png
 
-Once you accomplished this first step into the world of raw data analysis, start going through the tutorial notebooks, that demonstrate most of the functionality of ``cait``.
+Once you accomplished this first step into the world of raw data analysis, start going through the :ref:`tutorial notebooks <tutorials>`, that demonstrate most of the functionality of ``cait``. For details, have a look at the :ref:`API reference <api-reference>`.

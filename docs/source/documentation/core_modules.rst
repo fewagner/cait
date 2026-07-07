@@ -21,6 +21,7 @@ These are the modules which contain functions that are used throughout the ``cai
    core_modules/limit
    core_modules/models
    core_modules/readers
+   core_modules/serialize
    core_modules/simulate
    core_modules/styles
    core_modules/trigger
