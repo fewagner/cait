@@ -115,11 +115,11 @@ class FluxQuantumLossCorrection(FncBaseClass):
 
 
         if isinstance(self._thresh, (int, float)):
-            self._thresh = np.full(event.shape[1], self._thresh)
+            self._thresh = np.full(event.shape[:-1], self._thresh)
         if isinstance(self._true_pulseheight, (int, float)):
-            self._thresh = np.full(event.shape[1], self._true_pulseheight)
+            self._true_pulseheight = np.full(event.shape[:-1], self._true_pulseheight)
         if isinstance(self._fql_voltage, (int, float)):
-            self._thresh = np.full(event.shape[1], self._fql_voltage)
+            self._fql_voltage = np.full(event.shape[:-1], self._fql_voltage)
 
         if isinstance(self._loc, str):
             # Make sure there is one for each channel
@@ -224,18 +224,18 @@ class FluxQuantumLossCorrection(FncBaseClass):
                     if self._true_pulseheight is None:
                         raise ValueError('True pulse height needs to be provided for the fqlc method "true_ph".')
 
-                    self._flux_loss[ib, ic] = self._true_pulseheight[ic] - self._ph[ib, ic]
+                    self._flux_loss[ib, ic] = self._true_pulseheight[ib, ic] - self._ph[ib, ic]
 
                 else:
                     raise ValueError('Choose fqlc method from "mmd" (minimum-minimum difference), "slope" or "true_ph".')
 
                 if self._fql_voltage is not None: # FQL voltage is known and provided -> correct only for integer multiples
-                    self._flux_loss[ib, ic] = self._fql_voltage[ib, ic] * np.ceil((self._flux_loss[ib, ic] - self._thresh[ic])/self._fql_voltage[ib, ic])
+                    self._flux_loss[ib, ic] = self._fql_voltage[ib, ic] * np.ceil((self._flux_loss[ib, ic] - self._thresh[ib, ic])/self._fql_voltage[ib, ic])
 
                 if self._return_shift_value:
                     return self._flux_loss[ib, ic]
 
-                if self._flux_loss[ib, ic] >= self._thresh[ic]: # only correct actual fql, not baseline drifts or the like
+                if self._flux_loss[ib, ic] >= self._thresh[ib, ic]: # only correct actual fql, not baseline drifts or the like
                     _mp = MainParameters(bcs={'length': 1}, fbl=dict(model=0, where=1/8))(event[ib, ic]) # recalculate onset without smoothing to be more precise
                     self._t0[ib, ic] = int(_mp[locs[ic]])
                     self._corrected_event[ib, ic, int(self._t0[ib, ic])+1:] += self._flux_loss[ib, ic]
@@ -266,6 +266,7 @@ class FluxQuantumLossCorrection(FncBaseClass):
               "yaxis": {"label": "Voltage [V]"}}
 
         return dict(axes=ax, line=d)
+
 
     @property
     def batch_support(self):
