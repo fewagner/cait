@@ -170,8 +170,6 @@ class AnalysisMixin(object):
         :type intervals: list of 2-tuples
         :param group: Which group to apply the rate cut to. The values for the cut on the rate are always determined from the
             "events" group, while this argument allows one to apply the same rate cut to other datasets (e.g. for simulations).
-            Note that if a group other than "events" is given, the cut is calculated twice, and as a result some of the
-            statistics will be printed twice.
         :type group: str
         """
 
@@ -184,7 +182,7 @@ class AnalysisMixin(object):
 
         try:
             if group != "events":
-                # Here we run the same rate calculation as above, but replace the TP hours with the hours of
+                # Here we run the rate calculation, but replace the TP hours with the hours of
                 # the group we want to apply the rate cut to, exploiting the way that test pulses are handled in `rate_cut`
                 # (i.e. they are not used in the rate calculation, but the cut is still calculated for them).
                 hours_grp = self[f"{group}/hours"] * 60
