@@ -130,8 +130,15 @@ class AnalysisMixin(object):
                                                                                                       mus[c], naming))
         return np.array(resolutions), np.array(mus)
 
-    def calc_rate_cut(self, interval: float = 10, significance: float = 3,
-                      min: float = 0, max: float = 60, intervals: list = None, use_poisson=True, group="events"):
+    def calc_rate_cut(self,
+                      interval: float = 10,
+                      significance: float = 3,
+                      min: float = 0,
+                      max: float = 60,
+                      intervals: list = None,
+                      use_poisson=True,
+                      group="events",
+                      ):
         """
         Calculate a rate cut on the events.
 
@@ -171,51 +178,44 @@ class AnalysisMixin(object):
         if intervals is not None:
             intervals = np.array(intervals) * 60  # now this is in minutes
 
-        with h5py.File(self.path_h5, 'r+') as h5:
-            hours = np.array(h5['events']['hours']) * 60  # in minutes now
-            if 'controlpulses' in h5:
-                hours_cp = np.array(h5['controlpulses']['hours']) * 60
-            else:
-                hours_cp = None
-            if 'testpulses' in h5:
-                hours_tp = np.array(h5['testpulses']['hours']) * 60
-            else:
-                hours_tp = None
+        hours = self.get("events", "hours") * 60
+        hours_cp = self.get("controlpulses", "hours") * 60 if self.exists("controlpulses", "hours") else None
+        hours_tp = self.get("testpulses", "hours") * 60 if self.exists("testpulses", "hours") else None
 
-            try:
+        try:
+            if group != "events":
+                # Here we run the same rate calculation as above, but replace the TP hours with the hours of
+                # the group we want to apply the rate cut to, exploiting the way that test pulses are handled in `rate_cut`
+                # (i.e. they are not used in the rate calculation, but the cut is still calculated for them).
+                hours_grp = self[f"{group}/hours"] * 60
+                _, _, flag_ev, _ = rate_cut(hours, hours_cp, hours_grp,
+                                                            interval=interval, significance=significance, min=min, max=max,
+                                                            use_poisson=use_poisson, intervals=intervals, )
+                flag_cp = flag_tp = None
+            else:
                 flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours, hours_cp, hours_tp,
-                                                                interval=interval, significance=significance, min=min, max=max,
-                                                                use_poisson=use_poisson, intervals=intervals, )
-                if group != "events":
-                    hours_grp = self[f"{group}/hours"] * 60
-                    _, _, flag_ev, _ = rate_cut(hours, hours_cp, hours_grp,
-                                                                interval=interval, significance=significance, min=min, max=max,
-                                                                use_poisson=use_poisson, intervals=intervals, )
+                                                            interval=interval, significance=significance, min=min, max=max,
+                                                            use_poisson=use_poisson, intervals=intervals, )
 
-            except AssertionError:
-                raise AttributeError('If you do not hand intervals, you need to have controul pulses included in the'
-                                     'HDf5 file!')
+        except AssertionError:
+            raise AttributeError('If you do not hand intervals, you need to have controul pulses included in the'
+                                 'HDf5 file!')
 
-            h5.require_group('metainfo')
-            if 'rate_stable' in h5['metainfo']:
-                del h5['metainfo']['rate_stable']
-            h5['metainfo'].create_dataset(name='rate_stable',
-                                          data=np.array(intervals)/60)  # this is now in hours
+        if intervals is not None:
+            self.set(
+                    "metainfo",
+                    rate_stable = np.array(intervals)/60,
+                    overwrite_existing = True,
+                    )
+        for g, f in zip([group, "controlpulses", "testpulses"], [flag_ev, flag_cp, flag_tp]):
+            if f is not None:
+                self.set(
+                        g,
+                        rate_cut = f,
+                        dtype = bool,
+                        overwrite_existing = True,
+                        )
 
-            h5[group].require_dataset(name='rate_cut',
-                                         shape=(flag_ev.shape),
-                                         dtype=bool)
-            h5[group]['rate_cut'][...] = flag_ev
-            if flag_cp is not None:
-                h5['controlpulses'].require_dataset(name='rate_cut',
-                                                    shape=(flag_cp.shape),
-                                                    dtype=bool)
-                h5['controlpulses']['rate_cut'][...] = flag_cp
-            if flag_tp is not None:
-                h5['testpulses'].require_dataset(name='rate_cut',
-                                                 shape=(flag_tp.shape),
-                                                 dtype=bool)
-                h5['testpulses']['rate_cut'][...] = flag_tp
 
     def calc_controlpulse_stability(self, 
                                     channel: int, 
