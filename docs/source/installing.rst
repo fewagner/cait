@@ -72,7 +72,26 @@ There are some additional dependencies which can be installed together with cait
 - ``test``: Install 'pytest' to run tests.
 - ``docs``: Install dependencies for building docs with ``sphinx``.
 
-Options for Developers
+Pre-built Docker containers
+====================================
+For people who have access to the CERN GitLab, the easiest way to get a container is
+
+.. code:: console
+
+    $ singularity pull --docker-login docker://gitlab-registry.cern.ch/cryocluster/cait:<tag>
+
+where ``tag`` could be ``develop`` or any (tagged) release. For each tag, there is a regular and a ``-slim`` version, where ``-slim`` does not include 'heavy' dependencies like ``torch`` and is therefore smaller in size.
+If you do not have access to the CERN GitLab, the docker container can be built with this `Dockerfile <https://github.com/fewagner/cait/blob/develop/Dockerfile>`_. Refer to the `Docker Documentation <https://docs.docker.com/build/concepts/dockerfile/>`_ on how to use it. Note that we use ``singularity`` to pull and run the container, even though it has been built using Docker. This works and is just a matter of preference.
+
+You can use this container e.g. for cluster jobs (see e.g. :ref:`slurm-example-section`) or you can simply run a python session inside the container
+
+.. code:: console
+
+    $ singularity run cait_develop.sif
+
+Furthermore, many computing clusters offer the possibility to start **JupyterHub from a custom singularity image**. The container provided above can be used for that purpose as well.
+
+Options for developers
 ======================
 
 As a developer of the Cait Library, it's best if you clone the repository and make an *editable installation*:
