@@ -238,17 +238,25 @@ class MainParameters(ScalarFncBaseclass):
         mask_pp = _x < np.expand_dims(self._peak_pos, -1)
         ph_exp = np.expand_dims(ph, axis=-1)  # Used a lot below
 
+        # Main calculations: rise time, decay time, onset
         self._rs = np.argmax(_x * (mask_pp & (event < 0.2*ph_exp)), axis=-1)
         self._re = np.argmax(_x * (mask_pp & (event < 0.8*ph_exp)), axis=-1)
-        self._ds = np.argmax(_x * (~mask_pp & (event > 0.9*ph_exp)), axis=-1)
-        self._de = np.argmax(_x * (~mask_pp & (event > 1/np.e*ph_exp)), axis=-1)
+        _ds_helper = _x * (~mask_pp & (event < 0.9*ph_exp))
+        _ds_helper[_ds_helper == 0] = _x.max()
+        self._ds = np.argmin(_ds_helper, axis=-1)
+        _de_helper = _x * (~mask_pp & (event < 1/np.e*ph_exp))
+        _de_helper[_de_helper == 0] = _x.max()
+        self._de = np.argmin(_de_helper, axis=-1)
         self._os = self._rs - event.shape[-1] // 4
 
+        # CAT parameters: rise time and decay time per the CAT definition
         osc = np.argmax(_x * (mask_pp & (event < 3*np.expand_dims(bl_rms, axis=-1))), axis=-1)
         rsc = np.argmax(_x * (mask_pp & (event < 0.1*ph_exp)), axis=-1)
         rec = np.argmax(_x * (mask_pp & (event < 0.9*ph_exp)), axis=-1)
         dsc = self._ds
-        dec = np.argmax(_x * (~mask_pp & (event > 0.1*ph_exp)), axis=-1)
+        _dec_helper = _x * (~mask_pp & (event < 0.1*ph_exp))
+        _dec_helper[_dec_helper == 0] = _x.max()
+        dec = np.argmin(_dec_helper, axis=-1)
 
         # Integral may be useful in rejecting pileup.
         integral = trapezoid(event, dx=_dt, axis=-1)
