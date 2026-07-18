@@ -3,6 +3,7 @@ import scipy as sp
 
 from ..functionbase import FncBaseClass
 
+
 class Unity(FncBaseClass):
     """
     Class that returns events unaltered. This is mostly used as a helper class to preview raw voltage traces.
@@ -22,13 +23,13 @@ class Unity(FncBaseClass):
     
     def preview(self, event):
         if event.ndim > 1:
-            lines = {f'channel {k}': [self._t, ev] for k, ev in enumerate(event)}
+            lines = {f'Channel {k}': [self._t, ev] for k, ev in enumerate(event)}
         else:
-            lines = {'channel 0': [self._t, event]}
+            lines = {'Channel 0': [self._t, event]}
 
         return dict(line=lines, 
-                    axes={"xaxis": {"label": "time (ms)" if self._t is not None else "data index"},
-                          "yaxis": {"label": "data (V)"}
+                    axes={"xaxis": {"label": "Time (ms)" if self._t is not None else "Data index"},
+                          "yaxis": {"label": "Data (V)"}
                          })
     
 class Lags(FncBaseClass):

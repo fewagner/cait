@@ -1,10 +1,11 @@
 import datetime
-from typing import List
+from typing import Callable, List
 
 import numpy as np
 from IPython.display import display
 from ipywidgets import widgets
 
+from ...eventfunctions.processing.helper import Unity
 from ...iterators.iteratorbase import IteratorBaseClass
 from ..viewer import Viewer
 
@@ -13,7 +14,7 @@ class ScatterPreview:
     """
     Scatter plot with event preview. 
     
-    Clicking on scatter data displays the corresponding event in a separate figure. You can select scatter points and delete them from the plot using the "cut selected" button. The currently selected data indices and events are furthermore accessible through the respective methods.
+    Clicking on scatter data displays the corresponding event in a separate figure (and the effect a function has on it, if provided). You can select scatter points and delete them from the plot using the "cut selected" button. The currently selected data indices and events are furthermore accessible through the respective methods.
 
     :param x: x-data for the scatter plot.
     :type x: List[float]
@@ -21,17 +22,22 @@ class ScatterPreview:
     :type y: List[float]
     :param ev_it: Event iterator corresponding to the x-y data (if a point (x,y) is clicked, the corresponding event from the iterator is displayed).
     :type ev_it: IteratorBaseClass
+    :param f: The function to be inspected, already initialized with the values that should stay fixed throughout the inspection. Defaults to Unity (which means that just the events of the iterable will be displayed)
+    :type f: :class:`cait.versatile.eventfunctions.functionbase.FncBaseClass`
     :param kwargs: Keyword arguments for the cait.versatile.Viewer class.
     :type kwargs: dict, optional
     """
-    def __init__(self, x: List[float], y: List[float], ev_it: IteratorBaseClass, **kwargs):
+    def __init__(self, x: List[float], y: List[float], ev_it: IteratorBaseClass, f: Callable = None, **kwargs):
         # due to explicit usage of plotly attributes, only this backend can be supported
         if "backend" in kwargs and kwargs["backend"]!="plotly":
             raise NotImplementedError(f"{self.__class__.__name__} only supports the 'plotly' backend.")
 
-        if not len(set([len(x), len(y), len(ev_it)]))==1:
-            raise ValueError(f"The lengths of x, y and ev_it have to be the same.")
-            
+        if not len(set([a:=len(x), b:=len(y), c:=len(ev_it)]))==1:
+            raise ValueError(f"The lengths of x, y and ev_it have to be the same. Got {a}, {b} and {c}.")
+
+        # default function is Unity    
+        self._f = f if f is not None else Unity(ev_it.t)
+
         # used to restore original data after performing cuts
         self._original_data = (np.array(x), np.array(y), ev_it)
         self._xdata, self._ydata, self._ev_it = self._original_data
@@ -42,7 +48,7 @@ class ScatterPreview:
 
         # create a Viewer for scatter and event preview plots
         self.scatter = Viewer(**kwargs)
-        self.preview = Viewer(xlabel="time (ms)", **{k:kwargs[k] for k in ["width", "height", "template", "backend"] if k in kwargs.keys()})
+        self.preview = Viewer(**{k:kwargs[k] for k in ["width", "height", "template", "backend"] if k in kwargs.keys()})
         
         # setup functionality of scatter plot
         self.scatter.add_scatter(x=self._xdata, y=self._ydata, name="scatter")
@@ -75,19 +81,31 @@ class ScatterPreview:
 
     def _click_fnc(self, trace, points, state):
         ind = points.point_inds[0]
-        # get event and timestamp from event iterator
+        # get event and timestamp from event iterator and the preview details
         ev = self._ev_it.grab(ind)
         ts = self._ev_it.timestamps[ind]
-        
+        d = self._f.preview(ev)
+
         # build string from timestamp and update xlabel
         tsstr = np.array(ts, dtype="datetime64[us]").astype(datetime.datetime)[()].strftime('%d-%b-%Y, %H:%M:%S')
-        self.preview.set_xlabel(f"time (ms) after {ts} ({tsstr})")
-        
-        # draw events for all channels
-        for i in range(self._ev_it.n_channels):
-            self.preview.update_line(name=f"channel {i}", 
-                                     x=self._ev_it.t, 
-                                     y=ev if self._ev_it.n_channels==1 else ev[i])
+
+        # remove y-axis label
+        if "axes" in d:
+            if "yaxis" in d["axes"]:
+                if "label" in d["axes"]["yaxis"]:
+                    d["axes"]["yaxis"]["label"] = ""
+        # add x-axis info
+        if "axes" not in d: 
+            d["axes"] = {}
+        if "xaxis" not in d["axes"]: 
+            d["axes"]["xaxis"] = {}
+        if "label" not in d["axes"]["xaxis"]:
+            d["axes"]["xaxis"]["label"] = f"Event {ind}, {tsstr} ({ts})"
+        elif d["axes"]["xaxis"]["label"]:
+            d["axes"]["xaxis"]["label"] += f"<br>Event {ind}, {tsstr} ({ts})"
+
+        self.preview.plot(d)
+        self.preview.show_legend()
             
     def _select_fnc(self, trace, points, selector):
         self._selection = points.point_inds
