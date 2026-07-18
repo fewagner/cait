@@ -1,11 +1,12 @@
-from typing import Callable
 import datetime
+from typing import Callable
 
 import numpy as np
 
-from ..viewer import Viewer
-from ...iterators.iteratorbase import IteratorBaseClass
 from ...eventfunctions.processing.helper import Unity
+from ...iterators.iteratorbase import IteratorBaseClass
+from ..viewer import Viewer
+
 
 # Has no test case (yet)
 class Preview(Viewer):
@@ -83,7 +84,7 @@ class Preview(Viewer):
             elif self._show_ev_time:
                 d["axes"]["yaxis"]["label"] += ", "
             if self._show_ev_time:
-                d["axes"]["yaxis"]["label"] += f"event {self._current_ind}, {tsstr}"
+                d["axes"]["yaxis"]["label"] += f"Event {self._current_ind}, {tsstr}"
 
             # Plot
             self.plot(d)
