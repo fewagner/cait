@@ -64,10 +64,6 @@ class ScatterPreview:
         self._cut_button.on_click(self._cut)
         self._undo_button = widgets.Button(description="undo all cuts", tooltip="undo all cuts")
         self._undo_button.on_click(self._undo) 
-        
-        # create dummy lines for event preview (so that we can later refer to them using their names)
-        for i in range(self._ev_it.n_channels):
-            self.preview.add_line(x=[], y=[], name=f"channel {i}")
 
         # setup layout and display
         display(
