@@ -4,18 +4,19 @@
 Installation
 ************
 
-There are various ways for the installation of cait, which are outlined in the following. Usually we provide a stable release, typically hosted on the GitLab/GitHub master branch and a development version. The development version might still be unstable and undocumented in some new features, does however include all cutting-edge and current implementations.
-Our recommendation is therefore to **use the development branch**, combined with active bug-reporting in the GitLab/Hub issue tracker. Due to the still very small user and developer community, the stable release is also to be understood as a beta version.
+There are various ways for the installation of ``cait``, which are outlined in the following. We provide stable releases on PyPI, whose source is hosted on the GitLab/GitHub master branch, as well as a development version. In the development version, some new features might still be unstable. It does, however, include all cutting-edge and current implementations.
+Our recommendation is to use the latest version from PyPI, but we highly appreciate curious users of the development version, who report bugs via the Gitlab/Github issue tracker.
 
 .. note::
   **Important Note for JupyterHub on computing clusters**
 
-  In the past, many users experienced issues with our interactive plotting tools which are based on plotly and ipywidgets. These problems were due to version mismatches between the plotly/ipywidgets packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
+  In the past, many users experienced issues with our interactive plotting tools which are based on ``plotly`` and ``ipywidgets``. These problems were due to version mismatches between the ``plotly``/``ipywidgets`` packages and their corresponding JupyterLab extensions (which are automatically installed alongside the packages). 
 
   To not run into such issues in the first place, we recommend one of the following approaches:
 
-  * Install cait in the base environment of your computing cluster's JupyterLab. 
-  * Install it in a virtual environment (because you want or have to) is also possible but you will have to make sure that the same plotly/ipywidgets versions (which are installed as dependencies of cait) are also present in the base environment. A good practice to ensure this is to always pip-upgrade plotly/ipywidgets to the latest version in both environments. Note that you will potentially have to match these versions every time you upgrade cait.
+  * Whenever possible, you should **run the cait JupyterHub container** on your computing cluster directly, as it works out of the box.
+  * If you cannot/don't want (for whatever reason) to use the container, you can install ``cait`` in the base environment of your computing cluster's JupyterLab. This is more likely to work right away, but we don't recommend to do so.
+  * To keep things tidy, you should install it in a virtual environment (see below), but you will have to make sure that the same ``plotly``/``ipywidgets`` versions (which are installed as dependencies of ``cait``) are also present in the base environment (because that's where your JupyterHub is running from). A good practice to ensure this is to always pip-upgrade ``plotly``/``ipywidgets`` to the latest version in both environments. Note that you will potentially have to match these versions every time you upgrade ``cait``.
 
   Lastly, remember to **restart JupyterHub completely** (not just the kernel) for the changes to take effect.
 
@@ -24,7 +25,7 @@ Our recommendation is therefore to **use the development branch**, combined with
 .. note::
     **Installation in virtual environments**
 
-    We recommend to install cait in a separate environment together with a clean installation of jupyter-lab (for interactive analysis) to avoid version conflicts of dependencies:
+    We recommend to install ``cait`` in a separate environment together with a clean installation of ``jupyter-lab`` (for interactive analysis) to avoid version conflicts of dependencies:
 
     .. code:: console
 
@@ -47,12 +48,12 @@ Our recommendation is therefore to **use the development branch**, combined with
         $ python -m pip install ipykernel
         $ python -m ipykernel install --name=venv_cait
 
-    You can now choose the kernel in jupyter-lab, VS code, etc.
+    You can now choose the kernel in ``jupyter-lab``, VS code, etc.
 
 Installation from PyPI
 ====================================
 
-Cait is hosted on the Python package index.
+``cait`` is hosted on the Python package index (PyPI).
 
 .. code:: console
 
@@ -60,7 +61,7 @@ Cait is hosted on the Python package index.
 
 For older or unreleased version, use the installation from Git.
 
-There are some additional dependencies which can be installed together with cait using the following syntax:
+There are some additional dependencies which can be installed together with ``cait`` using the following syntax:
 
 .. code:: console
 
@@ -94,7 +95,7 @@ Furthermore, many computing clusters offer the possibility to start **JupyterHub
 Options for developers
 ======================
 
-As a developer of the Cait Library, it's best if you clone the repository and make an *editable installation*:
+As a developer of ``cait``, it's best if you clone the repository and make an *editable installation*:
 
 .. code:: console
 
