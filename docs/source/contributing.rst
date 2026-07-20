@@ -37,18 +37,6 @@ The tests can be run locally using ``pytest`` but they will also automatically r
 
 In the long run, it would be great if all of ``cait``'s functionality is based on ``cait.versatile`` building blocks which have their respective unit tests. As is always the case, one has more ideas than time ... Therefore, any help is **greatly appreciated**. 
 
-We close this section with a list of things that might be worth discussing or even implementing in the future. Please do *not* consider this to be an 'upcoming features'-list or a 'we *definitely* want this in cait'-list. It just serves as the starting point for discussions.
-
-    - The ``vizTool`` could already provide a default set of ``datasets`` such that the user does not always have to define (mostly the same dictionary).
-    - A downsampling option in the ``vizTool`` would be nice, or at least a ``.set_flag`` method in addition to ``.set_idx``
-    - The ``DataHandler.content()`` call lists only the names of some of the main parameters (even though all of them are available and accessible). Should we spell out all their names?
-    - ``DataHandler.testpulse_stability()`` and ``DataHandler.controlpulse_stability()`` should work for arbitrary group (not just 'events' group).
-    - ``DataHandler.controlpulse_stability()`` currently requires the explicit existence of a 'pulse_height' dataset in the HDF5 file. We should make it work with the main parameter 'pulse_height', too. 
-    - Do we want a (versatile) analysis object ``Stability`` which takes control pulse amplitudes and timestamps? It could have plot methods for pulse height over time, histograms, ... and whenever you call it with a list of timestamps it returns a corresponding boolean flag with whether it lies in a stable period or not.
-    - We have to think about re-writing (parts of) the energy calibration code because currently it still includes deprecated code and maybe starting fresh with an easy to extend class/function (that also has proper test cases) is the better way to go. Once it is easy to extend we can start discussing if we also want more involved fits (like piecewise splines) or a (simultaneous) 2D fit in the timestamp-tpa-tph plane.
-    - Stacked histograms analogous to ``vai.Histogram``? Histograms as points with error bars instead of filled bars?
-    - In principle, the possibility exists (on branch `versatile_meets_dh`) to *not* copy event traces from stream files to the ``DataHandler`` (HDF5 file), but to only save a reference. This would save a lot of disk space but also make accessing the events slower (disk/speed tradeoff) and *if* it is implemented, we should come up with a solution to the problem of potentially changing file paths (how we update the reference in the ``DataHandler``).
-
 New feature getting started
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 This section serves as a starting point for people implementing their first feature in ``cait``. What you will need is a local copy of the ``cait`` repository and install it in *editable* mode. I.e. every time you make a change in the repository, the change is reflected in the python package. We always advice to install ``cait`` in a fresh virtual environment to avoid version conflicts.
@@ -91,7 +79,7 @@ You are currently still on the 'main' branch of the ``cait`` repository that we 
 
 .. image:: documentation/pics/issue_guide.png
 
-.. note::
+.. tip::
     Since we installed ``cait`` using the editable ``-e`` flag, its behavior changes when changing branches. *However*, every time you change branch or make a change to the repository, these changes will only be reflected if you *restart* your python session (or just the kernel if you work in a Jupyter notebook).
     To avoid restarting your kernel all the time, consider developing new features directly inside a notebook cell so long as it's convenient, and only copy it into a separate file in the repository once you are done. In our experience, this approach is more convenient than implementing it in the repository directly. However, if you are searching/fixing bugs, e.g., this might not be feasible. 
 
