@@ -1,10 +1,15 @@
-from abc import ABC, abstractmethod
-from typing import Union, List, Callable
 import itertools
+from abc import ABC, abstractmethod
+from typing import Callable, List, Union
 
 import numpy as np
 
+# Have to import like this to avoid circular import
+import cait.versatile as vai
+
+from ...serialize import SerializingMixin
 from .batchresolver import BatchResolver
+
 
 #### HELPER FUNCTIONS ####
 def _ensure_array(x):
@@ -19,8 +24,17 @@ def _ensure_not_array(x):
     if isinstance(x, str): x = str(x)
     return x
 
-class IteratorBaseClass(ABC):
-    def __init__(self, inds: List[int], batch_size: int = None):
+class IteratorBaseClass(SerializingMixin, ABC):
+    """
+    Baseclass for all iterators. Defines behavior shared among all event iterators.
+
+    .. automethod:: __len__
+    .. automethod:: __add__
+    .. automethod:: __getitem__
+    """
+    def __init__(self, inds: List[int], batch_size: int = None, **kwargs):
+        super().__init__(inds=inds, batch_size=batch_size, **kwargs)
+
         self.fncs = list()
 
         self.__n_events = len(inds)
@@ -40,6 +54,7 @@ class IteratorBaseClass(ABC):
         self._n_batches = len(self._inds)
 
     def __len__(self):
+        """Return the number of events in the iterator."""
         return self.__n_events
 
     def __enter__(self):
@@ -77,6 +92,25 @@ class IteratorBaseClass(ABC):
         return out
     
     def __getitem__(self, val):
+        """
+        Slice iterator as if it was laid out as a numpy.ndarray and return a new iterator. The first argument slices the channel, the second slices the list of events in the iterator.
+
+        **Example:**
+
+        .. code-block:: python
+
+            # Starting from an iterator 'it' of multiple channels, you can
+            # - access only the first channel
+            it[0]
+
+            # - access the last 1000 events of the first channel
+            it[0, -1000:]
+
+            # - access every second event from all channels
+            it[:, ::2]
+
+            # ... etc. 
+        """
         # Slice Iterator as if it was layed out as a numpy.ndarray. 
         # The first argument slices the channel/key/... and the second slices the remaining list of events in the iterator.
 
@@ -105,6 +139,17 @@ class IteratorBaseClass(ABC):
         return new_iterator
     
     def __add__(self, other):
+        """
+        Add two iterators sequentially. E.g. given two iterators ``it1`` and ``it2``, the sum ``it1 + it2`` returns an iterator that first iterates through ``it1``, and then through ``it2``, once ``it1`` is consumed.
+        
+        **Example:**
+        
+        .. code-block:: python
+
+            # Given two iterators 'it1' and 'it2', they can be sequentially combined into
+            # a single iterator by
+            combined_it = it1 + it2
+        """
         if isinstance(self, IteratorCollection):
             l = [i.with_processing(self.fncs) for i in self.iterators]
         else:
@@ -134,7 +179,9 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         **Example:**
-        ::
+
+        .. code-block:: python
+        
             import cait.versatile as vai
 
             def f1(event): return event + 1
@@ -158,7 +205,9 @@ class IteratorBaseClass(ABC):
         :type f: Union[Callable, List[Callable]]
 
         **Example:**
-        ::
+
+        .. code-block:: python
+
             import cait.versatile as vai
 
             def f1(event): return event + 1
@@ -170,6 +219,40 @@ class IteratorBaseClass(ABC):
 
         return self[:,:].add_processing(f)
     
+    def pop_processing(self):
+        """
+        Removes all processing functions from the iterator and returns them as a list.
+        """
+        fncs = self.fncs.copy()
+        self.fncs = list()
+        return fncs
+    
+    def with_batchsize(self, batch_size: int):
+        """
+        Returns an identical iterator but with a different batch size.
+
+        :param batch_size: The new batch size.
+        :type batch_size: int
+        """
+        params, _ = self._slice_info
+
+        if "batch_size" not in params.keys():
+            raise Exception(f"{type(self)} does not support changing batch size.")
+        
+        new_params = params.copy()
+        new_params["batch_size"] = batch_size
+
+        new_iterator = self.__class__(**new_params)
+        new_iterator.add_processing(self.fncs.copy())
+
+        return new_iterator
+    
+    def flatten(self):
+        """
+        Returns an identical iterator but without batches. Has no effect if iterator didn't use batches before.
+        """
+        return self.with_batchsize(1)
+    
     def grab(self, which: Union[int, list]):
         """
         Grab specified event(s) and return it/them as numpy array.
@@ -178,15 +261,17 @@ class IteratorBaseClass(ABC):
         :type which: Union[int, list]
 
         **Example:**
-        ::
+
+        .. code-block:: python
+
             import cait.versatile as vai
 
             it = vai.MockData().get_event_iterator() # Get events from mock data
             selected_event = it.grab(-1)             # Get the last event in the iterator
             selected_events = it.grab([1,7,9])       # Get events with indices 1, 7, 9
         """
-
-        return np.squeeze(np.array(list(self[:, which])))[()]
+        with self: # so that all events are read without re-opening the file
+            return np.squeeze(np.array(list(self[:, which])))[()]
 
     @property
     def t(self):
@@ -214,6 +299,13 @@ class IteratorBaseClass(ABC):
         return self._n_batches
     
     @property
+    def has_processing(self):
+        """
+        Returns True if one or more processing functions have been added to the iterator.
+        """
+        return len(self.fncs) > 0
+    
+    @property
     def hours(self):
         """
         Returns the times (in hours) of the events in this iterators since the start of the underlying datasource.
@@ -235,6 +327,16 @@ class IteratorBaseClass(ABC):
         Returns the time base (in microseconds) of the events in the iterator.
         """
         ...
+
+    @property
+    def sample_frequency(self):
+        """
+        Returns the sampling frequency (in Hz) of the events in the iterator.
+        
+        :return: Sampling frequency (Hz)
+        :rtype: int
+        """
+        return int(1e6//self.dt_us)
 
     @property
     @abstractmethod
@@ -287,12 +389,16 @@ class IteratorCollection(IteratorBaseClass):
     :return: Iterable object
     :rtype: IteratorCollection
 
-    >>> it = H5Iterator(dh, "events", "event")
-    >>> it_collection = IteratorCollection([it, it])
-    >>> # Or simply (output of iterator addition is IteratorCollection)
-    >>> it_collection = it + it
+    .. code-block:: python
+
+        it = H5Iterator(dh, "events", "event")
+        it_collection = IteratorCollection([it, it])
+        # Or simply (output of iterator addition is IteratorCollection)
+        it_collection = it + it
     """
     def __init__(self, iterators: Union[IteratorBaseClass, List[IteratorBaseClass]]):
+        super(IteratorBaseClass, self).__init__(iterators=iterators)
+        
         # We do not construct the superclass because batching is handled differently
         self.fncs = list()
         # Check if all elements are IteratorBaseClass instances
@@ -306,11 +412,12 @@ class IteratorCollection(IteratorBaseClass):
             else:
                 raise TypeError(f"Unsupported type '{type(iterators)}' for input argument 'iterators'.")
             
-        # Check if batch usage, number of channels, record_length and dt_us are consistent
+        # Check if batch usage, number of channels, record_length, dt_us and the time axis are consistent
         batch_usage = [it.uses_batches for it in iterators]
         channel_usage = [it.n_channels for it in iterators]
         rec_usage = [it.record_length for it in iterators]
         dt_usage = [it.dt_us for it in iterators]
+        t_usage = [it.t for it in iterators]
         if len(set(batch_usage)) != 1:
             raise ValueError(f"Either all iterators must use batches or none of them. Got {batch_usage}")
         if len(set(channel_usage)) != 1:
@@ -319,12 +426,15 @@ class IteratorCollection(IteratorBaseClass):
             raise ValueError(f"All iterators must have the same record length. Got {rec_usage}")
         if len(set(dt_usage)) != 1:
             raise ValueError(f"All iterators must have the same time base. Got {dt_usage}")
+        if not np.all(np.isclose(t_usage, t_usage[0])):
+            raise ValueError(f"All iterators must have the same time axis (it.t).")
         
         self._iterators = iterators
         self._uses_batches = batch_usage[0] # made sure that batch usage is consistent above
         self._n_channels = channel_usage[0] # made sure that number of channels is consistent above
         self._dt_us = dt_usage[0] # made sure that time base is consistent above
         self._record_length = rec_usage[0] # made sure that record length is consistent above
+        self._t = t_usage[0] # made sure that all time arrays are consistent above
 
     # Overrides superclass
     def __len__(self):
@@ -390,7 +500,42 @@ class IteratorCollection(IteratorBaseClass):
         new_collection.add_processing(self.fncs.copy())
 
         return new_collection
+    
+    # Forwards .with_record_length, .with_alignment, and .with_extended_window
+    # to StreamIterator.
+    def __getattr__(self, name):
+        if name in ["with_record_length", "with_alignment", "with_extended_window"]:
+            if not all(
+                    isinstance(x, (vai.iterators.StreamIterator, vai.iterators.PulseSimIterator)) 
+                    for x in self.iterators
+                ):
+                raise NotImplementedError(f"Method '{name}' is only available if all iterators in the IteratorCollection are StreamIterators or PulseSimIterators (based on StreamIterators). At least one of the iterators in this IteratorCollection is neither. Got iterators {[it.__class__.__name__ for it in self.iterators]}.")
+            
+            if self.has_processing:
+                raise NotImplementedError(f"Cannot use method '{name}' on iterators with processing because processing might depend on window size and/or alignment and cause obscure issues. Manually remove processing first using 'old_processing = it.pop_processing()', call '{name}' on the iterator without processing, then add the 'old_processing' again if it does not depend on window size and/or alignment, or add it again after adjusting its parameters to work with the new size/alignment.")
+            
+            return lambda *args, **kwargs: self.__class__([getattr(it, name)(*args, **kwargs) for it in self.iterators])
+        else:
+            raise AttributeError(f"{self.__class__.__name__} has no attribute '{name}'.")
+    
+    # overrides default behavior
+    def with_batchsize(self, batch_size: int):
+        """
+        Returns an identical iterator but with a different batch size.
 
+        :param batch_size: The new batch size.
+        :type batch_size: int
+        """
+        new_iterator = self.__class__([it.with_batchsize(batch_size) for it in self._iterators])
+        new_iterator.add_processing(self.fncs.copy())
+
+        return new_iterator
+
+    @property
+    def t(self):
+        """Return the time axis (record window) of the events in the iterator."""
+        return self._t
+    
     @property
     def record_length(self):
         return self._record_length

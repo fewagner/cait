@@ -1,13 +1,19 @@
 import numpy as np
 
 from ..functionbase import FncBaseClass
-from ..processing.removebaseline import RemoveBaseline
 from ..processing.boxcarsmoothing import BoxCarSmoothing
+from ..processing.removebaseline import RemoveBaseline
+
 
 #### HAS NO TESTCASE YET ####
 class CalcMP(FncBaseClass):
     """
-    Calculates main parameters for an event. 
+    Calculates (traditional) main parameters for an event. 
+    
+    .. warning::
+
+        Using :class:`cait.versatile.MainParameters` is **preferred**! This function is only kept for legacy reasons.
+
     If the argument ``dT`` is set to ``None``, the output is an array of shape ``(n_channels, 9)``, where the nine entries are ``ph, t_0, t_rise, t_max, t_decaystart, t_half, t_end, offset, lin_drift``, and quantities starting with ``t_`` are given as sample indices.
     If the argument ``dT`` is set (to the microsecond time base of the recording), the (human readable) quantities ``pulse_height (V), onset (ms), rise_time (ms), decay_time (ms), slope (V)`` as a tuple.
     Also works for multiple channels simultaneously.
@@ -18,16 +24,18 @@ class CalcMP(FncBaseClass):
     :type peak_bounds: tuple, optional
     :param edge_size: The (relative) size of the record window that is used to compute the linear drift. Defaults to 1/8, meaning that the first and last 1/8th of the record window is used.
     :type edge_size: float, optional
-    :param box_car_smoothing: Arguments for class:`BoxCarSmoothing`, which are used for the application of the moving average. Defaults to ``{'length': 50}``.
+    :param box_car_smoothing: Arguments for :class:`BoxCarSmoothing`, which are used for the application of the moving average. Defaults to ``{'length': 50}``.
     :type box_car_smoothing: dict, optional
-    :param fit_baseline: Arguments for class:`FitBaseline`, which are used for the baseline subtractions. Defaults to ``{'model': 0, 'where': 1/8, 'xdata': None}``.
+    :param fit_baseline: Arguments for :class:`FitBaseline`, which are used for the baseline subtractions. Defaults to ``{'model': 0, 'where': 1/8, 'xdata': None}``.
     :type fit_baseline: dict, optional
 
     :return: Either an array or tuple. See above.
     :rtype: np.ndarray, tuple
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         import cait.versatile as vai
 
         # Get events from mock data (and remove baseline)
@@ -43,7 +51,9 @@ class CalcMP(FncBaseClass):
         vai.Histogram({'ch0': pulse_height[:,0], 'ch1': pulse_height[:,1]})
 
     **Example Preview:**
-    ::
+
+    .. code-block:: python
+    
         import cait.versatile as vai
 
         # Get events from mock data (and remove baseline)

@@ -1,11 +1,13 @@
-import pytest
 import tempfile
 
 import numpy as np
+import pytest
+
 import cait as ai
-from cait.versatile import SEV, NPS, OF
+from cait.versatile import NCM, NPS, OF, SEV, TukeyWindow
 
 from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus
+
 
 @pytest.fixture(scope="module")
 def dh(datahandler, testdata_1D_2D_3D_s_mus):
@@ -19,19 +21,21 @@ def dh(datahandler, testdata_1D_2D_3D_s_mus):
 
     yield datahandler
 
+
 def basic_checks(dh, obj, k):
     # Indexing
     n_channels = obj.ndim
     assert obj[:].ndim == n_channels
     assert obj[list(range(n_channels))].ndim == n_channels
-    if n_channels > 1: assert obj[0].ndim == 1
+    if n_channels > 1:
+        assert obj[0].ndim == 1
 
     # numpy slicing and assignment
     if n_channels > 1:
-        obj[0,:10]
-        obj[:,0]
-        obj[0,0]
-        obj[:,0] = 0
+        obj[0, :10]
+        obj[:, 0]
+        obj[0, 0]
+        obj[:, 0] = 0
     else:
         obj[:10]
         obj[:]
@@ -40,12 +44,18 @@ def basic_checks(dh, obj, k):
 
     # Methods
     obj.show(backend="plotly")
-    obj.show(dt_us=5, backend="plotly")
     appendix = f"_{obj.__class__.__name__}_{k}"
-    obj.to_file(fname="test"+appendix, out_dir=dh.get_filedirectory())
-    obj.__class__.from_file(fname="test"+appendix, src_dir=dh.get_filedirectory())
-    obj.to_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
-    obj.__class__.from_dh(dh, group=f"test_group"+appendix, dataset="test_ds")
+    obj.to_file(fname="test" + appendix, out_dir=dh.get_filedirectory())
+    obj.__class__.from_file(fname="test" + appendix, src_dir=dh.get_filedirectory())
+    obj.to_dh(dh, group=f"test_group" + appendix, dataset="test_ds")
+    obj.__class__.from_dh(dh, group=f"test_group" + appendix, dataset="test_ds")
+
+    # check if errors work
+    with pytest.raises(ValueError):
+        obj.__class__([1, 2, 3, 4], dt_us=dh.dt_us * 2).to_dh(
+            dh, group="test_raise" + appendix
+        )
+
 
 def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     d1, d2, *_ = testdata_1D_2D_3D_s_mus
@@ -53,9 +63,9 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     sev1 = SEV()
 
     # Creation from arrays
-    sev2 = SEV(d2.copy())
-    sev3 = SEV(d1.copy())
-    sev4 = SEV(d1.flatten().copy())
+    sev2 = SEV(d2.copy(), dt_us=dh.dt_us)
+    sev3 = SEV(d1.copy(), dt_us=dh.dt_us)
+    sev4 = SEV(d1.flatten().copy(), dt_us=dh.dt_us)
     assert np.array_equal(sev3, sev4)
 
     # Check consistency with vanilla cait
@@ -66,6 +76,13 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     sev6 = SEV(it)
     sev7 = SEV(it[0])
     assert np.array_equal(sev6[0], sev7)
+    assert sev6.dt_us == sev6[0].dt_us
+
+    it = dh.get_event_iterator("events", batch_size=13)
+    sev8 = SEV(it)
+    sev9 = SEV(it[0])
+    assert np.array_equal(sev6, sev8)
+    assert np.array_equal(sev7, sev9)
 
     basic_checks(dh, sev2, 0)
     basic_checks(dh, sev3, 1)
@@ -76,15 +93,16 @@ def test_SEV(dh, testdata_1D_2D_3D_s_mus):
     basic_checks(dh, sev2[0], 6)
     basic_checks(dh, sev5[0], 7)
 
+
 def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     d1, d2, *_ = testdata_1D_2D_3D_s_mus
     # Empty creation
     nps1 = NPS()
 
     # Creation from arrays
-    nps2 = NPS(d2.copy())
-    nps3 = NPS(d1.copy())
-    nps4 = NPS(d1.flatten().copy())
+    nps2 = NPS(d2.copy(), dt_us=dh.dt_us)
+    nps3 = NPS(d1.copy(), dt_us=dh.dt_us)
+    nps4 = NPS(d1.flatten().copy(), dt_us=dh.dt_us)
     assert np.array_equal(nps3, nps4)
 
     # Check consistency with vanilla cait
@@ -95,6 +113,13 @@ def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     nps6 = NPS(it)
     nps7 = NPS(it[0])
     assert np.array_equal(nps6[0], nps7)
+    assert nps6.dt_us == nps6[0].dt_us
+
+    it = dh.get_event_iterator("noise", batch_size=13)
+    nps8 = NPS(it)
+    nps9 = NPS(it[0])
+    assert np.array_equal(nps6, nps8)
+    assert np.array_equal(nps7, nps9)
 
     basic_checks(dh, nps2, 0)
     basic_checks(dh, nps3, 1)
@@ -105,16 +130,60 @@ def test_NPS(dh, testdata_1D_2D_3D_s_mus):
     basic_checks(dh, nps2[0], 6)
     basic_checks(dh, nps5[0], 7)
 
+
+def test_NCM(dh):
+    # Create empty
+    ncm1 = NCM()
+
+    # Creation from array
+    ncm2 = NCM(np.ones((3, 3, 100), dtype=np.complex128), dt_us=dh.dt_us)
+
+    # Creation from iterator
+    it = dh.get_event_iterator("noise")
+    ncm3 = NCM(it)
+    nps3 = NPS(it)
+    ncm4 = NCM(it[0])
+    nps4 = NPS(it[0])
+    assert np.array_equal(ncm3[0, 0], nps3[0])
+    assert np.array_equal(ncm3[1, 1], nps3[1])
+    assert np.array_equal(ncm4[0, 0], nps4)
+    assert np.array_equal(ncm3[0, 1], np.conjugate(ncm3[1, 0]))
+
+    it = dh.get_event_iterator("noise", batch_size=13)
+    ncm5 = NCM(it)
+    ncm6 = NCM(it[0])
+    assert np.array_equal(ncm5, ncm3)
+    assert np.array_equal(ncm6, ncm4)
+
+    def basic_checks_adapted(obj, k):
+        obj.show(backend="plotly")
+        appendix = f"_NCM_{k}"
+        obj.to_file(fname="test" + appendix, out_dir=dh.get_filedirectory())
+        new_ncm = NCM.from_file(fname="test" + appendix, src_dir=dh.get_filedirectory())
+        assert np.array_equal(new_ncm, obj)
+
+        obj.to_dh(dh, group="test_group" + appendix, dataset="test_ds")
+        new_ncm = NCM.from_dh(dh, group="test_group" + appendix, dataset="test_ds")
+        assert np.array_equal(new_ncm, obj)
+
+    basic_checks_adapted(ncm2, 0)
+    basic_checks_adapted(ncm3, 1)
+    basic_checks_adapted(ncm4, 2)
+    basic_checks_adapted(ncm5, 3)
+    basic_checks_adapted(ncm6, 4)
+
+
 def test_OF(dh, testdata_1D_2D_3D_s_mus):
     d1, d2, *_ = testdata_1D_2D_3D_s_mus
     # Empty creation
     of1 = OF()
 
     # Creation from arrays
-    of2 = OF(d2.copy())
-    of3 = OF(d1.copy())
-    of4 = OF(d1.flatten().copy())
+    of2 = OF(d2.copy(), dt_us=dh.dt_us)
+    of3 = OF(d1.copy(), dt_us=dh.dt_us)
+    of4 = OF(d1.flatten().copy(), dt_us=dh.dt_us)
     assert np.array_equal(of3, of4)
+    assert of2.dt_us == of2[0].dt_us
 
     # Check consistency with vanilla cait
     of5 = OF.from_dh(dh)
@@ -123,6 +192,7 @@ def test_OF(dh, testdata_1D_2D_3D_s_mus):
     of6 = OF(SEV.from_dh(dh), NPS.from_dh(dh))
     of7 = OF(SEV(dh.get_event_iterator("events")), NPS(dh.get_event_iterator("noise")))
     of8 = OF(NPS(dh.get_event_iterator("noise")), SEV(dh.get_event_iterator("events")))
+    of9 = OF(NCM(dh.get_event_iterator("noise")), SEV(dh.get_event_iterator("events")))
     assert np.array_equal(of7, of8)
 
     basic_checks(dh, of2, 0)
@@ -132,6 +202,21 @@ def test_OF(dh, testdata_1D_2D_3D_s_mus):
     basic_checks(dh, of6, 4)
     basic_checks(dh, of7, 5)
     basic_checks(dh, of8, 6)
+    basic_checks(dh, of9, 7)
     basic_checks(dh, of2[0], 9)
     basic_checks(dh, of5[0], 10)
     basic_checks(dh, of8[0], 11)
+
+    # Check consistency with OF CREATED by vanilla cait
+    # For that we create the NPS and OF with the respective
+    # DataHandler functions (cait automatically applies
+    # a windowing function for both the NPS and OF calculation,
+    # which we have to correct for when creating the same OF
+    # with cait.versatile)
+    sev_vanilla = SEV.from_dh(dh)
+    nps_vanilla = NPS.from_dh(dh)
+    of_vanilla = OF.from_dh(dh)
+
+    of_vai = OF(TukeyWindow()(sev_vanilla), nps_vanilla, dt_us=of_vanilla.dt_us)
+
+    assert np.all(np.abs(of_vanilla - of_vai) < 1e-2)

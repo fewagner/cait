@@ -67,12 +67,14 @@ class TestRDT:
         f1.dt_us
         f1.measuring_time_h
         f1.keys
-        f1.get_voltage_trace([0,1,2])
+        f1.get_trace([0,1,2], voltage=True)
+        f1.get_trace([0,1,2], voltage=False)
 
         f2.dt_us
         f2.measuring_time_h
         f2.keys
-        f2.get_voltage_trace([0,1,2])
+        f2.get_trace([0,1,2], voltage=True)
+        f2.get_trace([0,1,2], voltage=False)
 
     def test_methods_channels(self, rdt_files):
         f1, f2 = rdt_files

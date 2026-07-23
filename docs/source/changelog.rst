@@ -1,25 +1,47 @@
 Features and Changelog
 ======================
 
-On this page we assemble the features of current Cait realeases and changes from the past versions.
+On this page we assemble the features of current ``cait`` releases and changes from the past versions.
+
+v.1.3.0
+~~~~~~~
+- Features:
+    - Release of :ref:`cait.versatile <caitversatile>`, the flexible cait. With many new functions that will make your life easier -- have a look!
+    - New/updated :ref:`tutorials <tutorials>` **Triggering stream data**, **Interacting with HDF5 files**, **Creating SEV, NPS, OF**, **Reconstructing the pulse amplitude**, **Energy Calibration**, **Efficiency Simulation**, **Processing many files using SLURM jobs**.
+    - Added :func:`dh.trigger_zscore <cait.mixins.TriggerCollectionMixin.trigger_zscore>` and :func:`dh.trigger_of <cait.mixins.TriggerCollectionMixin.trigger_of>` for triggering independent of hardware (also included VDAQ3 hardware)
+    - Added short-cut notation for :func:`dh.get <cait.DataHandler.get>`: Now you can slice a DataHandler object using ``dh['<group>/<dataset>']``. Additionally, this syntax supports iPython's TAB-completion, i.e. you can start typing ``dh[`` and hit 'TAB' to preview a list of possible datasets.
+    - Added :func:`dh.apply_template_fit <cait.mixins.FitMixin.apply_template_fit>` which replaces :func:`dh.apply_array_fit <cait.mixins.FitMixin.apply_array_fit>` (now deprecated). In the new method, you have more control over the level of correlation between multiple channels, you can provide flags (for only fitting a subset), and you can preview the effect of the fit before applying it.
+    - Added :func:`dh.apply_ofilter <cait.mixins.FeaturesMixin.apply_ofilter>` which replaces :func:`dh.apply_of <cait.mixins.FeaturesMixin.apply_of>` (now deprecated). In the new method, you have more control over the level of correlation between multiple channels, and you can preview the effect of the pulse height determination before applying the function.
+    - Added :func:`dh.cmp <cait.mixins.MainParametersMixin.cmp>` which replaces :func:`dh.calc_cmp <cait.mixins.FeaturesMixin.calc_mp>` (now deprecated).
+    - Added :func:`dh.efficiency_sim_trigger_of <cait.mixins.SimulateMixin.efficiency_sim_trigger_of>` for performing efficiency simulations.
+    - Added dcache file reading support (dcap, WebDAV and XRootD protocol; recommended protocol: XRootD)
+    - Added pipeline to build containers for released versions and development branch (on CERN gitlab)
+
+- Changes:
+    - Moved functions to combine/merge hdf5 files to :func:`cait.data.combine_h5 <cait.data.combine_h5>` and :func:`cait.data.merge_h5 <cait.data.merge_h5>`. The previous implementation :func:`cait.data.merge_h5_sets <cait.data.merge_h5_sets>` has been deprecated.
+    - The templates were removed from the documentation page as they do not reflect the current best-practice usage of ``cait`` anymore. We are working on new templates.
+    - Deprecated :func:`dh.show_values <cait.mixins.PlotMixin.show_values>`, :func:`dh.show_sev <cait.mixins.PlotMixin.show_sev>`, :func:`dh.show_exceptional_sev <cait.mixins.PlotMixin.show_exceptional_sev>`, :func:`dh.show_nps <cait.mixins.PlotMixin.show_nps>`, :func:`dh.show_of <cait.mixins.PlotMixin.show_of>`, :func:`dh.show_scatter <cait.mixins.PlotMixin.show_scatter>`, :func:`dh.show_hist <cait.mixins.PlotMixin.show_hist>`, :func:`dh.show_scatter <cait.mixins.PlotMixin.show_scatter>`, :func:`dh.include_values <cait.mixins.FeaturesMixin.include_values>` (in addition to the ones mentioned above). Will be removed in version 2.0.0.
+
+- Fixes:
+    - Minor fixes (including OverflowError in ``numpy>=2``)
 
 v.1.2.2
 ~~~~~~~
 - Added support for python versions 3.11 and 3.12
-- Added possibility to automatically calculate RMS when applying the optimum filter. The option can be toggled using the `calc_rms` keyword on the `dh.apply_of` method.
+- Added possibility to automatically calculate RMS when applying the optimum filter. The option can be toggled using the ``calc_rms`` keyword on the ``dh.apply_of`` method.
 - Added tests for general workflow
-- New (experimental) features in `cait.versatile`
-- Documentation for `cait.versatile` in preparation
+- New (experimental) features in ``cait.versatile``
+- Documentation for ``cait.versatile`` in preparation
 
 v1.2.1
 ~~~~~~
-- SEV fit parameters of extended pulse shape models are now supported by `cait` analysis routines like `show_sev` and `simulate_pulses`. If the dataset `fitpar` in the `stdevent` group has length `6`, it is assumed to be of the form `(t0, An, At, tau_n, tau_in, tau_t)` and the regular `2`-component pulse shape model is used. If it is of length `2(k+1)` for `k=3,4,...`, an extended `k`-component model is used and the parameters are assumed to be in order `(t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n)`. Notice, however, that there is currently no function which does the corresponding fit for you due to yet unresolved restrictions in the `cait` source code. Therefore, you have to perform the fit yourself, e.g. by using the model function `cait.fit._templates.pulse_template` (which supports extended models) and any fit routine of your choice. Afterwards, you can include the results in the HDF5 file using `DataHandler.set()`.
-- Fixed deprecation issue due to missing `seaborn-paper` style in matplotlib version 3.8.0
-- Fixed a bug where the `exclude_tpas` keyword in `PulserModel` and derived functionalities like `calc_calibration` would not correctly exclude small testpulse amplitudes.
-- Fixed a minor bug in `PulserModel`'s standard-deviation-estimation.
-- Fixed a bug where the voltage trace view in `vizTool` would incorrectly subtract baselines for very short record lengths.
+- SEV fit parameters of extended pulse shape models are now supported by ``cait`` analysis routines like ``show_sev`` and ``simulate_pulses``. If the dataset ``fitpar`` in the ``stdevent`` group has length `6`, it is assumed to be of the form ``(t0, An, At, tau_n, tau_in, tau_t)`` and the regular ``2``-component pulse shape model is used. If it is of length ``2(k+1)`` for ``k=3,4,...``, an extended ``k``-component model is used and the parameters are assumed to be in order ``(t0, A1, A2, ..., Ak, tau_in, tau_2, ..., tau_k, tau_n)``. Notice, however, that there is currently no function which does the corresponding fit for you due to yet unresolved restrictions in the ``cait`` source code. Therefore, you have to perform the fit yourself, e.g. by using the model function ``cait.fit._templates.pulse_template`` (which supports extended models) and any fit routine of your choice. Afterwards, you can include the results in the HDF5 file using ``DataHandler.set()``.
+- Fixed deprecation issue due to missing ``seaborn-paper`` style in matplotlib version 3.8.0
+- Fixed a bug where the ``exclude_tpas`` keyword in ``PulserModel`` and derived functionalities like ``calc_calibration`` would not correctly exclude small testpulse amplitudes.
+- Fixed a minor bug in ``PulserModel``'s standard-deviation-estimation.
+- Fixed a bug where the voltage trace view in ``vizTool`` would incorrectly subtract baselines for very short record lengths.
 - Fixed a bug where creating an optimum filter with downsampling factor larger than 1 did not work for single-channel-data.
-- New (experimental) features in `cait.versatile`.
+- New (experimental) features in ``cait.versatile``.
 
 v1.2.0
 ~~~~~~
@@ -86,7 +108,7 @@ New features:
     A folder to store pre-trained models. Two pre-trained models are delivered with the packe.
 
 - VDAQ functionalities
-    Methods to include events from VDAQ2-written `*.bin` files. A trigger method is not included,
+    Methods to include events from VDAQ2-written ``*.bin`` files. A trigger method is not included,
     for this we recommend the use of external repositories, to write the time stamps.
 
 New methods to calculate properties of events:
@@ -146,8 +168,8 @@ This is the first stable, full release of Cait. In this original version, the fo
 - Data access:
     - Conversion of raw data file formats to structured HDF5 files.
     - Conversion of Root files to HDF5 files.
-    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from `*.xy` files
-    - Import of trigger time stamps from `*.trip` files
+    - Im- and Export of arbitrary feature values, standard events, filters, noise power spectra to and from ``*.xy`` files
+    - Import of trigger time stamps from ``*.trip`` files
 - Calculation of features:
     - Main parameters
     - Standard events
@@ -157,7 +179,7 @@ This is the first stable, full release of Cait. In this original version, the fo
     - Principal components
     - Baseline fits
 - Processing of continuously recorded raw data:
-    - Stream (`*.csmpl`) triggering with or without optimum filtering.
+    - Stream (``*.csmpl``) triggering with or without optimum filtering.
     - Synchronisation with hardware triggered data.
     - Simulation of random triggers on the continuous data stream.
 - Raw data analysis tools:

@@ -1,11 +1,12 @@
 import os
 
-import numpy as np
 import h5py
+import numpy as np
+from deprecation import deprecated
 from tqdm.auto import tqdm
 
-from ..trigger._csmpl import align_triggers, sample_to_time, exclude_testpulses
-from ..trigger._bin import get_record_window_vdaq, trigger_bin, read_header
+from ..trigger._bin import get_record_window_vdaq, read_header, trigger_bin
+from ..trigger._csmpl import align_triggers, exclude_testpulses, sample_to_time
 
 # -----------------------------------------------------------
 # CLASS
@@ -16,6 +17,7 @@ class BinMixin(object):
     A Mixin Class to the DataHandler Class with methods for the triggering of `*.bin` files.
     """
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_vtrigger_stamps(self,
                                 triggers: list,  # in seconds
                                 name_appendix: str = '',
@@ -83,6 +85,7 @@ class BinMixin(object):
 
             print('DONE')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_bin_triggers(self,
                              path: str,
                              dtype: np.dtype,
@@ -235,7 +238,7 @@ class BinMixin(object):
 
             print('DONE')
 
-
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_triggered_events_vdaq(self,
                                       path,
                                       dtype,
@@ -489,6 +492,7 @@ class BinMixin(object):
 
             print('DONE')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_dac_triggers(self,
                              path: str,
                              dtype,
@@ -586,6 +590,7 @@ class BinMixin(object):
 
         print('DONE')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_test_stamps_vdaq(self,
                                  triggers: list,  # in seconds
                                  tpas: list,
@@ -654,6 +659,7 @@ class BinMixin(object):
 
         print('Test Stamps included.')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_noise_events_vdaq(self,
                                   path,
                                   dtype,

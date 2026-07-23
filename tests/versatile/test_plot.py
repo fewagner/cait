@@ -1,6 +1,11 @@
+import sys
+
 import pytest
 import numpy as np
 import cait.versatile as vai
+
+from ..fixtures import spoof_stdin
+
 
 x = np.linspace(0.1,1,100)
 
@@ -16,7 +21,8 @@ DATA = dict(
     histogram = dict(
         hist1 = [None, np.sin(x)],
         hist2 = [100, np.sin(x)],
-        hist3 = [(0.1,1,20), np.sin(x)] 
+        hist3 = [(0.1,1,20), np.sin(x)],
+        hist4 = [np.arange(1,10), np.sin(x)] 
     ),
     axes = dict(
         xaxis = {"label": "xlabel", "scale": "log"},
@@ -56,6 +62,8 @@ class TestViewerPlotly:
         v.update_histogram(name="histogram1", data=DATA["scatter"]["scatter2"][1], bins=10)
         v.update_histogram(name="histogram2", data=DATA["scatter"]["scatter1"][1], bins=(0,1,10))
 
+        v.add_button(text="some button", callback=lambda x: None, tooltip="some tooltip", key="K")
+
     def test_getter_setter(self):
         v = vai.Viewer(backend=self.BACKEND, 
                             show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
@@ -75,10 +83,17 @@ class TestViewerPlotly:
         v.show_legend(True)
         v.show_legend(False)
 
+    def test_edit_artist(self):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.get_artist("line").line.dash = "dash"
+
 class TestViewerMPL(TestViewerPlotly):
     BACKEND = "mpl"
     TEMPLATE = "seaborn-v0_8"
 
+    @pytest.mark.filterwarnings('ignore:No artists with labels found to put in legend.')
     def test_legend(self):
         v = vai.Viewer(backend=self.BACKEND, show_controls=self.SHOW_CONTROLS,
                             template=self.TEMPLATE)
@@ -87,12 +102,42 @@ class TestViewerMPL(TestViewerPlotly):
         with pytest.raises(NotImplementedError):
             v.show_legend(False)
 
+    def test_edit_artist(self):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.get_artist("line").set_linestyle("--")
+        v.update()
+
+@pytest.mark.usefixtures("spoof_stdin")
 class TestViewerUniplot(TestViewerPlotly):
     BACKEND = "uniplot"
-    SHOW_CONTROLS = False   # Otherwise the plot waits for stdin
+    SHOW_CONTROLS = True
 
     def test_legend(self):
         ... # Implementation for uniplot makes no sense
+
+    def test_edit_artist(self):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=self.SHOW_CONTROLS, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+
+        with pytest.raises(NotImplementedError):
+            v.get_artist("line")
+
+    # Test the standard interactions possible in our Uniplot viewer
+    # Not sure whether the method used works on Windows, will test later
+    @pytest.mark.skipif(not sys.platform.startswith("linux"), reason="Test only known to work on Linux")
+    def test_interaction(self, spoof_stdin):
+        v = vai.Viewer(backend=self.BACKEND, 
+                            show_controls=True, template=self.TEMPLATE)
+        v.add_line(x=DATA["line"]["line1"][0], y=DATA["line"]["line1"][1], name="line")
+        v.update()
+        spoof_stdin.push('sdfeior')  # Check all standard input
+        spoof_stdin.push('q')  # Exit
+        v.show()
+
+
 
 class TestLinePlotly:
     BACKEND = "plotly"
@@ -134,9 +179,10 @@ class TestLineMPL(TestLinePlotly):
     BACKEND = "mpl"
     TEMPLATE = "seaborn-v0_8"
 
+@pytest.mark.usefixtures("spoof_stdin")
 class TestLineUniplot(TestLinePlotly):
     BACKEND = "uniplot"
-    SHOW_CONTROLS = False   # Otherwise the plot waits for stdin
+    SHOW_CONTROLS = True
     ALLOW_LOG = False       # Uniplot backend cannot handle 0 values with log-scale
 
 class TestScatterPlotly:
@@ -171,9 +217,10 @@ class TestScatterMPL(TestScatterPlotly):
     BACKEND = "mpl"
     TEMPLATE = "seaborn-v0_8"
 
+@pytest.mark.usefixtures("spoof_stdin")
 class TestScatterUniplot(TestScatterPlotly):
     BACKEND = "uniplot"
-    SHOW_CONTROLS = False   # Otherwise the plot waits for stdin
+    SHOW_CONTROLS = True
     ALLOW_LOG = False       # Uniplot backend cannot handle 0 values with log-scale
 
 class TestHistogramPlotly:
@@ -218,9 +265,10 @@ class TestHistogramMPL(TestHistogramPlotly):
     BACKEND = "mpl"
     TEMPLATE = "seaborn-v0_8"
 
+@pytest.mark.usefixtures("spoof_stdin")
 class TestHistogramUniplot(TestHistogramPlotly):
     BACKEND = "uniplot"
-    SHOW_CONTROLS = False   # Otherwise the plot waits for stdin
+    SHOW_CONTROLS = True
     ALLOW_LOG = False       # Uniplot backend cannot handle 0 values with log-scale
 
 class TestPreview:

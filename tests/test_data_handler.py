@@ -5,7 +5,7 @@ import h5py
 import numpy as np
 import cait as ai
 
-from .fixtures import tempdir, datahandler, testdata_1D_2D_3D_s_mus, RECORD_LENGTH
+from .fixtures import tempdir, datahandler, testdata_1D_2D_3D_s_mus, testdata_1D_2D_3D_s_mus_int16, RECORD_LENGTH
 
 class TestDataHandler:
     # tests all methods directly defined in DataHandler (not within mixins) except:
@@ -116,6 +116,21 @@ class TestDataHandler:
         diffs.append( datahandler.get("group3", "ds1d", 1) - 10*d1)
         diffs.append( datahandler.get("group3", "ds2d", 0, None, 3) - d2[:,3])
         diffs.append( datahandler.get("group3", "ds2d", 1, [1]) - 100*d2[1])
+        # check short-cut notation
+        diffs.append( datahandler.get("group2", "ds1") - datahandler["group2/ds1"] )
+        diffs.append( datahandler.get("group2", "ds2") - datahandler["group2/ds2"] )
+        diffs.append( datahandler.get("group2", "ds3") - datahandler["group2/ds3"] )
+        diffs.append( datahandler.get("group3", "ds1d") - datahandler["group3/ds1d"] )
+        diffs.append( datahandler.get("group3", "ds2d") - datahandler["group3/ds2d"] )
+        diffs.append( datahandler.get("group4", "ds") - datahandler["group4/ds"] )
+        diffs.append( datahandler.get("group3", "ds1d", 0) - 
+                        datahandler["group3/ds1d", 0])
+        diffs.append( datahandler.get("group3", "ds1d", 1) - 
+                        datahandler["group3/ds1d", 1])
+        diffs.append( datahandler.get("group3", "ds2d", 0, None, 3) - 
+                        datahandler["group3/ds2d", 0, :, 3])
+        diffs.append( datahandler.get("group3", "ds2d", 1, [1]) - 
+                        datahandler["group3/ds2d", 1, [1]])
 
         assert all( [np.all(np.abs(d) < 1e-5) for d in diffs] )
 
@@ -158,12 +173,14 @@ class TestDataHandler:
         datahandler.content()
  
     # The correct functioning of EventIterator is tested in the respective test file
-    def test_event_iterator(self, datahandler, testdata_1D_2D_3D_s_mus): 
-        *_ , d3, s, mus = testdata_1D_2D_3D_s_mus
+    def test_event_iterator(self, datahandler, testdata_1D_2D_3D_s_mus_int16): 
+        *_ , d3, s, mus = testdata_1D_2D_3D_s_mus_int16
+        ts = s*int(1e6) + mus
 
         # Prepare datasets
         datahandler.set("iterator_testing", event=d3)
         datahandler.set(group="iterator_testing", time_s=s, time_mus=mus, dtype=np.int32)
+        datahandler.set(group="iterator_testing", hours=(ts - np.min(ts))/1e6/3600, dtype=np.float32)
 
         it1 = datahandler.get_event_iterator("iterator_testing")
         it2 = datahandler.get_event_iterator("iterator_testing", batch_size=13)
@@ -178,6 +195,22 @@ class TestDataHandler:
             datahandler.get("iterator_testing_out", "hours")
             datahandler.drop("iterator_testing_out")
 
+            # Test saving as int16
+            # The iterators it1/it2 are produced using int16 data converted to "voltage" using
+            # convert_to_V(), so saving this iterator in the int16 format and retrieving it from
+            # the data handler should produce an exact copy of the initial iterator.
+            # First check the same parameters as above.
+            datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
+            datahandler.get("iterator_testing_int", "time_s")
+            datahandler.get("iterator_testing_int", "time_mus")
+            datahandler.get("iterator_testing_int", "hours")
+            assert datahandler.get("iterator_testing_int", "event").shape == (2, 100, RECORD_LENGTH)
+            # Retrieve the iterator saved in the int16 format, and compare it event-by-event to
+            # the initial iterator.  The assumption is that it should exactly match.
+            iti = datahandler.get_event_iterator("iterator_testing_int")
+            assert np.all([it.grab(x) == iti.grab(x) for x in range(len(iti))])
+            datahandler.drop("iterator_testing_int")
+
         for it in [it3, it4]:
             datahandler.include_event_iterator("iterator_testing_out", it)
             assert datahandler.get("iterator_testing_out", "event").shape == (1, 100, RECORD_LENGTH)
@@ -185,6 +218,23 @@ class TestDataHandler:
             datahandler.get("iterator_testing_out", "time_mus")
             datahandler.get("iterator_testing_out", "hours")
             datahandler.drop("iterator_testing_out")
+
+            # Test saving as int16
+            # The iterators it3/it4 are produced using int16 data converted to "voltage" using
+            # convert_to_V(), so saving this iterator in the int16 format and retrieving it from
+            # the data handler should produce an exact copy of the initial iterator.
+            # First check the same parameters as above.
+            datahandler.include_event_iterator("iterator_testing_int", it, dtype="int16")
+            datahandler.get("iterator_testing_int", "time_s")
+            datahandler.get("iterator_testing_int", "time_mus")
+            datahandler.get("iterator_testing_int", "hours")
+            assert datahandler.get("iterator_testing_int", "event").shape == (1, 100, RECORD_LENGTH)
+            # Retrieve the iterator saved in the int16 format, and compare it event-by-event to
+            # the initial iterator.  The assumption is that it should exactly match.
+            iti = datahandler.get_event_iterator("iterator_testing_int")
+            assert np.all([it.grab(x) == iti.grab(x) for x in range(len(iti))])
+            datahandler.drop("iterator_testing_int")
+
 
         with pytest.raises(Exception): # already existing dataset
             it = datahandler.get_event_iterator("iterator_testing")

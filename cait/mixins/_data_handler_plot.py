@@ -1,12 +1,13 @@
 import warnings
 
-import numpy as np
 import h5py
 import matplotlib.pyplot as plt
+import numpy as np
+from deprecation import deprecated
 
-from ..fit._templates import pulse_template
 from ..fit._saturation import logistic_curve
-from ..styles._plt_styles import use_cait_style, make_grid
+from ..fit._templates import pulse_template
+from ..styles._plt_styles import make_grid, use_cait_style
 
 # functions
 
@@ -30,6 +31,7 @@ class PlotMixin(object):
     """
 
     # Plot the SEV
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.SEV.show() instead")
     def show_sev(self,
                  type='stdevent',
                  channel=None,
@@ -125,6 +127,7 @@ class PlotMixin(object):
             if show:
                 plt.show(block=block)
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.SEV.show() instead")
     def show_exceptional_sev(self,
                              naming,
                              title=None,
@@ -191,6 +194,7 @@ class PlotMixin(object):
                 plt.show(block=block)
 
     # Plot the NPS
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.NPS.show() instead")
     def show_nps(self,
                  channel=None,
                  title=None,
@@ -264,6 +268,7 @@ class PlotMixin(object):
                 plt.show(block=block)
 
     # Plot the OF
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.OF.show() instead")
     def show_of(self,
                 channel=None,
                 title=None,
@@ -487,6 +492,7 @@ class PlotMixin(object):
         return efficiency, all, bins
 
     # plot histogram of some value
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.Histogram instead")
     def show_values(self,
                     group,
                     key,
@@ -601,6 +607,7 @@ class PlotMixin(object):
                 plt.show(block=block)
 
     # show scatter plot of some value
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.Scatter instead")
     def show_scatter(self,
                      groups,
                      keys,
@@ -715,6 +722,7 @@ class PlotMixin(object):
                 plt.show(block=block)
 
     # show histogram of main parameter
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use cait.versatile.Histogram instead")
     def show_hist(self,
                   title=None,
                   which_mp='pulse_height',

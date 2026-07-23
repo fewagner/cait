@@ -20,7 +20,11 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
-    def _add_histogram(bins: Union[int, tuple], data: List[float], name: str = None):
+    def _add_histogram(bins: Union[int, tuple, list], data: List[float], name: str = None):
+        ...
+
+    @abstractmethod
+    def _add_heatmap(x: list, y: list, bins: Union[int, tuple, list], name: str = None):
         ...
 
     @abstractmethod
@@ -36,11 +40,19 @@ class BackendBaseClass(ABC):
         ...
 
     @abstractmethod
-    def _update_histogram(name: str, bins: Union[int, tuple], data: List[float]):
+    def _update_histogram(name: str, bins: Union[int, tuple, list], data: List[float]):
+        ...
+
+    @abstractmethod
+    def _update_heatmap(name: str, x: list, y: list, bins: Union[int, tuple, list]):
         ...
 
     @abstractmethod
     def _update_vmarker(name: str, marker_pos: List[float], y_int: Tuple[float]):
+        ...
+
+    @abstractmethod
+    def _get_artist(name: str):
         ...
 
     @abstractmethod
@@ -80,4 +92,9 @@ class BackendBaseClass(ABC):
     @property
     @abstractmethod
     def histogram_names(self):
+        ...
+
+    @property
+    @abstractmethod
+    def heatmap_names(self):
         ...

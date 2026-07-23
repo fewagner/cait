@@ -1,15 +1,18 @@
 import os
-
 from typing import Union
 
 import numpy as np
+
 import cait as ai
 
-from .par_file import PARFile
-from ..datasourcebase import DataSourceBaseClass
+from ....readers import BinaryFile
+from ....serialize import SerializingMixin
 from ...iterators.impl_rdt import RDTIterator
+from ..datasourcebase import DataSourceBaseClass
+from .par_file import PARFile
 
-class RDTFile:
+
+class RDTFile(SerializingMixin):
     """
     Class for interfacing hardware triggered files (file extension `.rdt`). This class automatically infers the available channels and the available correlated channels. Those can be retrieved by indexing the RDTFile object with channel indices/names or tuples thereof, the result of the indexing is a :class:`RDTChannel` object which provides testpulse amplitudes, timestamps, and event iterators for (the) selected channel(s) (see documentation for :class:`RDTChannel`).
 
@@ -22,7 +25,9 @@ class RDTFile:
     :rtype: RDTFile
 
     **Example:**
-    ::
+
+    .. code-block:: python
+
         import cait.versatile as vai
 
         f = vai.RDTFile('path/to/file.rdt')
@@ -42,6 +47,8 @@ class RDTFile:
         vai.Preview(it_testpulses.with_processing(vai.RemoveBaseline()))
     """
     def __init__(self, path: str, path_par: str = None):
+        super().__init__(path=path, path_par=path_par)
+        
         if not path.endswith(".rdt"):
             raise ValueError("Unrecognized file extension for 'path'. Please input an *.rdt file.")
         
@@ -72,11 +79,18 @@ class RDTFile:
                        ('samples', 'i2', self._par.record_length),
                        ])
         
-        self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
-
+        self._raw_file = BinaryFile(path=path, dtype=self._dtype)
+        #self._raw_file = np.memmap(path, dtype=self._dtype, mode='r')
+        
         # Copy the relevant data to memory so that we don't have to go through
         # the memory mapped file all the time (this should only need a few MB of RAM)
-        meta_copy = np.array(self._raw_file[["detector_nmbr", "trig_count"]])
+        with self._raw_file as f:
+            # iterating through the file like this is much faster than calling np.array(f[["detector_nmbr", "trig_count"]])
+            meta_copy = {"detector_nmbr": np.zeros(len(f), dtype=np.int32), 
+                         "trig_count": np.zeros(len(f), dtype=np.int32)}
+            for i in range(len(f)):
+                meta_copy["detector_nmbr"][i] = f[i, "detector_nmbr"]
+                meta_copy["trig_count"][i] = f[i, "trig_count"]
 
         self._available_channels = np.unique(meta_copy["detector_nmbr"]).tolist()
 
@@ -129,7 +143,7 @@ class RDTFile:
             # data indices
             unique_tuples = dict()
             for n, (i, l) in enumerate(zip(idx_start, count)):
-                tup = tuple(meta_copy["detector_nmbr"][i:(i+l)])
+                tup = tuple(meta_copy["detector_nmbr"][i:(i+l)].tolist())
                 if not (tup in unique_tuples.keys()): 
                     unique_tuples[tup] = []
                 unique_tuples[tup].append(n)
@@ -142,14 +156,21 @@ class RDTFile:
     def __repr__(self):
         k = self.keys.keys() if isinstance(self.keys, dict) else self.keys
         return f'{self.__class__.__name__}(keys={k}, record_length={self.record_length}, dt_us={self.dt_us}, measuring_time_h={self.measuring_time_h:.2f})'
+    
+    def __enter__(self):
+        self._file.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._file.__exit__(typ, val, tb)
 
-    def __getitem__(self, channels: Union[int, str, tuple]):
+    def __getitem__(self, channels: Union[int, str, tuple, list]):
         """
         Choose a single channel (integer) or correlated channels (tuple of integers) from this RDTFile for further investigations. 
         The available keys are found via `RDTFile.keys`. If the channels have names (successfully extracted from the `*.par` file), you can also use those for indexing.
 
         :param channels: Channel index (potentially name) or tuple thereof.
-        :type channels: Union[int, str, tuple]
+        :type channels: Union[int, str, tuple, list]
 
         :return: RDTChannel instance corresponding to the choice of channels
         :rtype: RDTChannel
@@ -163,7 +184,7 @@ class RDTFile:
                 raise KeyError(f"Name '{channels}' is not a valid channel name. Did you mean {[v for k,v in self.keys.items()]}")
             # If channel names are available and corresponding key could be retrieved, we switch to channel numbers
             channels = corresponding_key[0]
-        elif isinstance(channels, tuple):
+        elif isinstance(channels, (tuple, list)):
             l = list(channels)
             for i, c in enumerate(l):
                 if isinstance(c, str):
@@ -183,6 +204,10 @@ class RDTFile:
         
         return RDTChannel(self, key=channels)
     
+    # used for TAB-completion in iPython/notebooks. Example: rdtf[<TAB> -> 0
+    def _ipython_key_completions_(self):
+        return self.keys
+    
     @property
     def _file(self):
         """The `numpy.memmap` object to the underlying `*.rdt` file."""
@@ -201,7 +226,7 @@ class RDTFile:
     @property
     def sample_frequency(self):
         """The sample frequency in Hz of the events in the corresponding `*.rdt` file."""
-        return int(np.round(1e6/self._par.time_base_us))
+        return int(1e6//self.dt_us)
     
     @property
     def measuring_time_h(self):
@@ -223,17 +248,21 @@ class RDTFile:
         else:
             return list(self._inds.keys())
         
-    def get_voltage_trace(self, inds: Union[int, list]):
+    def get_trace(self, inds: Union[int, list], voltage: bool = True):
         """
-        Return the voltage traces of events in this RDTFile for given indices.
+        Return the ADC traces of events in this RDTFile for given indices. If ``voltage==True``, the ADC value is converted to a voltage (V) fist.
         
         :param inds: The indices for which to return the voltage traces.
         :type inds: Union[int, list]
+        :param voltage: If True, voltage values are returned instead of ADC values.
+        :type voltage: bool, optional
 
-        :return: Array of as many voltage traces as given `inds`.
+        :return: Array of as many ADC/voltage traces as given `inds`.
         :rtype: numpy.array
         """
-        return ai.data.convert_to_V(self._file["samples"][inds], bits=16, min=-10, max=10)
+        # index with ["key", inds] for best XRootD-protocol read performance
+        data = self._file["samples", inds]
+        return ai.data.convert_to_V(data, bits=16, min=-10, max=10) if voltage else data
 
     # I'M STILL NOT SURE IF I WANT A DEFAULT CHANNELS BEHAVIOR OR NOT     
     # @property
@@ -302,7 +331,12 @@ class RDTChannel(DataSourceBaseClass):
     :return: Specified channels of an RDTFile
     :rtype: RDTChannel
     """
-    def __init__(self, rdt_file: RDTFile, key: Union[int, tuple]):
+    def __init__(self, rdt_file: RDTFile, key: Union[int, tuple, list]):
+        super().__init__(rdt_file=rdt_file, key=key)
+
+        if isinstance(key, list):
+            # Ensure tuple, because list cannot be dictionary key!
+            key = tuple(key)
 
         inds = rdt_file._inds[key]
         self._n_channels = len(key) if isinstance(key, tuple) else 1
@@ -321,6 +355,13 @@ class RDTChannel(DataSourceBaseClass):
     def __len__(self):
         return self._inds.shape[-1]
     
+    def __enter__(self):
+        self._rdt_file.__enter__()
+        return self
+    
+    def __exit__(self, typ, val, tb):
+        self._rdt_file.__exit__(typ, val, tb)
+    
     def __getitem__(self, val):
         """Return voltage traces of events. Any numpy indexing can be used as if it was an array of shape (n_channels, n_events)."""
         if isinstance(val, tuple):
@@ -330,7 +371,7 @@ class RDTChannel(DataSourceBaseClass):
         else:
             requested_events = self._inds[..., val].T
 
-        return self._rdt_file.get_voltage_trace(requested_events)
+        return self._rdt_file.get_trace(requested_events, voltage=True)
     
     @property
     def key(self):
@@ -349,22 +390,29 @@ class RDTChannel(DataSourceBaseClass):
         return s*int(1e6) + mus
     
     @property
+    def dt_us(self):
+        return self._rdt_file.dt_us
+    
+    @property
     def timestamps(self):
         """The microsecond timestamps of the events in this RDTChannel."""
-        secs = np.array(self._rdt_file._file["abs_time_s"][self._inds[0]], dtype=np.int64)
-        msecs = np.array(self._rdt_file._file["abs_time_mus"][self._inds[0]], dtype=np.int64)
+        # index with ["key", inds] for best XRootD-protocol read performance
+        secs = np.array(self._rdt_file._file["abs_time_s", self._inds[0]], dtype=np.int64)
+        msecs = np.array(self._rdt_file._file["abs_time_mus", self._inds[0]], dtype=np.int64)
 
         return secs*int(1e6) + msecs
     
     @property
     def tpas(self):
         """The testpulse amplitudes of the events in this RDTChannel."""
-        return self._rdt_file._file["test_pulse_amplitude"][self._inds[0]]
+        # index with ["key", inds] for best XRootD-protocol read performance
+        return self._rdt_file._file["test_pulse_amplitude", self._inds[0]]
     
     @property
     def unique_tpas(self):
         """The unique testpulse amplitudes of the events in this RDTChannel."""
-        return sorted(list(set(self.tpas)))
+        # use numpy string representation to convert to python floats
+        return sorted([float(str(x)) for x in np.unique(self.tpas)])
     
     def get_event_iterator(self, batch_size: int = None):
         """
@@ -377,7 +425,9 @@ class RDTChannel(DataSourceBaseClass):
         :rtype: RDTIterator
 
         **Example:**
-        ::
+
+        .. code-block:: python
+        
             import cait.versatile as vai
 
             f = vai.RDTFile('path/to/file.rdt')

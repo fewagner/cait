@@ -1,21 +1,25 @@
 from typing import Callable
-#from itertools import cycle
 
 import numpy as np
-from ipywidgets import widgets
-from IPython.display import display
 import plotly.graph_objects as go
-#import plotly.express as px
+from IPython.display import display
+from ipywidgets import widgets
 
 from .backendbase import BackendBaseClass
 from .helper import EmptyRep
+
+#from itertools import cycle
+#import plotly.express as px
+
 
 class BaseClassPlotly(BackendBaseClass):
     """
     Base Class for plots using the `plotly` library. Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ::
+    
+    .. code-block:: python
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],
@@ -29,6 +33,10 @@ class BaseClassPlotly(BackendBaseClass):
                     "hist1": [bin_data1, hist_data1],
                     "hist2": [bin_data2, hist_data2]
                     },
+                "heatmap": {
+                    "heat1": [bin_data1, xdata1, ydata1],
+                    "heat2": [bin_data2, xdata2, ydata2]
+                    },
                 "axes": {
                     "xaxis": {
                         "label": "xlabel",
@@ -39,6 +47,12 @@ class BaseClassPlotly(BackendBaseClass):
                         "label": "ylabel",
                         "scale": "log",
                         "range": (0, 10)
+                        },
+                    "caxis": {
+                        "label": "clabel",
+                        "scale": "linear",
+                        "range": (0, 10),
+                        "cmap": "plasma"
                         }
                     }
                 }
@@ -62,11 +76,9 @@ class BaseClassPlotly(BackendBaseClass):
         self._line_names = list()
         self._scatter_names = list()
         self._histogram_names = list()
-        self.heatmap_names = list()
-        #self.x_marker_names = list()
-        #self.y_marker_names = list()
-
-        #self.colors = cycle(px.colors.qualitative.Plotly)
+        self._heatmap_names = list()
+        
+        self._color_log = False
 
         self.show_controls = show_controls
         self.buttons_initialized = False
@@ -159,6 +171,11 @@ class BaseClassPlotly(BackendBaseClass):
             arg = dict(nbinsx=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(xbins=dict(start=bins[0], end=bins[1], size=(bins[1]-bins[0])/bins[2]) )
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            if not np.all(np.diff(np.unique(np.diff(bins))) < 1e-10):
+                raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
+            arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
@@ -172,6 +189,63 @@ class BaseClassPlotly(BackendBaseClass):
         # lower opacity of histograms if more than one is plotted
         if len([k for k in self.fig.select_traces(selector="histogram")]) > 1:
             self.fig.update_traces(selector="histogram", patch=dict(opacity=0.8))
+
+    def _add_heatmap(self, x, y, bins, name=None):
+        # use numpy default bins
+        if bins is None:
+            arg = dict()
+        # use single integer for number of bins on both axes
+        elif isinstance(bins, int):
+            arg = dict(bins=[bins, bins])
+        # use tuple of length 3 as linspace for both axes
+        elif isinstance(bins, tuple) and len(bins) == 3:
+            arg = dict(bins=[np.linspace(*bins), np.linspace(*bins)])
+        # use tuple of length two with default numpy behaviour
+        elif (isinstance(bins, tuple) 
+              and len(bins) == 2 
+              and all([isinstance(x, (int, list, np.ndarray)) for x in bins])):
+            arg = dict(bins=bins)
+        # use tuple of length two, which contains tuples of length 3,
+        # as start/end/N to create bins from linspace
+        elif (isinstance(bins, tuple) 
+              and len(bins) == 2
+              and all([isinstance(x, tuple) for x in bins])
+              and all([len(x)==3 for x in bins])):
+            arg = dict(bins=[np.linspace(*bins[0]), np.linspace(*bins[1])])
+        # use single np.array or list as bins for both axes
+        elif isinstance(bins, (list, np.ndarray)):
+            arg = dict(bins=[np.array(bins), np.array(bins)])
+        else:
+            raise TypeError("Bin info has to be either None, an integer (number of bins), a tuple of length 3 (start, end, number of bins), or a numpy array of bin edges. To pass information for both axes separately, use tuples of length 2 whose elements are integers, tuples, numpy arrays, as mentioned before.")
+        
+        counts, x_edges, y_edges = np.histogram2d(x, y, **arg)
+        x_centers = (x_edges[:-1] + x_edges[1:])/2
+        y_centers = (y_edges[:-1] + y_edges[1:])/2
+
+        counts_new = counts.T.copy()
+        mask = counts_new == 0
+
+        if self._color_log:
+            z = np.log10(counts_new, where=~mask)
+        else:
+            z = counts_new
+
+        # json doesn't support np.nan which is why we have to convert to object dtype
+        z = np.asarray(z, dtype=object)
+        z[mask] = None
+
+        hm = go.Heatmap()
+        hm.update({"x": x_centers, 
+                   "y": y_centers, 
+                   "z": z, 
+                   "customdata": counts_new, 
+                   "name": name,
+                   "showlegend": name is not None,
+                   "hovertemplate": '(%{x}, %{y})<br>counts: %{customdata}',
+                   "coloraxis": "coloraxis"})
+        self.fig.add_trace(hm)
+
+        if name is not None: self._heatmap_names.append(name)
 
     def _add_vmarker(self, marker_pos, y_int, name=None):
         if marker_pos is None or y_int is None: 
@@ -211,10 +285,62 @@ class BaseClassPlotly(BackendBaseClass):
             arg = dict(nbinsx=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(xbins=dict(start=bins[0], end=bins[1], size=(bins[1]-bins[0])/bins[2]) )
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            if not np.all(np.diff(np.unique(np.diff(bins))) < 1e-10):
+                raise ValueError("If bin edges are provided as a list/numpy array, the spacing has to be uniform and increasing for backend 'plotly'.")
+            arg = dict(xbins=dict(start=bins[0], end=bins[-1], size=np.unique(np.diff(bins))[0]) )
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
         
         self.fig.update_traces(dict(x=data, opacity=opacity, **arg), selector=dict(name=name))
+
+    def _update_heatmap(self, name, x, y, bins):
+        # use numpy default bins
+        if bins is None:
+            arg = dict()
+        # use single integer for number of bins on both axes
+        elif isinstance(bins, int):
+            arg = dict(bins=[bins, bins])
+        # use tuple of length 3 as linspace for both axes
+        elif isinstance(bins, tuple) and len(bins) == 3:
+            arg = dict(bins=[np.linspace(*bins), np.linspace(*bins)])
+        # use tuple of length two with default numpy behaviour
+        elif (isinstance(bins, tuple) 
+              and len(bins) == 2 
+              and all([isinstance(x, (int, list, np.ndarray)) for x in bins])):
+            arg = dict(bins=bins)
+        # use tuple of length two, which contains tuples of length 3,
+        # as start/end/N to create bins from linspace
+        elif (isinstance(bins, tuple) 
+              and len(bins) == 2
+              and all([isinstance(x, tuple) for x in bins])
+              and all([len(x)==3 for x in bins])):
+            arg = dict(bins=[np.linspace(*bins[0]), np.linspace(*bins[1])])
+        # use single np.array or list as bins for both axes
+        elif isinstance(bins, (list, np.ndarray)):
+            arg = dict(bins=[np.array(bins), np.array(bins)])
+        else:
+            raise TypeError("Bin info has to be either None, an integer (number of bins), a tuple of length 3 (start, end, number of bins), or a numpy array of bin edges. To pass information for both axes separately, use tuples of length 2 whose elements are integers, tuples, numpy arrays, as mentioned before.")
+        
+        counts, x_edges, y_edges = np.histogram2d(x, y, **arg)
+        x_centers = (x_edges[:-1] + x_edges[1:])/2
+        y_centers = (y_edges[:-1] + y_edges[1:])/2
+
+        counts_new = counts.T.copy()
+        mask = counts_new == 0
+
+        if self._color_log:
+            z = np.log10(counts_new, where=~mask)
+        else:
+            z = counts_new
+
+        # json doesn't support np.nan which is why we have to convert to object dtype
+        z = np.asarray(z, dtype=object)
+        z[mask] = None
+
+        self.fig.update_traces({ "x": x_centers, "y": y_centers, "z": z, "customdata": counts_new}, 
+                               selector=dict(name=name))
 
     def _update_vmarker(self, name, marker_pos, y_int):
         if marker_pos is None or y_int is None: 
@@ -229,6 +355,9 @@ class BaseClassPlotly(BackendBaseClass):
 
         self.fig.update_traces(dict(x=x, y=y), selector=dict(name=name))
     
+    def _get_artist(self, name: str):
+        return list(self.fig.select_traces(selector=dict(name=name)))[0]
+
     def _set_axes(self, data):
         if "xaxis" in data.keys():
             if "label" in data["xaxis"].keys():
@@ -246,6 +375,44 @@ class BaseClassPlotly(BackendBaseClass):
             if "range" in data["yaxis"].keys():
                 self.fig.update_yaxes(range=data["yaxis"]["range"])
 
+        if "caxis" in data.keys():
+            if "label" in data["caxis"].keys():
+                self.fig.update_coloraxes(
+                    showscale=True,
+                    colorbar_title_text=data["caxis"]["label"],
+                    colorbar_title_side="right",
+                )
+            if "scale" in data["caxis"].keys():
+                if data["caxis"]["scale"] == "log":
+                    self._color_log = True
+                    self.fig.update_coloraxes(
+                        showscale=True,
+                        colorbar_tickprefix="1e",
+                        colorbar_tickformat=",d",
+                        colorbar_dtick=1
+                    )
+                else:
+                    self._color_log = False
+                    self.fig.update_coloraxes(
+                        showscale=True,
+                        colorbar_tickprefix="",
+                        colorbar_tickformat="",
+                        colorbar_dtick=None
+                    )
+                
+            if "range" in data["caxis"].keys():
+                self.fig.update_coloraxes(
+                    showscale=True,
+                    cmin=data["caxis"]["range"][0],
+                    cmax=data["caxis"]["range"][1]
+                )
+            if "cmap" in data["caxis"].keys():
+                if data["caxis"]["cmap"] is not None:
+                    self.fig.update_coloraxes(
+                        showscale=True,
+                        colorscale=data["caxis"]["cmap"],
+                    )
+
     def _get_info(self, b):
         xmin, xmax = self.fig.layout.xaxis.range
 
@@ -258,21 +425,22 @@ class BaseClassPlotly(BackendBaseClass):
         y_vals = list()
         for trace in self.fig.select_traces():
             if trace.visible is True:
-                y = trace.y
-                x = trace.x if trace.x is not None else np.arange(len(y))
-                x_mask = np.logical_and(x > xmin, x < xmax)
-                y_mask = np.logical_and(y > ymin, y < ymax)
+                y = np.array(trace.y, dtype=float)
+                x = np.array(trace.x, dtype=float) if trace.x is not None else np.arange(len(y))
+                x_mask = ~np.isnan(x)
+                y_mask = ~np.isnan(y)
+                x_mask[x_mask] = np.logical_and(x[x_mask] > xmin, x[x_mask] < xmax)
+                y_mask[y_mask] = np.logical_and(y[y_mask] > ymin, y[y_mask] < ymax)
                 y_vals.append(y[np.logical_and(x_mask, y_mask)])
 
-        y_vals = np.concatenate(y_vals, axis=0)
-
-        if len(y_vals) == 0:
-            out_str = f"mean_y:  None, min_y: None, delta_y: None\nsigma_y: None, max_y: None"
+        if not y_vals or len(np.concatenate(y_vals, axis=0))==0:
+            out_str = f"ȳ:  None, min_y: None, Δᵧ: None\nσᵧ: None, max_y: None"
         else:
+            y_vals = np.concatenate(y_vals, axis=0)
             dat_min, dat_max = np.min(y_vals), np.max(y_vals)
             dat_diff = dat_max - dat_min
             dat_mean, dat_std = np.mean(y_vals), np.std(y_vals)
-            out_str = f"mean_y: {dat_mean:6.3f}, min_y: {dat_min:6.3f}, delta_y: {dat_diff:5.3f}\nsigma_y: {dat_std:5.3f}, max_y: {dat_max:6.3f}"
+            out_str = f"ȳ: {dat_mean: 6.3g}, yₘᵢₙ: {dat_min: 6.3g}, Δᵧ: {dat_diff: 5.3g}\nσᵧ: {dat_std: 5.3g}, yₘₐₓ: {dat_max: 6.3g}"
         
         with self._output:
             self._output.clear_output()
@@ -306,3 +474,9 @@ class BaseClassPlotly(BackendBaseClass):
     @property
     def histogram_names(self):
         return self._histogram_names
+    
+    @property
+    def heatmap_names(self):
+        return self._heatmap_names    @property
+    def heatmap_names(self):
+        return self._heatmap_names

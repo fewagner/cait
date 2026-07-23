@@ -1,11 +1,14 @@
+from functools import lru_cache
+
 import numpy as np
 
-from ..datasourcebase import DataSourceBaseClass
-from ...iterators.impl_mock import MockIterator
 from ....fit._templates import pulse_template
-from ...analysisobjects.sev import SEV
 from ...analysisobjects.nps import NPS
 from ...analysisobjects.of import OF
+from ...analysisobjects.sev import SEV
+from ...iterators.impl_mock import MockIterator
+from ..datasourcebase import DataSourceBaseClass
+
 
 class MockData(DataSourceBaseClass):
     """
@@ -25,6 +28,7 @@ class MockData(DataSourceBaseClass):
                  n_events: int = 100,
                  record_length: int = 16384,
                  dt_us: int = 10):
+        super().__init__(n_events=n_events, record_length=record_length, dt_us=dt_us)
         
         self._n_events = n_events
         self._record_length = record_length
@@ -43,10 +47,13 @@ class MockData(DataSourceBaseClass):
         # Record window used to evaluate the pulse model
         self._t = (np.arange(record_length) - record_length/4)*dt_us/1000
 
+        template0 = pulse_template(self._t, 0, 0.5, 0.5, 0.3*dt_us, 0.1*dt_us, 1*dt_us)
+        # Move maximum to 1/4th of record window
+        t0 = -self._t[np.argmax(template0)]
         # Pulse templates for two channels
         self._template = np.array([
-            pulse_template(self._t, 0, 0.5, 0.5, 0.3*dt_us, 0.1*dt_us, 1*dt_us),
-            pulse_template(self._t, 0, 0.5, 0.5, 0.3*dt_us, 0.01*dt_us, 0.4*dt_us)
+            pulse_template(self._t, t0, 0.5, 0.5, 0.3*dt_us, 0.1*dt_us, 1*dt_us),
+            pulse_template(self._t, t0, 0.5, 0.5, 0.3*dt_us, 0.01*dt_us, 0.4*dt_us)
         ])
         self._template = self._template/np.max(self._template, axis=-1, keepdims=True)
 
@@ -90,17 +97,18 @@ class MockData(DataSourceBaseClass):
     
     @property
     def sev(self):
-        return SEV(self._template)
+        return SEV(self._template, dt_us=self.dt_us)
 
     @property
+    @lru_cache(maxsize=None)
     def nps(self):
         rand = np.random.normal(size=(100, 2, self._record_length))
         nps = np.mean(np.abs(np.fft.rfft(rand))**2, axis=0)
-        return NPS(nps)
+        return NPS(nps, dt_us=self.dt_us)
     
     @property
     def of(self):
-        return OF(self.sev, self.nps)
+        return OF(self.sev, self.nps, dt_us=self.dt_us)
 
     @property
     def n_events(self):

@@ -1,14 +1,16 @@
 import os
 
-import numpy as np
 import h5py
+import numpy as np
+from deprecation import deprecated
 from tqdm.auto import tqdm
 
 from ..features._mp import calc_main_parameters
-from ..trigger._csmpl import trigger_csmpl, get_record_window, align_triggers, sample_to_time, \
-    exclude_testpulses, get_starttime, get_test_stamps, get_offset
 from ..fit._pm_fit import fit_pulse_shape
 from ..fit._templates import pulse_template
+from ..trigger._csmpl import (align_triggers, exclude_testpulses, get_offset,
+                              get_record_window, get_starttime,
+                              get_test_stamps, sample_to_time, trigger_csmpl)
 
 # -----------------------------------------------------------
 # CLASS
@@ -19,6 +21,7 @@ class CsmplMixin(object):
     A Mixin Class to the DataHandler Class with methods for the triggering of `*.csmpl` files.
     """
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_ctrigger_stamps(self,
                                 paths,
                                 name_appendix='',
@@ -125,6 +128,7 @@ class CsmplMixin(object):
 
             print('DONE')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_csmpl_triggers(self,
                                csmpl_paths: list,  # list of all paths for the channels
                                thresholds: list,  # in V
@@ -196,12 +200,6 @@ class CsmplMixin(object):
             it instead of doing the triggering again. For this, set this argument to True.
         :type read_triggerstamps: bool
         """
-
-        assert all([os.path.isfile(p) for p in csmpl_paths]), 'One of the csmpl files does not exists!'
-        if path_dig is not None:
-            assert os.path.isfile(path_dig), 'Dig file does not exists!'
-        if path_sql is not None:
-            assert os.path.isfile(path_sql), 'Sql file does not exists!'
         assert np.logical_or(path_dig is None, path_sql is None), 'Read the start time either from PAR or SQL file!'
 
         if take_samples is None:
@@ -223,7 +221,7 @@ class CsmplMixin(object):
 
                 if of is None:
                     print("Read OF Transfer Function from h5 file. Alternatively provide one through the of argument.")
-                    of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=np.complex)
+                    of = np.zeros((self.nmbr_channels, int(self.record_length / 2 + 1)), dtype=complex)
                     of.real = h5f['optimumfilter']['optimumfilter_real']
                     of.imag = h5f['optimumfilter']['optimumfilter_imag']
 
@@ -464,6 +462,7 @@ class CsmplMixin(object):
                                              data=of_imag)
         print('OF written.')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_triggered_events(self,
                                  csmpl_paths,
                                  max_time_diff=0.5,  # in sec
@@ -699,6 +698,7 @@ class CsmplMixin(object):
 
             print('DONE')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_test_stamps(self, path_teststamps, path_dig_stamps, path_sql=None, csmpl_channels=None,
                             sql_file_label=None,
                             clock=10000000,
@@ -785,6 +785,7 @@ class CsmplMixin(object):
 
         print('Test Stamps included.')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_noise_triggers(self,
                                nmbr,
                                min_distance=0.5,
@@ -926,6 +927,7 @@ class CsmplMixin(object):
 
         print('Done.')
 
+    @deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use dh.trigger_zscore() and dh.trigger_of() for triggering instead.")
     def include_noise_events(self,
                              csmpl_paths,
                              datatype='float32',

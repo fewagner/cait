@@ -1,23 +1,63 @@
-from multiprocessing import Pool
+from functools import partial
+from typing import Callable, List, Tuple, Union
 from warnings import warn
-from deprecation import deprecated
 
-import numpy as np
 import h5py
+import numpy as np
+from deprecation import deprecated
 from tqdm.auto import trange
 
-from ..features._mp import calc_main_parameters, calc_additional_parameters
-from ..features._ph_corr import calc_correlated_ph
-from ..filter._of import optimal_transfer_function
-from ..fit._sev import generate_standard_event
-from ..filter._of import get_amplitudes
-from ..fit._pm_fit import fit_pulse_shape
-from ..fit._templates import pulse_template
-from ..filter._ma import rem_off
-from ..trigger._peakdet import get_triggers
+import cait as ai
+import cait.versatile as vai
+
 from ..data._baselines import calculate_mean_nps
+from ..features._mp import calc_additional_parameters, calc_main_parameters
+from ..features._ph_corr import calc_correlated_ph
+from ..filter._ma import rem_off
+from ..filter._of import get_amplitudes, optimal_transfer_function
+from ..fit._pm_fit import fit_pulse_shape
+from ..fit._sev import generate_standard_event
+from ..fit._templates import pulse_template
+from ..styles._print_styles import txt_fmt
+from ..trigger._peakdet import get_triggers
 
 
+# convenience function used in calc_mp
+@deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Helper functions for dh.calc_mp will be removed together with dh.calc_mp")
+def _calc_mp_helper(event, down, max_bounds):
+    return calc_main_parameters(event, down, max_bounds).getArray()
+
+# convenience function used in apply_of
+@deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Helper functions for dh.apply_of will be removed together with dh.apply_of")
+def _apply_of_helper(events, 
+                     functions: List[callable], 
+                     correlated: bool, 
+                     onsets: List[int]):
+    n_channels = len(functions)
+
+    # if only one channel is present, we just call the filtering function on this channel
+    if n_channels == 1:
+        return functions[0](events)
+    
+    # if multiple channels are present but first_channel_dominant=False, we just apply the
+    # filtering to the channels separately
+    elif not correlated:
+        out = [functions[i](events[:,i]) for i in range(n_channels)]
+        # restructure the outputs such that same outputs for all channels are grouped
+        return tuple([np.array(list(i)).T for i in zip(*out)])
+    
+    # if multiple channels are present and first_channel_dominant=True, we fist apply the
+    # filtering to the first channel and use its peak_pos to filter the remaining channels
+    else:
+        out = [functions[0](events[:,0])]
+        # peak_pos is second output of the function call above
+        peak_pos = out[0][1]
+
+        for i in range(1, n_channels):
+            out.append(partial(functions[i], peakpos=peak_pos+onsets[i])(events[:,i]))
+
+        # restructure the outputs such that same outputs for all channels are grouped
+        return tuple([np.array(list(i)).T for i in zip(*out)])
 # -----------------------------------------------------------
 # CLASS
 # -----------------------------------------------------------
@@ -32,8 +72,13 @@ class FeaturesMixin(object):
     # -----------------------------------------------------------
 
     # Calculate MP
-    def calc_mp(self, type='events', path_h5=None, processes=4, down=1,
-                max_bounds=None):
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use DataHandler.cmp() instead.")
+    def calc_mp(self, 
+                type: str = 'events', 
+                path_h5: str = None, 
+                processes: int = -1, 
+                down: int = 1,
+                max_bounds: Tuple[int] = None):
         """
         Calculate the Main Parameters for the Events in an HDF5 File.
 
@@ -44,7 +89,7 @@ class FeaturesMixin(object):
         :type type: string
         :param path_h5: An alternative full path to a hdf5 file, e.g. "data/bck_001.h5".
         :type path_h5: string or None
-        :param processes: The number of processes to use for the calculation.
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
         :type processes: int
         :param down: The events get downsampled by this factor for the calculation of main parameters.
         :type down: int
@@ -52,41 +97,41 @@ class FeaturesMixin(object):
         :type max_bounds: tuple of two ints
         """
 
-        if not path_h5:
-            path_h5 = self.path_h5
+        if not path_h5: path_h5 = self.path_h5
+        if processes == -1: processes = ai._available_workers
+
+        f = partial(_calc_mp_helper, down=down, max_bounds=max_bounds)
+        events = [self.get_event_iterator(type, channel=ch, batch_size=100) for ch in range(self.nmbr_channels)]
+        n_events = len(events[0])
+
+        out = []
+        print(txt_fmt('Calculating main parameters ...', style="bold"))
+        for ch in range(self.nmbr_channels):
+            out.append( vai.apply(f, 
+                                  events[ch], 
+                                  n_processes=processes if n_events>1000 else 1,
+                                  pb_prefix=f"Channel {ch}") )
+
+        self.set(type, 
+                 mainpar=np.array(out), 
+                 dtype=np.float32, 
+                 overwrite_existing=True,
+                 write_to_virtual=False)
+        print("\n")
 
         with h5py.File(path_h5, 'r+') as h5f:
-            events = h5f[type]
-            nmbr_ev = events['event'].shape[1]
+            group = h5f[type]
 
-            print('CALCULATE MAIN PARAMETERS.')
-
-            with Pool(processes) as p:  # basically a for loop running on 4 processes
-                mainpar_list_event = []
-                for c in range(self.nmbr_channels):
-                    mainpar_list_event.append(p.starmap(
-                        calc_main_parameters,
-                        [(events['event'][c, i, :], down, max_bounds) for i in range(nmbr_ev)]))
-            mainpar_event = np.array([[o.getArray() for o in element] for element in mainpar_list_event])
-
-            if 'mainpar' in events:
-                del events['mainpar']
-
-            events.require_dataset(name='mainpar',
-                                   shape=(mainpar_event.shape),
-                                   dtype='float')
-            events['mainpar'][...] = mainpar_event
-
-            events['mainpar'].attrs.create(name='pulse_height', data=0)
-            events['mainpar'].attrs.create(name='t_zero', data=1)
-            events['mainpar'].attrs.create(name='t_rise', data=2)
-            events['mainpar'].attrs.create(name='t_max', data=3)
-            events['mainpar'].attrs.create(name='t_decaystart', data=4)
-            events['mainpar'].attrs.create(name='t_half', data=5)
-            events['mainpar'].attrs.create(name='t_end', data=6)
-            events['mainpar'].attrs.create(name='offset', data=7)
-            events['mainpar'].attrs.create(name='linear_drift', data=8)
-            events['mainpar'].attrs.create(name='quadratic_drift', data=9)
+            group['mainpar'].attrs.create(name='pulse_height', data=0)
+            group['mainpar'].attrs.create(name='t_zero', data=1)
+            group['mainpar'].attrs.create(name='t_rise', data=2)
+            group['mainpar'].attrs.create(name='t_max', data=3)
+            group['mainpar'].attrs.create(name='t_decaystart', data=4)
+            group['mainpar'].attrs.create(name='t_half', data=5)
+            group['mainpar'].attrs.create(name='t_end', data=6)
+            group['mainpar'].attrs.create(name='offset', data=7)
+            group['mainpar'].attrs.create(name='linear_drift', data=8)
+            group['mainpar'].attrs.create(name='quadratic_drift', data=9)
 
     # calc stdevent testpulses
     def calc_sev(self,
@@ -411,10 +456,23 @@ class FeaturesMixin(object):
             print('OF updated.')
 
     # apply the optimum filter
-    def apply_of(self, type='events', name_appendix_group: str = '', name_appendix_set: str = '',
-                 chunk_size=10000, hard_restrict=False, down=1, window=True, first_channel_dominant=False,
-                 baseline_model='constant', pretrigger_samples=500, onset_to_dominant_channel=None,
-                 flexibility=1, calc_rms=False):
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use dh.apply_ofilter instead.")
+    def apply_of(self, 
+                 type: str = 'events', 
+                 name_appendix_group: str = '', 
+                 name_appendix_set: str = '',
+                 chunk_size: int = 100, 
+                 hard_restrict: bool = False, 
+                 down: int = 1, 
+                 window: bool = True, 
+                 first_channel_dominant: bool = False,
+                 baseline_model: str = 'constant', 
+                 pretrigger_samples: int = 500, 
+                 onset_to_dominant_channel: List[int] = None,
+                 flexibility: int = 1, 
+                 calc_rms: bool = False,
+                 processes: int = -1
+                 ):
         """
         Calculates the height of events or testpulses after applying the optimum filter.
 
@@ -449,141 +507,347 @@ class FeaturesMixin(object):
         :type flexibility: int
         :param calc_rms: If true, calculated also the rms of the filtered pulses.
         :type calc_rms: bool
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
+        :type processes: int
         """
-
-        if calc_rms:
-            print('Calculating OF Heights and RMS.')
-        else:
-            print('Calculating OF Heights.')
+        if processes == -1: processes = ai._available_workers
 
         if onset_to_dominant_channel is None:
             onset_to_dominant_channel = np.zeros(self.nmbr_channels)
         assert len(onset_to_dominant_channel) == self.nmbr_channels, \
             'onset_to_dominant_channel must have length nmbr_channels!'
 
-        with h5py.File(self.path_h5, 'r+') as f:
-            events = f[type]['event']
-            sev = np.array(f['stdevent' + name_appendix_group]['event'])
-            nps = np.array(f['noise']['nps'])
-            if 'optimumfilter' + name_appendix_group in f:
-                transfer_function = np.array(f['optimumfilter' + name_appendix_group]['optimumfilter_real']) + \
-                                    1j * np.array(f['optimumfilter' + name_appendix_group]['optimumfilter_imag'])
+        sev = self.get(f'stdevent{name_appendix_group}', 'event')
+        nps = self.get('noise', 'nps')
+
+        # Use existing optimum filter if it has already been calculated
+        if self.exists(f'optimumfilter{name_appendix_group}'):
+            of_real = self.get(f'optimumfilter{name_appendix_group}', 'optimumfilter_real')
+            of_imag = self.get(f'optimumfilter{name_appendix_group}', 'optimumfilter_imag')
+            transfer_function = of_real + 1j*of_imag
+        else:
+            transfer_function = [None]*self.nmbr_channels
+        
+        events = self.get_event_iterator(type, batch_size=chunk_size)
+
+        fs = [partial(get_amplitudes, 
+                        stdevent=sev[c], 
+                        nps=nps[c],
+                        hard_restrict=hard_restrict,
+                        down=down,
+                        window=window,
+                        return_peakpos=True,
+                        baseline_model=baseline_model,
+                        pretrigger_samples=pretrigger_samples,
+                        transfer_function=transfer_function[c],
+                        flexibility=flexibility,
+                        calc_rms=calc_rms)
+                for c in range(events.n_channels)]
+        
+        wrapper = partial(_apply_of_helper, 
+                            functions=fs, 
+                            correlated=first_channel_dominant and events.n_channels>1, 
+                            onsets=onset_to_dominant_channel)
+        
+        wrapper.batch_support = "full"
+    
+        print(txt_fmt('Calculating OF pulse heights ...', style="bold"))
+
+        # first output: optimum filter pulse height, second output: peakpos (not relevant anymore)
+        # remaining output: empty if calc_rms=False, else rms and peak_rms
+        of_ph, _, *remainder = vai.apply(wrapper, events, n_processes=processes if len(events)>1000 else 1)
+
+        if calc_rms:
+            output = {'of_ph' + name_appendix_set: of_ph.T,
+                      'of_rms' + name_appendix_set: remainder[0].T,
+                      'of_rms_peak' + name_appendix_set: remainder[1].T}
+        else:
+            output = {'of_ph' + name_appendix_set: of_ph.T}
+
+        self.set(type, 
+                 **output, 
+                 dtype=np.float32, 
+                 overwrite_existing=True,
+                 write_to_virtual=False)
+        print("\n")
+
+    def apply_ofilter(
+            self,
+            group: str,
+            of: np.ndarray,
+            sev: np.ndarray,
+            *,
+            only_channels: Union[int, List[int]] = None,
+            with_processing: Union[Callable, List[Callable]] = None,
+            on_stream: bool = False,
+            tag: str = "",
+            batch_size: int = 100,
+            preview: bool = False,
+            **kwargs,
+    ):
+        """
+        Calculate optimum filter pulse heights.
+
+        See below for some common pitfalls and refer to the documentation of :class:`cait.versatile.OFPulseHeight` for more details.
+
+        :param group: The DataHandler group with the events to which we want to apply the filter. The results will be saved to this group, too (see :class:`cait.versatile.OFPulseHeight` for a description of the outputs).
+        :type group: str
+        :param of: The optimum filter(s) to use. One for each channel, i.e. has shape ``(N, M//2+1)`` where ``N`` is the number of channels and ``M`` is the record length. Using 2D filters is no exception here: The filters have to be supplied as shape ``(N, M//2+1)`` arrays.
+        :type of: np.ndarray
+        :param sev: The standard events corresponding to the filters. They are used as reference to calculate the filter (peak) RMS. One standard event per entry in ``of`` is needed. I.e. has to be of shape ``(N, M)``.
+        :type sev: np.ndarray
+        :param only_channels: If you only want to filter some of the channels in 'group', you can specify the channel index/indices here. Note that the sizes of ``sev`` and ``of`` have to match the number of channels to be filtered, i.e. if you filter two channels, the ``of`` also has to have two channels. Defaults to None, i.e. filtering all channels in 'group'. Note that if you select a subset of channels here, the arguments ``filter_groups``, ``max_search`` and ``relative_to`` that you can pass as keyword arguments to :class:`cait.versatile.OFPulseHeight` (see below) refer to the channel indices **of the remaining channels**.
+        :type only_channels: Union[int, List[int]], optional
+        :param with_processing: Optional processing to be applied to the event traces before calculating the optimum filter heights. See :func:`cait.versatile.iterators.IteratorBaseClass.with_processing` for details. A processing worth mentioning is :class:`cait.versatile.TukeyWindow`.
+        :type with_processing: Union[Callable, List[Callable]], optional
+        :param on_stream: If True, the event traces are extended on the original stream, adding samples outside the record window. This allows for filtering without edge effects. Of course, this only works if the reference to the stream is saved in the DataHandler, which happens automatically if you use :func:`cait.mixins.TriggerCollectionMixin.trigger_of` or :func:`cait.mixins.TriggerCollectionMixin.trigger_zscore` for triggering. Adding the reference manually after triggering is painful and is not recommended. If you nevertheless want to perform such a calculation, you can use :func:`cait.versatile.OFPulseHeight` and `cait.versatile.iterators.StreamIterator.with_extended_window` to achieve the same. Defaults to False.
+        :type on_stream: bool, optional
+        :param tag: A string that is appended to the datasets when they are saved to the DataHandler (e.g. if you want to apply different filters). This string is appended with a hyphen, i.e. for ``tag="wafer"`` this would result in datasets like ``of_ph-wafer``. Defaults to an empty string, i.e. no tag.
+        :type tag: str, optional
+        :param batch_size: The number of events to process at once.
+        :type batch_size: int, optional
+        :param preview: If True, an interactive preview illustrating the filter evaluation using the current input arguments on the event traces opens up. Defaults to False
+        :type preview: bool, optional
+        :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.OFPulseHeight`. Notable arguments are ``max_search`` (to specify where to search for maxima), ``relative_to`` (to specify relative to which channels the filtered traces should be evaluated), ``peak_rms_width`` (number of samples for peak RMS calculation) and ``filter_groups`` (used to specify which channels should be treated together using a 2D filter). Refer to its documentation page for more details.
+        :type kwargs: any, optional
+
+        .. note::
+            If you have two channels and you want to search the maximum of the first channel around 1/4th of the record window and evaluate the second channel ``k`` samples *before* the maximum found in the first channel, you have to pass the arguments ``max_search=[(0.2, 0.4), -k]`` and ``relative_to=[None, 0]``.
+
+        .. note::
+            To apply a 2d optimum filter to channels 0 and 1 and search for the maximum in channel 2 at most ``k`` samples away from the 2d filter maximum of the first two channels, pass arguments ``filter_groups=[(0, 1), 2]``, ``max_search=[(0.2, 0.4), (-k, k)]``, and ``relative_to=[None, 0]``. Notice here that the elements of ``relative_to`` refer to the entries in ``filter_groups``.
+
+        .. note::
+            If you see weird edge effects in your filtered traces, it might be a good idea to apply the filter on an extended window (on the initial stream) using ``on_stream=True``. This only works if a reference to the initial stream is still available in the DataHandler. 
+            If it is not, you can also try adding ``with_processing=[vai.RemoveBaseline(), vai.TukeyWindow()]`` which should reduce edge effects (especially for events which do not fully decay within the record window).
+
+        .. warning::
+            If you start using ``only_channels``, ``relative_to``, ``max_search``, and ``filter_groups`` together, you have to be careful with what the indices are referring to: Once you specify ``only_channels``, the entries of the remaining arguments refer to the indices **of the remaining channels**. I.e. if ``only_channels=[0, 2]``, the first entries in ``relative_to`` and ``max_search`` refer to channel 0, wherease the second entries refer to (the old) channel 2. Likewise, if you already chose ``only_channels=[0, 2]``, a valid 2d filter group would be ``filter_groups=[(0, 1)]`` (**not** ``[(0, 2)]``!). 
+
+        .. warning::
+            The output arrays **always** have as many channels as the events in the specified ``group``. If you select a subset of channels using ``only_channels``, the remaining channels will be filled with -404, indicating missing values. **However**, if you also set ``filter_groups`` (in order to apply a 2D filter), you inherently lose the channel-index correspondence. To keep things consistent, the output values of any 2D filters are **duplicated** into the channels that were filtered together. E.g. if you choose ``filter_groups=[(0, 1), 2]``, the first and second row of the output arrays will have identical data (results of the 2D filtering), while the third row will have the data from channel 2.
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait as ai
+            import cait.versatile as vai
+
+            record_length = 2**14
+
+            # Generate mock data (two cannels)
+            md = vai.MockData(record_length=record_length)
+            it = md.get_event_iterator()
+            sev, of = md.sev, md.of
+
+            # Generate mock stream (two channels)
+            s = vai.MockStream(rate_Hz=1, seed=137)
+
+            # Initialize DataHandler
+            dh = ai.DataHandler(record_length=record_length, 
+                                nmbr_channels=2, 
+                                sample_frequency=s.sample_frequency)
+            dh.set_filepath(path_h5="", 
+                            fname="apply_ofilter_test", 
+                            appendix=False)
+            dh.init_empty()
+
+            # Trigger to get traces in DataHandler
+            dh.trigger_zscore(s, trigger_channels=["Ch0"], passive_channels=["Ch1"])
+
+            # Calculate filter pulse heights (evaluate channel 1 relative
+            # to channel 0). For more examples, see vai.OFPulseHeight.
+            dh.apply_ofilter(
+                "events", 
+                of=of, 
+                sev=sev,
+                max_search=[(0.2, 0.4), (-1000, 0)],
+                relative_to=[None, 0], 
+                # preview=True, # set to True to get a preview before commiting
+            )
+        """
+        if only_channels is None:
+            only_channels = slice(None)
+        elif isinstance(only_channels, int):
+            only_channels = [only_channels]
+
+        if with_processing is None:
+            with_processing = []
+        elif callable(with_processing):
+            with_processing = [with_processing]
+
+        # Load events for specified group. If 'on_stream=True', the resulting
+        # iterator is a StreamIterator (if available).
+        events = self.get_event_iterator(
+            group=group, 
+            channel=only_channels,
+            prefer_external=on_stream,
+        )
+
+        n_ev = len(events)
+        n_ch_total = self.get_event_iterator(group=group).n_channels
+
+        # In case we use on_stream=True, we will extend the record windows.
+        # Sometimes, this results in extending windows outside the valid range
+        # of the stream. This is to be expected and intentionally throws and 
+        # error. However, in this 'convenience' DataHandler function, we detect
+        # such issues and set the offending events' output to -404.
+        valid_flag = np.ones(len(events), dtype=bool)
+
+        if len(set([
+            a := events.n_channels, 
+            b := np.atleast_2d(of).shape[0], 
+            c := np.atleast_2d(sev).shape[0],
+            ])) > 1:
+            raise ValueError(f"The number of OF and SEV channels must match the number of selected channels for filtering. Got {a}, {b}, {c}.")
+
+        if on_stream:
+            if not isinstance(
+                events, 
+                (
+                    vai.iterators.StreamIterator, 
+                    vai.iterators.IteratorCollection,
+                    vai.iterators.PulseSimIterator,
+                ),
+            ):
+                raise Exception("Unable to load StreamIterator. There seems to be no stream reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
+            # If IteratorCollection, check right away if the contents are StreamIterators. This 
+            # can be done easily by checking for the existance of the 'with_record_length' function:
+            try:
+                events.with_record_length(events.record_length)
+            except NotImplementedError:
+                raise Exception("Unable to load StreamIterator. There seems to be no stream reference to the original events in the DataHandler. Set 'on_stream=False' to continue.")
+            
+            # If we can load events from stream, we use linear convolution
+            # and extend the iterator
+            if "method" in kwargs:
+                raise KeyError("When using 'on_stream=True', you cannot additionally set 'method', as it is overridden by 'method='linear''.")
+            
+            kwargs["method"] = "linear"
+
+            # It is possible, that some of the extended windows fall outside the valid stream range 
+            # because the trigger algorithm may still find triggers close to the end of a stream.
+            # The exception raised by 'with_extended_window()' in such a case is intentional.
+            # However, from a convenience perspective, it would be much nicer, if such events were
+            # just removed from the analysis. What we do here is set their RMS values to -404 but 
+            # don't throw an error.
+            # The offending events are always among the first/last events, so we only have to check
+            # them. For an IteratorCollection, however, the check is a bit more annoying.
+
+            def find_offending_indices(it):
+                # Check at most 10 events (per stream) to be removed.
+                try_max = min(len(it), 10)
+                offending_indices = []
+                inds = np.argsort(it.timestamps)
+                # Check smallest timestamps.
+                for i in range(try_max):
+                    try:
+                        # If the specified timestamp causes an error ...
+                        it[:, inds[i]].with_extended_window()
+                    except IndexError:
+                        # ... it is considered offending
+                        offending_indices.append(inds[i])
+                    # Check largest timestamps.
+                    try:
+                        it[:, inds[-i]].with_extended_window()
+                    except IndexError:
+                        offending_indices.append(inds[-i])
+                
+                # For very short interators, there could be an overlap 
+                # when looking from the front and the back of the list.
+                # Using list(set()) gets rid of potential duplicates.
+                return list(set(offending_indices))
+
+            if isinstance(events, (vai.iterators.StreamIterator, vai.iterators.PulseSimIterator)):
+                inds = find_offending_indices(events)
+
+            else: # must be Collection because of the check above
+                inds = []
+                offset = 0
+                for it in events.iterators:
+                    sub_inds = find_offending_indices(it)
+                    inds.extend([i + offset for i in sub_inds])
+                    offset += len(it)
+
+            if len(inds) > 0:
+                print(f"Found {len(inds)} events that have record windows outside the stream's boundaries after extending their windows. Those will have RMS values of -404 in the final datasets.")
+
+            valid_flag[inds] = False
+            events = events[:, valid_flag].with_extended_window()
+
+        # Processing needs to be added after a potential increase of the window size
+        if with_processing:
+            events = events.with_processing(with_processing)
+
+        # Configuration of filter evaluation is handled by OFPulseHeight
+        f = vai.OFPulseHeight(of=of, sev=sev, **kwargs)
+
+        if preview:
+            return vai.Preview(
+                events.with_processing(
+                    with_processing + [vai.RemoveBaseline()]
+                    ), f, backend="plotly",
+                )
+
+        of_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating OF pulse heights")
+        of_res_dict = {k: v for k, v in zip(f.names(), of_res)}
+
+        # See docstring for how we treat 'missing channels' in the output arrays.
+        if only_channels == slice(None):
+            selected_channels = list(range(n_ch_total))
+        else:
+            # Those may be unordered.
+            selected_channels = only_channels
+
+        if "filter_groups" in kwargs:
+            filter_groups = kwargs["filter_groups"]
+        else:
+            filter_groups = selected_channels
+    
+        # NOTE: The next step assumes that the outputs of OFPulseHeight are all scalar,
+        # meaning that the arrays returned are 1D for single channel data and 2D else.
+        # This allows for a simple construction of the output arrays.
+    
+        # Sanitize data (such that all of the datasets have shape (n_events, n_channels), even if n_channels=1)
+        of_res_dict = {k: (v if v.ndim>1 else np.atleast_2d(v).T) for k, v in of_res_dict.items()}
+
+        for n, t in zip(f.names(), f.dtypes()):
+            out = -404*np.ones((n_ch_total, n_ev), dtype=t)
+
+            # NOTE: It is important to distinguish the position of the channels in the of_res_dict
+            # from the actual channel indices in the DataHandler.
+
+            # Some 2D filter has been applied
+            if len(filter_groups) != len(selected_channels):
+                for i, fg in enumerate(filter_groups):
+                    if isinstance(fg, int):
+                        actual_ch_id = selected_channels[fg]
+                        out[actual_ch_id, valid_flag] = of_res_dict[n][:, i].flatten()
+                    elif isinstance(fg, tuple):
+                        for ch_id in fg:
+                            actual_ch_id = selected_channels[ch_id]
+                            out[actual_ch_id, valid_flag] = of_res_dict[n][:, i].flatten()
+                    else:
+                        # This should never be raised because OFPulseHeight validates the input.
+                        # Nevertheless, this could prevent headaches in case that mechanism ever fails.
+                        raise TypeError(f"Unsupported type '{type(fg)}' for entry in 'filter_groups'.")
+            # Simple treatment: only separate channels (I know that this can be considered
+            # a special case of the nested abomination above but I think it's cleaner this way).
             else:
-                transfer_function = None
+                for i, ch_id in enumerate(selected_channels):
+                    out[ch_id, valid_flag] = of_res_dict[n][:, i].flatten()
 
-            if 'of_ph' + name_appendix_set in f[type]:
-                del f[type]['of_ph' + name_appendix_set]
+            self.set(
+                group=group,
+                **{f"{n}" + (f"-{tag}" if tag else ""): out},
+                dtype=t,
+                overwrite_existing=True,
+                write_to_virtual=False,
+            )
 
-            f[type].require_dataset(name='of_ph' + name_appendix_set,
-                                    shape=(self.nmbr_channels, len(events[0])),
-                                    dtype='float')
-            if calc_rms:
-                if 'of_rms' + name_appendix_set in f[type]:
-                    del f[type]['of_rms' + name_appendix_set]
-                if 'of_rms_peak' + name_appendix_set in f[type]:
-                    del f[type]['of_rms_peak' + name_appendix_set]
-                f[type].require_dataset(name='of_rms' + name_appendix_set,
-                                shape=(self.nmbr_channels, len(events[0])),
-                                dtype='float')
-                f[type].require_dataset(name='of_rms_peak' + name_appendix_set,
-                                shape=(self.nmbr_channels, len(events[0])),
-                                dtype='float')
-
-            nmbr_events = len(events[0])
-            counter = 0
-
-            # we do the calculation in batches, so that memory does not overflow
-            while counter + chunk_size < nmbr_events:
-                for c in range(self.nmbr_channels):
-                    if first_channel_dominant and c == 0:
-                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                                        hard_restrict=hard_restrict, down=down, window=window,
-                                                        return_peakpos=True,
-                                                        baseline_model=baseline_model,
-                                                        pretrigger_samples=pretrigger_samples,
-                                                        transfer_function=transfer_function[c],
-                                                        flexibility=flexibility,
-                                                        calc_rms=calc_rms)
-                        if calc_rms:
-                            of_ph, peakpos, of_rms, of_rms_peak = results
-                        else:
-                            of_ph, peakpos = results
-                    elif first_channel_dominant:
-                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window,
-                                               peakpos=peakpos + onset_to_dominant_channel[c],
-                                               return_peakpos=False,
-                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                               transfer_function=transfer_function[c],
-                                               flexibility=flexibility,
-                                               calc_rms=calc_rms)
-                        if calc_rms:
-                            of_ph, of_rms, of_rms_peak = results
-                        else:
-                            of_ph = results
-                    else:
-                        results = get_amplitudes(events[c, counter:counter + chunk_size], sev[c], nps[c],
-                                               hard_restrict=hard_restrict, down=down, window=window,
-                                               return_peakpos=False,
-                                               baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                               transfer_function=transfer_function[c],
-                                               flexibility=flexibility,
-                                               calc_rms=calc_rms)
-                        if calc_rms:
-                            of_ph, of_rms, of_rms_peak = results
-                        else:
-                            of_ph = results
-
-                    f[type]['of_ph' + name_appendix_set][c, counter:counter + chunk_size] = of_ph
-                    if calc_rms:
-                        f[type]['of_rms' + name_appendix_set][c, counter:counter + chunk_size] = of_rms
-                        f[type]['of_rms_peak' + name_appendix_set][c, counter:counter + chunk_size] = of_rms_peak
-                counter += chunk_size
-
-            # calc rest that is smaller than a batch
-            for c in range(self.nmbr_channels):
-                if first_channel_dominant and c == 0:
-                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                                    hard_restrict=hard_restrict, down=down, window=window,
-                                                    return_peakpos=True,
-                                                    baseline_model=baseline_model,
-                                                    pretrigger_samples=pretrigger_samples,
-                                                    transfer_function=transfer_function[c],
-                                                    flexibility=flexibility,
-                                                    calc_rms=calc_rms)
-                    if calc_rms:
-                        of_ph, peakpos, of_rms, of_rms_peak = results
-                    else:
-                        of_ph, peakpos = results
-                elif first_channel_dominant:
-                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                           hard_restrict=hard_restrict, down=down, window=window,
-                                           peakpos=peakpos + onset_to_dominant_channel[c], return_peakpos=False,
-                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                           transfer_function=transfer_function[c],
-                                           flexibility=flexibility,
-                                           calc_rms=calc_rms)
-                    if calc_rms:
-                        of_ph, of_rms, of_rms_peak = results
-                    else:
-                        of_ph = results
-                else:
-                    results = get_amplitudes(events[c, counter:nmbr_events], sev[c], nps[c],
-                                           hard_restrict=hard_restrict, down=down, window=window,
-                                           return_peakpos=False,
-                                           baseline_model=baseline_model, pretrigger_samples=pretrigger_samples,
-                                           transfer_function=transfer_function[c],
-                                           flexibility=flexibility,
-                                           calc_rms=calc_rms)
-                    if calc_rms:
-                        of_ph, of_rms, of_rms_peak = results
-                    else:
-                        of_ph = results
-                f[type]['of_ph' + name_appendix_set][c, counter:nmbr_events] = of_ph
-                if calc_rms:
-                    f[type]['of_rms' + name_appendix_set][c, counter:nmbr_events] = of_rms
-                    f[type]['of_rms_peak' + name_appendix_set][c, counter:nmbr_events] = of_rms_peak
-
+        if np.any(self.get(group, "of_rms" + (f"-{tag}" if tag else "")) == -404):
+            print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding filter values should not be trusted! If you set 'on_stream=True' it is possible that some of the events extended outside of the stream range after expanding them. Such events cannot be reliably filtered and were removed from the calculation and their RMS value was set to -404. Likewise, if you chose only to filter a subset of channels using the 'only_channels' argument, channels which were not filtered had their RMS values set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
 
     # calc stdevent carrier
     def calc_exceptional_sev(self,
@@ -824,7 +1088,13 @@ class FeaturesMixin(object):
                                          dtype='float')
             h5f['noise'][naming_fq][...] = frequencies
 
-    def calc_additional_mp(self, type='events', path_h5=None, down=1, no_of=False):
+    @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Use DataHandler.cmp() instead.")
+    def calc_additional_mp(self, 
+                           type: str = 'events', 
+                           path_h5: str = None, 
+                           down: int = 1, 
+                           no_of: bool = False, 
+                           processes: int = -1):
         """
         Calculate the additional Main Parameters for the Events in an HDF5 File.
 
@@ -836,52 +1106,63 @@ class FeaturesMixin(object):
         :type down: int
         :param no_of: Do not use the optimum filter, fill the quantities with zeros instead.
         :type no_of: bool
+        :param processes: The number of processes to use for the calculation. If -1, all available resources are used.
+        :type processes: int
         """
 
-        if not path_h5:
-            path_h5 = self.path_h5
+        if not path_h5: path_h5 = self.path_h5
+        if processes == -1: processes = ai._available_workers
+
+        assert self.exists("optimumfilter") or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
+
+        if no_of:
+            of = [None]*self.nmbr_channels
+        else:
+            of_real = self.get("optimumfilter", "optimumfilter_real")
+            of_imag = self.get("optimumfilter", "optimumfilter_imag")
+            of = of_real + 1j * of_imag
+           
+        f = [partial(calc_additional_parameters, optimal_transfer_function=of[c], down=down) 
+             for c in range(self.nmbr_channels)]
+        
+        events = [self.get_event_iterator(type, channel=ch, batch_size=100) for ch in range(self.nmbr_channels)]
+        n_events = len(events[0])
+        
+        out = []
+        print(txt_fmt('Calculating additional main parameters ...', style="bold"))
+        for ch in range(self.nmbr_channels):
+            out.append( vai.apply(f[ch], 
+                                  events[ch], 
+                                  n_processes=processes if n_events>1000 else 1,
+                                  pb_prefix=f"Channel {ch}")
+            )
+
+        self.set(type, 
+                 add_mainpar=np.array(out), 
+                 dtype=np.float32, 
+                 overwrite_existing=True,
+                 write_to_virtual=False)
+        print("\n")
 
         with h5py.File(path_h5, 'r+') as h5f:
-            events = h5f[type]
+            group = h5f[type]
 
-            assert 'optimumfilter' in h5f or no_of, 'You need to calculate the optimal filter first, or activate no_of!'
-
-            if not no_of:
-                of_real = np.array(h5f['optimumfilter']['optimumfilter_real'])
-                of_imag = np.array(h5f['optimumfilter']['optimumfilter_imag'])
-                of = of_real + 1j * of_imag
-            else:
-                of = [None for i in range(self.nmbr_channels)]
-
-            print('CALCULATE ADDITIONAL MAIN PARAMETERS.')
-
-            add_par_event = []
-            for c in range(self.nmbr_channels):
-                add_par_event.append([calc_additional_parameters(ev, of[c], down=down) for ev in events['event'][c]])
-
-            add_par_event = np.array(add_par_event)
-
-            events.require_dataset(name='add_mainpar',
-                                   shape=(add_par_event.shape),
-                                   dtype='float')
-            events['add_mainpar'][...] = add_par_event
-
-            events['add_mainpar'].attrs.create(name='array_max', data=0)
-            events['add_mainpar'].attrs.create(name='array_min', data=1)
-            events['add_mainpar'].attrs.create(name='var_first_eight', data=2)
-            events['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
-            events['add_mainpar'].attrs.create(name='var_last_eight', data=4)
-            events['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
-            events['add_mainpar'].attrs.create(name='var', data=6)
-            events['add_mainpar'].attrs.create(name='mean', data=7)
-            events['add_mainpar'].attrs.create(name='skewness', data=8)
-            events['add_mainpar'].attrs.create(name='max_derivative', data=9)
-            events['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
-            events['add_mainpar'].attrs.create(name='min_derivative', data=11)
-            events['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
-            events['add_mainpar'].attrs.create(name='max_filtered', data=13)
-            events['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
-            events['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
+            group['add_mainpar'].attrs.create(name='array_max', data=0)
+            group['add_mainpar'].attrs.create(name='array_min', data=1)
+            group['add_mainpar'].attrs.create(name='var_first_eight', data=2)
+            group['add_mainpar'].attrs.create(name='mean_first_eight', data=3)
+            group['add_mainpar'].attrs.create(name='var_last_eight', data=4)
+            group['add_mainpar'].attrs.create(name='mean_last_eight', data=5)
+            group['add_mainpar'].attrs.create(name='var', data=6)
+            group['add_mainpar'].attrs.create(name='mean', data=7)
+            group['add_mainpar'].attrs.create(name='skewness', data=8)
+            group['add_mainpar'].attrs.create(name='max_derivative', data=9)
+            group['add_mainpar'].attrs.create(name='ind_max_derivative', data=10)
+            group['add_mainpar'].attrs.create(name='min_derivative', data=11)
+            group['add_mainpar'].attrs.create(name='ind_min_derivative', data=12)
+            group['add_mainpar'].attrs.create(name='max_filtered', data=13)
+            group['add_mainpar'].attrs.create(name='ind_max_filtered', data=14)
+            group['add_mainpar'].attrs.create(name='skewness_filtered_peak', data=15)
 
     def apply_logical_cut(self,
                           cut_flag: list,
@@ -918,7 +1199,7 @@ class FeaturesMixin(object):
 
         print('Applied logical cut.')
 
-    @deprecated(details="This method is deprecated. Use DataHandler.set() instead.")
+    @deprecated(deprecated_in='1.2.0', removed_in="2.0.0", details="Use DataHandler.set() instead.")
     def include_values(self,
                        values: list,
                        naming: str,
@@ -973,15 +1254,17 @@ class FeaturesMixin(object):
             non-dominant channels.
         :type max_search_range: int
 
-        >>> import cait as ai
+        .. code-block:: python
+        
+            import cait as ai
 
-        >>> path_data = '../CRESST_DATA/run36/run36_Gode1/'
-        >>> fname = 'stream_bck_003'
+            path_data = '../CRESST_DATA/run36/run36_Gode1/'
+            fname = 'stream_bck_003'
 
-        >>> dh_stream = ai.DataHandler(channels=[9, 10, 11, ])
-        >>> dh_stream.set_filepath(path_h5=path_data, fname=fname, appendix=False)
+            dh_stream = ai.DataHandler(channels=[9, 10, 11, ])
+            dh_stream.set_filepath(path_h5=path_data, fname=fname, appendix=False)
 
-        >>> dh_stream.calc_ph_correlated()
+            dh_stream.calc_ph_correlated()
         """
 
         with h5py.File(self.path_h5, 'r+') as f:

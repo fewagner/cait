@@ -1,30 +1,31 @@
 import sqlite3
-from time import strptime, mktime
+from time import mktime, strptime
 
-import numpy as np
+import matplotlib.pyplot as plt
 import numba as nb
+import numpy as np
+from deprecation import deprecated
 from scipy import signal
 from tqdm.auto import tqdm
-import matplotlib.pyplot as plt
 
 from ..data._raw import convert_to_V
 from ..filter._of import filter_event
-from ..styles import use_cait_style, make_grid
+from ..readers import BinaryFile
+from ..styles import make_grid, use_cait_style
+
 
 # functions
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files.")
 def readcs(path):
     """
     This functions reads a continuous stream file, i.e. from CRESST.
 
     :param path: Path to the continuos stream file.
     :type path: string
-    :return: Return the opened file stream to the memory mapped stream file.
-    :rtype: memory mapped array
+    :return: Return the stream file. Use in a with context!
+    :rtype: BinaryFile
     """
-    arr = np.memmap(path, dtype=np.int16, mode='r')
-    return arr
-
+    return BinaryFile(path, dtype=np.dtype(np.int16))
 
 @nb.njit
 def time_to_sample(t, sample_duration=0.00004):
@@ -159,7 +160,7 @@ def get_max_index(stream,  # memmap array
 
     return int(trig), h
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def trigger_csmpl(paths,
                   trigger_tres,
                   transfer_function=None,
@@ -228,67 +229,67 @@ def trigger_csmpl(paths,
         print('#######################################')
         print('CURRENT STREAM NMBR {} PATH {}'.format(j, path))
 
-        stream = readcs(path)
-        length_stream = len(stream)
+        with readcs(path) as stream:
+            length_stream = len(stream)
 
-        if take_samples < 0:
-            take_samples = length_stream
+            if take_samples < 0:
+                take_samples = length_stream
 
-        print('TOTAL LENGTH STREAM: ', length_stream)
+            print('TOTAL LENGTH STREAM: ', length_stream)
 
-        # ---------------------------------------------------------------
-        # TRIGGER ALGO
-        # ---------------------------------------------------------------
+            # ---------------------------------------------------------------
+            # TRIGGER ALGO
+            # ---------------------------------------------------------------
 
-        with tqdm(total=take_samples - record_length) as pbar:
-            pbar.update(record_length)
-            counter = np.copy(record_length)
-            block = 0
-            while counter < take_samples - record_length:
-                pbar.update(record_length - 2 * overlap)
-                if block >= record_length - overlap:
-                    block -= record_length - 2 * overlap
-                    counter += record_length - 2 * overlap
-                else:
-                    trig, height = get_max_index(stream=stream,  # memmap array
-                                                 counter=counter,  # in samples
-                                                 record_length=record_length,
-                                                 overlap=overlap,  # in samples
-                                                 block=block,  # in samples
-                                                 transfer_function=transfer_function,
-                                                 down=down,
-                                                 window=window,
-                                                 )
-                    if height > trigger_tres:
-                        # resample in case higher trigger is in record window
-                        counter += (trig - overlap) - 1
-                        if counter > take_samples - record_length: #check if new record window would end outside sample
-                            continue
-                        pbar.update((trig - overlap) - 1)
+            with tqdm(total=take_samples - record_length) as pbar:
+                pbar.update(record_length)
+                counter = np.copy(record_length)
+                block = 0
+                while counter < take_samples - record_length:
+                    pbar.update(record_length - 2 * overlap)
+                    if block >= record_length - overlap:
+                        block -= record_length - 2 * overlap
+                        counter += record_length - 2 * overlap
+                    else:
                         trig, height = get_max_index(stream=stream,  # memmap array
-                                                     counter=counter,  # in samples
-                                                     record_length=record_length,
-                                                     overlap=overlap,  # in samples
-                                                     block=block,  # in samples
-                                                     transfer_function=transfer_function,
-                                                     down=down,
-                                                     window=window,
-                                                     )
+                                                    counter=counter,  # in samples
+                                                    record_length=record_length,
+                                                    overlap=overlap,  # in samples
+                                                    block=block,  # in samples
+                                                    transfer_function=transfer_function,
+                                                    down=down,
+                                                    window=window,
+                                                    )
                         if height > trigger_tres:
-                            triggers.append(start_hours + sample_to_time(counter + trig, sample_duration=sample_length))
-                            trigger_heights.append(height)
-                            record_starts.append(start_hours + sample_to_time(counter, sample_duration=sample_length))
-                            blocks.append(block)
+                            # resample in case higher trigger is in record window
+                            counter += (trig - overlap) - 1
+                            if counter > take_samples - record_length: #check if new record window would end outside sample
+                                continue
+                            pbar.update((trig - overlap) - 1)
+                            trig, height = get_max_index(stream=stream,  # memmap array
+                                                        counter=counter,  # in samples
+                                                        record_length=record_length,
+                                                        overlap=overlap,  # in samples
+                                                        block=block,  # in samples
+                                                        transfer_function=transfer_function,
+                                                        down=down,
+                                                        window=window,
+                                                        )
+                            if height > trigger_tres:
+                                triggers.append(start_hours + sample_to_time(counter + trig, sample_duration=sample_length))
+                                trigger_heights.append(height)
+                                record_starts.append(start_hours + sample_to_time(counter, sample_duration=sample_length))
+                                blocks.append(block)
 
-                            block += trig + trigger_block
+                                block += trig + trigger_block
 
-                    # increment
-                    counter += record_length - 2 * overlap
-                    block -= record_length - 2 * overlap
-                    if block < 0:
-                        block = 0
-        # increment
-        start_hours += (length_stream - 1) * sample_length
+                        # increment
+                        counter += record_length - 2 * overlap
+                        block -= record_length - 2 * overlap
+                        if block < 0:
+                            block = 0
+            # increment
+            start_hours += (length_stream - 1) * sample_length
     print('#######################################')
     print('DONE WITH ALL FILES FROM THIS CALL.')
     print('Triggers: ', len(triggers))
@@ -298,7 +299,7 @@ def trigger_csmpl(paths,
     else:
         return np.array(triggers)
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_record_window(path,
                       start_time,  # in s
                       record_length,
@@ -348,7 +349,7 @@ def get_record_window(path,
 
     return event, time
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For displaying streams, use cait.versatile.StreamViewer.")
 def plot_csmpl(path,
                start_time=0,
                record_length=None,
@@ -584,7 +585,7 @@ def exclude_testpulses(trigger_hours,
 
     return flag
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_test_stamps(path,
                     channels=None,
                     control_pulses=None,
@@ -612,7 +613,8 @@ def get_test_stamps(path,
         ('tpch', np.uint32),
     ])
 
-    stamps = np.fromfile(path, dtype=teststamp)
+    #stamps = np.fromfile(path, dtype=teststamp)
+    stamps = BinaryFile(path=path, dtype=teststamp)
 
     hours = stamps['stamp'] / clock / 3600
     tpas = stamps['tpa']
@@ -620,7 +622,9 @@ def get_test_stamps(path,
 
     # take only the channels we want
     if channels is not None:
-        cond = np.in1d(testpulse_channels, channels)
+        # Deprecated since numpy 2.0
+        # cond = np.in1d(testpulse_channels, channels)
+        cond = np.isin(testpulse_channels, channels)
         hours = hours[cond]
         tpas = tpas[cond]
         testpulse_channels = testpulse_channels[cond]
@@ -637,7 +641,7 @@ def get_test_stamps(path,
 
     return hours, tpas, testpulse_channels
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_starttime(path_sql, csmpl_channel, sql_file_label):
     """
     Read the start time of a `*.csmpl` file from the SQL database.
@@ -666,7 +670,7 @@ def get_starttime(path_sql, csmpl_channel, sql_file_label):
 
     return mktime(time_created)
 
-
+@deprecated(deprecated_in="1.3.0", removed_in="2.0.0", details="Use the cait.versatile.Stream class to interact with stream files. For triggering, use cait.versatile.trigger_of() or cait.versatile.trigger_zscore().")
 def get_offset(path_dig_stamps):
     """
     Get the offset between start of the continuous DAQ and start of the CCS time recording.
@@ -684,7 +688,8 @@ def get_offset(path_dig_stamps):
         ('bank2', np.uint32),
     ])
 
-    diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+    #diq_stamps = np.fromfile(path_dig_stamps, dtype=dig)
+    diq_stamps = BinaryFile(path=path_dig_stamps, dtype=dig)
     dig_samples = diq_stamps['stamp']
     offset_clock = (dig_samples[1] - 2 * dig_samples[0])
 

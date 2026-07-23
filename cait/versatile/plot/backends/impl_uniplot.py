@@ -6,6 +6,7 @@ from .backendbase import BackendBaseClass
 
 try:
     import uniplot
+    from uniplot.uniplot import readkey
 except ImportError:
     uniplot = None
 
@@ -14,7 +15,9 @@ class BaseClassUniplot(BackendBaseClass):
     Base Class for plots using the `uniplot` library (has to be installed). Not meant for standalone use but rather to be called through :class:`Viewer`. 
 
     This class produces plots given a dictionary of instructions of the following form:
-    ::
+    
+    .. code-block:: python
+    
         data = { 
                 "line": { 
                     "line1": [x_data1, y_data1],
@@ -38,6 +41,11 @@ class BaseClassUniplot(BackendBaseClass):
                         "label": "ylabel",
                         "scale": "log",
                         "range": (0, 10)
+                        },
+                    "caxis": {
+                        "label": "clabel",
+                        "scale": "linear",
+                        "range": (0, 10)
                         }
                     }
                 }
@@ -57,7 +65,7 @@ class BaseClassUniplot(BackendBaseClass):
                  show_controls: bool = True):
         
         if uniplot is None: 
-            raise RuntimeError("Install 'uniplot>=0.12.2' to use this feature.")
+            raise RuntimeError("Install 'uniplot>=0.21.2' to use this feature.")
 
         # Height/width in characters
         self.height = int(height)
@@ -122,6 +130,9 @@ class BaseClassUniplot(BackendBaseClass):
             arg = dict(bins=bins)
         elif isinstance(bins, tuple) and len(bins) == 3:
             arg = dict(bins=np.arange(bins[0], bins[1], (bins[1]-bins[0])/bins[2]))
+        elif isinstance(bins, (list, np.ndarray)):
+            bins = np.array(bins)
+            arg = dict(bins=bins)
         else:
             raise TypeError("Bin info has to be either None, an integer (number of bins), or a tuple of length 3 (start, end, number of bins)")
 
@@ -137,6 +148,9 @@ class BaseClassUniplot(BackendBaseClass):
         
         if name is None: name = f"histogram {len(self.histograms)+1}"
         self.histograms[name] = [x, y]
+
+    def _add_heatmap(self, x: list, y: list, bins: Union[int, tuple], name: str = None):
+        raise NotImplementedError("Heatmaps are not implemented for backend 'uniplot'")
         
     def _add_vmarker(self, marker_pos, y_int, name=None):
         raise NotImplementedError("vmarker not implemented for backend 'uniplot'")
@@ -156,9 +170,15 @@ class BaseClassUniplot(BackendBaseClass):
     def _update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
         ...
 
+    def _update_heatmap(self, name: str, x: list, y: list, bins: Union[int, tuple]):
+        raise NotImplementedError("Heatmaps are not implemented for backend 'uniplot'")
+
     def _update_vmarker(self, name, marker_pos, y_int):
         raise NotImplementedError("vmarker not implemented for backend 'uniplot'")
 
+    def _get_artist(self, name: str):
+        raise NotImplementedError("get_artist not implemented for backend 'uniplot'")
+    
     def _set_axes(self, data: dict):
         if "xaxis" in data.keys():
             if "label" in data["xaxis"].keys() and data["xaxis"]["label"] is not None:
@@ -270,11 +290,13 @@ class BaseClassUniplot(BackendBaseClass):
                 print(f"other actions: {', '.join([b['text'] for b in self.buttons])}")
                 
             # Get key input
-            key = uniplot.getch.getch().lower()
+            key = readkey()
 
-            if key in ["q", "\x1b"] + hot_keys: 
+            if key in ["q", "\x1b", "\x1b\x1b"] + hot_keys: 
                 # Break out of loop (below, we distinguish between hot
                 # keys and q/ESC)
+                # Note: for some reason, a single ESC is not registered,
+                # so a double esc was added above to the check above.
                 break
             elif key == "i":
                 self.plt_opt.zoom_in()
@@ -315,3 +337,7 @@ class BaseClassUniplot(BackendBaseClass):
     @property
     def histogram_names(self):
         return list(self.histograms.keys())
+    
+    @property
+    def heatmap_names(self):
+        raise NotImplementedError("Heatmaps are not implemented for backend 'uniplot'")

@@ -608,7 +608,13 @@ class RdtMixin(object):
         cond = data['detector_nmbr'] == self.channels[0]
         nmbr_cp = np.sum(cond)
         print('{} Control Pulses for channel {} in file.'.format(nmbr_cp, self.channels[0]))
-        hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) / clock_frequency / 3600
+
+        ts_high = np.array(data['time_stamp_high'][cond], dtype=np.int64)
+        ts_low = np.array(data['time_stamp_low'][cond], dtype=np.int64)
+        hours = (ts_high*(2**32) + ts_low)/clock_frequency/3600
+    
+        # Caused OverflowError in numpy>=2
+        #hours = (data['time_stamp_high'][cond] * 2 ** 32 + data['time_stamp_low'][cond]) / clock_frequency / 3600
 
         # create file handles
         with h5py.File(self.path_h5, 'r+') as f:
@@ -728,9 +734,9 @@ class RdtMixin(object):
                     del qdc['time_mus']
 
                 start_s = f['metainfo']['start_s'][()]
-                start_mus = f['metainfo']['start_mus'][()]
+                start_mus = f['metainfo']['start_mus'][()]*1e-6
 
-                stamp_s = (data['time_high'] * 2 ** 32 + data['time_low']) / clock
+                stamp_s = (np.array(data['time_high'], dtype=np.int64) * 2 ** 32 + np.array(data['time_low'], dtype=np.int64)) / clock
                 time_s = np.array(stamp_s + start_s + start_mus, dtype=int)
                 time_mus = np.array((stamp_s + start_s + start_mus) * 1e6 % 1e6, dtype=int)
 
@@ -738,6 +744,7 @@ class RdtMixin(object):
                                    data=time_s)
                 qdc.create_dataset(name='time_mus',
                                    data=time_mus)
+
             else:
                 print('To include absolute time information, include metainfo first!')
 

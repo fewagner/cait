@@ -2,7 +2,9 @@ from typing import Union, List
 from functools import partial
 
 import numpy as np
+from numpy.typing import ArrayLike
 import pandas as pd
+from tqdm.auto import tqdm
 
 import cait.versatile as vai
 
@@ -29,22 +31,20 @@ def zscore_chunk(data: np.ndarray, record_length: int):
     m = r.mean().shift(1)
     s = r.std(ddof=0).shift(1)
 
-    return np.array((data-m)/s)[record_length:]
+    return np.array((data-m)/s)[record_length:-record_length]
 
-def trigger_zscore(stream, 
-                   key: str,
+def trigger_zscore(stream: ArrayLike,
                    record_length: int,
                    threshold: float = 5,
                    n_triggers: int = None,
                    chunk_size: int = 100,
-                   apply_first: Union[callable, List[callable]] = None):
+                   apply_first: Union[callable, List[callable]] = None,
+                   n_processes: int = None):
     """
-    Trigger a single channel of a stream object using a moving z-score.
+    Trigger a single channel of a stream using a moving z-score. See :func:`cait.versatile.functions.trigger.triggerbase.trigger_base` for details on the implementation.
 
-    :param stream: The stream object with the channel to trigger.
-    :type stream: StreamBaseClass
-    :param key: The name of the channel in 'stream' to trigger.
-    :type key: str
+    :param stream: The stream channel to trigger.
+    :type stream: ArrayLike
     :param threshold: The threshold (in z-scores) above which events should be triggered.
     :type threshold: float
     :param n_triggers: The number of events to trigger (might be more, depending on 'chunk_size'). E.g. useful to look at the first 100 triggered events. Defaults to None, i.e. all events in the stream are triggered
@@ -53,18 +53,23 @@ def trigger_zscore(stream,
     :type chunk_size: int
     :param apply_first: A function or list of functions to be applied to the stream data BEFORE the filter function is applied. E.g. ``lambda x: -x`` to trigger on the inverted stream.
     :type apply_first: Union[callable, List[callable]], optional
+    :param n_processes: The number of processes to use to process chunks. If None, all available cores are utilized. Defaults to None
+    :type n_processes: int, optional
 
     :return: Tuple of trigger indices and trigger heights.
     :rtype: Tuple[List[int], List[float]]
 
     **Example:**
-    ::
+
+    .. code-block:: python
+    
         import cait.versatile as vai
 
         # Construct stream object
         stream = vai.Stream(hardware="vdaq2", src="path/to/stream_file.bin")
-        # Perform triggering
-        trigger_inds, amplitudes = vai.trigger_of(stream, "ADC1", 2**14)
+        # Perform triggering (use context to keep stream file opened)
+        with stream:
+            trigger_inds, amplitudes = vai.trigger_zscore(stream["ADC1"], 2**14)
         # Get trigger timestamps from trigger indices
         timestamps = stream.time[trigger_inds]
         # Plot trigger amplitude spectrum
@@ -75,30 +80,49 @@ def trigger_zscore(stream,
 
     # Trigger to get the trigger indices
     inds, _ =  trigger_base(stream=stream,
-                            key=key,
                             threshold=threshold,
                             filter_fnc=filter_fnc,
                             record_length=record_length,
                             n_triggers=n_triggers,
                             chunk_size=chunk_size,
-                            apply_first=apply_first)
+                            apply_first=apply_first,
+                            n_processes=n_processes)
     
     if not inds: return [], []
     
     # The trigger_vals are given in z-scores.
     # Therefore, we also calculate a naïve pulse height after subtracting a constant baseline
-    events = stream.get_event_iterator(key, record_length, inds)
-    # Slice to search peak in the interval (1/5, 2/5) of the record window
-    sl = slice(int(record_length/5), int(2*record_length/5))
-
+    
     # Also apply the function for the pulse height calculation
     if apply_first is not None:
         if callable(apply_first): apply_first = [apply_first]
     else:
         apply_first = []
 
-    print("Calculating pulse heights")
-    phs = vai.apply(lambda x: np.max(x[sl]), 
-                    events.with_processing(apply_first + [vai.RemoveBaseline()]))
+    # Record windows centered at 1/4*record_length
+    before = int(record_length/4)
+    after = int(3*record_length/4)
 
-    return inds, phs
+    # Slice to search peak in the interval (1/5, 2/5) of the record window
+    a, b = int(record_length/5), int(2*record_length/5)
+    sl = slice(a, b)
+
+    phs = np.zeros(len(inds), dtype=np.float32)
+    corrected_inds = np.zeros(len(inds), dtype=np.int64)
+    processing = apply_first + [vai.BoxCarSmoothing(), vai.RemoveBaseline()]
+
+    for i, ind in enumerate(pbar := tqdm(inds, desc="Calculating pulse heights", disable=len(stream)-3*record_length<chunk_size*record_length)):
+        trace = stream[ind-before:ind+after]
+        for p in processing: trace = p(trace)
+
+        # re-calculate maximum and peak position
+        peak_pos = np.argmax(trace[sl])
+        corrected_inds[i] = ind - before + a + peak_pos
+        phs[i] = trace[sl][peak_pos]
+
+    # By correcting the trigger indices using the maximum search, it is possible to find triggers that happened
+    # before 'record_length' samples into the stream. We want to explicitly discard those.
+    if len(inds)>0 and corrected_inds[0]<record_length:
+        corrected_inds, phs = corrected_inds[1:], phs[1:]
+        
+    return corrected_inds, phs

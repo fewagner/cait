@@ -1,9 +1,10 @@
-from typing import Callable, Union, List, Tuple
+from typing import Callable, List, Tuple, Union
 
-from .backends.impl_plotly import BaseClassPlotly
-from .backends.impl_matplotlib import BaseClassMPL
-from .backends.impl_uniplot import BaseClassUniplot
 from .backends.helper import auto_backend
+from .backends.impl_matplotlib import BaseClassMPL
+from .backends.impl_plotly import BaseClassPlotly
+from .backends.impl_uniplot import BaseClassUniplot
+
 
 class Viewer():
     """Class for plotting data given a dictionary of instructions (see below).
@@ -17,14 +18,22 @@ class Viewer():
     :type xlabel: str, optional
     :param ylabel: y-label for the plot.
     :type ylabel: str, optional
+    :param clabel: Label for the colour axis of the plot (if applicable).
+    :type clabel: str, optional
     :param xscale: x-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
     :type xscale: str, optional
     :param yscale: y-scale for the plot. Either of ['linear', 'log'], defaults to 'linear'.
     :type yscale: str, optional
+    :param cscale: Scale for the colour axis of the plot (if applicable). Either of ['linear', 'log'], defaults to 'linear'.
+    :type cscale: str, optional
     :param xrange: x-range for the plot. A tuple of (xmin, xmax), defaults to None, i.e. auto-scaling.
     :type xrange: tuple, optional
     :param yrange: y-range for the plot. A tuple of (ymin, ymax), defaults to None, i.e. auto-scaling.
     :type yrange: tuple, optional
+    :param crange: Range for colour axis of the plot (if applicable). A tuple of (cmin, cmax), defaults to None, i.e. auto-scaling.
+    :type crange: tuple, optional
+    :param cmap: Colour map to use (if applicable). If None, the default colour map for the chosen template of the chosen backend will be used.
+    :type cmap: str, optional
 
     :param template: Valid backend theme. For `plotly` either of ['ggplot2', 'seaborn', 'simple_white', 'plotly', 'plotly_white', 'plotly_dark', 'presentation', 'xgridoff', 'ygridoff', 'gridon', 'none'], for `mpl` either of ['default', 'classic', 'Solarize_Light2', '_classic_test_patch', '_mpl-gallery', '_mpl-gallery-nogrid', 'bmh', 'classic', 'dark_background', 'fast', 'fivethirtyeight', 'ggplot', 'grayscale', 'seaborn-v0_8', 'seaborn-v0_8-bright', 'seaborn-v0_8-colorblind', 'seaborn-v0_8-dark', 'seaborn-v0_8-dark-palette', 'seaborn-v0_8-darkgrid', 'seaborn-v0_8-deep', 'seaborn-v0_8-muted', 'seaborn-v0_8-notebook', 'seaborn-v0_8-paper', 'seaborn-v0_8-pastel', 'seaborn-v0_8-poster', 'seaborn-v0_8-talk', 'seaborn-v0_8-ticks', 'seaborn-v0_8-white', 'seaborn-v0_8-whitegrid', 'tableau-colorblind10'], defaults to 'ggplot2' for `backend=plotly` and to 'seaborn' for `backend=mpl`. `template` has no effect for backend 'uniplot'.
     :type template: str, optional
@@ -36,7 +45,8 @@ class Viewer():
     :type show_controls: bool
 
     **Convention for 'data' Dictionary:**
-    ::
+    
+    .. code-block:: python
     
         data = { 
                 "line": { 
@@ -51,6 +61,10 @@ class Viewer():
                     "hist1": [bin_data1, hist_data1],
                     "hist2": [bin_data2, hist_data2]
                     },
+                "heatmap": {
+                    "heat1": [bin_data1, xdata1, ydata1],
+                    "heat2": [bin_data2, xdata2, ydata2]
+                    },
                 "axes": {
                     "xaxis": {
                         "label": "xlabel",
@@ -61,6 +75,12 @@ class Viewer():
                         "label": "ylabel",
                         "scale": "log",
                         "range": (0, 10)
+                        },
+                    "caxis": {
+                        "label": "clabel",
+                        "scale": "linear",
+                        "range": (0, 10),
+                        "cmap": "plasma"
                         }
                     }
                 }
@@ -69,11 +89,15 @@ class Viewer():
                  data=None, 
                  backend="auto", 
                  xlabel: str = None, 
-                 ylabel: str = None, 
+                 ylabel: str = None,
+                 clabel: str = None, 
                  xscale: str = None, 
-                 yscale: str = None, 
+                 yscale: str = None,
+                 cscale: str = None,
                  xrange: tuple = None, 
                  yrange: tuple = None, 
+                 crange: tuple = None,
+                 cmap: str = None,
                  **kwargs):
 
         if backend=="auto": backend = auto_backend()
@@ -87,21 +111,53 @@ class Viewer():
         else:
             raise NotImplementedError('Only backend "plotly", "mpl" and "uniplot" are supported.')
 
+        self._backend = backend
         self.visible = False
 
         if data is not None: 
             self.plot(data)  
             self.show()
 
-        if xlabel: self.set_xlabel(xlabel)
-        if ylabel: self.set_ylabel(ylabel)
-        if xscale: self.set_xscale(xscale)
-        if yscale: self.set_yscale(yscale)
-        if xrange: self.set_xrange(xrange)
-        if yrange: self.set_yrange(yrange)
+        x_config = dict()
+        if xlabel: x_config["label"] = xlabel
+        if xscale: x_config["scale"] = xscale
+        if xrange: x_config["range"] = xrange
+
+        y_config = dict()
+        if ylabel: y_config["label"] = ylabel
+        if yscale: y_config["scale"] = yscale
+        if yrange: y_config["range"] = yrange
+
+        c_config = dict()
+        if clabel: c_config["label"] = clabel
+        if cscale: c_config["scale"] = cscale
+        if crange: c_config["range"] = crange
+        if cmap:   c_config["cmap"]  = cmap
+
+        if x_config: self.fig_widget._set_axes(dict(xaxis=x_config))
+        if y_config: self.fig_widget._set_axes(dict(yaxis=y_config))
+        if c_config: self.fig_widget._set_axes(dict(caxis=c_config))
 
     def _add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
         self.fig_widget._add_button(text, callback, tooltip, where, key)
+
+    def add_button(self, text: str, callback: Callable, tooltip: str = None, where: int = -1, key: str = None):
+        """
+        Add a button and callback to be activated by clicking it to the figure. Note that for this, you need to set `show_controls=True`.
+
+        :param text: The text on the button.
+        :type text: str
+        :param callback: The function to call when it is pressed.
+        :type callback: Callable
+        :param tooltip: The tooltip for the button.
+        :type tooltip: str, optional
+        :param where: The spot in the list of buttons where to place the new button. Defaults to -1, i.e. append to the end of the list.
+        :type where: int, optional
+        :param key: This is relevant for `backend='uniplot'` only. With that backend, there are no buttons, so the 'button' is pressed by pressing the specified key.
+        :type key: str, optional
+        """
+        self.fig_widget._add_button(text, callback, tooltip, where, key)
+        self.fig_widget._show()
 
     def show_legend(self, show: bool = True):
         """
@@ -114,7 +170,7 @@ class Viewer():
 
     def set_xlabel(self, xlabel: str):
         """
-        Set the x-label of the figure.
+        Set the x-label of the axis.
 
         :param xlabel: x-label
         :type xlabel: str
@@ -123,16 +179,25 @@ class Viewer():
 
     def set_ylabel(self, ylabel: str):
         """
-        Set the y-label of the figure.
+        Set the y-label of the axis.
 
         :param ylabel: y-label
         :type ylabel: str
         """
         self.fig_widget._set_axes(dict(yaxis={"label":ylabel}))
 
+    def set_clabel(self, clabel: str):
+        """
+        Set the colour axis label (if applicable).
+
+        :param clabel: colour axis label
+        :type clabel: str
+        """
+        self.fig_widget._set_axes(dict(caxis={"label":clabel}))
+
     def set_xscale(self, xscale: str):
         """
-        Set the x-scale of the figure. Either linear or logarithmic.
+        Set the x-scale of the axis. Either linear or logarithmic.
 
         :param xscale: x-scale. Either of ["linear", "log"]
         :type xscale: str
@@ -141,16 +206,25 @@ class Viewer():
 
     def set_yscale(self, yscale: str):
         """
-        Set the y-scale of the figure. Either linear or logarithmic.
+        Set the y-scale of the axis. Either linear or logarithmic.
 
         :param yscale: y-scale. Either of ["linear", "log"]
         :type yscale: str
         """
         self.fig_widget._set_axes(dict(yaxis={"scale":yscale}))
 
+    def set_cscale(self, cscale: str):
+        """
+        Set the scale of colour axis (if applicable). Either linear or logarithmic.
+
+        :param cscale: Colour axis scale. Either of ["linear", "log"]
+        :type cscale: str
+        """
+        self.fig_widget._set_axes(dict(caxis={"scale":cscale}))
+
     def set_xrange(self, xrange: tuple):
         """
-        Set the x-range of the figure.
+        Set the x-range of the axis.
 
         :param xrange: x-range. A tuple of (xmin, xmax)
         :type xrange: tuple
@@ -159,12 +233,21 @@ class Viewer():
 
     def set_yrange(self, yrange: tuple):
         """
-        Set the y-range of the figure.
+        Set the y-range of the axis.
 
         :param yrange: y-range. A tuple of (ymin, ymax)
         :type yrange: tuple
         """
         self.fig_widget._set_axes(dict(yaxis={"range":yrange}))
+
+    def set_crange(self, crange: tuple):
+        """
+        Set the colour axis range (if applicable).
+
+        :param crange: Colour axis range. A tuple of (ymin, ymax)
+        :type crange: tuple
+        """
+        self.fig_widget._set_axes(dict(caxis={"range":crange}))
 
     def add_line(self, x: List[float], y: List[float], name: str = None):
         """
@@ -192,7 +275,7 @@ class Viewer():
         """
         self.fig_widget._add_scatter(x, y, name)
 
-    def add_histogram(self, bins: Union[int, tuple], data: List[float], name: str = None):
+    def add_histogram(self, bins: Union[int, tuple, list], data: List[float], name: str = None):
         """
         Add a histogram to the figure. If a name is provided, it is registered and can later be updated.
 
@@ -204,6 +287,21 @@ class Viewer():
         :type name: str, optional
         """
         self.fig_widget._add_histogram(bins, data, name)
+
+    def add_heatmap(self, x: List[float], y: List[float], bins: Union[int, tuple, list], name: str = None):
+        """
+        Add a heatmap to the figure. If a name is provided, it is registered and can later be updated.
+
+        :param x: The x-data to bin and plot.
+        :type x: List[float]
+        :param y: The y-data to bin and plot.
+        :type y: List[float]
+        :param bins: The binning data to use. If None, the binning is done automatically. An integer is interpreted as the desired total number of bins on both axes. You can also parse a tuple of the form `(start, end, nbins)` to bin the data between `start` and `end` into a total of `nbins` bins. A numpy array is interpreted as the desired bin edges. If you pass a tuple of length two, you can specify either of the aforementioned arguments for both axes separately.
+        :type bins: Union[None, int, tuple, np.ndarray], optional
+        :param name: The name of the heatmap in the legend and its unique identifier for later updates. If None, the heatmap does not show up in the legend and is not registered for later update.
+        :type name: str, optional
+        """
+        self.fig_widget._add_heatmap(x, y, bins, name)
 
     def add_vmarker(self, marker_pos: Union[float, List[float]], y_int: Tuple[float], name: str = None):
         """
@@ -225,12 +323,19 @@ class Viewer():
         """
         self.fig_widget._update_scatter(name, x, y)
 
-    def update_histogram(self, name: str, bins: Union[int, tuple], data: List[float]):
+    def update_histogram(self, name: str, bins: Union[int, tuple, list], data: List[float]):
         """
         Update the histogram called `name` with data `data` and bins `bins`.
         See `func:add_histogram` for an explanation of the arguments.
         """
         self.fig_widget._update_histogram(name, bins, data)
+
+    def update_heatmap(self, name: str, x: List[float], y: List[float], bins: Union[int, tuple, list]):
+        """
+        Update the heatmap called `name` with data `x`, `y` and bins `bins`.
+        See `func:add_heatmap` for an explanation of the arguments.
+        """
+        self.fig_widget._update_histogram(name, x, y, bins)
 
     def update_vmarker(self, name: str, marker_pos: Union[float, List[float]], y_int: Tuple[float]):
         """
@@ -239,10 +344,32 @@ class Viewer():
         self.fig_widget._update_vmarker(name, marker_pos, y_int)
 
     def get_figure(self):
-        """
-        Returns the figure object of the plot. Can be used to further manipulate the plot.
-        """
+        """Returns the figure object of the plot. Can be used to further manipulate the plot."""
         return self.fig_widget._get_figure()
+    
+    def get_artist(self, name: str):
+        """
+        Returns the artist object (e.g. plotly Scatter or matplotlib Line) of the plot. Can be used to further manipulate the plot. References on available functions can be found online, e.g. matplotlib lines (https://matplotlib.org/stable/api/_as_gen/matplotlib.lines.Line2D.html#matplotlib.lines.Line2D) and plotly scatters (https://plotly.com/python-api-reference/generated/plotly.graph_objects.Scatter.html).
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait.versatile as vai
+
+            # PLOTLY: 
+            plot = vai.Viewer({"line": {"line1": [[1, 2, 3, 4], [1, 4, 9, 16]]}}, backend="plotly")
+            plot.get_artist("line1").line.dash = "dash"
+
+            # MATPLOTLIB:
+            plot = vai.Viewer({"line": {"line1": [[1, 2, 3, 4], [1, 4, 9, 16]]}}, backend="mpl")
+            plot.get_artist("line1").set_linestyle("--")
+            plot.update() # required for matplotlib backend
+
+            # works analogously for vai.Line({"line1": [[1, 2, 3, 4], [1, 4, 9, 16]]})
+            # and other higher-level plotting functions
+        """
+        return self.fig_widget._get_artist(name=name)
 
     def plot(self, data: dict):
         """
@@ -275,6 +402,14 @@ class Viewer():
                         self.update_histogram(name=histogram_name, bins=histogram_data[0], data=histogram_data[1])
                     else:
                         self.add_histogram(bins=histogram_data[0], data=histogram_data[1], name=histogram_name)
+            
+            if key == "heatmap":
+                for heatmap_name, heatmap_data in value.items():
+                    assert 3==len(heatmap_data), "Heatmap data has to be a tuple/list of length 3 containing bins/x/y data respectively"
+                    if heatmap_name in self.fig_widget.heatmap_names:
+                        self.update_heatmap(name=heatmap_name, bins=heatmap_data[0], x=heatmap_data[1], y=heatmap_data[2])
+                    else:
+                        self.add_heatmap(bins=heatmap_data[0], x=heatmap_data[1], y=heatmap_data[2], name=heatmap_name)
 
             if key == "axes":
                 self.fig_widget._set_axes(value)
@@ -282,9 +417,7 @@ class Viewer():
         self.update()
 
     def show(self):
-        """
-        Show the plot in Jupyter.
-        """
+        """Show the plot in Jupyter."""
         self.fig_widget._show()
         self.visible = True
 
@@ -292,9 +425,12 @@ class Viewer():
         self.fig_widget._update()
     
     def close(self, b=None):
-        """
-        Hide the plot in Jupyter.
-        """
+        """Hide the plot in Jupyter."""
         if self.visible: 
             self.fig_widget._close()
             self.visible = False
+
+    @property
+    def backend(self):
+        """Return the backend currently in use."""
+        return self._backend

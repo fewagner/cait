@@ -1,34 +1,48 @@
-from typing import Callable
+from typing import Callable, List
 from inspect import signature, _empty
-from multiprocessing import Pool
+# Note that multiprocessing.Pool cannot handle lambdas
+# which is why we use multiprocess here. The Pool interface
+# os otherwise identical
+from multiprocess import Pool
 import itertools
 
 import numpy as np
 from tqdm.auto import tqdm
 
+import cait as ai
 from ..iterators.iteratorbase import IteratorBaseClass
 from ..iterators.batchresolver import BatchResolver
 
-def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
+class Compose:
+    def __init__(self, fncs: List[Callable]):
+        self._fncs = fncs
+    def __call__(self, data):
+        out = self._fncs[0](data)
+        for f in self._fncs[1:]: out = f(out)
+        return out
+    
+def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = None, pb_prefix: str = ""):
     """
     Apply a function to events provided by an EventIterator. 
 
-    Multiprocessing and resolving batches as returned by the iterator is done automatically. The function returns a numpy array where the first dimension corresponds to the events returned by the iterator. Higher dimensions are as returned by the function that is applied. Batches are resolved, i.e. calls with an `EventIterator(..., batch_size=1)` and `EventIterator(..., batch_size=100)` yield identical results. 
+    Multiprocessing and resolving batches as returned by the iterator is done automatically. The function returns a numpy array where the first dimension corresponds to the events returned by the iterator. Higher dimensions are as returned by the function that is applied. Batches are resolved, i.e. calls with an ``EventIterator(..., batch_size=1)`` and ``EventIterator(..., batch_size=100)`` yield identical results. 
 
-    *Important*: Since `apply` uses multiprocessing, it is best not to use functions that are defined locally within jupyter lab, but rather to define them in a separate `.py` file and load them from the notebook. This is only relevant if you are trying to define your own function and not if you are just using already existing `cait` functions.
-
-    :param f: Function to be applied to events. Note the restriction above.
+    :param f: Function to be applied to events.
     :type f: Callable
     :param ev_iter: Events for which the function should be applied.
-    :type ev_iter: `~class:cait.versatile.file.EventIterator`
-    :param n_processes: Number of processes to use for multiprocessing.
-    :type n_processes: int
+    :type ev_iter: :class:`~cait.versatile.iterators.iteratorbase.IteratorBaseClass`
+    :param n_processes: Number of processes to use for multiprocessing. If None, ``cait._available_workers`` is used. Defaults to None.
+    :type n_processes: int, optional
+    :param pb_prefix: An optional prefix for the progress bar.
+    :type pb_prefix: str
 
-    :return: Results of `f` for all events in `ev_iter`. Has same structure as output of `f` (just with an additional event dimension).
+    :return: Results of ``f`` for all events in ``ev_iter``. Has same structure as output of ``f`` (just with an additional event dimension).
     :rtype: Any
 
     **Example:**
-    ::
+
+    .. code-block:: python
+    
         import cait.versatile as vai
         import numpy as np
 
@@ -42,6 +56,10 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
         # Example when func has two outputs
         it = vai.MockData().get_event_iterator(batch_size=42)
         out1, out2 = vai.apply(func2, it)
+
+        # Example using a function defined inline
+        it = vai.MockData().get_event_iterator()[0]
+        out = vai.apply(lambda x: np.max(x), it)
     """
     # Check if 'ev_iter' is a cait.versatile iterator object
     if not isinstance(ev_iter, IteratorBaseClass):
@@ -55,19 +73,46 @@ def apply(f: Callable, ev_iter: IteratorBaseClass, n_processes: int = 1):
     if not callable(f):
         raise TypeError(f"Input argument 'f' must be callable.")
     
+    # Use all available workers if no number of processes is provided
+    if n_processes is None: n_processes = ai._available_workers
+    
     # Check if 'f' takes exactly one required argument (the event)
-    n_req_args = np.sum([x.default == _empty for x in signature(f).parameters.values()])
+    n_req_args = np.sum([x.default is _empty for x in signature(f).parameters.values()])
     if n_req_args != 1:
         raise TypeError(f"Input function {f} has too many required arguments ({n_req_args}). Only functions which take one (non-default) argument (the event) are supported.")
     
-    if ev_iter.uses_batches: f = BatchResolver(f, ev_iter.n_channels)
+    # pop processing from iterator (if exists) and construct a list of
+    # functions to be applied to each event 
+    if ev_iter.has_processing:
+        # make copy of event iterator before removing its processing
+        ev_iter = ev_iter[:, :]
+        processing = ev_iter.pop_processing()
+        fncs = processing + [f]
+    else:
+        fncs = [f]
+
+    # If iterator returns batches, we dress all functions with a BatchResolver
+    if ev_iter.uses_batches: 
+        fncs = [BatchResolver(f, ev_iter.n_channels) for f in fncs]
+
+    # Finally, we compose the list of functions (they will be applied consecutively
+    # by the workers in the process pool). If we only applied the function (but not
+    # the iterator processing) in the process pool, the parent process would have 
+    # to calculate all processing outputs (defeating the purpose of using multiple
+    # workers)
+    F = Compose(fncs)
+
+    tqdm_config = dict(total=ev_iter.n_batches, 
+                       unit="batches" if ev_iter.uses_batches else "events",
+                       delay=2,
+                       desc=pb_prefix)
 
     with ev_iter as ev_it:
         if n_processes > 1:
             with Pool(n_processes) as pool:
-                out = list(tqdm(pool.imap(f, ev_it), total=ev_iter.n_batches))
+                out = list(tqdm(pool.imap(F, ev_it), **tqdm_config))
         else:
-            out = [f(ev) for ev in tqdm(ev_it, total=ev_iter.n_batches)]
+            out = [F(ev) for ev in tqdm(ev_it, **tqdm_config)]
     
     # Chain batches such that the list is indistinguishable from a list using no batches
     # (If uses_batches, 'out' is a list of lists)

@@ -15,7 +15,9 @@ class BoxCarSmoothing(FncBaseClass):
     :rtype: np.ndarray
 
     **Example:**
-    ::
+
+    .. code-block:: python
+    
         import cait.versatile as vai
 
         # Construct mock data (which provides event iterator)
@@ -32,6 +34,14 @@ class BoxCarSmoothing(FncBaseClass):
 
     def __call__(self, event):
         event = np.array(event)
+
+        # Reshape for "full" batch support
+        orig_shape = None
+        if event.ndim > 2:
+            orig_shape = event.shape
+            event = event.reshape(-1, event.shape[-1])
+
+
         n = event.ndim
         shape = (event.shape[0], self._length) if n > 1 else (self._length, )
         pad = ((0, 0), (self._length, self._length)) if n > 1 else self._length
@@ -42,6 +52,9 @@ class BoxCarSmoothing(FncBaseClass):
                                     mode="same", 
                                     axes=-1)
         self._smooth_event =  event[..., self._length:-self._length]
+
+        if orig_shape is not None:
+            self._smooth_event = self._smooth_event.reshape(*orig_shape[:-1], -1)
 
         return self._smooth_event
     

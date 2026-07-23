@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from inspect import signature
 
+
 class FncBaseClass(ABC):   
     """
     Abstract class that represents a function which is meant to be applied to event voltage traces. The configuration of the function (i.e. setting its non-event input values) is done upon initialization. As a convention, function inputs will be saved in corresponding class attributes prepended with an underscore (e.g. for a function receiving a parameter `param`, a corresponding `self._param` will be defined in the `__init__`.)
@@ -38,3 +39,14 @@ class FitFncBaseClass(FncBaseClass):
     @abstractmethod
     def model(self, x, *pars):
         ...
+
+class ScalarFncBaseclass(FncBaseClass, ABC):
+    """Abstract class that forces naming of output variables and their dtypes."""
+    _outputs = []
+    @classmethod
+    def names(cls):
+        return [x[0] for x in cls._outputs]
+
+    @classmethod
+    def dtypes(cls):
+        return [x[1] for x in cls._outputs]

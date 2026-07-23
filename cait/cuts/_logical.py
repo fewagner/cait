@@ -18,24 +18,26 @@ def outside(ex, ey, x, y1, y2):
     :return: The cut flag corresponding to the events.
     :rtype: 1D numpy bool array
 
-    >>> import cait as ai
-    >>> import matplotlib.pyplot as plt
-    >>> import numpy as np
+    .. code-block:: python
 
-    >>> nx, ny = (1000, 1000)
-    >>> x = np.linspace(0, 1, nx)
-    >>> y = np.linspace(0, 1, ny)
-    >>> xv, yv = np.meshgrid(x, y)
+        import cait as ai
+        import matplotlib.pyplot as plt
+        import numpy as np
 
-    >>> cutflag = ai.cuts.outside(ex=xv.reshape(-1),
-    ...                          ey=yv.reshape(-1),
-    ...                          x=[0.1, 0.4, 0.9],
-    ...                          y1=[0.1, 0.2, 0.1],
-    ...                          y2=[0.7, 0.9, 0.3],
-    ...                          )
+        nx, ny = (1000, 1000)
+        x = np.linspace(0, 1, nx)
+        y = np.linspace(0, 1, ny)
+        xv, yv = np.meshgrid(x, y)
 
-    >>> plt.contourf(xv, yv, cutflag.reshape((nx, ny)))
-    >>> plt.show()
+        cutflag = ai.cuts.outside(ex=xv.reshape(-1),
+                                 ey=yv.reshape(-1),
+                                 x=[0.1, 0.4, 0.9],
+                                 y1=[0.1, 0.2, 0.1],
+                                 y2=[0.7, 0.9, 0.3],
+                                 )
+
+        plt.contourf(xv, yv, cutflag.reshape((nx, ny)))
+        plt.show()
     """
     assert len(x) == len(y1) == len(y2), ''
     retval = np.zeros(len(ex), dtype=bool)

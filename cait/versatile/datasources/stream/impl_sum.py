@@ -4,6 +4,7 @@ import numpy as np
 
 from .streambase import StreamBaseClass
 
+
 class StreamSum(StreamBaseClass):
     """
     Implementation of StreamBaseClass that represents the sum of stream channels (used primarily for double TES analysis).
@@ -15,30 +16,33 @@ class StreamSum(StreamBaseClass):
     :type keys: List[str]
 
     **Example:**
-        ::
-            import cait as ai
-            import cait.versatile as vai
 
-            # Create mock data (skip if you already have data)
-            test_data = ai.data.TestData(filepath='mockdata/mock_001', duration=1000)
-            test_data.generate()
+    .. code-block:: python
 
-            # Create stream object
-            stream = vai.Stream(hardware="cresst", src=["mockdata/mock_001_Ch0.csmpl",
-                                                        "mockdata/mock_001_Ch1.csmpl",
-                                                        "mockdata/mock_001.par"])
+        import cait as ai
+        import cait.versatile as vai
 
-            # Check available keys (only those can be used for the sum)
-            print(stream.keys)
+        # Create mock data (skip if you already have data)
+        test_data = ai.data.TestData(filepath='mockdata/mock_001', duration=1000)
+        test_data.generate()
 
-            # Create the stream sum
-            ss = vai.StreamSum(stream, ["mock_001_Ch0", "mock_001_Ch1"])
+        # Create stream object
+        stream = vai.Stream(hardware="csmpl", src=["mockdata/mock_001_Ch0.csmpl",
+                                                    "mockdata/mock_001_Ch1.csmpl",
+                                                    "mockdata/mock_001.par"])
 
-            # View the stream
-            vai.StreamViewer(ss)
+        # Check available keys (only those can be used for the sum)
+        print(stream.keys)
 
+        # Create the stream sum
+        ss = vai.StreamSum(stream, ["mock_001_Ch0", "mock_001_Ch1"])
+
+        # View the stream
+        vai.StreamViewer(ss)
     """
     def __init__(self, stream: StreamBaseClass, keys: List[str]):
+        super().__init__(stream=stream, keys=keys)
+
         if not all([k in stream.keys for k in keys]):
             raise KeyError(f"All given keys have to be present in the stream's keys. Available: {stream.keys}, got: {keys}")
         
@@ -50,17 +54,18 @@ class StreamSum(StreamBaseClass):
     def __len__(self):
         return len(self._stream)
     
-    def get_channel(self, key: str):
-        if key == "sum": 
-            raise KeyError("Key 'sum' is only supported when reading voltage traces, i.e. for example stream['sum', :100, 'as_voltage'].")
-        
-        return self._stream.get_channel(key)
+    def __enter__(self):
+        self._stream.__enter__()
+        return self
     
-    def get_voltage_trace(self, key: str, where: slice):
+    def __exit__(self, typ, val, tb):
+        self._stream.__exit__(typ, val, tb)
+    
+    def get_trace(self, key: str, where: slice, voltage: bool = True):
         if key == "sum":
-            return np.sum([self._stream.get_voltage_trace(k, where) for k in self._sum_keys], axis=0)
+            return np.sum([self._stream.get_trace(k, where, voltage=voltage) for k in self._sum_keys], axis=0)
         else:
-            return self._stream.get_voltage_trace(key, where)
+            return self._stream.get_trace(key, where, voltage=voltage)
     
     @property
     def start_us(self):
@@ -75,9 +80,25 @@ class StreamSum(StreamBaseClass):
         return self._keys
     
     @property
+    def tp_keys(self):
+        return self._stream.tp_keys
+    
+    @property
     def tpas(self):
         return self._stream.tpas
 
     @property
     def tp_timestamps(self):
         return self._stream.tp_timestamps
+    
+    @property
+    def calp_keys(self):
+        return self._stream.calp_keys
+    
+    @property
+    def calpas(self):
+        return self._stream.calpas
+
+    @property
+    def calp_timestamps(self):
+        return self._stream.calp_timestamps

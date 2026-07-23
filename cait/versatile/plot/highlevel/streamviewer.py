@@ -7,9 +7,7 @@ import scipy as sp
 from ..viewer import Viewer
 from ...datasources.stream.streambase import StreamBaseClass
 from ...datasources.stream.factory import Stream
-
-def filter_chunk(data, of):
-    return sp.signal.oaconvolve(data, np.fft.irfft(of))
+from ...functions.trigger.trigger_of import filter_chunk
 
 # Has no test case (yet)
 class StreamViewer(Viewer):
@@ -28,13 +26,21 @@ class StreamViewer(Viewer):
     :type mark_timestamps: Union[List[int], int], optional
     :param of: If provided, a preview of the optimum filtered stream is shown. Only works for single-channel filters in which case also the 'keys' argument has to be set to exactly one channel (the one you want to filter).
     :type of: np.ndarray, optional
+    :param start_timestamp: The timestamp at which to start the StreamViewer. Defaults to the first timestamp in the stream.
+    :type start_timestamp: int, optional
+    :param subtract_bl: If set to True, the median of the currently displayed channels are subtracted before plotting. Defaults to True.
+    :type subtract_bl: bool, optional
     :param kwargs: Keyword arguments for `Viewer`.
     :type kwargs: Any
 
-    >>> s = Stream(hardware="vdaq2", src="path/to/file.bin")
-    >>> StreamViewer(s)
+    .. code-block:: python
 
-    >>> StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
+        # Usage 1
+        s = Stream(hardware="vdaq2", src="path/to/file.bin")
+        StreamViewer(s)
+
+        # Usage 2
+        StreamViewer("vdaq2", "path/to/file.bin", key="ADC1")
     """
     def __init__(self, 
                  *args: Union[StreamBaseClass, str, list],
@@ -43,12 +49,14 @@ class StreamViewer(Viewer):
                  downsample_factor: int = 100,
                  mark_timestamps: Union[List[int], dict] = None,
                  of: np.ndarray = None,
+                 start_timestamp: int = None,
+                 subtract_bl: bool = True,
                  **kwargs):
         super().__init__(data=None, show_controls=True, **kwargs)
 
         # Adding buttons for navigating back and forth in the stream
-        self._add_button("←", self._move_left, "Move backwards in time.", -1, "b")
-        self._add_button("→", self._move_right, "Move forward in time.", -1, "n")
+        self._add_button("❮", self._move_left, "Move backwards in time.", -1, "b")
+        self._add_button("❯", self._move_right, "Move forward in time.", -1, "n")
 
         if len(args) == 1 and isinstance(args[0], StreamBaseClass):
             self.stream = args[0]
@@ -56,6 +64,7 @@ class StreamViewer(Viewer):
             self.stream = Stream(hardware=args[0], src=args[1])
         else:
             raise ValueError(f"Invalid positional arguments '{args}'. Has to be either a StreamBaseClass instance or 'hardware' and 'files'.")
+        self._total_samples = len(self.stream.time)
 
         if keys is not None:
             if type(keys) is str: 
@@ -76,14 +85,14 @@ class StreamViewer(Viewer):
         
         # Adding optimum filter
         if of is not None:
-            if of.ndim > 1:
+            if np.array(of).ndim > 1:
                 raise ValueError(f"Only filtering of single channels is supported (i.e. 'of' has to be 1d).")
             if len(self._keys) > 1:
                 raise ValueError(f"In case a filter is provided, you also have to choose a single channel (to be filtered) using the 'keys' argument.")
             
             self.add_line(x=None, y=None, name=f"{self._keys[0]} (filtered)")
                 
-        self._of = of
+        self._of = np.array(of) if of is not None else None
 
         # Adding timestamp markers
         if mark_timestamps is not None:
@@ -100,8 +109,9 @@ class StreamViewer(Viewer):
             self._marks_timestamps = False
 
         # Initializing plot
+        self.subtract_bl = subtract_bl
         self.n_points = n_points
-        self.current_start = 0
+        self.current_start = 0 if start_timestamp is None else self.stream.time.timestamp_to_ind(start_timestamp)
         self.downsample_factor = downsample_factor
 
         self.update_frame()
@@ -109,7 +119,7 @@ class StreamViewer(Viewer):
 
     def update_frame(self):
         # Create slice for data access
-        where = slice(self.current_start, self.current_start + self.n_points*self.downsample_factor, self.downsample_factor)
+        where = slice(self.current_start, min(self._total_samples, self.current_start + self.n_points*self.downsample_factor), self.downsample_factor)
         
         # Time array is the same for all channels
         t = self.stream.time[where]
@@ -127,19 +137,29 @@ class StreamViewer(Viewer):
         
         for name in self._keys:
             y = self.stream[name, where, "as_voltage"]
+            if self.subtract_bl: y = y-np.median(y)
+
             self.update_line(name=name, x=t_ms, y=y)
 
             if self._marks_timestamps:
                 val_min.append(np.min(y))
                 val_max.append(np.max(y))
                 
-        if self._of:
+        if self._of is not None:
             record_length = 2*(self._of.shape[-1] - 1)
-            d = record_length if self.current_start > record_length else 0
-            where_filter = slice(self.current_start - d, 
+            if self.current_start > record_length:
+                where_filter = slice(self.current_start - record_length, 
                                  self.current_start + self.n_points*self.downsample_factor + record_length)
+                chunk_to_filter = self.stream[self._keys[0], where_filter, "as_voltage"]
+                
+            else:
+                where_filter = slice(self.current_start, 
+                                 self.current_start + self.n_points*self.downsample_factor + record_length)
+                chunk_to_filter = np.concatenate([np.zeros(record_length), self.stream[self._keys[0], where_filter, "as_voltage"]])
             
-            filtered_stream = filter_chunk(self.stream[self._keys[0], where_filter, "as_voltage"], self._of)[d:-record_length]
+            
+            
+            filtered_stream = filter_chunk(chunk_to_filter, self._of, record_length)
             self.update_line(name=f"{self._keys[0]} (filtered)", x=t_ms, y=filtered_stream[::self.downsample_factor])
             
             if self._marks_timestamps:
@@ -166,8 +186,12 @@ class StreamViewer(Viewer):
 
     def _move_right(self, b=None):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
-        self.current_start += int(self.n_points*self.downsample_factor/2)
-        self.update_frame()
+        next_sample = self.current_start + int(self.n_points*self.downsample_factor/2)
+        if next_sample < self._total_samples:
+            self.current_start = next_sample
+            self.update_frame()
+        else:
+            self.close()
 
     def _move_left(self, b=None):
         self.current_start = max(0, self.current_start - int(self.n_points*self.downsample_factor/2))

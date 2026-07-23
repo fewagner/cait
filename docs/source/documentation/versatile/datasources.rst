@@ -10,14 +10,45 @@ The crucial thing is that the technical details on how to access the data behind
 
 Top level classes
 ~~~~~~~~~~~~~~~~~
-.. automodule:: cait.versatile
-   :members: RDTFile, Stream, MockData
+.. currentmodule:: cait.versatile
+
+.. autoclass:: Stream
+   :members:
+   :member-order: bysource
+.. autoclass:: RDTFile
+   :members:
+   :member-order: bysource
+.. autoclass:: MockData
+   :members:
+   :member-order: bysource
+.. autoclass:: MockStream
+   :members:
    :member-order: bysource
 
 Related classes and base classes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-.. automodule:: cait.versatile.datasources.hardwaretriggered.rdt_file
-   :members: RDTChannel
-.. automodule:: cait.versatile.datasources.stream.streambase
-   :members: StreamBaseClass
+.. currentmodule:: cait.versatile.datasources.stream.streambase
+
+.. autoclass:: StreamBaseClass
+   :members:
+.. autoclass:: StreamChannel
+   :members:
+.. autoclass:: StreamTime
+   :members:
+
+.. currentmodule:: cait.versatile.datasources.stream.impl_vdaq2
+
+.. autoclass:: Stream_VDAQ2
+
+.. currentmodule:: cait.versatile.datasources.stream.impl_vdaq3
+
+.. autoclass:: Stream_VDAQ3
+
+.. currentmodule:: cait.versatile.datasources.stream.impl_csmpl
+
+.. autoclass:: Stream_CSMPL
    
+.. currentmodule:: cait.versatile.datasources.hardwaretriggered.rdt_file
+
+.. autoclass:: RDTChannel
+   :members:

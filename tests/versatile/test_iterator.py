@@ -1,14 +1,18 @@
-import pytest
+import json
+
 import numpy as np
+import pytest
 
 import cait as ai
-from cait.versatile import Stream, RDTFile, MockData, apply
+from cait.versatile import MockData, MockStream, RDTFile, Stream, apply
 from cait.versatile.iterators.impl_h5 import H5Iterator
+from cait.versatile.iterators.impl_mock import MockIterator
+from cait.versatile.iterators.impl_pulsesim import PulseSimIterator
 from cait.versatile.iterators.impl_rdt import RDTIterator
 from cait.versatile.iterators.impl_stream import StreamIterator
-from cait.versatile.iterators.impl_mock import MockIterator
 
-from ..fixtures import datahandler, tempdir, testdata_1D_2D_3D_s_mus, RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY
+from ..fixtures import (RDT_LENGTH, RECORD_LENGTH, SAMPLE_FREQUENCY,
+                        datahandler, tempdir, testdata_1D_2D_3D_s_mus)
 
 DATA_2D_single_CH = np.random.rand(1, 100)
 DATA_3D_single_CH = np.random.rand(1, 100, 16)
@@ -30,7 +34,7 @@ def testdata(tempdir):
                             channels=[0, 1],
                             start_s=13)
     data.generate()
-    stream = Stream('cresst', [tempdir.name+'/mock_001_Ch0.csmpl',
+    stream = Stream('csmpl', [tempdir.name+'/mock_001_Ch0.csmpl',
                                tempdir.name+'/mock_001_Ch1.csmpl',
                                tempdir.name+'/mock_001.test_stamps',
                                tempdir.name+'/mock_001.dig_stamps',
@@ -43,10 +47,14 @@ def testdata(tempdir):
 def basic_checks(it):
     # Copy to not alter the original iterator
     it = it[:,:]
+    assert not it.has_processing
+
     # Test adding of processing
     it_new = it.with_processing(lambda x: x**2)
+    assert it_new.has_processing
     it.add_processing(lambda x: x**2)
-
+    assert it.has_processing
+    
     # Test application of function
     arr1 = apply(lambda x: -x, it)
     arr2 = apply(lambda x: x, it)
@@ -129,6 +137,24 @@ def basic_checks(it):
     next(iter(it_combined[:, flag]))
     next(iter(it_combined[0, 0]))
     next(iter(it_combined[0, [0,1,4]]))
+
+    # test if changing batchsize works
+    next(iter(it.with_batchsize(13)))
+    next(iter(it.flatten()))
+    next(iter(it.with_batchsize(13).flatten()))
+    next(iter(it_combined_sum.with_batchsize(13)))
+    next(iter(it_combined_sum.flatten()))
+    next(iter(it_combined_sum.with_batchsize(13).flatten()))
+    next(iter(it[0].with_batchsize(13)))
+    next(iter(it[0].flatten()))
+    next(iter(it[0].with_batchsize(13).flatten()))
+
+    # SERIALIZATION
+    # Test if json-serializable (i.e. no objects that JSON cannot handle)
+    json.dumps(it.to_dict())
+    # Check if object can be reconstructed after serialization
+    ai.serialize.load(ai.serialize.dump(it))
+    ai.serialize.loads(ai.serialize.dumps(it))
 
 class TestH5Iterator:
     def test_iterator_bs1_ch2(self, dh):
@@ -254,41 +280,68 @@ class TestStreamIterator:
         inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
 
         basic_checks(StreamIterator(stream=stream,
-                                    keys="mock_001_Ch0",
+                                    keys="Ch0",
                                     inds=inds[:25],
                                     record_length=2**13))
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds,
                                     record_length=2**14))
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds,
                                     record_length=2**15))
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds,
                                     record_length=2**15,
                                     alignment=1/2))
         
+    def test_basic_mock(self):
+        # Same as above but with mock stream.
+        # To catch bugs caused by the special creation of the data ...
+        stream = MockStream()
+
+
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["TP0"])
+
+        basic_checks(StreamIterator(stream=stream,
+                                    keys="Ch0",
+                                    inds=inds[:25],
+                                    record_length=2**13))
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["Ch0","Ch1"],
+                                    inds=inds,
+                                    record_length=2**14))
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["Ch0","Ch1"],
+                                    inds=inds,
+                                    record_length=2**15))
+        basic_checks(StreamIterator(stream=stream,
+                                    keys=["Ch0","Ch1"],
+                                    inds=inds,
+                                    record_length=2**15,
+                                    alignment=1/2))
+
+
     def test_batches_singleCh(self, testdata):
         stream, *_ = testdata
 
         inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
         
         basic_checks(StreamIterator(stream=stream,
-                                    keys="mock_001_Ch0",
+                                    keys="Ch0",
                                     inds=inds[:25],
                                     record_length=2**13,
                                     batch_size=13))
         
         it = StreamIterator(stream=stream,
-                            keys="mock_001_Ch0",
+                            keys="Ch0",
                             inds=inds[:25],
                             record_length=2**13,
                             batch_size=13)
         it2 = StreamIterator(stream=stream,
-                            keys="mock_001_Ch0",
+                            keys="Ch0",
                             inds=inds[:25],
                             record_length=2**13)
 
@@ -304,18 +357,18 @@ class TestStreamIterator:
         inds = stream.time.timestamp_to_ind(stream.tp_timestamps["0"])
         
         basic_checks(StreamIterator(stream=stream,
-                                    keys=["mock_001_Ch0","mock_001_Ch1"],
+                                    keys=["Ch0","Ch1"],
                                     inds=inds[:25],
                                     record_length=2**13,
                                     batch_size=13))
         
         it = StreamIterator(stream=stream,
-                            keys=["mock_001_Ch0","mock_001_Ch1"],
+                            keys=["Ch0","Ch1"],
                             inds=inds[:25],
                             record_length=2**13,
                             batch_size=13)
         it2 = StreamIterator(stream=stream,
-                            keys=["mock_001_Ch0","mock_001_Ch1"],
+                            keys=["Ch0","Ch1"],
                             inds=inds[:25],
                             record_length=2**13)
 
@@ -324,6 +377,67 @@ class TestStreamIterator:
             elif n == 1: assert i.shape == (12, 2, 2**13)
 
         assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_extend_window(self):
+        rl = 2**13
+        stream = MockStream()
+
+        # inds that work exactly (last available sample).
+        for al in [0, 1/4, 1/2]:
+            for inds in [
+                [rl + int(al*rl)], 
+                [len(stream) - 2*rl + int(al*rl)]
+            ]:
+                new_it = stream.get_event_iterator(
+                    "Ch0", 
+                    inds=inds,
+                    record_length=rl,
+                    alignment=al,
+                )
+                assert new_it.with_extended_window().record_length == 3 * rl
+                assert new_it.with_record_length(2 * rl).record_length == 2 * rl
+                assert new_it.with_record_length(2 * rl).alignment == al
+                assert new_it.with_alignment(1/2).record_length == rl
+                assert new_it.with_alignment(1/2).alignment == 1/2
+
+        # inds that just fall outside the valid samples.
+        for al in [0, 1/4, 1/2]:
+            for inds in [
+                [rl + int(al*rl) - 1], 
+                [len(stream) - 2*rl + int(al*rl) + 1]
+            ]:
+                with pytest.raises(IndexError):
+                    stream.get_event_iterator(
+                        "Ch0", 
+                        inds=inds,
+                        record_length=rl,
+                        alignment=al,
+                    ).with_extended_window()
+        
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["TP0"])
+
+        for al in [0, 1/4, 1/2]:
+            it = stream.get_event_iterator(
+                "Ch0", 
+                inds=inds[:25],
+                record_length=rl,
+                alignment=al,
+            )
+            it_extended = it.with_extended_window()
+            basic_checks(it_extended)
+
+            assert it_extended.record_length == 3 * rl
+            assert it.grab(0)[0] == it_extended.grab(0)[rl]
+            assert it.grab(0)[-1] == it_extended.grab(0)[2*rl-1]
+
+        # Check if error is raised if processing is present
+        with pytest.raises(NotImplementedError):
+            stream.get_event_iterator(
+                "Ch0", 
+                inds=inds[:25],
+                record_length=rl,
+                alignment=al,
+            ).with_processing(lambda x: x).with_extended_window()
 
 class TestRDTIterator:
     def test_basic(self, testdata):
@@ -382,6 +496,74 @@ class TestIteratorCollection:
         
         with pytest.raises(ValueError): it1 + it3
 
+    def test_extend_window(self):
+        rl = 2**13
+        # should only work for stream iterators
+        mock_it = MockData(record_length=rl).get_event_iterator()
+        stream_it = MockStream().get_event_iterator(
+            "Ch0", 
+            inds=[10*rl, 20*rl],
+            record_length=rl,
+            alignment=1/4,
+        )
+        mock_pulse_it = PulseSimIterator(
+            iterator=mock_it, 
+            pulse_heights=np.ones((2, len(mock_it))), 
+            sev=MockData(record_length=rl).sev
+        )
+        stream_pulse_it = PulseSimIterator(
+            iterator=MockStream().get_event_iterator(
+                ["Ch0", "Ch1"], 
+                inds=[10*rl, 20*rl],
+                record_length=rl,
+                alignment=1/4,
+            ), 
+            pulse_heights=np.ones((2, 2)), 
+            sev=MockData(record_length=rl).sev
+        )
+
+        # Regular IteratorCollection
+        with pytest.raises(NotImplementedError):
+            (mock_it + mock_it).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            (mock_it + mock_it).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            (mock_it + mock_it).with_record_length(2**13)
+
+        # IteratorCollection of PulseSimIterators (not on stream)
+        with pytest.raises(NotImplementedError):
+            (mock_pulse_it + mock_pulse_it).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            (mock_pulse_it + mock_pulse_it).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            (mock_pulse_it + mock_pulse_it).with_record_length(2**13)
+
+        # Regular IteratorCollection
+        sum_it = stream_it + stream_it
+        assert sum_it.with_extended_window().record_length == 3*rl
+        assert sum_it.with_record_length(2*rl).record_length == 2*rl
+        assert sum_it.with_alignment(1/2).record_length == rl
+
+        sum_pulse_it = stream_pulse_it + stream_pulse_it
+        assert sum_pulse_it.with_extended_window().record_length == 3*rl
+        assert sum_pulse_it.with_record_length(2*rl).record_length == 2*rl
+        assert sum_pulse_it.with_alignment(1/2).record_length == rl
+
+        # Check if error is raised if processing is present
+        with pytest.raises(NotImplementedError):
+            sum_it.with_processing(lambda x: x).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            sum_it.with_processing(lambda x: x).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            sum_it.with_processing(lambda x: x).with_record_length(2**13)
+
+        with pytest.raises(NotImplementedError):
+            sum_pulse_it.with_processing(lambda x: x).with_extended_window()
+        with pytest.raises(NotImplementedError):
+            sum_pulse_it.with_processing(lambda x: x).with_alignment(1/2)
+        with pytest.raises(NotImplementedError):
+            sum_pulse_it.with_processing(lambda x: x).with_record_length(2**13)
+
 class TestMockIterator:
     def test_basic(self):
         mock = MockData()
@@ -421,3 +603,323 @@ class TestMockIterator:
                 assert i.shape == (len(it)%13, 2, it.record_length)
 
         assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+class TestPulseSimIterator:
+    def test_basic(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            shift_samples=10*np.ones(len(mock_it)),
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1]
+            ) 
+        )
+
+    def test_batches_singleCh(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            batch_size=13
+            )[0]
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            batch_size=13
+            )[0]
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            channels=0,
+            batch_size=13,
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it[0], 
+            sev_fitpars=[0, 0.5, 0.5, 0.3, 0.1, 10.0], 
+            pulse_heights=np.ones((mock_it[0].n_channels, len(mock_it))),
+            shift_samples=10*np.ones(len(mock_it)),
+            channels=0,
+            batch_size=13,
+            )
+        )
+        
+        it = PulseSimIterator(
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+                    batch_size=13
+                    )[0]
+        it2 = PulseSimIterator(
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it)))
+                    )[0]
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_batches_multiCh(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            batch_size=13
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev=mock.sev, 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            batch_size=13
+            )
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        # Try once with extended pulse shape model
+        basic_checks(PulseSimIterator(
+            iterator=mock_it, 
+            sev_fitpars=[
+                [0, 0.5, 0.5, 0.3, 0.3, 0.1, 10.0, 100.0], 
+                [0, 0.3, 0, 0.5, 0.3, 0.01, 4.0, 1.0]
+            ], 
+            pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+            shift_samples=[10*np.ones(len(mock_it)), -10*np.ones(len(mock_it))],
+            channels=[0,1],
+            batch_size=13
+            ) 
+        )
+        
+        it = PulseSimIterator(
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+                    batch_size=13
+                    )
+        it2 = PulseSimIterator(
+                    iterator=mock_it, 
+                    sev=mock.sev, 
+                    pulse_heights=np.ones((mock_it.n_channels, len(mock_it)))
+                    )
+
+        for n, i in enumerate(it):
+            if n < it.n_batches-1: 
+                assert i.shape == (13, 2, it.record_length)
+            elif n == it.n_batches-1: 
+                assert i.shape == (len(it)%13, 2, it.record_length)
+
+        assert np.array_equal(next(iter(it))[0], next(iter(it2)))
+
+    def test_raises(self):
+        mock = MockData()
+        mock_it = mock.get_event_iterator()
+
+        # wrong number of channels of pulse_heights
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev, 
+                pulse_heights=np.ones((mock_it.n_channels+1, len(mock_it))) 
+            ) 
+
+        # wrong number of channels of sev
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev[0], 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+
+        # wrong number of events of pulse_heights
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev, 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it)+1)) 
+            ) 
+
+        # wrong record_length of sev
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev[...,:-1], 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+
+        # sev and sev_fitpars
+        with pytest.raises(ValueError):
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev, 
+                sev_fitpars=[[1, 1, 1, 1, 1, 1], [1, 1, 1, 1, 1, 1]],
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+        # wrong length of sev_fitpars
+        with pytest.raises(ValueError):
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev_fitpars=[[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]],
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))) 
+            ) 
+
+        # subsample shifts not in [0, 1)
+        with pytest.raises(ValueError): 
+            PulseSimIterator(
+                iterator=mock_it, 
+                sev=mock.sev, 
+                pulse_heights=np.ones((mock_it.n_channels, len(mock_it))),
+                shift_subsamples=-1.1*np.ones((mock_it.n_channels, len(mock_it))),
+            ) 
+
+    def test_extend_window(self):
+        rl = 2**13
+        stream = MockStream()
+        md = MockData(record_length=rl)
+
+        # inds that work exactly (last available sample).
+        for sev in [
+            {"sev": md.sev},
+            {"sev_fitpars": [[0, 0.5, 0.5, 0.3, 0.1, 10.0], [0, 0.3, 0.5, 0.3, 0.01, 4.0]]}
+            ]:
+            for al in [0, 1/4, 1/2]:
+                for inds in [
+                    [rl + int(al*rl)], 
+                    [len(stream) - 2*rl + int(al*rl)]
+                ]:
+                    stream_it = stream.get_event_iterator(
+                        ["Ch0", "Ch1"], 
+                        inds=inds,
+                        record_length=rl,
+                        alignment=al,
+                    )
+                    new_it = PulseSimIterator(
+                        iterator=stream_it, 
+                        pulse_heights=np.ones((2, len(stream_it))), 
+                        **sev,
+                    )
+                    assert new_it.with_extended_window().record_length == 3 * rl
+                    assert new_it.with_record_length(2 * rl).record_length == 2 * rl
+                    assert new_it.with_alignment(1/2).record_length == rl
+        
+        inds = stream.time.timestamp_to_ind(stream.tp_timestamps["TP0"])
+
+        for sev in [
+            {"sev": md.sev[0]},
+            {"sev_fitpars": [0, 0.5, 0.5, 0.3, 0.1, 10.0]}
+            ]:
+            for al in [0, 1/4, 1/2]:
+                stream_it = stream.get_event_iterator(
+                    "Ch0", 
+                    inds=inds[:25],
+                    record_length=rl,
+                    alignment=al,
+                )
+                it = PulseSimIterator(
+                    iterator=stream_it, 
+                    pulse_heights=np.ones(len(stream_it)), 
+                    **sev,
+                )
+                it_extended = it.with_extended_window()
+                basic_checks(it_extended)
+
+                assert it_extended.record_length == 3 * rl
+                assert it.grab(0)[0] == it_extended.grab(0)[rl]
+                assert it.grab(0)[-1] == it_extended.grab(0)[2*rl-1]
+
+        # Check if error is raised if processing is present
+        with pytest.raises(NotImplementedError):
+            stream_it = stream.get_event_iterator(
+                "Ch0", 
+                inds=inds[:25],
+                record_length=rl,
+                alignment=al,
+            )
+            PulseSimIterator(
+                iterator=stream_it, 
+                pulse_heights=np.ones(len(stream_it)), 
+                sev=md.sev[0],
+            ).with_processing(lambda x: x).with_extended_window()

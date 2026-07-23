@@ -4,8 +4,7 @@ import numpy as np
 import h5py
 
 import cait as ai
-import cait.versatile as vai
-from cait.versatile.functions.file import check_file_consistency
+from cait.data._merge_h5 import check_file_consistency
 
 from ..fixtures import tempdir, testdata_1D_2D_3D_s_mus, RECORD_LENGTH, SAMPLE_FREQUENCY
 
@@ -152,12 +151,12 @@ def test_combine(tempdir, testdata_1D_2D_3D_s_mus, dhs):
 
     # combine files
     files2combine = [dh.get_filename() for dh in dhs[::2]] # every second starting from 0th
-    vai.combine(fname="output_combine",
-                files=files2combine, 
-                src_dir=tempdir.name,
-                out_dir=tempdir.name,
-                groups_combine=["group1","group2"],
-                groups_include=["testgroup"])
+    ai.data.combine_h5(fname="output_combine",
+                       files=files2combine,
+                       src_dir=tempdir.name,
+                       out_dir=tempdir.name,
+                       groups_combine=["group1","group2"],
+                       groups_include=["testgroup"])
     
     # validate shapes and dataset contents
     dh = validate("output_combine", tempdir, testdata_1D_2D_3D_s_mus)
@@ -200,12 +199,12 @@ def test_combine(tempdir, testdata_1D_2D_3D_s_mus, dhs):
 def test_merge(tempdir, testdata_1D_2D_3D_s_mus, dhs):
     # merge files
     files2merge = [dh.get_filename() for dh in dhs[1::2]] # every second starting from first
-    vai.merge(fname="output_merge",
-                files=files2merge, # every second starting from first
-                src_dir=tempdir.name,
-                out_dir=tempdir.name, 
-                groups_merge=["group1","group2"], 
-                groups_include=["testgroup"])
+    ai.data.merge_h5(fname="output_merge",
+                     files=files2merge, # every second starting from first
+                     src_dir=tempdir.name,
+                     out_dir=tempdir.name,
+                     groups_merge=["group1","group2"],
+                     groups_include=["testgroup"])
     
     # validate shapes and dataset contents
     dh = validate("output_merge", tempdir, testdata_1D_2D_3D_s_mus)

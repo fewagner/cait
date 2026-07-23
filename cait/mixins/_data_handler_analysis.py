@@ -1,14 +1,12 @@
 from collections import Counter
 
+import h5py
 import numpy as np
 from scipy.stats import norm
-import h5py
 from tqdm.auto import tqdm
 
-from ..cuts import rate_cut, testpulse_stability, controlpulse_stability
-from ..calibration import light_yield_correction
-from ..calibration import PulserModel
-
+from ..calibration import PulserModel, light_yield_correction
+from ..cuts import controlpulse_stability, rate_cut, testpulse_stability
 
 # -----------------------------------------------------------
 # CLASS
@@ -132,8 +130,15 @@ class AnalysisMixin(object):
                                                                                                       mus[c], naming))
         return np.array(resolutions), np.array(mus)
 
-    def calc_rate_cut(self, interval: float = 10, significance: float = 3,
-                      min: float = 0, max: float = 60, intervals: list = None, use_poisson=True):
+    def calc_rate_cut(self,
+                      interval: float = 10,
+                      significance: float = 3,
+                      min: float = 0,
+                      max: float = 60,
+                      intervals: list = None,
+                      use_poisson=True,
+                      group="events",
+                      ):
         """
         Calculate a rate cut on the events.
 
@@ -163,53 +168,62 @@ class AnalysisMixin(object):
         :param intervals: A list of the stable intervals, in hours. If this is handed, these intervals are used instead of
             calculating them from scratch. This is useful e.g. for the cut efficiency.
         :type intervals: list of 2-tuples
+        :param group: Which group to apply the rate cut to. The values for the cut on the rate are always determined from the
+            "events" group, while this argument allows one to apply the same rate cut to other datasets (e.g. for simulations).
+        :type group: str
         """
 
         if intervals is not None:
             intervals = np.array(intervals) * 60  # now this is in minutes
 
-        with h5py.File(self.path_h5, 'r+') as h5:
-            hours = np.array(h5['events']['hours']) * 60  # in minutes now
-            if 'controlpulses' in h5:
-                hours_cp = np.array(h5['controlpulses']['hours']) * 60
-            else:
-                hours_cp = None
-            if 'testpulses' in h5:
-                hours_tp = np.array(h5['testpulses']['hours']) * 60
-            else:
-                hours_tp = None
+        hours = self.get("events", "hours") * 60
+        hours_cp = self.get("controlpulses", "hours") * 60 if self.exists("controlpulses", "hours") else None
+        hours_tp = self.get("testpulses", "hours") * 60 if self.exists("testpulses", "hours") else None
 
-            try:
+        try:
+            if group != "events":
+                # Here we run the rate calculation, but replace the TP hours with the hours of
+                # the group we want to apply the rate cut to, exploiting the way that test pulses are handled in `rate_cut`
+                # (i.e. they are not used in the rate calculation, but the cut is still calculated for them).
+                hours_grp = self[f"{group}/hours"] * 60
+                _, _, flag_ev, _ = rate_cut(hours, hours_cp, hours_grp,
+                                                            interval=interval, significance=significance, min=min, max=max,
+                                                            use_poisson=use_poisson, intervals=intervals, )
+                flag_cp = flag_tp = None
+            else:
                 flag_ev, flag_cp, flag_tp, intervals = rate_cut(hours, hours_cp, hours_tp,
-                                                                interval=interval, significance=significance, min=min, max=max,
-                                                                use_poisson=use_poisson, intervals=intervals, )
-            except AssertionError:
-                raise AttributeError('If you do not hand intervals, you need to have controul pulses included in the'
-                                     'HDf5 file!')
+                                                            interval=interval, significance=significance, min=min, max=max,
+                                                            use_poisson=use_poisson, intervals=intervals, )
 
-            h5.require_group('metainfo')
-            if 'rate_stable' in h5['metainfo']:
-                del h5['metainfo']['rate_stable']
-            h5['metainfo'].create_dataset(name='rate_stable',
-                                          data=np.array(intervals)/60)  # this is now in hours
+        except AssertionError:
+            raise AttributeError('If you do not hand intervals, you need to have controul pulses included in the'
+                                 'HDf5 file!')
 
-            h5['events'].require_dataset(name='rate_cut',
-                                         shape=(flag_ev.shape),
-                                         dtype=bool)
-            h5['events']['rate_cut'][...] = flag_ev
-            if flag_cp is not None:
-                h5['controlpulses'].require_dataset(name='rate_cut',
-                                                    shape=(flag_cp.shape),
-                                                    dtype=bool)
-                h5['controlpulses']['rate_cut'][...] = flag_cp
-            if flag_tp is not None:
-                h5['testpulses'].require_dataset(name='rate_cut',
-                                                 shape=(flag_tp.shape),
-                                                 dtype=bool)
-                h5['testpulses']['rate_cut'][...] = flag_tp
+        if intervals is not None:
+            self.set(
+                    "metainfo",
+                    rate_stable = np.array(intervals)/60,
+                    overwrite_existing = True,
+                    )
+        for g, f in zip([group, "controlpulses", "testpulses"], [flag_ev, flag_cp, flag_tp]):
+            if f is not None:
+                self.set(
+                        g,
+                        rate_cut = f,
+                        dtype = bool,
+                        overwrite_existing = True,
+                        )
 
-    def calc_controlpulse_stability(self, channel: int, significance: float = 3, max_gap: float = 0.5, lb: float = 0,
-                                    ub: float = 100, instable_iv: list = None):
+
+    def calc_controlpulse_stability(self, 
+                                    channel: int, 
+                                    significance: float = 3, 
+                                    max_gap: float = 0.5, 
+                                    lb: float = 0,
+                                    ub: float = 100, 
+                                    instable_iv: list = None,
+                                    group: str = "events",
+                                    ):
         """
         Do a stability cut on the control pulses.
 
@@ -238,43 +252,59 @@ class AnalysisMixin(object):
         :param instable_iv: A list of the instable intervals. If this is handed, the instable intervals are not calculated
             but those are used. Useful for e.g. the cut efficiency.
         :type instable_iv: list
+        :param group: The group for which to calculate the controlpulse stability. Defaults to 'events'.
+        :type group: str, optional
         """
 
-        with h5py.File(self.path_h5, 'r+') as f:
+        if self.exists("controlpulses"):
+            cphs = self.get("controlpulses", "pulse_height", channel)
+            hours_cp = self.get("controlpulses", "hours")
+        else:
+            cphs = None
+            hours_cp = None
 
-            if 'controlpulses' in f:
-                cphs = f['controlpulses']['pulse_height'][channel]
-                hours_cp = f['controlpulses']['hours']
-            else:
-                cphs = None
-                hours_cp = None
+        hours_ev = self.get(group, "hours")
 
-            hours_ev = f['events']['hours']
+        try:
+            flag_ev, flag_cp, instable_iv = controlpulse_stability(
+                hours_ev=hours_ev, 
+                cphs=cphs, 
+                hours_cp=hours_cp,
+                significance=significance, 
+                max_gap=max_gap,
+                lb=lb, 
+                ub=ub, 
+                instable_iv=instable_iv
+            )
+        except AssertionError:
+            raise AttributeError('If you do not hand instable_iv, you need to have control pulses in the file!')
 
-            try:
-                # cphs, hours_cp, hours_ev, significance=3, max_gap=1
-                flag_ev, flag_cp, instable_iv = controlpulse_stability(hours_ev=hours_ev, cphs=cphs, hours_cp=hours_cp,
-                                                          significance=significance, max_gap=max_gap,
-                                                          lb=lb, ub=ub, instable_iv=instable_iv)
-            except AssertionError:
-                raise AttributeError('If you do not hand instable_iv, you need to have control pulses in the file!')
+        self.set(
+            "metainfo", 
+            **{f"controlpulse_instable_ch{channel}": instable_iv},
+            change_existing=True, 
+            overwrite_existing=True,
+        )
+        self.set(
+            group, 
+            controlpulse_stability=flag_ev,
+            dtype=bool,
+            n_channels=self.nmbr_channels, 
+            channel=channel, 
+            change_existing=True,
+            overwrite_existing=True,
+        )
 
-            f.require_group('metainfo')
-            if f'controlpulse_instable_ch{channel}' in f['metainfo']:
-                del f['metainfo'][f'controlpulse_instable_ch{channel}']
-            f['metainfo'].create_dataset(name=f'controlpulse_instable_ch{channel}',
-                                          data=instable_iv)
-
-            f['events'].require_dataset(name='controlpulse_stability',
-                                        shape=(self.nmbr_channels, len(flag_ev)),
-                                        dtype=bool)
-            f['events']['controlpulse_stability'][channel, ...] = flag_ev
-
-            if flag_cp is not None:
-                f['controlpulses'].require_dataset(name='controlpulse_stability',
-                                                   shape=(self.nmbr_channels, len(flag_cp)),
-                                                   dtype=bool)
-                f['controlpulses']['controlpulse_stability'][channel, ...] = flag_cp
+        if flag_cp is not None:
+            self.set(
+                "controlpulses",
+                controlpulse_stability=flag_cp,
+                dtype=bool,
+                n_channels=self.nmbr_channels, 
+                channel=channel, 
+                change_existing=True,
+                overwrite_existing=True,
+            )
 
     def calc_testpulse_stability(self, channel: int, significance: float = 3, noise_level: float = 0.005,
                                  max_gap: float = 0.5, ub: float = None, lb: float = None):
@@ -311,27 +341,33 @@ class AnalysisMixin(object):
         :type ub: float
         """
 
-        with h5py.File(self.path_h5, 'r+') as f:
-            tpas = f['testpulses']['testpulseamplitude']
-            if len(tpas.shape) > 1:
-                tpas = f['testpulses']['testpulseamplitude'][channel]
-            tphs = f['testpulses']['mainpar'][channel, :, 0]  # 0 is the mainpar index for pulseheight
-            hours_tp = f['testpulses']['hours']
-            hours_ev = f['events']['hours']
+        tpas = self.get('testpulses', 'testpulseamplitude')
+        if len(tpas.shape) > 1:
+            tpas = self.get('testpulses', 'testpulseamplitude', channel)
+        tphs = self.get('testpulses', 'pulse_height', channel)
+        hours_tp = self.get('testpulses', 'hours')
+        hours_ev = self.get('events', 'hours')
 
-            flag_ev, flag_tp = testpulse_stability(tpas, tphs, hours_tp, hours_ev,
-                                                   significance=significance, noise_level=noise_level, max_gap=max_gap,
-                                                   ub=ub, lb=lb)
+        flag_ev, flag_tp = testpulse_stability(tpas, tphs, hours_tp, hours_ev,
+                                               significance=significance, noise_level=noise_level, max_gap=max_gap,
+                                               ub=ub, lb=lb)
 
-            f['events'].require_dataset(name='testpulse_stability',
-                                        shape=(self.nmbr_channels, len(flag_ev)),
-                                        dtype=bool)
-            f['events']['testpulse_stability'][channel, ...] = flag_ev
-
-            f['testpulses'].require_dataset(name='testpulse_stability',
-                                            shape=(self.nmbr_channels, len(flag_tp)),
-                                            dtype=bool)
-            f['testpulses']['testpulse_stability'][channel, ...] = flag_tp
+        self.set(
+                'events',
+                testpulse_stability = flag_ev,
+                dtype = bool,
+                n_channels = self.nmbr_channels,
+                channel = channel,
+                overwrite_existing = True,
+                )
+        self.set(
+                'testpulses',
+                testpulse_stability = flag_tp,
+                dtype = bool,
+                n_channels=self.nmbr_channels,
+                channel = channel,
+                overwrite_existing = True,
+                )
 
     def calc_calibration(self,
                          starts_saturation: list,  #
@@ -427,28 +463,33 @@ class AnalysisMixin(object):
         :param kind: The type of interpolation, gets handed to the scipy 1dinterpolate object.
         :type kind: str
 
-        >>> dh.calc_calibration(starts_saturation=[1.5, 0.8],
-        ...                     cpe_factor=[1, 1],
-        ...                     exclude_tpas=[0.01],
-        ...                     plot=True,
-        ...                     method='tree',
-        ...                     poly_order=3,
-        ...                     )
-        Energy Calibration for Channel  0
-        Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
-          1.          2.          3.          4.          5.          6.
-          7.          8.          9.         10.        ]
-        Plot Regression Polynomial at 20.8 hours.
-        Calculating Recoil Energies: 0.0 %
-        Calculating Recoil Energies: 65.3 %
-        Energy Calibration for Channel  1
-        Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
-          1.          2.          3.          4.          5.          6.
-          7.          8.          9.         10.        ]
-        Plot Regression Polynomial at 20.8 hours.
-        Calculating Recoil Energies: 0.0 %
-        Calculating Recoil Energies: 65.3 %
-        Finished.
+        .. code-block:: python
+
+            dh.calc_calibration(starts_saturation=[1.5, 0.8],
+                                cpe_factor=[1, 1],
+                                exclude_tpas=[0.01],
+                                plot=True,
+                                method='tree',
+                                poly_order=3,
+                                )
+
+        .. code-block:: text
+
+            Energy Calibration for Channel  0
+            Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
+            1.          2.          3.          4.          5.          6.
+            7.          8.          9.         10.        ]
+            Plot Regression Polynomial at 20.8 hours.
+            Calculating Recoil Energies: 0.0 %
+            Calculating Recoil Energies: 65.3 %
+            Energy Calibration for Channel  1
+            Unique TPAs:  [ 0.02        0.1         0.2         0.40000001  0.60000002  0.80000001
+            1.          2.          3.          4.          5.          6.
+            7.          8.          9.         10.        ]
+            Plot Regression Polynomial at 20.8 hours.
+            Calculating Recoil Energies: 0.0 %
+            Calculating Recoil Energies: 65.3 %
+            Finished.
 
         .. image:: ../pics/Ch0_tphs.png
 

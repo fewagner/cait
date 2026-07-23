@@ -12,8 +12,9 @@
 
 import os
 import sys
-import sphinx_rtd_theme
 from unittest.mock import MagicMock
+
+import sphinx_rtd_theme
 
 import cait
 
@@ -23,8 +24,8 @@ sys.setrecursionlimit(1500)
 # -- Project information -----------------------------------------------------
 
 project = 'cait'
-copyright = '2021, Felix Wagner'
-author = 'Felix Wagner'
+copyright = '2026, Philipp Schreiner, Felix Wagner'
+author = 'Philipp Schreiner, Felix Wagner'
 
 # The full version, including alpha/beta/rc tags
 release = cait.__version__
@@ -66,6 +67,12 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 
+# Currently, the only customization is to not truncate cell outputs
+# in notebooks (which would make plots look ugly)
+html_css_files = [
+    "custom.css",
+]
+
 html_logo = "logo/logo_wide.png"
 html_theme_options = {
     'logo_only': True,
@@ -81,3 +88,5 @@ myst_enable_extensions = [
     "dollarmath",
     "html_image",
 ]
+
+nb_scroll_outputs = True

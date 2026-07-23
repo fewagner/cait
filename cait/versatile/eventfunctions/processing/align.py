@@ -14,10 +14,12 @@ class Align(FncBaseClass):
     :return: Shifted event.
     :rtype: np.ndarray
 
-    >>> ev_it = dh.get_event_iterator("events")
-    >>> sev = vai.SEV().from_dh(dh)
-    >>> f = vai.Align(sev)
-    >>> aligned_events = vai.apply(f, ev_it)
+    .. code-block:: python
+
+        ev_it = dh.get_event_iterator("events")
+        sev = vai.SEV().from_dh(dh)
+        f = vai.Align(sev)
+        aligned_events = vai.apply(f, ev_it)
     """
     def __init__(self, ref_event: np.array):
         self._ref_event = ref_event
