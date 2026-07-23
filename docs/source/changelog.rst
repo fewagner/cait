@@ -3,8 +3,8 @@ Features and Changelog
 
 On this page we assemble the features of current ``cait`` releases and changes from the past versions.
 
-development
-~~~~~~~~~~~
+v.1.3.0
+~~~~~~~
 - Features:
     - Release of :ref:`cait.versatile <caitversatile>`, the flexible cait. With many new functions that will make your life easier -- have a look!
     - New/updated :ref:`tutorials <tutorials>` **Triggering stream data**, **Interacting with HDF5 files**, **Creating SEV, NPS, OF**, **Reconstructing the pulse amplitude**, **Energy Calibration**, **Efficiency Simulation**, **Processing many files using SLURM jobs**.
