@@ -474,6 +474,7 @@ You probably want to have a separate (clean) python environment for building the
 
     - Create new version branch (either locally or on *GitLab*, **NOT** *GitHub*)
     - Update version number in ``cait._version``! This will automatically propagate into ``pyproject.toml`` and into the docs via ``conf.py`` and ``.readthedocs.yaml``.
+    - Update the version and compile changelog in ``changelog.rst`` (if not already done).
     - Make sure that all tests succeed (run ``pytest``)
     - Delete the old ``build/`` folder that you might still have locally from previous builds
     - Run ``python -m build`` (potentially in a separate environment that you might have set up)
