@@ -5,8 +5,8 @@
 .. |PyPi| image:: https://badge.fury.io/py/cait.svg
 .. _PyPi: https://badge.fury.io/py/cait
 
-.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5091416.svg
-.. _DOI: https://doi.org/10.5281/zenodo.5091416
+.. |DOI| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5091415.svg
+.. _DOI: https://doi.org/10.5281/zenodo.5091415
 
 .. image:: https://raw.githubusercontent.com/fewagner/cait/master/docs/source/logo/logo_wide.png
   :width: 256
