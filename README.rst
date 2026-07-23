@@ -30,7 +30,7 @@ Cait is hosted on the Python package index.
 
     $ pip install cait
 
-Have a look at the :ref:`installation-page` page for more installation options/tips. 
+Have a look at the Installation page for more installation options/tips. 
 You can now import the library in Python:
 
 .. code:: python
