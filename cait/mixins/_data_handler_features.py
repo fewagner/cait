@@ -1270,7 +1270,7 @@ class FeaturesMixin(object):
         with h5py.File(self.path_h5, 'r+') as f:
             print('CALCULATE CORRELATED PULSE HEIGHTS.')
 
-            nmbr_events = f[type]['event'].shape[1]
+            nmbr_events = f[type]['hours'].shape[0]
 
             ph_corr = np.empty((self.nmbr_channels, nmbr_events), dtype=float)
 
@@ -1308,7 +1308,7 @@ class FeaturesMixin(object):
         with h5py.File(self.path_h5, 'r+') as f:
 
             print('CALCULATE NUMBER OF PEAKS.')
-            nmbr_events = f[type]['event'].shape[1]
+            nmbr_events = f[type]['hours'].shape[0]
             nmbr_peaks = np.empty((self.nmbr_channels, nmbr_events), dtype=float)
 
             for c in range(self.nmbr_channels):

@@ -65,8 +65,12 @@ class NPeaks(ScalarFncBaseclass):
         self._trigger_inds = list()
 
     def __call__(self, event):
-        if np.array(event).ndim > 1:
-            raise NotImplementedError(f"Multi-channel events are not supported by {self.__class__.__name__}")
+        # Reshape array if ndim > 2
+        orig_shape = None
+        if event.ndim > 2:
+            orig_shape = event.shape
+            event = event.reshape(-1, event.shape[-1])
+
         if self._trigger is None:
             record_length = np.array(event).shape[-1]
             window_size = int(record_length*self._window_size)
@@ -74,13 +78,21 @@ class NPeaks(ScalarFncBaseclass):
                                     record_length=window_size,
                                     threshold=self._threshold)
             
-        self._trigger_inds, _ = self._trigger(event)
+        if event.ndim == 1:
+            # Single channel, no batches
+            self._num_triggers = len(self._trigger(event)[0])
+        else:
+            # Multiple channels and/or batches
+            self._num_triggers = np.array([len(self._trigger(event[ch])[0]) for ch in range(event.shape[0])])
+        if not orig_shape is None: 
+            # Done only if multiple channels and multiple batches
+            self._num_triggers = self._num_triggers.reshape(*orig_shape[:-1], -1)
 
-        return len(self._trigger_inds)
+        return self._num_triggers
     
     @property
     def batch_support(self):
-        return 'none'
+        return 'full'
     
     def preview(self, event):
         n = self(event)
