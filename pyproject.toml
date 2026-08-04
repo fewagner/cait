@@ -19,19 +19,20 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
-    "numpy>=1.22",
+    "numpy<2.0",
     "scipy>=1.6",
     "pandas>=1.1",
     "h5py>=3.2",
     "uproot>=4.1",
     "ipywidgets>=7.5",
+    "plotly<6.0",
     "dash>=2.0",
     "matplotlib>=3.4",
     "numba>=0.54",
     "tqdm>=4.62",
     "scikit-learn>=0.24",
     "deprecation",
-    "webdav4>=0.9.8"
+    "webdav4>=0.9.8",
 ]
 requires-python = ">=3.8"
 
@@ -39,6 +40,7 @@ requires-python = ">=3.8"
 nn = ["pytorch-lightning==1.9.4", "torch>=1.8"]
 clplot = ["uniplot>=0.12.2"]
 test = ["pytest"]
+docs = ["Sphinx==8.2.3", "sphinx-rtd-theme==3.0.2", "rinohtype==0.5.5", "myst-nb==1.2.0"]
 
 [project.urls]
 Repository = "https://github.com/fewagner/cait"
