@@ -1,11 +1,7 @@
 # File: docs/requirements.txt
 
-# doc building dependencies
-# Defining the exact version will make sure things don't break
-Sphinx==4.3.0
-sphinx-rtd-theme==1.0.0
-rinohtype==0.5.3
-myst-nb==0.13.1
-
-# cait (to read version)
--e .
+# cait (for reading version), and docs build dependencies (for building docs)
+# Those package versions are fixed so that automatic docs generation on 
+# readthedocs does not break. It should be checked from time to time whether
+# one can upgrade them (and also the Python version in .readthedocs.yaml)
+-e .[docs]
