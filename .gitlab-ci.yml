@@ -36,7 +36,7 @@ sphinx:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "web"
   # Image used by readthedocs
-  image: "ubuntu-24.04"
+  image: ubuntu:24.04
   before_script:
     # install python (version as used by readthedocs) and hdf5 tools for cait
     - apt-get update -qq && apt-get install -y -qq python3.11 hdf5-tools
