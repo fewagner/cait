@@ -35,11 +35,11 @@ sphinx:
     # Only run tests when merge request is created (or manually from web interface)
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_PIPELINE_SOURCE == "web"
-  # Image used by readthedocs
-  image: ubuntu:24.04
+  # Start from python3.11 image (python version used by readthedocs)
+  image: gitlab-registry.cern.ch/cryocluster/python-container-prebuild:mirror-python3.11
   before_script:
-    # install python (version as used by readthedocs) and hdf5 tools for cait
-    - apt-get update -qq && apt-get install -y -qq python3.11 hdf5-tools
+    # install hdf5 tools for cait
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools
     - python -m pip install --upgrade pip
     # install cait including docs dependencies
     - python -m pip install --upgrade --upgrade-strategy eager .[docs]
