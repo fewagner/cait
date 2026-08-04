@@ -32,6 +32,7 @@ dependencies = [
     "tqdm>=4.62",
     "scikit-learn>=0.24",
     "deprecation",
+    "webdav4>=0.9.8",
 ]
 requires-python = ">=3.8"
 
@@ -39,7 +40,6 @@ requires-python = ">=3.8"
 nn = ["pytorch-lightning==1.9.4", "torch>=1.8"]
 clplot = ["uniplot>=0.12.2"]
 test = ["pytest"]
-remfiles = ["webdav4>=0.9.8", "xrootd>=5.7.0"]
 docs = ["Sphinx==8.2.3", "sphinx-rtd-theme==3.0.2", "rinohtype==0.5.5", "myst-nb==1.2.0"]
 
 [project.urls]
