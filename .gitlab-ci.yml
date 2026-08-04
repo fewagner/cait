@@ -30,7 +30,7 @@ pytest:
       junit: report.xml
 
 sphinx:
-  stage: docs
+  stage: test
   rules:
     # Only run tests when merge request is created (or manually from web interface)
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
