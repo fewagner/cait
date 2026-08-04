@@ -12,8 +12,9 @@
 
 import os
 import sys
-import sphinx_rtd_theme
 from unittest.mock import MagicMock
+
+import sphinx_rtd_theme
 
 sys.path.insert(0, os.path.abspath('../..'))
 sys.setrecursionlimit(1500)
@@ -69,7 +70,7 @@ html_theme_options = {
     'display_version': False,
 }
 
-jupyter_execute_notebooks = "cache"
+jupyter_execute_notebooks = "off"
 
 myst_enable_extensions = [
     "amsmath",
