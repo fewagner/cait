@@ -21,6 +21,30 @@ from ..fit._templates import pulse_template
 from ..styles._print_styles import txt_fmt
 from ..trigger._peakdet import get_triggers
 
+# convenience function used in apply_ofilter and apply_npeaks
+def _find_offending_indices(it):
+    # Check at most 10 events (per stream) to be removed.
+    try_max = min(len(it), 10)
+    offending_indices = []
+    inds = np.argsort(it.timestamps)
+    # Check smallest timestamps.
+    for i in range(try_max):
+        try:
+            # If the specified timestamp causes an error ...
+            it[:, inds[i]].with_extended_window()
+        except IndexError:
+            # ... it is considered offending
+            offending_indices.append(inds[i])
+        # Check largest timestamps.
+        try:
+            it[:, inds[-i]].with_extended_window()
+        except IndexError:
+            offending_indices.append(inds[-i])
+    
+    # For very short iterators, there could be an overlap 
+    # when looking from the front and the back of the list.
+    # Using list(set()) gets rid of potential duplicates.
+    return list(set(offending_indices))
 
 # convenience function used in calc_mp
 @deprecated(deprecated_in='1.3.0', removed_in="2.0.0", details="Helper functions for dh.calc_mp will be removed together with dh.calc_mp")
@@ -735,38 +759,14 @@ class FeaturesMixin(object):
             # The offending events are always among the first/last events, so we only have to check
             # them. For an IteratorCollection, however, the check is a bit more annoying.
 
-            def find_offending_indices(it):
-                # Check at most 10 events (per stream) to be removed.
-                try_max = min(len(it), 10)
-                offending_indices = []
-                inds = np.argsort(it.timestamps)
-                # Check smallest timestamps.
-                for i in range(try_max):
-                    try:
-                        # If the specified timestamp causes an error ...
-                        it[:, inds[i]].with_extended_window()
-                    except IndexError:
-                        # ... it is considered offending
-                        offending_indices.append(inds[i])
-                    # Check largest timestamps.
-                    try:
-                        it[:, inds[-i]].with_extended_window()
-                    except IndexError:
-                        offending_indices.append(inds[-i])
-                
-                # For very short interators, there could be an overlap 
-                # when looking from the front and the back of the list.
-                # Using list(set()) gets rid of potential duplicates.
-                return list(set(offending_indices))
-
             if isinstance(events, (vai.iterators.StreamIterator, vai.iterators.PulseSimIterator)):
-                inds = find_offending_indices(events)
+                inds = _find_offending_indices(events)
 
             else: # must be Collection because of the check above
                 inds = []
                 offset = 0
                 for it in events.iterators:
-                    sub_inds = find_offending_indices(it)
+                    sub_inds = _find_offending_indices(it)
                     inds.extend([i + offset for i in sub_inds])
                     offset += len(it)
 
@@ -1287,6 +1287,7 @@ class FeaturesMixin(object):
 
             set_ph_corr[...] = ph_corr
 
+    @deprecated(deprecated_in='1.3.1', removed_in="2.0.0", details="Use DataHandler.apply_npeaks() instead.")
     def calc_peakdet(self, type='events', lag=1024, threshold=5, look_ahead=1024):
         """
         Calculate the number of prominent peaks within the record window. A number > 1 points towards pile up events.
@@ -1326,3 +1327,59 @@ class FeaturesMixin(object):
                                                 dtype=float)
 
             set_peaks[...] = nmbr_peaks
+
+    def apply_npeaks(
+            self,
+            group: str,
+            window_size: Union[int, float] = 1/20,
+            threshold: float = 3.5,
+            *,
+            with_processing: Union[Callable, List[Callable]] = None,
+            tag: str = "",
+            batch_size: int = 100,
+            preview: bool = False,
+    ):
+
+        if with_processing is None:
+            with_processing = []
+        elif callable(with_processing):
+            with_processing = [with_processing]
+
+        # Load events for specified group. If 'on_stream=True', the resulting
+        # iterator is a StreamIterator (if available).
+        events = self.get_event_iterator(
+            group=group
+        )
+
+        n_ev = len(events)
+        n_ch_total = self.get_event_iterator(group=group).n_channels
+
+        if with_processing:
+            events = events.with_processing(with_processing)
+
+        # Configuration of filter evaluation is handled by OFPulseHeight
+        f = vai.NPeaks(window_size=window_size, threshold=threshold)
+
+        if preview:
+            return vai.Preview(
+                events.with_processing(
+                    with_processing + [vai.RemoveBaseline()]
+                    ), f
+                )
+
+        # NOTE: The next step assumes that the outputs of NPeaks are of shape (n_events, n_channels)
+        npeaks_res = vai.apply(f, events.with_batchsize(batch_size), pb_prefix="Calculating number of peaks")
+        npeaks_res_dict = {k: v.reshape(*v.shape[:2]).T for k, v in zip(f.names(), npeaks_res)}
+
+        # Sanitize data (such that all of the datasets have shape (n_events, n_channels), even if n_channels=1)
+        npeaks_res_dict = {k: (v if v.ndim>1 else np.atleast_2d(v).T) for k, v in npeaks_res_dict.items()}
+
+        for n, t in zip(f.names(), f.dtypes()):
+            out = npeaks_res_dict[n]
+            self.set(
+                group=group,
+                **{f"{n}" + (f"-{tag}" if tag else ""): out},
+                dtype=t,
+                overwrite_existing=True,
+                write_to_virtual=False,
+            )

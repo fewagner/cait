@@ -65,6 +65,8 @@ class NPeaks(ScalarFncBaseclass):
         self._trigger_inds = list()
 
     def __call__(self, event):
+        event = np.array(event)
+    
         # Reshape array if ndim > 2
         orig_shape = None
         if event.ndim > 2:
@@ -72,12 +74,12 @@ class NPeaks(ScalarFncBaseclass):
             event = event.reshape(-1, event.shape[-1])
 
         if self._trigger is None:
-            record_length = np.array(event).shape[-1]
+            record_length = event.shape[-1]
             window_size = int(record_length*self._window_size)
             self._trigger = partial(vai.trigger_zscore, 
                                     record_length=window_size,
                                     threshold=self._threshold)
-            
+
         if event.ndim == 1:
             # Single channel, no batches
             self._num_triggers = len(self._trigger(event)[0])
@@ -88,7 +90,8 @@ class NPeaks(ScalarFncBaseclass):
             # Done only if multiple channels and multiple batches
             self._num_triggers = self._num_triggers.reshape(*orig_shape[:-1], -1)
 
-        return self._num_triggers
+        # Returned with shape (n_events, n_channels)
+        return self._num_triggers, 
     
     @property
     def batch_support(self):
