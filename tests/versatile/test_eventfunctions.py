@@ -28,6 +28,7 @@ calcmp = CalcMP()
 
 calcmp_scalar = CalcMP(dt_us=mock.dt_us)
 fbl = FitBaseline()
+npeaks = NPeaks()
 mp = MainParameters()
 mp_scalar = MainParameters(dt_us=mock.dt_us)
 mp_int = MainParameters(peak_loc=it1.record_length//4)
@@ -89,7 +90,7 @@ def test_batches_of():
     assert out1.shape == out2.shape
     assert out2.shape == out3.shape
 
-@pytest.mark.parametrize("fnc", [calcmp_scalar, fbl, mp_scalar])
+@pytest.mark.parametrize("fnc", [calcmp_scalar, fbl, mp_scalar, npeaks])
 def test_batches_scalar(fnc):
     # Double channel
     out1 = apply(fnc, it1)
