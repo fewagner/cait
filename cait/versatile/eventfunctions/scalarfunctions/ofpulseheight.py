@@ -524,25 +524,46 @@ class OFPulseHeight(ScalarFncBaseclass):
                 raise ValueError(f"All entries in 'max_search' have to be integers, floats, or tuples. Got {type(ms)}.")
         
         # The SEV has fixed length, i.e. we cannot use method="linear" for filtering it.
-        # We therefore define a separate dictionary for it.
-        sev_kwargs = kwargs.copy()
-        if "method" in sev_kwargs and sev_kwargs["method"].lower().startswith("linear"):
-            sev_kwargs["method"] = "linear_pad"
+        # We therefore define a dummy function which does nothing UNLESS the method is 'linear',
+        # in which case we pad the SEV before it's filtered.
+        if "method" in kwargs and kwargs["method"].lower() == "linear":
+            def outer(f):
+                def inner(x):
+                    k = np.ndim(x) - 1
+                    return f(
+                        np.pad(x, (*([(0, 0)]*k), (self._record_length, self._record_length)))
+                    )
+                return inner
+        else:
+            def outer(f):
+                def inner(x): 
+                    return f(x)
+                return inner
+
+        handle_method = outer
 
         # Regular case (1D-OF only)
         if self._n_channels == self._n_filters:
             self._filter = OptimumFiltering(of, **kwargs)
-            sev_filter = OptimumFiltering(of, **sev_kwargs)
+            sev_filter = handle_method(OptimumFiltering(of, **kwargs))
         # 2D-OF case
         else:
-            of_list, of_list_sev = ([
+            of_list = [
                 (
-                    OptimumFiltering(of[fg], **kw) 
+                    OptimumFiltering(of[fg], **kwargs) 
                     if isinstance(fg, int) 
-                    else OptimumFiltering2D(of[..., list(fg), :], **kw)
+                    else OptimumFiltering2D(of[..., list(fg), :], **kwargs)
                 )
                 for fg in filter_groups
-            ] for kw in [kwargs, sev_kwargs])
+            ]
+            of_list_sev = [
+                (
+                    handle_method(OptimumFiltering(of[fg], **kwargs) )
+                    if isinstance(fg, int) 
+                    else handle_method(OptimumFiltering2D(of[..., list(fg), :], **kwargs))
+                )
+                for fg in filter_groups
+            ]
             
             self._filter = lambda ev: _mixed_of_helper(ev, of_list, filter_groups)
             sev_filter = lambda ev: _mixed_of_helper(ev, of_list_sev, filter_groups)

@@ -40,6 +40,7 @@ class SimulateMixin(object):
         record_placement: int = 4,
         tag: str = "",
         preview: bool = False,
+        **kwargs,
     ):
         """
         Perform a trigger efficiency simulation by superimposing a SEV onto random parts of a stream and running an optimum filter trigger to check whether they survive or not. See below for a description of the algorithm.
@@ -80,6 +81,8 @@ class SimulateMixin(object):
         :type tag: str, optional
         :param preview: If True, a preview of the stream chunks superimposed with the scaled SEV, a filtered version thereof, and the trigger samples are shown. Meant for debugging purposes and/or finding appropriate values for ``tolerance_samples``, ``n_record_lens``, and ``record_placement``. Also see :class:`cait.versatile.TriggerSurvival`. Defaults to False.
         :type preview: bool, optional
+        :param kwargs: Additional keyword arguments forwarded to :func:`cait.versatile.trigger_of`/:func:`cait.versatile.trigger_of2d`.
+        :type kwargs: Any
 
         **Algorithm explanation:**
 
@@ -410,6 +413,7 @@ class SimulateMixin(object):
                     vai.trigger_of2d if isinstance(g, tuple) else vai.trigger_of, 
                     of=ot, 
                     threshold=th,
+                    **kwargs,
                     ),
                 target_ind=tind,
                 tolerance_samples=tolerance_samples

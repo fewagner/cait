@@ -3,6 +3,11 @@ Features and Changelog
 
 On this page we assemble the features of current ``cait`` releases and changes from the past versions.
 
+develop
+~~~~~~~
+- Features:
+    - For better comparison with results produced with CAT, we implemented ``method='linear_pad'`` of :func:`vai.OptimumFiltering <cait.versatile.OptimumFiltering>` to reflect its filtering behavior. An analogous feature was added to :func:`vai.trigger_of <cait.versatile.trigger_of>` and can be activated by setting ``pad=True``. This argument propagates through ``**kwargs`` into :func:`dh.trigger_of <cait.mixins.TriggerCollectionMixin.trigger_of>` and :func:`dh.efficiency_sim_trigger_of <cait.mixins.SimulateMixin.efficiency_sim_trigger_of>`. **Important:** This is a compatibility/comparability feature only. The best-practice in ``cait`` is to use :func:`vai.OptimumFiltering <cait.versatile.OptimumFiltering>` with ``method='circular'`` or ``method='linear'``, to use :func:`dh.trigger_of <cait.mixins.TriggerCollectionMixin.trigger_of>` *without* the ``pad`` argument (defaults to ``False``), and to enable ``on_stream=True`` in :func:`dh.apply_ofilter <cait.mixins.FeaturesMixin.apply_ofilter>` (which activates ``method='linear'`` in the underlying call to  :func:`vai.OptimumFiltering <cait.versatile.OptimumFiltering>`).
+
 v.1.3.0
 ~~~~~~~
 - Features:
