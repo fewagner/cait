@@ -43,6 +43,9 @@ class OptimumFiltering(FncBaseClass):
     .. warning::
         When choosing to zero-pad your events (method 'linear_pad'), you should first remove any constant baseline from your event traces (``it.with_processing(vai.RemoveBaseline())``).
 
+    .. warning::
+        When using method 'linear_pad', you should always check whether the normalization of the filter is preserved. If `scale=np.max(vai.OptimumFiltering(of, method="linear_pad")(sev))` is not one, you should use a renormalized filter `of_pad=of/scale` instead.
+
     **Example:**
 
     .. code-block:: python
@@ -71,10 +74,23 @@ class OptimumFiltering(FncBaseClass):
         elif method.lower().startswith("linear"):
             self._pad = method.lower().endswith("_pad")
             self._rl = 2 * (self._of.shape[-1] - 1)
-            omega = 2 * np.pi * np.fft.rfftfreq(self._rl)
-            self._of_time_domain = np.fft.irfft(self._of * np.exp(1j * self._rl/4 * omega))
+            
             self._call_f = self._impl_slide
-
+            if self._pad:
+                # I'm not entirely convinced that this is the correct way to do the padding. I think it should rather be rolled with -record_length//4, or rather identically to the phase multiplication below. However, if we roll and pad like this, we get results compatible with CAT.
+                # Note that the filter normalization changes after padding (which in my mind makes no sense; hence, I think it is not fully correct). It does not change for roll(..., -record_length//4) but then the output doesn't look as nice. The filter normalization also changes in CAT. 
+                # Therefore, this method should only be considered as a CAT cross check and comparison device.
+                k = np.ndim(self._of) - 1
+                self._of_time_domain = np.pad(
+                    np.roll(np.fft.irfft(self._of), self._rl//4, axis=-1),
+                    (*([(0, 0)]*k), (0, self._rl)),
+                    )
+            else:
+                omega = 2 * np.pi * np.fft.rfftfreq(self._rl)
+                self._of_time_domain = np.fft.irfft(
+                    self._of * np.exp(1j * self._rl/4 * omega)
+                    )
+            
         self._method = method.lower()
 
     def __call__(self, event):
@@ -110,7 +126,9 @@ class OptimumFiltering(FncBaseClass):
 
         if self._pad:
             k = event.ndim - 1
-            event = np.pad(event, (*([(0, 0)]*k), (self._rl, self._rl)))
+            # The padding here is chosen such that the slice of the oaconvolve output below
+            # is identical to the non-padded scenario.
+            event = np.pad(event, (*([(0, 0)]*k), (2*self._rl+self._rl//2, self._rl//2)))
             reshape = lambda x: np.reshape(x, in_shape)
         else:    
             reshape = lambda x: np.reshape(x, (*in_shape[:-1], in_shape[-1] - 2*self._rl))
