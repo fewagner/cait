@@ -276,49 +276,6 @@ class _TemplateCachePoly:
         :rtype: Tuple[np.ndarray, float]
         """
         
-
-        #""" Code including lsq_linear to find best positive b. Downside: longer_runtime
-        if self._baseline_type == 'polynomial':
-            opt_param = solve(
-                self._A(j, flag),
-                self._b(j, ev, flag),
-                assume_a="sym"
-            )
-            rms = np.sqrt(self._chij2(j, ev, flag))
-        
-            return opt_param, rms
-        
-        elif self._baseline_type == 'polyexp':
-
-            s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
-            # Build design matrix X to apply bounds
-            e = np.exp(-(1. / self._exp_tau) * x)
-            X = np.column_stack([
-                s,
-                *[x**k for k in range(self._order + 1)],
-                e
-            ])
-
-            # All parameters are unconstrained except b_exp >= 0
-            lower_bounds = np.full(X.shape[1], -np.inf)
-            upper_bounds = np.full(X.shape[1],  np.inf)
-
-            lower_bounds[-1] = 0.0
-
-            result = lsq_linear(
-                X,
-                y,
-                bounds=(lower_bounds, upper_bounds)
-            )
-
-            opt_param = result.x
-
-            fit = X @ opt_param
-            rms = np.sqrt(np.mean((y - fit)**2))
-
-            return opt_param, rms
-        
-        """
         opt_param = solve(
             self._A(j, flag),
             self._b(j, ev, flag),
@@ -327,7 +284,7 @@ class _TemplateCachePoly:
         rms = np.sqrt(self._chij2(j, ev, flag))
         
         return opt_param, rms
-        """
+
 
     
     def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
@@ -354,40 +311,12 @@ class _TemplateCachePoly:
             return np.mean((y - sol[0]*s - np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0))**2)
                 
         elif self._baseline_type == 'polyexp':
-            # Build design matrix X to apply bounds
-            e = np.exp(-(1. / self._exp_tau) * x)
-            X = np.column_stack([
-                s,
-                *[x**k for k in range(self._order + 1)],
-                e
-            ])
-
-            lower_bounds = np.full(X.shape[1], -np.inf)
-            upper_bounds = np.full(X.shape[1],  np.inf)
-            # b_exp >= 0
-            lower_bounds[-1] = 0.0
-
-            result = lsq_linear(
-                X,
-                y,
-                bounds=(lower_bounds, upper_bounds)
-            )
-
-            sol = result.x
-            fit = X @ sol
-
-            return np.mean((y - fit)**2)
-        """ Code for free b_exp
-        elif self._baseline_type == 'polyexp':
             sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
             poly = np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0)
             b_exp = sol[self._order+2]
             e = np.exp(-(1./self._exp_tau) * x)
             fit = sol[0]*s + poly + b_exp*e
             return np.mean((y - fit)**2)
-        """
-        
-        #""" Code including lsq_linear to find best positive b. Downside: longer_runtime
         
 
     def _A(self, j: int, flag: np.ndarray = None):
@@ -529,6 +458,12 @@ class TemplateFit(ScalarFncBaseclass):
 
     .. image:: media/TemplateFit.png
     """
+    _outputs = [
+        ("pars", float),
+        ("shift", int),
+        ("rms", float),
+    ]
+
     def __init__(self, 
                  sev: np.ndarray,
                  bl_poly_order: int = 0,
@@ -600,7 +535,6 @@ class TemplateFit(ScalarFncBaseclass):
     
     def preview(self, event):
         fitpars, shift, rms = self(event)
-        print(fitpars)
 
         shifted_sev, shifted_x = shift_arrays(self._sev, self._xdata, j=shift)
 
