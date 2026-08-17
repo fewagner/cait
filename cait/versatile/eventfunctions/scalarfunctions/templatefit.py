@@ -1,10 +1,10 @@
 from typing import List
 
 import numpy as np
-from scipy.optimize import minimize
+from scipy.optimize import minimize, lsq_linear
 from scipy.linalg import solve, LinAlgError
 
-from ..functionbase import FncBaseClass
+from ..functionbase import ScalarFncBaseclass
 from ..processing.removebaseline import RemoveBaseline
 
 import warnings
@@ -193,7 +193,7 @@ class _TemplateCachePoly:
                  fit_onset: bool = True,
                  max_shift: int = 50,
                  baseline_type: str = 'polynomial',
-                 exp_tau: float = 80.
+                 exp_tau: float = None
                 ):
         self._sev = sev
         self._xdata = xdata
@@ -213,9 +213,8 @@ class _TemplateCachePoly:
         # Define error outputs (if fit fails, these will be the
         # fit results that tell you that the fit failed)
         # number of parameters to return on failure (ampl + poly coeffs + optional exp coeff)
-        if self._baseline_type == 'exponential':
-            self._n_params = 2                      # [a, b_exp]
-        elif self._baseline_type == 'polynomial':
+
+        if self._baseline_type == 'polynomial':
             self._n_params = self._order + 2        # [a, c0..c_order]
         elif self._baseline_type == 'polyexp':
             self._n_params = self._order + 3        # [a, c0..c_order, b_exp]
@@ -276,10 +275,60 @@ class _TemplateCachePoly:
         :return: Tuple of (fit parameters, rms).
         :rtype: Tuple[np.ndarray, float]
         """
-        opt_param = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
+        
+
+        #""" Code including lsq_linear to find best positive b. Downside: longer_runtime
+        if self._baseline_type == 'polynomial':
+            opt_param = solve(
+                self._A(j, flag),
+                self._b(j, ev, flag),
+                assume_a="sym"
+            )
+            rms = np.sqrt(self._chij2(j, ev, flag))
+        
+            return opt_param, rms
+        
+        elif self._baseline_type == 'polyexp':
+
+            s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
+            # Build design matrix X to apply bounds
+            e = np.exp(-(1. / self._exp_tau) * x)
+            X = np.column_stack([
+                s,
+                *[x**k for k in range(self._order + 1)],
+                e
+            ])
+
+            # All parameters are unconstrained except b_exp >= 0
+            lower_bounds = np.full(X.shape[1], -np.inf)
+            upper_bounds = np.full(X.shape[1],  np.inf)
+
+            lower_bounds[-1] = 0.0
+
+            result = lsq_linear(
+                X,
+                y,
+                bounds=(lower_bounds, upper_bounds)
+            )
+
+            opt_param = result.x
+
+            fit = X @ opt_param
+            rms = np.sqrt(np.mean((y - fit)**2))
+
+            return opt_param, rms
+        
+        """
+        opt_param = solve(
+            self._A(j, flag),
+            self._b(j, ev, flag),
+            assume_a="sym"
+        )
         rms = np.sqrt(self._chij2(j, ev, flag))
         
         return opt_param, rms
+        """
+
     
     def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -303,19 +352,43 @@ class _TemplateCachePoly:
         if self._baseline_type == 'polynomial':
             sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
             return np.mean((y - sol[0]*s - np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0))**2)
+                
+        elif self._baseline_type == 'polyexp':
+            # Build design matrix X to apply bounds
+            e = np.exp(-(1. / self._exp_tau) * x)
+            X = np.column_stack([
+                s,
+                *[x**k for k in range(self._order + 1)],
+                e
+            ])
 
-        elif self._baseline_type == 'exponential':
-            sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
-            e = np.exp(-(1./self._exp_tau) * x)
-            return np.mean((y - sol[0] * s - sol[1] * e)**2)
-            
+            lower_bounds = np.full(X.shape[1], -np.inf)
+            upper_bounds = np.full(X.shape[1],  np.inf)
+            # b_exp >= 0
+            lower_bounds[-1] = 0.0
+
+            result = lsq_linear(
+                X,
+                y,
+                bounds=(lower_bounds, upper_bounds)
+            )
+
+            sol = result.x
+            fit = X @ sol
+
+            return np.mean((y - fit)**2)
+        """ Code for free b_exp
         elif self._baseline_type == 'polyexp':
             sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
             poly = np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0)
-            b_exp = sol[self._order+ 2] # [a, c0..c_order, b_exp]
+            b_exp = sol[self._order+2]
             e = np.exp(-(1./self._exp_tau) * x)
             fit = sol[0]*s + poly + b_exp*e
             return np.mean((y - fit)**2)
+        """
+        
+        #""" Code including lsq_linear to find best positive b. Downside: longer_runtime
+        
 
     def _A(self, j: int, flag: np.ndarray = None):
         """
@@ -343,12 +416,6 @@ class _TemplateCachePoly:
                 ])
             ])
         
-        elif self._baseline_type == 'exponential':
-            e = np.exp(-(1./self._exp_tau) * x)
-            return np.array([
-                [np.mean(s * s),       np.mean(s * e)],
-                [np.mean(s * e),       np.mean(e * e)]
-            ])
         elif self._baseline_type == 'polyexp':
             # size: (2 + order+1) x (2 + order+1)
             # order of unknowns: [a, c0..c_order, b_exp]
@@ -402,12 +469,6 @@ class _TemplateCachePoly:
         if self._baseline_type == 'polynomial':
             return np.array([np.mean(y*s)] + [np.mean(y*x**k) for k in range(self._order+1)])
             
-        elif self._baseline_type == 'exponential':
-            e = np.exp(-(1./self._exp_tau) * x)
-            return np.array([
-                np.mean(y * s),
-                np.mean(y * e)
-            ])
         elif self._baseline_type == 'polyexp':
             # [ <y,s>, <y,x^0>,...,<y,x^order>, <y,e> ]
             e = np.exp(-(1./self._exp_tau) * x)
@@ -419,7 +480,7 @@ class _TemplateCachePoly:
 ########################
 ### CLASS DEFINITION ###
 ########################
-class TemplateFit(FncBaseClass):
+class TemplateFit(ScalarFncBaseclass):
     """
     Perform a template fit for single-channel data, i.e. fit a numeric SEV to data with possibility to also specify a polynomial baseline model and a truncation limit.
     See https://edoc.ub.uni-muenchen.de/23762/ for details.
@@ -436,9 +497,7 @@ class TemplateFit(FncBaseClass):
     :type fit_onset: bool
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``.
     :type max_shift: int
-    :param baseline_type: Baseline type: 'polynomial', 'exponential', or 'polyexp'. Default to 'polynomial'.
-    :type baseline_type: str    
-    :param exp_tau: Exponential decay time constant τ. Units are reciprocal to xdata units (default to 80). Only in use when baseline type == 'exponential' or 'polyexp'.
+    :param exp_tau: If not None, baseline fit will include an exponential decay with decay time constant τ. Units are reciprocal to xdata units. 
     :type exp_tau: float
     
     :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0. If the fit fails, all fit parameters are set to 0 and the RMS value is set to -404.
@@ -477,8 +536,7 @@ class TemplateFit(FncBaseClass):
                  xdata: List[float] = None,
                  fit_onset: bool = True,
                  max_shift: int = 50,
-                 baseline_type: str = 'polynomial',  # New argument to choose baseline type
-                 exp_tau: float = 80.
+                 exp_tau: float = None
                 ):
         if np.array(sev).ndim>1:
             raise ValueError(f"{self.__class__.__name__} can only process single-channel data. Multi-dimensional templates are not supported. For correlated template fits (multi-dimensional), use TemplateFitCorrelated.")
@@ -490,9 +548,17 @@ class TemplateFit(FncBaseClass):
         self._sev = np.array(sev)
         self._xdata = np.linspace(0, 1, self._sev.shape[-1]) if xdata is None else xdata
         self._truncation_limit = truncation_limit
-        self._baseline_type = baseline_type
+        #self._baseline_type = baseline_type
         self._exp_tau = exp_tau
-        
+
+        if self._exp_tau is None:
+            self.baseline_type = 'polynomial'
+            self._mode = 'poly'
+        elif isinstance(self._exp_tau, float):
+            self.baseline_type = 'polyexp'
+            self._mode = 'polyexp'
+        else:
+            raise ValueError("Invalid baseline type")
         
         if bl_poly_order is None:
             self._mode = 'simple'
@@ -500,34 +566,15 @@ class TemplateFit(FncBaseClass):
                                                 fit_onset=fit_onset, 
                                                 max_shift=max_shift)
             self._rm_bl = RemoveBaseline(dict(model=0, where=1/8, xdata=None))
-        else:
-            if self._baseline_type == 'polynomial':
-                self._mode = 'poly'
-                self._solver = _TemplateCachePoly(sev=self._sev, 
-                                                  xdata=self._xdata, 
-                                                  order=bl_poly_order, 
-                                                  fit_onset=fit_onset, 
-                                                  max_shift=max_shift)
-            elif self._baseline_type == 'exponential':
-                self._mode = 'exp'
-                self._solver = _TemplateCachePoly(sev=self._sev, 
-                                                 xdata=self._xdata,
-                                                 order=0,
-                                                 fit_onset=fit_onset, 
-                                                 max_shift=max_shift,
-                                                 baseline_type=self._baseline_type,
-                                                 exp_tau=self._exp_tau)
-            elif self._baseline_type == 'polyexp':
-                self._mode = 'polyexp'
-                self._solver = _TemplateCachePoly(sev=self._sev,
-                                                  xdata=self._xdata,
-                                                  order=bl_poly_order,   # poly order for the poly part
-                                                  fit_onset=fit_onset,
-                                                  max_shift=max_shift,
-                                                  baseline_type='polyexp',
-                                                  exp_tau=self._exp_tau)
-            else:
-                raise ValueError(f"Unsupported baseline_type: {baseline_type}. Choose either 'polynomial', 'exponential' or 'polyexp'.")
+        else:                                         
+            self._solver = _TemplateCachePoly(sev=self._sev,
+                                                xdata=self._xdata,
+                                                order=bl_poly_order,   # poly order for the poly part
+                                                fit_onset=fit_onset,
+                                                max_shift=max_shift,
+                                                baseline_type=self.baseline_type,
+                                                exp_tau=self._exp_tau)
+
                 
             
                  
@@ -553,6 +600,7 @@ class TemplateFit(FncBaseClass):
     
     def preview(self, event):
         fitpars, shift, rms = self(event)
+        print(fitpars)
 
         shifted_sev, shifted_x = shift_arrays(self._sev, self._xdata, j=shift)
 
@@ -562,14 +610,6 @@ class TemplateFit(FncBaseClass):
             fit_sev = fitpars[0]*shifted_sev + np.sum(
                 [fitpars[k+1]*shifted_x**k for k in range(len(fitpars)-1)],
                 axis=0)
-        elif self._mode == 'exp':
-            exp_coeff = fitpars[1]
-            decay = np.exp(-(1./self._solver._exp_tau) * shifted_x)
-            baseline = exp_coeff * decay
-            fit_sev = fitpars[0] * shifted_sev + baseline
-            
-            if abs(exp_coeff) < 1e-1:
-                print("[Warning] Exponential baseline coefficient is close to zero. No significant exponential component found.")
         elif self._mode == 'polyexp':
             a = fitpars[0]
             poly = np.sum([fitpars[k+1]*shifted_x**k for k in range(len(fitpars)-2)], axis=0)
@@ -579,15 +619,11 @@ class TemplateFit(FncBaseClass):
             baseline_exp  = b_exp * decay
             baseline_total = baseline_poly + baseline_exp
             fit_sev = a*shifted_sev + baseline_poly + baseline_exp
-               
-        
-            
+                      
         
         d = {"event": [self._xdata, event], "template fit": [shifted_x, fit_sev]}
         
-        if self._mode == 'exp':
-            d["exponential baseline"] = [shifted_x, baseline]
-        elif self._mode == 'polyexp':
+        if self._mode == 'polyexp':
             d["polynomial + exp baseline"] = [shifted_x, baseline_total]
             
         
