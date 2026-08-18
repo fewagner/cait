@@ -483,8 +483,11 @@ class TemplateFit(ScalarFncBaseclass):
         self._sev = np.array(sev)
         self._xdata = np.linspace(0, 1, self._sev.shape[-1]) if xdata is None else xdata
         self._truncation_limit = truncation_limit
-        #self._baseline_type = baseline_type
-        self._exp_tau = exp_tau
+        
+        if isinstance(exp_tau, int):
+            self._exp_tau = float(exp_tau)
+        else:
+            self._exp_tau = exp_tau
 
         if self._exp_tau is None:
             self.baseline_type = 'polynomial'

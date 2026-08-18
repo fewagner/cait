@@ -338,6 +338,7 @@ class FitMixin(object):
                            group: str,
                            sev: np.ndarray,
                            bl_poly_order: Union[int, List[int]] = 3,
+                           exp_tau: Union[float, List[float]] = None,
                            truncation_limit: Union[float, List[float]] = None,
                            correlated: bool = False,
                            fit_onset: Union[bool, List[bool]] = True,
@@ -362,6 +363,8 @@ class FitMixin(object):
         :type sev: np.ndarray
         :param bl_poly_order: List of the baseline models to use in the fit (one entry for each channel that you want to fit). Has to be a non-zero integer or None. If 0, a constant offset is fitted, if 1, a linear baseline is assumed, etc. If None, the baseline is assumed to be constantly 0 (here, it's the users responsibility to remove the baseline accordingly). If only None or an integer is provided, this value is used for all fitted channels, defaults to 3, i.e. fitting a cubic baseline for all channels.
         :type bl_poly_order: Union[int, List[int]], optional
+        :param exp_tau: If set, adds a decaying baseline component with fixed exp_tau for fitting. Intended use for pulses that sit on top of decaying baselines.
+        :type exp_tau: float, optional
         :param truncation_limit: List with as many entries as there are channels to fit. For each entry that is not None, a truncated fit is performed: all samples between the first and the last sample above 'truncation_limit' are ignored in the fit. To determine these samples, the baseline of the event is removed by fitting a linear polynomial to the beginning of the record window. If only None or a float is provided, this value is used for all fitted channels. Defaults to None, i.e. not performing a truncated fit in any channel.
         :type truncation_limit: Union[float, List[float]], optional
         :param correlated: If True, a correlated fit is performed, i.e. the SEV is shifted for all channels simultaneously. Depending on 'fit_onset' (see below and also examples), different behavior can be achieved. If False, each channel is fitted independently of the others, defaults to False.
@@ -494,6 +497,14 @@ class FitMixin(object):
         if bl_poly_order is None or isinstance(bl_poly_order, int):
             bl_poly_order = [bl_poly_order]*n_channels_used
 
+        if exp_tau is None or isinstance(exp_tau, (int, float)):
+            exp_tau = [float(exp_tau) if exp_tau is not None else None] * n_channels_used
+        else:
+            exp_tau = [
+                float(x) if x is not None else None
+                for x in exp_tau
+            ]
+
         if truncation_limit is None or isinstance(truncation_limit, float):
             truncation_limit = [truncation_limit]*n_channels_used
 
@@ -525,14 +536,19 @@ class FitMixin(object):
 
         # Construct the output array (to be filled later)
         non_none_orders = [x for x in bl_poly_order if x is not None]
-        max_order = np.max(non_none_orders) if len(non_none_orders)>0 else -1
-        output_shape = (n_channels, len(events), 2+max_order)
+        max_order = np.max(non_none_orders) if len(non_none_orders) > 0 else -1
+
+        n_exp_params = 1 if any(x is not None for x in exp_tau) else 0
+
+        max_n_pars = 2 + max_order + n_exp_params
+
+        output_shape = (n_channels, len(events), max_n_pars)
 
         # For unused channels, the RMS is set to -404 and the
         # fit parameters are all 0
         output_pars = np.zeros(output_shape)
         output_shift = np.zeros((n_channels, len(events)), dtype=np.int16)
-        output_rms = -404*np.ones((n_channels, len(events)))
+        output_rms = -404 * np.ones((n_channels, len(events)))
 
         # NOTE: Given how special the output arrays have to be arranged for different channels
         # and different degrees of polynomials, we cannot easily make use of the extensibility
@@ -565,12 +581,17 @@ class FitMixin(object):
             for i in range(n_channels_used):
                 ch = channels_used[i]
                 n_pars = 1 if bl_poly_order[i] is None else bl_poly_order[i] + 2
+
+                if exp_tau[i] is not None:
+                    n_pars += 1
+
                 tf = vai.TemplateFit(
                         sev=sev[i],
                         bl_poly_order=bl_poly_order[i],
                         truncation_limit=truncation_limit[i],
                         fit_onset=fit_onset[i],
                         max_shift=max_shift,
+                        exp_tau=exp_tau[i],
                         **kwargs)
 
                 if preview:
@@ -578,7 +599,7 @@ class FitMixin(object):
                 else:
                     tf_out = vai.apply(tf, events_used[ch].with_processing(with_processing).with_batchsize(_batch_size), pb_prefix=f"Channel {ch}")
                     tf_out_dict = {k: v for k, v in zip(tf.names(), tf_out)}
-
+                    
                     output_pars[ch, event_flag, :n_pars] = tf_out_dict["pars"]
                     output_shift[ch, event_flag] = tf_out_dict["shift"]
                     output_rms[ch, event_flag] = tf_out_dict["rms"]
