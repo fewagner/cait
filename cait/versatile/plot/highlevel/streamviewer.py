@@ -64,6 +64,7 @@ class StreamViewer(Viewer):
             self.stream = Stream(hardware=args[0], src=args[1])
         else:
             raise ValueError(f"Invalid positional arguments '{args}'. Has to be either a StreamBaseClass instance or 'hardware' and 'files'.")
+        self._total_samples = len(self.stream.time)
 
         if keys is not None:
             if type(keys) is str: 
@@ -118,7 +119,7 @@ class StreamViewer(Viewer):
 
     def update_frame(self):
         # Create slice for data access
-        where = slice(self.current_start, self.current_start + self.n_points*self.downsample_factor, self.downsample_factor)
+        where = slice(self.current_start, min(self._total_samples, self.current_start + self.n_points*self.downsample_factor), self.downsample_factor)
         
         # Time array is the same for all channels
         t = self.stream.time[where]
@@ -185,8 +186,12 @@ class StreamViewer(Viewer):
 
     def _move_right(self, b=None):
         # ATTENTION: should be restricted to file size at some point (and the end point should be provided by stream)
-        self.current_start += int(self.n_points*self.downsample_factor/2)
-        self.update_frame()
+        next_sample = self.current_start + int(self.n_points*self.downsample_factor/2)
+        if next_sample < self._total_samples:
+            self.current_start = next_sample
+            self.update_frame()
+        else:
+            self.close()
 
     def _move_left(self, b=None):
         self.current_start = max(0, self.current_start - int(self.n_points*self.downsample_factor/2))

@@ -5,10 +5,9 @@ stages:
 pytest:
   stage: test
   rules:
-    # Only run tests when merge request to develop or master is created (or manually from web interface)
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "master"'
-    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TARGET_BRANCH_NAME == "develop"'
-    - if: '$CI_PIPELINE_SOURCE == "web"'
+    # Only run tests when merge request is created (or manually from web interface)
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "web"
   image: "gitlab-registry.cern.ch/cryocluster/python-container-prebuild:mirror-python$VERSION"
   before_script:
     # needed for h5repack (usually installed on computing clusters)
@@ -29,6 +28,25 @@ pytest:
     when: always
     reports:
       junit: report.xml
+
+sphinx:
+  stage: test
+  rules:
+    # Only run tests when merge request is created (or manually from web interface)
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_PIPELINE_SOURCE == "web"
+  # Start from python3.11 image (python version used by readthedocs)
+  image: gitlab-registry.cern.ch/cryocluster/python-container-prebuild:mirror-python3.11
+  before_script:
+    # install hdf5 tools for cait
+    - apt-get update -qq && apt-get install -y -qq hdf5-tools
+    - python -m pip install --upgrade pip
+    # install cait including docs dependencies
+    - python -m pip install --upgrade --upgrade-strategy eager .[docs]
+  script:
+    # Builds documents in runner's local directory. Discarded afterwards. 
+    # If needed, we could add artifacts in the future.
+    - sphinx-build -M html docs/source docs_build
 
 build_kaniko_command:
   stage: build

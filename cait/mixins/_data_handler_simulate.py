@@ -40,6 +40,7 @@ class SimulateMixin(object):
         record_placement: int = 4,
         tag: str = "",
         preview: bool = False,
+        **kwargs,
     ):
         """
         Perform a trigger efficiency simulation by superimposing a SEV onto random parts of a stream and running an optimum filter trigger to check whether they survive or not. See below for a description of the algorithm.
@@ -80,6 +81,8 @@ class SimulateMixin(object):
         :type tag: str, optional
         :param preview: If True, a preview of the stream chunks superimposed with the scaled SEV, a filtered version thereof, and the trigger samples are shown. Meant for debugging purposes and/or finding appropriate values for ``tolerance_samples``, ``n_record_lens``, and ``record_placement``. Also see :class:`cait.versatile.TriggerSurvival`. Defaults to False.
         :type preview: bool, optional
+        :param kwargs: Additional keyword arguments forwarded to :func:`cait.versatile.trigger_of`/:func:`cait.versatile.trigger_of2d`.
+        :type kwargs: Any
 
         **Algorithm explanation:**
 
@@ -97,6 +100,7 @@ class SimulateMixin(object):
         The algorithm described above applies to a single trigger channel. If you trigger multiple, the *target index* is individually defined for each channel as the maximum of the (non-shifted) SEV of that channel (Note, however, that the *simulation timestamp* is still defined by the maximum of the (non-shifted) SEV of the first channel). The triggering step is performed for all channels individually. A simulated pulse is considered *triggered* if **either** of the channels triggered (i.e. had a trigger within ``tolerance_samples`` of the *target index*). In case more than one channel triggers, the *event timestamp* is aligned at the maximum of the **first** channel that triggered (i.e. the first if it triggered, the second if the second triggered but the first one didn't, etc.). 
 
         If testpulse channels are specified, an additional step marks all simulated pulses **not triggered** if they are within half a record window of a testpulse, regardless of whether they triggered or not. 
+        Calibration channel handling for the efficiency calculation is not yet implemented, and can be added in the future if necessary.
 
         **Example:**
 
@@ -212,12 +216,13 @@ class SimulateMixin(object):
             # 'events-eff-sim' group and also calculate the cut efficiency.
         """
         # Ensures that all inputs are lists
-        trigger_channels, passive_channels, testpulse_channels, _, thresholds = _sanitize_input(
+        trigger_channels, passive_channels, testpulse_channels, *_, thresholds = _sanitize_input(
             stream=stream,
             trigger_channels=trigger_channels,
             passive_channels=passive_channels,
             testpulse_channels=testpulse_channels,
             controlpulses_above=None,
+            calibration_channels=None,
             thresholds=thresholds,
         )
 
@@ -408,6 +413,7 @@ class SimulateMixin(object):
                     vai.trigger_of2d if isinstance(g, tuple) else vai.trigger_of, 
                     of=ot, 
                     threshold=th,
+                    **kwargs,
                     ),
                 target_ind=tind,
                 tolerance_samples=tolerance_samples
@@ -429,7 +435,7 @@ class SimulateMixin(object):
         
         if preview:
             for ch, f in zip(chs, fns):
-                vai.Preview(chunk_iterator[ch], f)
+                vai.Preview(chunk_iterator[ch], f, backend="plotly")
             return
         
         # Initialize array with as many channels as total channels (including passive).

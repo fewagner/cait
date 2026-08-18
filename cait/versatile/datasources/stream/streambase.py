@@ -96,8 +96,47 @@ class StreamBaseClass(DataSourceBaseClass):
         """
         ...
 
+    @property
+    @abstractmethod
+    def calp_keys(self):
+        """
+        Available calpulse keys in ``self.calpas`` and ``self.calp_timestamps``.
+
+        :return: List of keys.
+        :rtype: list
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def calpas(self):
+        """
+        Dictionary of calpulse amplitudes in the stream. For hardware 'vdaq2' and 'vdaq3' this is obtained from triggering the ADC channels first.
+
+        :return: Calpulse amplitudes
+        :rtype: dict of `np.ndarray`
+        """
+        ...
+
+    @property
+    @abstractmethod
+    def calp_timestamps(self):
+        """
+        Dictionary of calpulse timestamps (microseconds) in the stream. For hardware 'vdaq2' and 'vdaq3' this is obtained from triggering the ADC channels first.
+
+        :return: Calpulse microsecond timestamps.
+        :rtype: dict of `np.ndarray`
+        """
+        ...
+
+    @property
+    def measuring_time_h(self):
+        """The measuring time of this stream in hours."""
+        return self.__len__() * int(self.dt_us) / 1e6 / 3600
+
+
     def __repr__(self):
-        return f"{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, tp_keys={self.tp_keys}, measuring_time_h={self.__len__() * int(self.dt_us) / 1e6 / 3600:.2f})"
+        return f"{self.__class__.__name__}(start_us={self.start_us}, dt_us={self.dt_us}, length={self.__len__()}, keys={self.keys}, tp_keys={self.tp_keys}, calp_keys={self.calp_keys}, measuring_time_h={self.measuring_time_h:.2f})"
 
     def __getitem__(
         self,
@@ -388,3 +427,6 @@ class StreamTime:
             raise IndexError("Requested timestamp is out of range.")
 
         return out
+
+    def __len__(self):
+        return self._n

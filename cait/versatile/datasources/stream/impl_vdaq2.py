@@ -1,6 +1,7 @@
 from functools import partial
 
 import numpy as np
+import warnings
 
 import cait as ai
 
@@ -8,6 +9,7 @@ from ....readers import BinaryFile
 from ...eventfunctions.processing.removebaseline import RemoveBaseline
 from ...functions.apply import apply
 from ...functions.trigger.trigger_zscore import zscore_chunk
+from ...functions.trigger.trigger_of import filter_chunk
 from ...functions.trigger.triggerbase import trigger_base
 from .streambase import StreamBaseClass
 
@@ -45,6 +47,44 @@ def vdaq2_dac_channel_trigger(stream, key, threshold, record_length):
         out_timestamps = stream.time[inds + argmaxs - record_length//4] 
 
     return out_timestamps, out_tpas
+
+def vdaq2_cal_channel_trigger(stream, key, threshold, record_length):
+    
+    # NUCLEUS-specific implementation (low noise stream): if a threshold is not passed explicitely, set it to 5 ADC counts.
+    if threshold is None:
+        single_adc_count_V = ai.data.convert_to_V(1, bits=stream._adc_bits, min=-20, max=20) 
+        threshold = 5 * single_adc_count_V
+    
+    #Use a mock OF to remove the baseline and leave the stream unaltered.
+    mock_of = np.r_[0.0, np.ones(record_length // 2)]
+
+    with stream:
+        inds, _ =  trigger_base(stream=stream[key],
+                                threshold=threshold,
+                                filter_fnc=partial(filter_chunk, of=mock_of, record_length=record_length),
+                                record_length=record_length)
+    
+    if not inds:
+        out_timestamps, out_calpas = [], []
+
+    else:
+        out_timestamps = stream.time[inds]
+
+        it = stream.get_event_iterator(keys=key,
+                                       record_length=record_length,
+                                       timestamps=out_timestamps,
+                                       alignment=1/4)
+
+        # we also want argmax to correct timestamps such that they mark the maximum
+        argmaxs, out_calpas = apply(_max_and_argmax,
+                                    it.with_processing(RemoveBaseline()),
+                                    n_processes=ai._available_workers)
+
+        warnings.warn("The 'calpulseamplitude' computed here (with a mock OF) is not a reliable estimate of the actual injected energy of the calibration pulse.")
+
+        out_timestamps = stream.time[inds + argmaxs - record_length//4] 
+
+    return out_timestamps, out_calpas
 
 def to_bin_string(s, nmbr_bits=None):
     """
@@ -139,13 +179,23 @@ class Stream_VDAQ2(StreamBaseClass):
     :type dac_trig_thr: float, optional
     :param dac_trig_win_len_ms: Trigger window length (in ms) to find testpulses from the DAC channels. Defaults to 500 ms
     :type dac_trig_win_len_ms: int, optional
+    :param cal_trig_thr: Trigger threshold (in V) to find calpulses from the calibration ADC channels. Default to None, in which case the threshold is taken to be 5 times a single ADC count.
+    :type cal_trig_thr: float, optional
+    :param cal_trig_win_len_ms: Trigger window length (in ms) to find calpulses from the calibration ADC channels. Defaults to 50 ms
+    :type cal_trig_win_len_ms: int, optional
     """
     def __init__(self, 
                  file: str, 
-                 dac_trig_thr: float = 5.,      # sigmas
-                 dac_trig_win_len_ms: int = 500 # ms
+                 dac_trig_thr: float = 5.,       # sigmas
+                 dac_trig_win_len_ms: int = 500, # ms
+                 cal_trig_thr: float = None,     # V
+                 cal_trig_win_len_ms: int = 50   # ms
                  ):
-        super().__init__(file=file, dac_trig_thr=dac_trig_thr, dac_trig_win_len_ms=dac_trig_win_len_ms)
+        super().__init__(file=file, 
+                         dac_trig_thr=dac_trig_thr, 
+                         dac_trig_win_len_ms=dac_trig_win_len_ms, 
+                         cal_trig_thr=cal_trig_thr, 
+                         cal_trig_win_len_ms=cal_trig_win_len_ms)
 
         # Get relevant info about file from its header
         header, keys, self._adc_bits, self._dac_bits, dt_tcp = read_header(file)
@@ -165,9 +215,16 @@ class Stream_VDAQ2(StreamBaseClass):
         self._dac_trig_win_len_ms = dac_trig_win_len_ms
         self._dac_trig_win_len = int(1000*dac_trig_win_len_ms/self._dt)
 
-        # Create placeholders for testpulses
+        self._cal_trig_thr = cal_trig_thr
+        self._cal_trig_win_len_ms = cal_trig_win_len_ms
+        self._cal_trig_win_len = int(1000*cal_trig_win_len_ms/self._dt)
+
+        # Create placeholders for testpulses and calibration pulses
         self._tp_timestamps = dict()
         self._tpas = dict()
+
+        self._calp_timestamps = dict()
+        self._calpas = dict()
         
     def __len__(self):
         return len(self._data)
@@ -213,6 +270,18 @@ class Stream_VDAQ2(StreamBaseClass):
     @property
     def tp_timestamps(self):
         return VDAQ2_TP_TS(self)
+    
+    @property
+    def calp_keys(self):
+        return [x for x in self.keys if x.startswith("ADC")]
+    
+    @property
+    def calpas(self):
+        return VDAQ2_CALPAS(self)
+
+    @property
+    def calp_timestamps(self):
+        return VDAQ2_CALP_TS(self)
     
 class VDAQ2_TPAS:
     """A helper class for accessing testpulse amplitudes of the VDAQ2 hardware (which requires triggering a DAC channel)."""
@@ -265,3 +334,55 @@ class VDAQ2_TP_TS:
     
     def keys(self):
         return self._stream.tp_keys
+
+class VDAQ2_CALPAS:
+    """A helper class for accessing calibration pulse amplitudes of the VDAQ2 hardware (which requires triggering the ADC calibration channel)."""
+    def __init__(self, stream: Stream_VDAQ2):
+        self._stream = stream
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(keys={self.keys()})'
+
+    def __getitem__(self, key: str):
+        if not key in self.keys():
+            raise KeyError(f"Invalid calibration pulses key '{key}'. Valid keys: {self.keys()}")
+    
+        if key not in self._stream._calpas.keys():
+            print(f"Triggering {key} to obtain calpulse timestamps and calpulse amplitudes ...")
+            timestamps, calpas = vdaq2_cal_channel_trigger(self._stream, key, 
+                                                         self._stream._cal_trig_thr,
+                                                         self._stream._cal_trig_win_len)
+
+            self._stream._calpas[key] = calpas
+            self._stream._calp_timestamps[key] = timestamps
+
+        return self._stream._calpas[key]
+    
+    def keys(self):
+        return self._stream.calp_keys
+
+class VDAQ2_CALP_TS:
+    """A helper class for accessing calpulse timestamps of the VDAQ2 hardware (which requires triggering the ADC calibration channel)."""
+    def __init__(self, stream: Stream_VDAQ2):
+        self._stream = stream
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}(keys={self.keys()})'
+
+    def __getitem__(self, key: str):
+        if not key in self.keys():
+            raise KeyError(f"Invalid calibration key '{key}'. Valid keys: {self.keys()}")
+        
+        if key not in self._stream._calp_timestamps.keys():
+            print(f"Triggering {key} to obtain calibration pulse timestamps and calibration pulse amplitudes ...")
+            timestamps, calpas = vdaq2_cal_channel_trigger(self._stream, key, 
+                                                         self._stream._cal_trig_thr,
+                                                         self._stream._cal_trig_win_len)
+
+            self._stream._calpas[key] = calpas
+            self._stream._calp_timestamps[key] = timestamps
+
+        return self._stream._calp_timestamps[key]
+    
+    def keys(self):
+        return self._stream.calp_keys

@@ -143,5 +143,6 @@ class FluxQuantumLossCorrection(FncBaseClass):
 
         return dict(axes=ax, line=d)
         
+    @property
     def batch_support(self):
         return 'none'

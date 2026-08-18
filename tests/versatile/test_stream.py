@@ -51,6 +51,7 @@ def basic_checks(stream):
     stream.get_trace(k, slice(10, 30), voltage=False)
     stream.start_us
     stream.dt_us
+    stream.measuring_time_h
     stream.time
     it1 = stream.get_event_iterator(k, 100, inds=[10, 20, 30])
     it2 = stream.get_event_iterator(k, 100, timestamps=stream.time[[10, 20, 30]])

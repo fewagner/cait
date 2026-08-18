@@ -6,7 +6,7 @@ import numpy as np
 import cait as ai
 
 from ....readers import BinaryFile
-from .impl_vdaq2 import VDAQ2_TP_TS, VDAQ2_TPAS
+from .impl_vdaq2 import VDAQ2_TP_TS, VDAQ2_TPAS, VDAQ2_CALP_TS, VDAQ2_CALPAS
 from .streambase import StreamBaseClass
 
 UUID_SIZE = 37 # bytes (including the \x00 separator)
@@ -30,19 +30,30 @@ class Stream_VDAQ3(StreamBaseClass):
     :type dac_trig_thr: float, optional
     :param dac_trig_win_len_ms: **Only for VDAQ2-style TP-channel trigger:** Trigger window length (in ms) to find testpulses from the DAC channels. Defaults to 500 ms
     :type dac_trig_win_len_ms: int, optional
+    :param cal_trig_thr: **Only for VDAQ2-style TP-channel trigger:** Trigger threshold (in sigmas) to find calpulses from the calibration ADC channels. Defaults to 5 sigmas
+    :type cal_trig_thr: float, optional
+    :param cal_trig_win_len_ms: **Only for VDAQ2-style TP-channel trigger:** Trigger window length (in ms) to find calpulses from the calibration ADC channels. Defaults to 50 ms
+    :type cal_trig_win_len_ms: int, optional
     """
     def __init__(self, 
                  files: Union[str, List[str]],
-                 dac_trig_thr: float = 5.,      # sigmas
-                 dac_trig_win_len_ms: int = 500 # ms
+                 dac_trig_thr: float = 5.,       # sigmas
+                 dac_trig_win_len_ms: int = 500, # ms
+                 cal_trig_thr: float = None,     # V
+                 cal_trig_win_len_ms: int = 50   # ms
                  ):
-        super().__init__(files=files, dac_trig_thr=dac_trig_thr, dac_trig_win_len_ms=dac_trig_win_len_ms)
+        super().__init__(files=files, 
+                         dac_trig_thr=dac_trig_thr, 
+                         dac_trig_win_len_ms=dac_trig_win_len_ms, 
+                         cal_trig_thr=cal_trig_thr, 
+                         cal_trig_win_len_ms=cal_trig_win_len_ms)
         
         if type(files) is str: files = [files]
 
         starts, dTs, lengths, uuids, precs = [], [], [], [], []
         self._data, self._header, self._trailer = dict(), dict(), dict()
         self._tp_timestamps, self._tpas = dict(), dict()
+        self._calp_timestamps, self._calpas = dict(), dict()
         
         # Data is 24 bits, i.e. 3 bytes long. Read 3 bytes at a time
         # Possibly also 32 bit
@@ -105,6 +116,20 @@ class Stream_VDAQ3(StreamBaseClass):
                                 # Don't forget to convert ns to us
                                 tp_ts.append(ip["ts_start_ns"]//1000)
                                 tpas.append(ip["energy"])
+                
+                # This format stores calpulse information in the trailer
+                # NOTE: THESE LINES BELOW MUST BE REVISED ONCE THE LED PULSE INFORMATION WILL BE INCLUDED IN VDAQ3 TRAILER.
+                # FOR NOW, THEY ARE JUST A COPY-PASTE OF WHAT IS DONE WITH TESTPULSES
+                calp_ts = list()
+                calpas = list()
+                for d in trailer["trigger_parameter"]:
+                    if "injected_pulse" in d.keys():
+                        ip = d["injected_pulse"]
+                        if all([x in ip.keys() for x in ["energy", "ts_start_ns", "type"]]):
+                            if ip["type"] in ["cal_pulse"]:
+                                # Don't forget to convert ns to us
+                                calp_ts.append(ip["ts_start_ns"]//1000)
+                                calpas.append(ip["energy"])
 
             size_data = size_file - size_trailer - offset_samples
 
@@ -139,6 +164,12 @@ class Stream_VDAQ3(StreamBaseClass):
             if uuid == UUID_SINGLE_CH_WITH_TRAILER and len(tp_ts)>0:
                 self._tp_timestamps[f"TP_Ch{channel_name}"] = tp_ts
                 self._tpas[f"TP_Ch{channel_name}"] = tpas
+            
+            # NOTE: THESE LINES BELOW MUST BE REVISED ONCE THE LED PULSE INFORMATION WILL BE INCLUDED IN VDAQ3 TRAILER.
+            # FOR NOW, THEY ARE JUST A COPY-PASTE OF WHAT IS DONE WITH TESTPULSES
+            if uuid == UUID_SINGLE_CH_WITH_TRAILER and len(calp_ts)>0:
+                self._calp_timestamps[f"CALP_Ch{channel_name}"] = calp_ts
+                self._calpas[f"CALP_Ch{channel_name}"] = calpas
 
             # HERE WE COULD PROBABLY USE THE INFO IN THE HEADER AT SOME POINT
             lengths.append(len(self._data[f"Ch{channel_name}"]))
@@ -174,7 +205,14 @@ class Stream_VDAQ3(StreamBaseClass):
             self._dac_trig_thr = dac_trig_thr
             self._dac_trig_win_len_ms = dac_trig_win_len_ms
             self._dac_trig_win_len = int(1000*dac_trig_win_len_ms/self._dt)
-        
+
+        # These attributes are needed for triggering the calibration channels
+        # NOTE: The lines below are not part of the 'if' clause above, as calibration pulses information is not yet included into the VDAQ3 file trailer.
+        # Once it will be implemented we will have to modify them
+        self._cal_trig_thr = cal_trig_thr
+        self._cal_trig_win_len_ms = cal_trig_win_len_ms
+        self._cal_trig_win_len = int(1000*cal_trig_win_len_ms/self._dt)
+            
     def __len__(self):
         return self._len
     
@@ -187,25 +225,42 @@ class Stream_VDAQ3(StreamBaseClass):
     
     def get_trace(self, key: str, where: slice, voltage: bool = True):
         data = self._data[key][where]
+        out_shape = data.shape
  
         if self._prec == 3:
             # If written as 24bit values, here, we convert them to 32 bits such that numpy can handle them
-            adc_32bit = np.vstack([
-                    np.zeros_like(data["byte1"]),
-                    data["byte1"], 
-                    data["byte2"], 
-                    data["byte3"]
-                ]).flatten("F").view("<i4")
+            adc_32bit = np.reshape(
+                np.ravel(
+                    np.vstack(
+                        [
+                            np.ravel(np.zeros_like(data["byte1"]), "C"),
+                            np.ravel(data["byte1"], "C"),
+                            np.ravel(data["byte2"], "C"),
+                            np.ravel(data["byte3"], "C"),
+                        ]
+                    ),
+                    "F",
+                ).view("<i4"),
+                out_shape,
+            )
 
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
         
         elif self._prec == 4:
-            adc_32bit = np.vstack([
-                    data["byte4"] ,
-                    data["byte1"], 
-                    data["byte2"], 
-                    data["byte3"]
-                ]).flatten("F").view("<i4")
+            adc_32bit = np.reshape(
+                np.ravel(
+                    np.vstack(
+                        [
+                            np.ravel(data["byte4"], "C"),
+                            np.ravel(data["byte1"], "C"),
+                            np.ravel(data["byte2"], "C"),
+                            np.ravel(data["byte3"], "C"),
+                        ]
+                    ),
+                    "F"
+                ).view("<i4"),
+                out_shape,
+            )
             return ai.data.convert_to_V(adc_32bit, bits=32, min=-20, max=20) if voltage else adc_32bit
     
     @property
@@ -229,7 +284,7 @@ class Stream_VDAQ3(StreamBaseClass):
             # Return TP information from trailer
             return list(self._tp_timestamps.keys())
         else:
-            return dict()
+            return []
 
     @property
     def tpas(self):
@@ -238,7 +293,7 @@ class Stream_VDAQ3(StreamBaseClass):
         elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
             return self._tpas
         else:
-            return dict()
+            return {}
 
     @property
     def tp_timestamps(self):
@@ -247,4 +302,38 @@ class Stream_VDAQ3(StreamBaseClass):
         elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
             return self._tp_timestamps
         else:
-            return dict()
+            return {}
+    
+    @property
+    def calp_keys(self):
+        if self._uuid == UUID_SINGLE_CH:
+            # Allow all 'regular' channels to be calibration channels (like in VDAQ2)
+            return self.keys
+        elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
+            # NOTE: As long as the calibration pulses information in the trailer is not implemented for VDAQ3, we always retrieve it by triggering the ADC stream.
+            # Once it will be implemented in the trailer, we will have to modify the line below to 'return list(self._calp_timestamps.keys())'
+            return self.keys
+        else:
+            return []
+
+    @property
+    def calpas(self):
+        if self._uuid == UUID_SINGLE_CH:
+            return VDAQ2_CALPAS(self)
+        elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
+            # NOTE: As long as the calibration pulses information in the trailer is not implemented for VDAQ3, we always retrieve it by triggering the ADC stream.
+            # Once it will be implemented in the trailer, we will have to modify the line below to 'return self._calpas'
+            return VDAQ2_CALPAS(self)
+        else:
+            return {}
+
+    @property
+    def calp_timestamps(self):
+        if self._uuid == UUID_SINGLE_CH:
+            return VDAQ2_CALP_TS(self)
+        elif self._uuid == UUID_SINGLE_CH_WITH_TRAILER:
+            # NOTE: As long as the calibration pulses information in the trailer is not implemented for VDAQ3, we always retrieve it by triggering the ADC stream.
+            # Once it will be implemented in the trailer, we will have to modify the line below to 'return self._calp_timestamps'
+            return VDAQ2_CALP_TS(self)
+        else:
+            return {}

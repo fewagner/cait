@@ -1,15 +1,24 @@
 Community and Contributing
 ==========================
 
-This page is to credit significant contributions to the ``cait`` software package. Today, most contributions come from a small team at the Institute of High Energy Physics in Vienna and the CRESST/COSINUS collaborations. However, the project is still in an early stage and we are actively looking for people willing to contribute, especially also from diverse institutions and backgrounds. If you are interested in the software and motivated to contribute, please get in touch with one of our correspondents, listed below. For feature requests, please also get in touch or open an issue on GitLab/GitHub including the label "Feature Request" in its headline.
+This page is to credit significant contributions to the ``cait`` software package. Today, most contributions come from a small team at the Marietta Blau Institute for Particle Physics in Vienna and the CRESST/COSINUS collaborations. We are actively looking for people willing to contribute, especially also from diverse institutions and backgrounds. If you are interested in the software and motivated to contribute, please get in touch with one of our correspondents, listed below. For feature requests, please also get in touch or open an issue on GitLab/GitHub including the label "Feature Request" in its headline.
 
 Core developers (alphabetical list):
 
 - Philipp Schreiner (development coordination, philipp.schreiner(at)oeaw.ac.at)
-- Felix Wagner
+- Felix Wagner (project founder)
 
+Thanks to everyone who reported bugs, tested code, added features, wrote tutorials, etc. (alphabetical list):
 
-Currently all contributors are part of the CRESST and COSINUS collaborations.
+- Samir Banik
+- Daniel Bartolot
+- Janina Hakenmueller
+- Colin Moore
+- Julius Tesarek
+- Danaé Valdenaire
+- Lorenzo Valla
+
+(We hope that we haven't forgot anyone. If so, let us know!) Currently all contributors are part of the COSINUS, CRESST and NUCLEUS collaborations.
 
 You want to contribute? Read the following
 
@@ -27,18 +36,6 @@ A codebase built from building blocks is not only easier to maintain but also ea
 The tests can be run locally using ``pytest`` but they will also automatically run (for multiple different python versions and the latest dependency versions) when opening a merge request on GitLab. This way, any possible deprecation warning of a dependency or a conflict with a more recent python version will be immediately spotted.
 
 In the long run, it would be great if all of ``cait``'s functionality is based on ``cait.versatile`` building blocks which have their respective unit tests. As is always the case, one has more ideas than time ... Therefore, any help is **greatly appreciated**. 
-
-We close this section with a list of things that might be worth discussing or even implementing in the future. Please do *not* consider this to be an 'upcoming features'-list or a 'we *definitely* want this in cait'-list. It just serves as the starting point for discussions.
-
-    - The ``vizTool`` could already provide a default set of ``datasets`` such that the user does not always have to define (mostly the same dictionary).
-    - A downsampling option in the ``vizTool`` would be nice, or at least a ``.set_flag`` method in addition to ``.set_idx``
-    - The ``DataHandler.content()`` call lists only the names of some of the main parameters (even though all of them are available and accessible). Should we spell out all their names?
-    - ``DataHandler.testpulse_stability()`` and ``DataHandler.controlpulse_stability()`` should work for arbitrary group (not just 'events' group).
-    - ``DataHandler.controlpulse_stability()`` currently requires the explicit existence of a 'pulse_height' dataset in the HDF5 file. We should make it work with the main parameter 'pulse_height', too. 
-    - Do we want a (versatile) analysis object ``Stability`` which takes control pulse amplitudes and timestamps? It could have plot methods for pulse height over time, histograms, ... and whenever you call it with a list of timestamps it returns a corresponding boolean flag with whether it lies in a stable period or not.
-    - We have to think about re-writing (parts of) the energy calibration code because currently it still includes deprecated code and maybe starting fresh with an easy to extend class/function (that also has proper test cases) is the better way to go. Once it is easy to extend we can start discussing if we also want more involved fits (like piecewise splines) or a (simultaneous) 2D fit in the timestamp-tpa-tph plane.
-    - Stacked histograms analogous to ``vai.Histogram``? Histograms as points with error bars instead of filled bars?
-    - In principle, the possibility exists (on branch `versatile_meets_dh`) to *not* copy event traces from stream files to the ``DataHandler`` (HDF5 file), but to only save a reference. This would save a lot of disk space but also make accessing the events slower (disk/speed tradeoff) and *if* it is implemented, we should come up with a solution to the problem of potentially changing file paths (how we update the reference in the ``DataHandler``).
 
 New feature getting started
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -82,7 +79,7 @@ You are currently still on the 'main' branch of the ``cait`` repository that we 
 
 .. image:: documentation/pics/issue_guide.png
 
-.. note::
+.. tip::
     Since we installed ``cait`` using the editable ``-e`` flag, its behavior changes when changing branches. *However*, every time you change branch or make a change to the repository, these changes will only be reflected if you *restart* your python session (or just the kernel if you work in a Jupyter notebook).
     To avoid restarting your kernel all the time, consider developing new features directly inside a notebook cell so long as it's convenient, and only copy it into a separate file in the repository once you are done. In our experience, this approach is more convenient than implementing it in the repository directly. However, if you are searching/fixing bugs, e.g., this might not be feasible. 
 
@@ -477,6 +474,7 @@ You probably want to have a separate (clean) python environment for building the
 
     - Create new version branch (either locally or on *GitLab*, **NOT** *GitHub*)
     - Update version number in ``cait._version``! This will automatically propagate into ``pyproject.toml`` and into the docs via ``conf.py`` and ``.readthedocs.yaml``.
+    - Update the version and compile changelog in ``changelog.rst`` (if not already done).
     - Make sure that all tests succeed (run ``pytest``)
     - Delete the old ``build/`` folder that you might still have locally from previous builds
     - Run ``python -m build`` (potentially in a separate environment that you might have set up)

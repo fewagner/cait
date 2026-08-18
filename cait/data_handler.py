@@ -12,6 +12,7 @@ from tqdm.auto import tqdm
 from . import serialize
 from ._version import __version__
 from .data._merge_h5 import ds_source_available
+from .data._raw import convert_to_int
 from .mixins._data_handler_analysis import AnalysisMixin
 from .mixins._data_handler_bin import BinMixin
 from .mixins._data_handler_csmpl import CsmplMixin
@@ -30,10 +31,10 @@ from .versatile.iterators.impl_h5 import H5Iterator
 from .versatile.iterators.iteratorbase import IteratorBaseClass
 
 MAINPAR = ['pulse_height', 'onset', 'rise_time', 'decay_time', 'slope']
-ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight', 
-               'mean_first_eight', 'var_last_eight', 'mean_last_eight', 
+ADD_MAINPAR = ['array_max', 'array_min', 'var_first_eight',
+               'mean_first_eight', 'var_last_eight', 'mean_last_eight',
                'var', 'mean', 'skewness', 'max_derivative',
-               'ind_max_derivative', 'min_derivative', 'ind_min_derivative', 
+               'ind_max_derivative', 'min_derivative', 'ind_min_derivative',
                'max_filtered', 'ind_max_filtered', 'skewness_filtered_peak']
 
 EXT_STORED_DATA_GROUP = "_ext_stored_data"
@@ -118,9 +119,9 @@ class DataHandler(SimulateMixin,
                  run: str = None,
                  module: str = None,
                  ):
-        
+
         # Set up serialization
-        super().__init__(record_length=record_length, 
+        super().__init__(record_length=record_length,
                          sample_frequency=sample_frequency,
                          channels=channels,
                          nmbr_channels=nmbr_channels,
@@ -182,7 +183,7 @@ class DataHandler(SimulateMixin,
                         n_virtual+=1
                         filenames = [x[1] for x in f[group][ds].virtual_sources()]
                         external_files = external_files.union(filenames)
-        
+
         info+= f"Groups in file: {groups}.\n\n"
 
         if n_virtual > 0:
@@ -207,68 +208,68 @@ class DataHandler(SimulateMixin,
                     info += f"Last testpulse on/at: {datetime_fmt(f['testpulses/time_s'][-1])}\n"
 
         return info
-    
+
     def __getitem__(self, val):
         """
         Shortcut syntax for :meth:`DataHandler.get`. The following are equivalent for a DataHandler object ``dh``:
-        
+
         - ``dh.get("events", "pulse_height")`` and ``dh["events/pulse_height"]``
         - ``dh.get("events", "pulse_height", 0)`` and ``dh["events/pulse_height", 0]``
         - ``dh.get("events", "mainpar", 0, None, 1)`` and ``dh["events/pulse_height", 0, :, 1]``
 
         See :meth:`DataHandler.get` for further documentation.
         """
-        if isinstance(val, str): 
+        if isinstance(val, str):
             return self.get(*val.split("/"))
         elif isinstance(val, tuple):
             return self.get(*val[0].split("/"), *tuple(val[1:]))
         else:
             raise NotImplementedError(f"Unsupported slicing argument {val} of type {type(val)}.")
-    
+
     # used for TAB-completion in iPython/notebooks. Example: dh['ev<TAB> -> 'events/'
     def _ipython_key_completions_(self):
         with self.get_filehandle(mode="r") as f:
             suggestions = [f"{k}/{ds}" for k in f for ds in f[k]]
             suggestions += [s.split("mainpar")[0]+mp
-                            for mp in MAINPAR 
+                            for mp in MAINPAR
                             for s in suggestions if s.endswith("/mainpar")]
             suggestions += [s.split("add_mainpar")[0]+mp
-                            for mp in ADD_MAINPAR 
+                            for mp in ADD_MAINPAR
                             for s in suggestions if s.endswith("/add_mainpar")]
-            
+
             for group in f:
                 if "time_s" in f[group] and "time_mus" in f[group]:
                     suggestions.append(f"{group}/timestamps")
 
         return suggestions
-    
+
     @property
     def sample_frequency(self):
         """
         The sampling frequency of the data in Hz.
-        
+
         :return: Sampling frequency (Hz)
         :rtype: int
         """
         return self._sample_frequency
-    
+
     @property
     def dt_us(self):
         """
         The length of a sample in the data in microseconds.
-        
+
         :return: Microsecond time-delta
         :rtype: int
         """
         return int(1e6//self.sample_frequency)
-    
+
     @property
     def record_length(self):
         """
         Returns the record length (in samples) of the events in this DataHandler.
         """
         return self._record_length
-        
+
     def set_filepath(self,
                      path_h5: str,
                      fname: str,
@@ -294,9 +295,9 @@ class DataHandler(SimulateMixin,
             dh.set_filepath(path_h5='./', fname='test_001')
         """
         # Save to (de)serialize later
-        self._set_filepath_kwargs = dict(path_h5=path_h5, 
-                                         fname=fname, 
-                                         appendix=appendix, 
+        self._set_filepath_kwargs = dict(path_h5=path_h5,
+                                         fname=fname,
+                                         appendix=appendix,
                                          channels=channels)
 
         if channels is not None: self.channels = channels
@@ -330,7 +331,7 @@ class DataHandler(SimulateMixin,
         :return: Path to the file connected to this DataHandler.
         :rtype: str
         """
-        if not hasattr(self, "path_h5"): 
+        if not hasattr(self, "path_h5"):
             raise Exception("Filepath has not been set. Use dh.set_filepath() first.")
         if not os.path.exists(self.path_h5):
             raise FileNotFoundError(f"{self.path_h5} does not exist. Use dh.init_empty() to initialize an empty HDF5 file if that is what you intend.")
@@ -360,7 +361,7 @@ class DataHandler(SimulateMixin,
         :rtype: str
         """
         return os.path.splitext(os.path.basename(self.get_filepath()))[0]
-    
+
     def get_filehandle(self, path: str = None, mode: str = "r+"):
             """
             Get the opened filestream to the HDF5 file.
@@ -382,12 +383,12 @@ class DataHandler(SimulateMixin,
             else:
                 f = h5py.File(path, mode)
             return f
-    
+
     def get_event_iterator(
-            self, 
-            group: str, 
-            channel: int = None, 
-            flag: List[bool] = None, 
+            self,
+            group: str,
+            channel: int = None,
+            flag: List[bool] = None,
             batch_size: int = None,
             prefer_external: bool = False,
             ):
@@ -431,9 +432,9 @@ class DataHandler(SimulateMixin,
                 iterators = self.get_ext_event_dict()[group]["iterator"]
                 if not isinstance(iterators, list):
                     iterators = [iterators]
-                
-                # For all iterators in the list (might be just one), we convert to string 
-                # first because 'loads' features cache (and load doesn't). Then, each 
+
+                # For all iterators in the list (might be just one), we convert to string
+                # first because 'loads' features cache (and load doesn't). Then, each
                 # iterator is deserialized and we combine all iterators using sum().
                 it = sum([serialize.loads(json.dumps(i)) for i in iterators])
 
@@ -449,16 +450,16 @@ class DataHandler(SimulateMixin,
         # Reading number of events is much faster if we open the HDF5 file directly
         with h5py.File(self.get_filepath(), 'r') as f:
             n_events = f[group]["event"].shape[1]
-            
+
         inds = np.arange(n_events)
 
         if flag is not None: inds = inds[flag]
 
         return H5Iterator(self, group=group, channels=channel, inds=inds, batch_size=batch_size)
-    
-    def include_event_iterator(self, 
-                               group: str, 
-                               it: IteratorBaseClass, 
+
+    def include_event_iterator(self,
+                               group: str,
+                               it: IteratorBaseClass,
                                dtype: str = 'float32',
                                copy_events: bool = True):
         """
@@ -468,23 +469,23 @@ class DataHandler(SimulateMixin,
         :type group: str
         :param it: The iterator whose events we want to include.
         :type it: IteratorBaseClass
-        :param dtype: The datatype which the events should be stored as. Either 'float32' or 'float64'. Some `cait` methods expect 'float32' event datasets. Has no effect if 'copy_events'=False. Defaults to 'float32'
+        :param dtype: The datatype which the events should be stored as. Either 'float32', 'float64', or 'int16'. Some `cait` methods expect 'float32' event datasets. If set to 'int16', the data are converted to 16-bit integers before being saved (and back from int16 to voltage automatically when calling :func:`~cait.DataHandler.get_event_iterator`). This reduces the final file size by a factor 2 compared to the default 'float32', however this has implications for precision: if the original data were stored as 16-bit integers (as for CSMPL files), there is no drawback to saving as 'int16'; however, precision will be lost if the data were stored with larger ints (e.g. VDAQ3 saves as either 24 or 32 bits, this will cause a reduction in precision). Has no effect if 'copy_events'=False. Defaults to 'float32'
         :type dtype: str, optional
         :param copy_events: If True, voltage traces of all events are copied to the HDF5 file. If False, only a reference for where to find the original traces is saved so that they can be reached in their original location. Defaults to True
         """
         if not isinstance(it, IteratorBaseClass):
             raise TypeError(f"Input argument 'it' needs to be of type 'IteratorBaseClass', not '{type(it).__name__}'.")
-        
+
         if it.dt_us != self.dt_us:
             raise ValueError(f"The timebase of the iterator 'it' has to match the timebase of the DataHandler. Got {it.dt_us} and {self.dt_us}.")
-        
+
         # Check if dataset exists (this function does not support overwriting).
         # Note that references are ALWAYS overwritten.
         with self.get_filehandle(mode="r+") as f:
             hdf5group = f.require_group(group)
             if 'event' in hdf5group.keys():
                 raise Exception(f"Dataset 'event' already exists in group '{group}'. If you want to overwrite it, delete it first using dh.drop('{group}', 'event')")
-        
+
         # SAVE REFERENCE IN ANY CASE
         new_dict = self.get_ext_event_dict().copy()
         new_dict[group] = {
@@ -497,25 +498,27 @@ class DataHandler(SimulateMixin,
 
         # COPY ALL EVENTS
         if copy_events:
-            if dtype not in ['float32', 'float64']:
-                raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64']")
-            
+            if dtype not in ['float32', 'float64', 'int16']:
+                raise TypeError(f"Unsupported dtype '{dtype}'. Choose one of ['float32', 'float64', 'int16']")
+
             # Cast to correct datatype:
-            it = it.with_processing(lambda x: x.astype(dtype))    
+            if dtype == 'int16':
+                it = it.with_processing(lambda x: convert_to_int(x))
+            it = it.with_processing(lambda x: x.astype(dtype))
 
             # Assess size of dataset:
             # get first event returned by iterator
             # (if batched, get first event in batch)
             out = next(iter(it))
             if it.uses_batches: out = out[0]
-            
+
             # add extra dimension for single channel
             # iterators to stay consistent with cait's conventions
             target_shape = list(np.array(out).shape)
             if it.n_channels == 1: target_shape = [1] + target_shape
 
             # build final shape. len(it) gives number of events in iterator
-            target_shape.insert(1, len(it))  # event axis is 1st dim                  
+            target_shape.insert(1, len(it))  # event axis is 1st dim
             target_shape = (*target_shape, )
 
             # Write iterator contents
@@ -542,24 +545,24 @@ class DataHandler(SimulateMixin,
         sec = (it.timestamps//1e6).astype(np.int32)
         mus = (it.timestamps%1e6).astype(np.int32)
         hours = it.hours
-        
+
         self.set(group, overwrite_existing=True, time_s=sec, time_mus=mus, dtype=np.int32)
         self.set(group, overwrite_existing=True, hours=hours, dtype=np.float64)
-    
+
     def get_ext_event_dict(self):
         """Return the dictionary containing information about externally stored events, e.g., when an event iterator was included without physically copying the data."""
         ds = EXT_STORED_DATA_GROUP+"/"+EXT_STORED_ITERATOR_DS
-        
+
         if not self.exists(ds):
             return dict()
-        
+
         with self.get_filehandle(mode="r") as f:
             return json.loads(f[ds].asstr()[0])
 
     def update_ext_event_dict(self, new_ext_event_dict: dict):
         """Update the dictionary containing information about externally stored events, e.g., when an event iterator was included without physically copying the data. This allows to update e.g. file paths to source files which have changed."""
         str_content = np.array(
-            [json.dumps(new_ext_event_dict)], 
+            [json.dumps(new_ext_event_dict)],
             dtype=h5py.string_dtype("UTF-8")
             )
         with self.get_filehandle(mode="r+") as f:
@@ -778,12 +781,12 @@ class DataHandler(SimulateMixin,
             else:
                 raise KeyError(
                     'No prediction file found at {}.'.format(path_predictions))
-    
+
     def drop(self, group: str, dataset: str = None, repackage: bool = False):
         """
         Delete a dataset from a specified group in the HDF5 file. If no dataset is provided, the entire group is deleted.
 
-        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size!
         See :func:`cait.DataHandler.repackage` for details.
 
         :param group: The name of the group in the HDF5 file.
@@ -811,14 +814,14 @@ class DataHandler(SimulateMixin,
                     print(f"{fmt_virt('Event iterator reference')} for group {fmt_gr(group)} remains present in DataHandler. To remove it, use dh.get_ext_event_dict and dh.update_ext_event_dict.")
             else:
                 raise FileNotFoundError('There is no dataset {} in group {} in the HDF5 file.'.format(dataset, group))
-            
+
         if repackage: self.repackage()
 
     def drop_raw_data(self, type: str = 'events', repackage: bool = False):
         """
         Delete the dataset "event" from a specified group in the HDF5 file.
 
-        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size!
         See :func:`cait.DataHandler.repackage` for details.
 
         :param type: The group in the HDF5 set from which the events are deleted,
@@ -842,7 +845,7 @@ class DataHandler(SimulateMixin,
         For this scenario, the raw data events can be downsampled by a given factor. Downsampling to sample frequencies
         below 1kHz is in many situations sufficient for viewing events and most features calculations.
 
-        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size!
         See :func:`cait.DataHandler.repackage` for details.
 
         :param type: The group in the HDF5 set from which the events are downsampled,
@@ -904,7 +907,7 @@ class DataHandler(SimulateMixin,
 
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
-            
+
         if repackage: self.repackage()
 
     def truncate_raw_data(self, type: str,
@@ -921,7 +924,7 @@ class DataHandler(SimulateMixin,
         due to more piled up events in the window. For this reason, you can truncate the length of the record window
         with this function.
 
-        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size! 
+        Attention: Without repackaging, this method does NOT decrease the HDF5 file's size!
         See :func:`cait.DataHandler.repackage` for details.
 
         :param type: The group in the HDF5 set from which the events are downsampled,
@@ -957,17 +960,17 @@ class DataHandler(SimulateMixin,
                 print(f'New Dataset {fmt_ds("event"+ name_appendix)} truncated to interval {truncated_idx_low}:{truncated_idx_up} created in group {fmt_gr(type)}.')
             else:
                 raise FileNotFoundError('There is no event dataset in group {} in the HDF5 file.'.format(type))
-            
+
         if repackage: self.repackage()
 
     def get(self, group: str, dataset: str,
-            idx0: Union[int, List[Union[int, bool]]] = None, 
-            idx1: Union[int, List[Union[int, bool]]] = None, 
+            idx0: Union[int, List[Union[int, bool]]] = None,
+            idx1: Union[int, List[Union[int, bool]]] = None,
             idx2: Union[int, List[Union[int, bool]]] = None):
         """
         Get a dataset from the HDF5 file with save closing of the file stream.
         The additional indices idx0, idx1 and idx2 can be integers, lists of integers or boolean arrays, and are used where appropriate.
-        E.g. a 3-dimensional dataset will accept all three indices while a 2d set ignores the last one, etc. 
+        E.g. a 3-dimensional dataset will accept all three indices while a 2d set ignores the last one, etc.
         If boolean arrays are used, their shape has to match the data's shape along the respective dimension.
 
         :param group: The name of the group in the HDF5 set.
@@ -989,7 +992,7 @@ class DataHandler(SimulateMixin,
         :rtype: numpy array
         """
 
-        # if requested dataset is a virtual dataset, we have to make sure that the original files still 
+        # if requested dataset is a virtual dataset, we have to make sure that the original files still
         # exist. Otherwise the returned data is nonsensical
         with self.get_filehandle(mode="r") as f:
             if (dataset in MAINPAR) and (dataset not in f[group]):
@@ -999,7 +1002,7 @@ class DataHandler(SimulateMixin,
             elif (dataset == "timestamps") and (dataset not in f[group]):
                 available = ds_source_available(f, group, "time_s") and ds_source_available(f, group, "time_mus")
             elif dataset == "event" and (
-                    ("event" in f[group].keys() and f[group]["event"].ndim==3) 
+                    ("event" in f[group].keys() and f[group]["event"].ndim==3)
                     or _events_exist_virtually(self, group)
                 ):
                 if "event" in f[group].keys():
@@ -1011,7 +1014,7 @@ class DataHandler(SimulateMixin,
 
         if not available:
             raise FileNotFoundError(f"One or more of the source files for the virtual dataset '{dataset}' in group '{group}' are unavailable.")
-        
+
         # For indices not specified we use all entries along the corresponding axis (equivalent to numpy's [:] operator)
         if idx0 is None: idx0 = slice(None)
         if idx1 is None: idx1 = slice(None)
@@ -1019,7 +1022,7 @@ class DataHandler(SimulateMixin,
 
         with self.get_filehandle(mode="r") as f:
             if dataset == 'event' and (
-                ('event' in f[group].keys() and f[group]['event'].ndim==3) 
+                ('event' in f[group].keys() and f[group]['event'].ndim==3)
                 or _events_exist_virtually(self, group)
             ):
                 # Events are returned by going through an event iterator first
@@ -1048,9 +1051,9 @@ class DataHandler(SimulateMixin,
             elif dataset == 'slope' and 'slope' not in f[group]:
                 data = np.array(f[group]['mainpar'][idx0, idx1, 8] * self.record_length)
             elif (
-                dataset == 'timestamps' 
+                dataset == 'timestamps'
                 and 'timestamps' not in f[group]
-                and 'time_mus' in f[group] 
+                and 'time_mus' in f[group]
                 and 'time_s' in f[group]
                 ):
                 sec = np.array(f[group]["time_s"], dtype=np.int64)
@@ -1067,21 +1070,21 @@ class DataHandler(SimulateMixin,
                     if dim == 3: data = data[idx0, idx1, idx2]
                     elif dim == 2: data = data[idx0, idx1]
                     elif dim == 1: data = data[idx0]
-                
+
                     data = np.array(data)
         return data
 
-    def set(self, 
-            group: str, 
-            n_channels: int = None, 
-            channel: int = None, 
+    def set(self,
+            group: str,
+            n_channels: int = None,
+            channel: int = None,
             change_existing: bool = False,
             overwrite_existing: bool = False,
             write_to_virtual: bool = None,
             dtype: str = None,
             **kwargs: List[Union[float, bool]]):
         """
-        Include data into the HDF5 file. Datasets are passed as keyword arguments and the keys are used as names for the datasets. 
+        Include data into the HDF5 file. Datasets are passed as keyword arguments and the keys are used as names for the datasets.
         E.g. set("events", pulse_heights=data) creates a dataset "pulse_heights" in the group "events". The shape of the dataset matches data's shape.
         Alternatively, one-dimensional data can be written to a multi-dimensional array (as is often necessary for multiple channels).
         This is achieved by specifying the number of desired channels (n_channels) and the channel index (channel) to write to.
@@ -1107,33 +1110,33 @@ class DataHandler(SimulateMixin,
 
         .. code-block:: python
 
-            # Include 'data1' and 'data2' as datasets 'new_ds1' and 'new_ds2' in group 'noise' 
+            # Include 'data1' and 'data2' as datasets 'new_ds1' and 'new_ds2' in group 'noise'
             # ('new_ds1' and 'new_ds2' do not yet exist)
             dh.set(group="noise", new_ds1=data1, new_ds2=data2)
 
-            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise'
             # (either or both of 'ds1' and 'ds2' already exist and have correct shape/dtype for new
             # data)
-            dh.set(group="noise", ds1=data1, ds2=data2, change_existing=True) 
+            dh.set(group="noise", ds1=data1, ds2=data2, change_existing=True)
 
-            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
+            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise'
             # (either or both of 'ds1' and 'ds2' already exist and have incorrect shape/dtype for new
             # data, but we want to force the new dtype/shape)
             dh.set(group="noise", ds1=data1, ds2=data2, overwrite_existing=True)
 
-            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise' 
-            # ('data1' and 'data2' are 1-dimensional but we want to create 2-dimensional 
+            # Include 'data1' and 'data2' as datasets 'ds1' and 'ds2' in group 'noise'
+            # ('data1' and 'data2' are 1-dimensional but we want to create 2-dimensional
             # datasets (for different channels e.g.) and write the data into the 0-th channel. This also
             # works for writing single channels to already existing multi-channel datasets.)
             dh.set(group="noise", n_channels=2, channel=0, ds1=data1, ds2=data2)
 
-            # Include 'data1' as dataset 'ds1' in group 'noise' 
+            # Include 'data1' as dataset 'ds1' in group 'noise'
             # ('ds1' already exists and is a virtual dataset with matching shape but dtype 'float64'.
             # We want to write to the original data in the respective source files.)
             dh.set(group="noise", ds1=data1, dtype='float64', write_to_virtual=True)
 
-            # Include 'data1' as dataset 'ds1' in group 'noise' 
-            # ('ds1' already exists and is a virtual dataset. We want to overwrite it and create a 
+            # Include 'data1' as dataset 'ds1' in group 'noise'
+            # ('ds1' already exists and is a virtual dataset. We want to overwrite it and create a
             # non-virtual dataset instead)
             dh.set(group="noise", ds1=data1, write_to_virtual=False)
         """
@@ -1141,7 +1144,7 @@ class DataHandler(SimulateMixin,
         if np.logical_xor(n_channels==None, channel==None):
             warnings.warn("You have to specify 'n_channels' and 'channel' together", UserWarning)
             return
-        
+
         in_channel_mode = n_channels is not None
 
         with self.get_filehandle(mode="r+") as f:
@@ -1169,14 +1172,14 @@ class DataHandler(SimulateMixin,
                         else:
                             del hdf5group[key]
 
-                    # If there is a shape/dtype mismatch (applies both to virtual and regular datasets), 
+                    # If there is a shape/dtype mismatch (applies both to virtual and regular datasets),
                     # the dataset has to be deleted regardless of what else is set
                     elif (hdf5group[key].shape != shape) or (hdf5group[key].dtype != dtype):
                         if overwrite_existing:
                             del hdf5group[key]
                         else:
                             warnings.warn(f"Dataset {fmt_ds(key)} already exists in group {fmt_gr(group)} and has different shape and/or dtype. To overwrite the old set, set 'overwrite_existing' to True. If there is just a dtype mismatch you can also set the dtype using the respective argument.\nOriginal shape: {hdf5group[key].shape}, New shape: {shape}, Original dtype: {hdf5group[key].dtype}, New dtype: {dtype}\n", UserWarning)
-                            continue    
+                            continue
                     else:
                         # If dtype and shape agree, change must be explicitly permitted regardless.
                         if not (change_existing or overwrite_existing):
@@ -1184,9 +1187,9 @@ class DataHandler(SimulateMixin,
                             continue
 
                 ds = hdf5group.require_dataset(name=key, shape=shape, dtype=dtype)
-                if in_channel_mode: 
+                if in_channel_mode:
                     ds[channel, ...] = value
-                else: 
+                else:
                     ds[...] = value
 
                 print(f"Successfully written {fmt_ds(key)} with shape {ds.shape} and dtype '{ds.dtype}' to group {fmt_gr(group)}.")
@@ -1195,8 +1198,8 @@ class DataHandler(SimulateMixin,
         """
         Rename groups or datasets in the HDF5 file. Names to change are passed as keyword arguments.
 
-        By default, `group` is set to None. In this case, `**kwargs` are interpreted as HDF5 group names to change. 
-        
+        By default, `group` is set to None. In this case, `**kwargs` are interpreted as HDF5 group names to change.
+
         If `group` is set (e.g. to 'events' or 'noise'), `**kwargs` are interpreted as HDF5 dataset names within that group.
 
         Notice that we forbid to rename virtual datasets or groups that contain virtual datasets as this could lead to confusion (it is best practice to keep the dataset names between the 'master file' and the source files consistent)
@@ -1224,14 +1227,14 @@ class DataHandler(SimulateMixin,
                     h5f.move(key, value)
                     print(f"Successfully renamed group {fmt_gr(key)} -> {fmt_gr(value)}.")
             else:
-                for key, value in kwargs.items(): 
+                for key, value in kwargs.items():
                     if h5f[group][key].is_virtual:
                         print(f"Cannot rename virtual dataset {fmt_gr(group)}/{fmt_ds(key)}.")
                         continue
 
                     h5f[group].move(key, value)
                     print(f"Successfully renamed dataset {fmt_gr(group)}/{fmt_ds(key)} -> {fmt_gr(group)}/{fmt_ds(value)}.")
-    
+
     def keys(self, group: str = None):
         """
         Return the keys of the HDF5 file or a group within it.
@@ -1247,18 +1250,18 @@ class DataHandler(SimulateMixin,
 
     def exists(self, *args: str):
         """
-        Returns true if 'arg1/arg2' exists in DataHandler. 
+        Returns true if 'arg1/arg2' exists in DataHandler.
 
         :param args: Keys in the HDF5 file-tree.
         :type args: str
-        
+
         :return: True if exists
         :rtype: bool
-        
+
         **Example:**
 
         .. code-block:: python
-        
+
             # Check if group 'group' exists in DataHandler dh
             dh.exists('group')
             # Check if group 'group' has a dataset 'ds'
@@ -1266,7 +1269,7 @@ class DataHandler(SimulateMixin,
         """
         with h5py.File(self.get_filepath(), 'r') as f:
             return "/".join(args) in f.keys()
-    
+
     def content(self, group: str = None, print_info: bool = False):
         """
         Print the whole content of the HDF5 file and all derived properties. The shape of the datasets as well as their datatypes are also given.
@@ -1309,7 +1312,7 @@ class DataHandler(SimulateMixin,
 
                 for dataset in f[group].keys():
                     # if dataset is virtual, we include an identifier
-                    virt_str = " (v)" if f[group][dataset].is_virtual else ' '*4 
+                    virt_str = " (v)" if f[group][dataset].is_virtual else ' '*4
 
                     shape = str(f[group][dataset].shape)
                     dtype = f[group][dataset].dtype
@@ -1320,14 +1323,14 @@ class DataHandler(SimulateMixin,
                         shape = f[group]['mainpar'].shape[:2]
                         for dataset in MAINPAR:
                             print(f'  |{dataset:<{width_dataset+len(virt_str)}} {shape}')
-                
+
                     if dataset=='add_mainpar':
                         shape = f[group]['add_mainpar'].shape[:2]
                         for dataset in ADD_MAINPAR:
                             print(f'  |{dataset:<{width_dataset+len(virt_str)}} {shape}')
-                    
+
                     if (
-                        dataset=='time_s' 
+                        dataset=='time_s'
                         and 'time_mus' in f[group]
                         and 'timestamps' not in f[group]
                         ):
@@ -1402,7 +1405,7 @@ class DataHandler(SimulateMixin,
         assert hasattr(self, "path_h5"), "To initialize an empty HDF5 file you have to first set its name/path using dh.set_filepath()."
         with h5py.File(self.path_h5, 'a') as h5f:
             pass
-        
+
     def record_window(self, ms=True):
         """
         Get the t array corresponding to a typical record window.
@@ -1418,13 +1421,13 @@ class DataHandler(SimulateMixin,
 
     def repackage(self):
         """
-        Repackage the HDF5 file of DataHandler to reduce its file size in case datasets were deleted previously. 
+        Repackage the HDF5 file of DataHandler to reduce its file size in case datasets were deleted previously.
 
         For large scale analysis and limited server space, the converted HDF5 datasets exceed storage space capacities.
         For this scenario, the raw data events can be deleted after the calculation of all useful features. At a later point, the events can be included again if needed. Similarly, one might have included some temporary datasets which one wishes to delete at a later point to avoid clutter.
         Unwanted datasets can be dropped using :func:`cait.DataHandler.drop` and :func:`cait.DataHandler.drop_raw_data`, HOWEVER this does not reduce the HDF5 file's size due to the tree structure of the HDF5 file!
-        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools, see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack. 
-    
+        For reducing the file size, the HDF5 file has to be repacked with the h5repack method of the HDF5 Tools, see https://support.hdfgroup.org/HDF5/doc/RM/Tools.html#Tools-Repack.
+
         This method is equivalent to and can also be done on Ubuntu/Mac e.g. with
 
         .. code-block:: console
@@ -1442,7 +1445,7 @@ class DataHandler(SimulateMixin,
 
         subprocess.run(['h5repack', oldFile, newFile], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
         memorySaved = oldSize - os.path.getsize(newFile)
-        
+
         os.replace(newFile, oldFile)
         print(f"Successfully repackaged '{oldFile}'. Memory saved: {sizeof_fmt(memorySaved)}")
 
@@ -1450,13 +1453,13 @@ class DataHandler(SimulateMixin,
     def to_dict(self):
         if not hasattr(self, "_set_filepath_kwargs"):
             raise AttributeError("DataHandler can only be converted to a dictionary after setting the filepath.")
-        
-        return {"class": self.__class__.__name__, 
+
+        return {"class": self.__class__.__name__,
                 "args": self._init_args,     # defined in SerializingMixin
                 "kwargs": self._init_kwargs, # defined in SerializingMixin
-                "set_filepath_kwargs": self._set_filepath_kwargs, 
+                "set_filepath_kwargs": self._set_filepath_kwargs,
                 "cait_version": __version__}
-    
+
     # Overrides the SerializingMixin's automatic method to reconstruct classes
     # (because DataHandler needs special attention due to dh.set_filepath)
     @classmethod
@@ -1465,10 +1468,10 @@ class DataHandler(SimulateMixin,
             raise KeyError("DataHandler can only be constructed from dictionaries containing keys ['class', 'args', 'kwargs', 'set_filepath_kwargs']")
         if d["class"] != cls.__name__:
             raise TypeError("Value of field 'class' has to be 'DataHandler'.")
-        
+
         dh = cls(*d["args"], **d["kwargs"])
         dh.set_filepath(**d["set_filepath_kwargs"])
-        
+
         return dh
 
 def _events_exist_virtually(dh: DataHandler, group: str):

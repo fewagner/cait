@@ -125,9 +125,10 @@ class TriggerSurvival(ScalarFncBaseclass):
                     of = self._f.keywords["of"]
                     rl = 2*(len(of)-1) # record_length
                     threshold = self._f.keywords["threshold"]
+                    add_kwargs = {k: v for k, v in self._f.keywords.items() if k not in ["of", "threshold"]}
                     
                     N = len(x)
-                    filtered_event = vai.functions.trigger.trigger_of.filter_chunk(event, of, rl)
+                    filtered_event = vai.functions.trigger.trigger_of.filter_chunk(event, of, rl, **add_kwargs)
                     x_filtered = x[rl:-rl]
 
                     l = {**l, **{
@@ -149,9 +150,10 @@ class TriggerSurvival(ScalarFncBaseclass):
                     of = self._f.keywords["of"]
                     rl = 2*(np.array(of).shape[-1]-1) # record_length
                     threshold = self._f.keywords["threshold"]
+                    add_kwargs = {k: v for k, v in self._f.keywords.items() if k not in ["of", "threshold"]}
                     
                     N = len(x)
-                    filtered_event = vai.functions.trigger.trigger_of.filter_chunk_2d(event, of, rl)
+                    filtered_event = vai.functions.trigger.trigger_of.filter_chunk_2d(event, of, rl, **add_kwargs)
                     x_filtered = x[rl:-rl]
 
                     l = {**l, **{
