@@ -128,6 +128,54 @@ class TestApplyTemplateFit:
             fit_onset=True,
         )
 
+    @pytest.mark.parametrize(
+        "tau_exp, expected_n_pars",
+        [(None, 4), (10, 5), (10.1, 5)]
+    )
+    def test_exp_baseline_one_channel(self, datahandler, tau_exp, expected_n_pars):
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
+        mock_it = mock_data.get_event_iterator()[0]
+
+        group = f"events_tf_one_ch_exp_bl_{tau_exp}"
+
+        datahandler.include_event_iterator(group, mock_it)
+
+        datahandler.apply_template_fit(
+            group=group,
+            sev=mock_data.sev[0],
+            bl_poly_order=2,
+            truncation_limit=None,
+            fit_onset=True,
+            exp_tau=tau_exp
+        )
+        pars = datahandler.get(group, "templatefit_pars")
+
+        assert pars.shape[-1] == expected_n_pars
+
+    @pytest.mark.parametrize(
+        "tau_exp, expected_n_pars",
+        [([None, 10], 5), ([10.1, None], 5)]
+    )
+    def test_exp_baseline_two_channel(self, datahandler, tau_exp, expected_n_pars):
+        mock_data = vai.MockData(dt_us=datahandler.dt_us)
+        mock_it = mock_data.get_event_iterator()
+
+        group = f"events_tf_two_ch_exp_bl_{tau_exp}"
+
+        datahandler.include_event_iterator(group, mock_it)
+
+        datahandler.apply_template_fit(
+            group=group,
+            sev=mock_data.sev,
+            bl_poly_order=2,
+            truncation_limit=None,
+            fit_onset=True,
+            exp_tau=tau_exp
+        )
+        pars = datahandler.get(group, "templatefit_pars")
+
+        assert pars.shape[-1] == expected_n_pars
+
     def test_input_validation(self, datahandler):
         mock_data = vai.MockData(dt_us=datahandler.dt_us)
         mock_it = mock_data.get_event_iterator()
