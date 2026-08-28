@@ -1,8 +1,11 @@
+from re import I
 from typing import List, Tuple, Union
+import warnings
 
 import numba
 import numpy as np
 
+from ...analysisobjects import OF, SEV
 from ..functionbase import ScalarFncBaseclass
 from ..processing.optimumfiltering import OptimumFiltering, OptimumFiltering2D
 from ..processing.removebaseline import RemoveBaseline
@@ -221,6 +224,87 @@ def _rms(event, eval_pos, sev, phs, sev_eval_pos, peak_rms_width, rms, rms_peak)
         if peak_samples_left_ev == peak_samples_left_ref and peak_samples_left_ref > 0:
             rms_peak[i] = np.sqrt(np.mean((reference_peak - cropped_event_peak)**2))
 
+@numba.guvectorize(
+    [(
+        # Inputs ---------------------------
+        numba.float64[:, :, :],     # event
+        numba.float64[:, :],        # sev
+        numba.float64[:],           # phs
+        numba.int16[:, :],          # filter_groups
+        numba.float64[:, :, :, :],  # inverted_nps
+        numba.int64,                # dt_us
+        # Outputs --------------------------
+        numba.float64[:],           # chi2
+        numba.float64[:],           # chi2_red
+    )], 
+    '(l,n,m),(n,m),(n),(j,k),(j,m,2,2),()->(n),(n)',
+    nopython=True,
+)
+def _chi2(event, sev, phs, filter_groups, inverted_nps, dt_us, chi2, chi2_red) -> None:
+    """
+    Calculate the filter (reduced) Chi-squared between events and a scaled reference SEV.
+
+    Note that this is a ``numba`` pre-compiled function which automatically dispatches additional dimensions. Also note that the function signature includes the outputs as well (as this is the mechanism required by ``numpy``/``numba``).
+
+    :param event: The unfiltered event, in frequency space. Has to have shape (N, M), where N is the number of channels (needs to be 1 if single-channel) and M is the number of samples. Can also have shape (L, N, M) in which case it is treated as a batch of L (multi-channel) events. The outputs will then be of shape (L, ...) as well.
+    :type event: np.ndarray
+    :param sev: The unfiltered SEV, in frequency space, to compare to. It is scaled by 'phs'. Has to have shape (N, M)
+    :type sev: np.ndarray
+    :param phs: The pulse heights obtained in '_max_search', used to scale 'sev'. Has to have shape (N).
+    :type phs: np.ndarray
+    :param filter_groups: Specify which filters/channels should be filtered together (producing one output trace). Has to be an array of array of integers (specifying channels that should be filtered with the regular 1D filter)
+    :type filter_groups: np.ndarray
+    :param inverted_nps: The inverted NPS (or NCM) of the channels. List of elements with length 'len(filter_groups)' and shape (M//2+1) - for 1D-filtered channels - or (M//2+1, 2, 2) - for 2D-filtered channels.
+    :type inverted_nps: np.ndarray
+    :param dt_us: The time interval (in us) between two consecutive samples. Has to be a scalar.
+    :type dt_us: np.ndarray
+
+    :return: Tuple of Chi-squared and reduced Chi-squared values for all events.
+    :rtype: Tuple[np.ndarray]
+    """
+    # Initialize all output arrays.
+    for j in range(event.shape[-2]):
+        if event.ndim > 2:
+            for k in range(event.shape[-3]):
+                chi2[k, j] = 0.0
+                chi2_red[k, j] = 0.0
+        else:
+            chi2[j] = 0.0
+            chi2_red[j] = 0.0
+
+    res = event.reshape(-1, event.shape[-1]) - phs.reshape(-1, 1) * sev
+    delta_f = 1.0 / (event.shape[-1] * dt_us * 1e-6)
+    dof = event.shape[-1] + 1
+
+    # Keep track of the number of channels treated
+    i = 0
+
+    for k, (fg, inv_N) in enumerate(zip(filter_groups, inverted_nps)):
+        # Count channels in the group, after removing the -1 placeholders
+        n_ch_fg = np.count_nonzero(fg != -1)
+
+        if n_ch_fg == 1:
+            #If the channel is alone in the group, then the NPS is in [:, 0, 0]
+            chisq = np.sum(np.real(res[i] * np.conj(res[i]) * inv_N[0, 0])) * delta_f
+
+        else:
+            # Grab the right residuals pair, then format it and compute chi-squared
+            # res_transp = res[i:i+2].T                                                 # (M//2+1, 2)
+            # res_col = res_transp[:, :, None]                                          # (M//2+1, 2, 1)
+            # res_row = np.conj(res_transp)[:, None, :]                                 # (M//2+1, 1, 2)
+            # chisq = np.sum(np.real(res_row @ inv_N @ res_col).squeeze()) * delta_f    # (M//2+1, 1, 1), then squeezed and summed
+
+            chisq = np.sum(np.real(np.conj(res[i:i+2].T)[:, None, :] @ inv_N @ res[i:i+2].T[:, :, None]).squeeze()) * delta_f
+
+        if chi2.ndim == 1:
+            chi2[k] = chisq
+            chi2_red[k] = chisq/dof
+        else:
+            for j in range(n_ch_fg):
+                chi2[k, j] = chisq
+                chi2_red[k, j] = chisq/dof
+
+        i += n_ch_fg
 
 def _mixed_of_helper(event, of_list, filter_groups):
     # Helper function that resolves a mix of 1D and 2D OFs.
@@ -255,6 +339,17 @@ def _mixed_of_helper(event, of_list, filter_groups):
 
     return out
 
+def _pad_filter_groups(arr):
+    # convert ints to length-1 tuples
+    rows = [(x,) if isinstance(x, int) else tuple(x) for x in arr]
+    n = len(arr)
+    m = max(len(r) for r in rows)
+    # Pad arrays with -1 placeholders to get the right dimension
+    padded_arr = np.full((n, m), -1, dtype=int)
+    for i, r in enumerate(rows):
+        padded_arr[i, :len(r)] = r
+    return padded_arr
+
 class OFPulseHeight(ScalarFncBaseclass):
     """
     Calculate optimum filter pulse heights.
@@ -269,6 +364,8 @@ class OFPulseHeight(ScalarFncBaseclass):
     :type sev: np.ndarray
     :param filter_groups: Only relevant if you intend to use 2D filtering. Here, you may specify which filters/channels should be filtered together (producing one output trace). Has to be a list of integers (specifying channels that should be filtered with the regular 1D filter) and tuples of integers (specifying channels that should be filtered together using the 2D filter). E.g. the argument ``[(0, 1), 2]`` would apply the 2D filter to channels 0 and 1 together, and the 1D filter to channel 2. You may only specify each channel exactly once. Defaults to None, i.e. all channels are treated independently and no 2D optimum filtering is applied.
     :type filter_groups: List[Union[int, Tuple[int]]], optional
+    :param nps: The Noise Power Spectra (or Noise Covariance Matrices) of the channels, for the filter Chi-squared calculation. List of elements either with shape ``(N, M//2+1)`` (for channels to be filtered with 1D filter)  or ``(N, 2, 2, M//2+1)`` (for pairs of channels to be filtered with 2D filter). The channels must be provided in the same order as they appear in the filter_groups parameter! Defaults to None, i.e. no Chi-squared is computed.
+    :type nps: List[np.ndarray], optional
     :param max_search: A list (one entry for each channel, or channel group in case you use a 2D filter) that specifies where to evaluate the filtered trace or where to look for maxima (potentially relative to another channel). If the entry is an integer ``k``, the filtered trace is evaluated at that integer ``k``. If the entry is a tuple of integers ``(a, b)``, the maximum is searched in the interval ``(a, b)``. If the entry is a tuple of floats ``(x, y)``, the maximum is searched in the interval ``(record_length*x, record_length*y)``, i.e. a float tuple specifies the search range relative to the record window. If the entry in ``relative_to`` of the respective channel is ``None``, the evaluation at ``k``, or search in ``(a, b)``/``(x, y)`` are absolute, i.e. relative to the full record window. If the entry in ``relative_to`` specifies another channel, the evaluation is done relative to the evaluation position of that channel. E.g. if channel 0 is evaluated at sample ``r`` (either because the user specified evaluation at ``r`` or because the maximum was found at ``r``) and channel 1's ``relative_to`` is channel 0 and its ``max_search`` is -10, then the filtered trace of channel 1 is evaluated 10 samples before the evaluation position of channel 0. Defaults to None, i.e. all evaluations are global. Defaults to ``(0.2, 0.4)``, i.e. searching between 20% and 40% of the record window for all channels.
     :type max_search: List[Union[int, float, Tuple[Union[int, float]]]], optional
     :param relative_to: Together with ``max_search``, you can specify relations between the filter evaluations of different channels. Has to be a list (one entry for each channel, or channel group in case you use a 2D filter). For ``None`` entries, the respective channel will have its maxima searched (or evaluated) **globally** (relative to the full record window) according to the respective entry in ``max_search``. If it is an integer ``c``, the evaluation is performed **relative to the evaluation index** of channel ``c``. This evaluation index can either result from a fixed evaluation position (specified in ``max_search``) or an actual maximum search. Defaults to ``None``, i.e. independent evaluation for all channels.
@@ -289,6 +386,8 @@ class OFPulseHeight(ScalarFncBaseclass):
     - **of_max_pos** (samples): The position (index) of the global maximum of the filtered event (the value of the filtered event at this index is **of_max_val**).
     - **of_rms** (V): The root mean square (RMS) value between the filtered event and the filtered reference SEV. The reference is obtained by scaling the SEV to **of_ph** and shifting it relative to the event such that their **of_eval_pos** indices are aligned. This RMS value is global (all samples which were not invalidated because of the shifting).
     - **of_peak_rms** (V): Same as **of_rms** but only the number of samples specified by argument ``peak_rms_width`` before and after the **of_eval_pos** is used for the calculation.
+    - **of_chi2**: Filter Chi-squared of the events
+    - **of_chi2_red**: Reduced Chi-squared **of_chi2**, but divided by the number of degrees of freedom.
 
     .. warning::
         If you directly use this function, make sure to retrieve its results by first applying it to an iterator ``of_res = vai.apply(f, it)`` and unpacking it into a dictionary ``of_res_dict = {k: v for k, v in zip(f.names(), of_res)}`` (as explained in the example below). By doing so, you future-proof your code as more outputs might be added to the function in the future.
@@ -399,6 +498,8 @@ class OFPulseHeight(ScalarFncBaseclass):
         ("of_max_pos", int),
         ("of_rms", float),
         ("of_peak_rms", float),
+        ("of_chi2", float),
+        ("of_chi2_red", float),
     )
 
     def __init__(
@@ -410,6 +511,8 @@ class OFPulseHeight(ScalarFncBaseclass):
         max_search: List[Union[int, float, Tuple[Union[int, float]]]] = (0.2, 0.4),
         relative_to: List[int] = None, 
         peak_rms_width: int = 5,
+        nps: Union[List[np.ndarray], np.ndarray] = None,
+        dt_us: int = None,
         **kwargs,
     ):
         # Sanitize input arrays
@@ -422,7 +525,7 @@ class OFPulseHeight(ScalarFncBaseclass):
         if not of.shape[0] == sev.shape[0]:
             raise ValueError(f"OF and SEV have to have the same number of channels. Got {of.shape[0]} and {sev.shape[0]}.")
         if of.shape[-1] != sev.shape[-1]//2 + 1:
-            raise ValueError(f"Input argument 'of' has to have shape (M, N//2+1) for input argument 'sev' of shape (M, N).")
+            raise ValueError(f"Input argument 'of' has to have shape (N, M//2+1) for input argument 'sev' of shape (N, M).")
         
         # If filter_groups is None, all channels are treated normally (no 2D OF treatment)
         if filter_groups is None:
@@ -574,6 +677,69 @@ class OFPulseHeight(ScalarFncBaseclass):
         _, sev_eval_pos, *_ = self._search(sev_filtered)
         
         self._rms = lambda event, phs, eval_pos: _rms(event, eval_pos, sev_filtered, phs, sev_eval_pos, peak_rms_width)
+
+        # We already checked above if filter_group is None
+        if nps is not None:
+            nps = np.atleast_2d(nps)
+            dt_us = dt_us or next((getattr(n, 'dt_us') for n in nps if hasattr(n, 'dt_us')), None)
+            if dt_us is None:
+                raise ValueError("If you provide a 'nps' for Chi-squared calculation, you either have to provide a vai.NPS object or set 'dt_us'.")            
+            if len(nps) != len(filter_groups):
+                raise ValueError(f"If you provide a 'nps', the number of elements in 'filter_groups' and 'nps' has to be the same. Got {len(filter_groups)} and {len(nps)}")
+            for n, group in zip(nps, filter_groups):
+                # If two channels are grouped together, check that a NCM with the right dimension is provided
+                if isinstance(group, tuple):
+                    if (n.ndim != 3) or (n.shape[-2] != 2) or (n.shape[-3] != 2):
+                        raise ValueError("For each tuple in 'filter_groups', the corresponding 'nps' must be a Noise Covariance Matrix with dimension (2, 2, M//2+1).")
+                elif isinstance(group, int):
+                    if (n.ndim != 1):
+                        raise ValueError("For each int in 'filter_groups', the corresponding 'nps' must be a Noise Power Spectrum with dimension (M//2+1).")
+
+                if n.shape[-1] != (sev.shape[-1]//2 + 1):
+                    raise ValueError(f"The elements in 'nps' has to have the last dimension with shape (M//2+1) for input argument 'sev' of shape (N, M). Got ({n.shape[-1]}) and ({sev.shape[-2]}, {sev.shape[-1]//2 + 1}).")
+
+                if not isinstance(nps, np.ndarray):
+                    raise TypeError("'nps' must be a list of np.ndarray!")
+
+            # Un-apply normalization (see vai.NPS calculation)
+            n_samples = 2 * (sev.shape[-1] - 1)
+            W = n_samples * n_samples
+            delta_f = 1.0 / (n_samples * dt_us * 1e-6)
+
+            inverted_nps = []
+
+            # Compute inverted NPS (or NCM)
+            for n in nps:
+                n_norm = n * W * delta_f / 2
+                if n.ndim == 1:
+                    # 1D inversion
+                    n_inv = 1. / n_norm
+                    # Convert to dimensions consistent with NCM (M//2+1, 0, 0). The NPS will reside in [:, 0, 0].
+                    if len(filter_groups) < self._n_channels:          
+                        out = np.full((n_inv.shape[0], 2, 2), np.nan)
+                        out[:, 0, 0] = n_inv
+                        n_inv = out
+                else:
+                    # 2D inversion
+                    # Transpose to apply correct inversion
+                    n_inv = np.linalg.pinv(n_norm.transpose(2, 0, 1))
+
+                inverted_nps.append(n_inv)
+
+            sev_fft = np.fft.rfft(sev, axis=-1)
+            padded_fg = _pad_filter_groups(filter_groups)
+                
+            self._chi2 = lambda event, phs: _chi2(event, sev_fft, phs, padded_fg, inverted_nps, dt_us)
+
+        else:
+            warnings.warn("WARNING: You did not provide any 'nps' and/or 'dt_us' as an input, hence the 'chi2' and 'chi2_red' output dataset will be filled with zeros.")
+            # If no NPS is provided, define a Chi2 dummy function that returns arrays of the correct shape, filled with zeros
+            def _chi2_dummy(event, phs):
+                chi2 = np.zeros(self._n_channels, dtype=float)
+                chi2_red = np.zeros(self._n_channels, dtype=float)
+                return chi2, chi2_red
+            
+            self._chi2 = lambda event, phs: _chi2_dummy(event, phs)
     
     def __call__(self, event):
         if self._n_channels == 1:
@@ -587,6 +753,7 @@ class OFPulseHeight(ScalarFncBaseclass):
         self._filtered_event = np.atleast_2d(self._filter(event))
         max_pos, eval_pos, max_ph, eval_ph, self._actual_where = self._search(self._filtered_event)
         rms, peak_rms = self._rms(self._filtered_event, eval_ph, eval_pos)
+        chi2, chi2_red = self._chi2(np.atleast_2d(np.fft.rfft(event, axis=-1)), eval_ph)
         
         return (
             eval_ph, 
@@ -595,6 +762,8 @@ class OFPulseHeight(ScalarFncBaseclass):
             max_pos, 
             rms, 
             peak_rms,
+            chi2, 
+            chi2_red,
         )
 
     @property
@@ -645,6 +814,6 @@ class OFPulseHeight(ScalarFncBaseclass):
             }
         
         fmt_arr = lambda l: ", ".join([f"{x:.2g}" for x in np.atleast_1d(l)])
-        label = f"ph=[{fmt_arr(out_dict['of_ph'])}] V, rms=[{fmt_arr(out_dict['of_rms'])}] V, peak_rms=[{fmt_arr(out_dict['of_peak_rms'])}] V"
+        label = f"ph=[{fmt_arr(out_dict['of_ph'])}] V, rms=[{fmt_arr(out_dict['of_rms'])}] V, peak_rms=[{fmt_arr(out_dict['of_peak_rms'])}] V, chi2=[{fmt_arr(out_dict['of_chi2'])}]"
 
         return dict(line=d, scatter=s, axes=dict(xaxis=dict(label=label)))

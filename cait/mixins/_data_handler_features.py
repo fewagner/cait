@@ -608,7 +608,7 @@ class FeaturesMixin(object):
         :type batch_size: int, optional
         :param preview: If True, an interactive preview illustrating the filter evaluation using the current input arguments on the event traces opens up. Defaults to False
         :type preview: bool, optional
-        :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.OFPulseHeight`. Notable arguments are ``max_search`` (to specify where to search for maxima), ``relative_to`` (to specify relative to which channels the filtered traces should be evaluated), ``peak_rms_width`` (number of samples for peak RMS calculation) and ``filter_groups`` (used to specify which channels should be treated together using a 2D filter). Refer to its documentation page for more details.
+        :param kwargs: Additional keyword arguments passed to :class:`cait.versatile.OFPulseHeight`. Notable arguments are ``max_search`` (to specify where to search for maxima), ``relative_to`` (to specify relative to which channels the filtered traces should be evaluated), ``peak_rms_width`` (number of samples for peak RMS calculation), ``filter_groups`` (used to specify which channels should be treated together using a 2D filter) and ``nps`` (used for the Chi-squared computation). Refer to its documentation page for more details.
         :type kwargs: any, optional
 
         .. note::
