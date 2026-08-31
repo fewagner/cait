@@ -61,7 +61,7 @@ class SimulateMixin(object):
         :type thresholds: Union[float, List[float]]
         :param sev: The standard event to superimpose onto the stream (after it was scaled by ``sim_phs``). Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev_fitpars``.
         :type sev: np.ndarray, optional
-        :param sev_fitpars: The pulse shape fit parameters of the standard event to be superimposed onto the stream (after it was scaled by ``sim_phs``). The remaining parameters correspond to those of :func:`cait.fit.pulse_template`. Note that the time constants have to be given in milliseconds. Pulse shape parameters both of the 'traditional' 2-component model are supported as well as the n-component extension. Has to have as many rows as there are trigger and passive channels. Cannot be set together with ``sev``.
+        :param sev_fitpars: The pulse shape fit parameters of the standard event to be superimposed onto the stream (after it was scaled by ``sim_phs``). The remaining parameters correspond to those of :func:`cait.fit.pulse_template`. Note that the time constants have to be given in milliseconds. Pulse shape parameters both of the 'traditional' 2-component model are supported as well as the n-component extension. Has to have as many rows as there are trigger and passive channels. The number of parameters may differ between channels (e.g. a 6-parameter 2-component model on one channel and an 8-parameter 3-component model on another); in that case the input is kept as a list of per-channel parameter arrays instead of a rectangular array. Cannot be set together with ``sev``.
         :type sev_fitpars: List[List[float]], optional
         :param shift_samples: An array of shift values (in samples) by which the ``sev`` or ``sev_fitpars`` should be offset from ``sim_ts`` before superimposing onto the stream chunks. This can be used to simulate slight onset variations between different channels. In such a case one would probably want to set all offsets for the first channel to zero and only vary the values for the remaining channels. Has to have as many rows as there are trigger and passive channels. Defaults to None, i.e. no shifts are applied and all simulated pulses are aligned such that the first trigger channel's SEV maximum sits on ``sim_ts``.
         :type shift_samples: List[List[int]], optional
@@ -236,7 +236,25 @@ class SimulateMixin(object):
 
         # Want 1d timestamps but 2d pulse heights, sev, and of
         sim_ts = np.array(sim_ts).flatten()
-        sim_phs, sev_or_pars, of = np.atleast_2d(sim_phs), np.atleast_2d(sev_or_pars), np.atleast_2d(of)
+
+        sim_phs, of = np.atleast_2d(sim_phs), np.atleast_2d(of)
+
+        if using_fit:
+            # Channels may use pulse shape models with different numbers of
+            # parameters (e.g. a 6-parameter 2-component model on one channel
+            # and an 8-parameter 3-component model on the other). Such input is
+            # ragged and cannot be stored in a rectangular array, so we only
+            # build one when all channels agree and otherwise keep a list of
+            # per-channel 1d parameter arrays.
+            if np.ndim(sev_or_pars[0]) == 0:  # single channel given as flat list
+                sev_or_pars = [sev_or_pars]
+            sev_or_pars = [np.asarray(p, dtype=float).ravel() for p in sev_or_pars]
+            ragged_fitpars = len({p.size for p in sev_or_pars}) > 1
+            if not ragged_fitpars:
+                sev_or_pars = np.array(sev_or_pars)
+        else:
+            ragged_fitpars = False
+            sev_or_pars = np.atleast_2d(sev_or_pars)
 
         # Needed for 2d-of support ... 
         # All 'channels' that are an entity as seen by the trigger.
@@ -275,8 +293,8 @@ class SimulateMixin(object):
 
         if sim_phs.shape[0] != n_total_ch:
             raise ValueError(f"Pulse heights are needed for all channels (including passive ones). Got pulse heights of shape {sim_phs.shape} and in total {n_total_ch} channel(s).")
-        if sev_or_pars.shape[0] != n_total_ch:
-            raise ValueError(f"SEVs are needed for all channels (including passive ones). Got sev/sev_fitpars of shape {sev_or_pars.shape} and in total {n_total_ch} channel(s).")
+        if len(sev_or_pars) != n_total_ch:
+            raise ValueError(f"SEVs are needed for all channels (including passive ones). Got sev/sev_fitpars for {len(sev_or_pars)} channel(s) and in total {n_total_ch} channel(s).")
         if sim_phs.shape[-1] != len(sim_ts):
             raise ValueError(f"The number of timestamps must agree with the number of pulse heights. Got {len(sim_ts)} and {sim_phs.shape[-1]}.")
         
@@ -322,7 +340,11 @@ class SimulateMixin(object):
             # pulse_sim_index
             # The (extended) iterator's time array is used to 
             # evaluate the fitpars.
-            used_pars = np.atleast_2d(sev_or_pars[:n_trig_ch,:].copy())
+            # (Kept as a list of per-channel parameter arrays if the models
+            # have different numbers of parameters.)
+            used_pars = [np.copy(p) for p in sev_or_pars[:n_trig_ch]]
+            if not ragged_fitpars:
+                used_pars = np.atleast_2d(used_pars)
             of_trigger = [np.squeeze(x) for x in np.split(of, np.cumsum(of_lens), axis=0)[:-1]]
             
             pulse_sim_index = record_placement * rl + np.argmax(
@@ -573,7 +595,9 @@ class SimulateMixin(object):
             ),
             # PulseSimIterator handles sev/sev_fitpars
             sev=sev,
-            sev_fitpars=sev_fitpars,
+            # Use the sanitized parameters (possibly a list of per-channel
+            # arrays if the models have different numbers of parameters).
+            sev_fitpars=sev_or_pars if using_fit else None,
             pulse_heights=sim_phs[..., event_flag],
             shift_samples=mod_shift_samples[..., event_flag],
             # PulseSimIterator handles remaining sub-sample shifts
@@ -964,4 +988,3 @@ class SimulateMixin(object):
             print('Simulation done.')
             print('Simulation done.')
             print('Simulation done.')
-
