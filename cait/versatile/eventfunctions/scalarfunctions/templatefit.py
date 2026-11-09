@@ -192,7 +192,7 @@ class _TemplateCachePoly:
                  order: int, 
                  fit_onset: bool = True,
                  max_shift: int = 50,
-                 baseline_type: str = 'polynomial',
+                 #baseline_type: str = 'polynomial',
                  exp_tau: float = None
                 ):
         self._sev = sev
@@ -200,10 +200,33 @@ class _TemplateCachePoly:
         self._order = order
         self._fit_onset = fit_onset
         self._max_shift = max_shift
-        self._baseline_type = baseline_type
+        #self._baseline_type = baseline_type
         self._exp_tau = exp_tau
         #self._sev_dt_us = sev._dt_us
         
+        if exp_tau is None:
+            self._exp_tau = None
+            self._exp_basis = None
+            self._baseline_type = "polynomial"
+        else:
+            taus = np.atleast_1d(np.asarray(exp_tau, dtype=float))
+            if taus.ndim != 1 or taus.size == 0 or np.any(~np.isfinite(taus)) or np.any(taus <= 0):
+                raise ValueError("exp_tau must contain one or more finite, positive time constants.")
+
+            self._exp_tau = taus
+            self._baseline_type = "polyexp"
+
+            # Each row is the exponential basis for one time constant.
+            self._exp_basis = np.exp(-self._xdata[None, :] / taus[:, None])
+
+        # Number of taus
+        self._n_exp = 0 if self._exp_tau is None else len(self._exp_tau)
+        print("n_exp", self._n_exp)
+
+        # Parameters: amplitude, polynomial coefficients, then one coefficient
+        # for each exponential basis.
+        self._n_params = self._order + 2 + self._n_exp
+
         # Precalculate and cache for later access
         # This is the only strategy that worked with multiprocessing
         self._cache = dict()
@@ -212,16 +235,9 @@ class _TemplateCachePoly:
             
         # Define error outputs (if fit fails, these will be the
         # fit results that tell you that the fit failed)
-        # number of parameters to return on failure (ampl + poly coeffs + optional exp coeff)
-
-        if self._baseline_type == 'polynomial':
-            self._n_params = self._order + 2        # [a, c0..c_order]
-        elif self._baseline_type == 'polyexp':
-            self._n_params = self._order + 3        # [a, c0..c_order, b_exp]
-        else:
-            raise ValueError("Unsupported baseline_type.")
-        
+        # number of parameters to return on failure (ampl + poly coeffs + optional exp coeff)       
         self._error_output = (np.zeros(self._n_params), 0, -404)
+
 
     def __call__(self, ev: np.ndarray, flag: np.ndarray = None):
         """
@@ -285,8 +301,51 @@ class _TemplateCachePoly:
         
         return opt_param, rms
 
+    def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        j = int(np.round(np.array(j)[None].flatten()[0]))
+        s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
 
-    
+        sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
+        columns = [s] + [x**k for k in range(self._order + 1)]
+
+        if self._n_exp:
+            exp_basis = shift_arrays(
+                self._sev, *self._exp_basis, j=j, flag=flag
+            )[1:]
+            columns.extend(exp_basis)
+
+        design = np.column_stack(columns)
+        return np.mean((y - design @ sol) ** 2)
+
+
+    def _A_uncached(self, j: int, flag: np.ndarray):
+        s, x = shift_arrays(self._sev, self._xdata, j=j, flag=flag)
+        columns = [s] + [x**k for k in range(self._order + 1)]
+
+        if self._n_exp:
+            exp_basis = shift_arrays(
+                self._sev, *self._exp_basis, j=j, flag=flag
+            )[1:]
+            columns.extend(exp_basis)
+
+        design = np.column_stack(columns)
+        return design.T @ design / len(s)
+
+
+    def _b(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
+        s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
+        columns = [s] + [x**k for k in range(self._order + 1)]
+
+        if self._n_exp:
+            exp_basis = shift_arrays(
+                self._sev, *self._exp_basis, j=j, flag=flag
+            )[1:]
+            columns.extend(exp_basis)
+
+        design = np.column_stack(columns)
+        return design.T @ y / len(y)
+
+    '''
     def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
         Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` including a non-trivial baseline.
@@ -317,7 +376,7 @@ class _TemplateCachePoly:
             e = np.exp(-(1./self._exp_tau) * x)
             fit = sol[0]*s + poly + b_exp*e
             return np.mean((y - fit)**2)
-        
+    '''
 
     def _A(self, j: int, flag: np.ndarray = None):
         """
@@ -333,6 +392,7 @@ class _TemplateCachePoly:
         """
         return self._A_cached(j) if flag is None else self._A_uncached(j, flag)
 
+    """
     def _A_uncached(self, j: int, flag: np.ndarray):
         s, x = shift_arrays(self._sev, self._xdata, j=j, flag=flag)
         
@@ -377,10 +437,12 @@ class _TemplateCachePoly:
             A[i_exp, i_exp] = np.mean(e*e)
 
             return A
+        """
         
     def _A_cached(self, j: int):
         return self._cache[j]
-    
+
+    '''
     def _b(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
         """
         Returns right hand side for the linear system of equations needed for the template fit including a non-trivial baseline.
@@ -406,6 +468,7 @@ class _TemplateCachePoly:
                 [np.mean(y*x**k) for k in range(self._order+1)] +
                 [np.mean(y*e)]
             )
+    '''
 ########################
 ### CLASS DEFINITION ###
 ########################
@@ -484,19 +547,18 @@ class TemplateFit(ScalarFncBaseclass):
         self._xdata = np.linspace(0, 1, self._sev.shape[-1]) if xdata is None else xdata
         self._truncation_limit = truncation_limit
         
-        if isinstance(exp_tau, int):
-            self._exp_tau = float(exp_tau)
+        if exp_tau is None:
+            self._exp_tau = None
+            self._baseline_type = "polynomial"
+            self._mode = "poly"
         else:
-            self._exp_tau = exp_tau
+            taus = np.atleast_1d(np.asarray(exp_tau, dtype=float))
+            if taus.ndim != 1 or taus.size == 0 or np.any(~np.isfinite(taus)) or np.any(taus <= 0):
+                raise ValueError("exp_tau must contain one or more finite, positive time constants.")
 
-        if self._exp_tau is None:
-            self.baseline_type = 'polynomial'
-            self._mode = 'poly'
-        elif isinstance(self._exp_tau, float):
-            self.baseline_type = 'polyexp'
-            self._mode = 'polyexp'
-        else:
-            raise ValueError("Invalid baseline type")
+            self._exp_tau = float(taus[0]) if taus.size == 1 else taus
+            self._baseline_type = "polyexp"
+            self._mode = "polyexp"
         
         if bl_poly_order is None:
             self._mode = 'simple'
@@ -510,7 +572,6 @@ class TemplateFit(ScalarFncBaseclass):
                                                 order=bl_poly_order,   # poly order for the poly part
                                                 fit_onset=fit_onset,
                                                 max_shift=max_shift,
-                                                baseline_type=self.baseline_type,
                                                 exp_tau=self._exp_tau)
 
                 
@@ -547,15 +608,23 @@ class TemplateFit(ScalarFncBaseclass):
             fit_sev = fitpars[0]*shifted_sev + np.sum(
                 [fitpars[k+1]*shifted_x**k for k in range(len(fitpars)-1)],
                 axis=0)
-        elif self._mode == 'polyexp':
+        elif self._mode == "polyexp":
             a = fitpars[0]
-            poly = np.sum([fitpars[k+1]*shifted_x**k for k in range(len(fitpars)-2)], axis=0)
-            b_exp = fitpars[-1]
-            decay = np.exp(-(1./self._solver._exp_tau) * shifted_x)
+            n_poly = self._solver._order + 1
+            poly = np.sum(
+                [fitpars[k + 1] * shifted_x**k for k in range(n_poly)],
+                axis=0,
+            )
+
+            exp_basis = np.exp(
+                -shifted_x[None, :] / np.atleast_1d(self._exp_tau)[:, None]
+            )
+            exp_coeffs = fitpars[1 + n_poly:]
+            baseline_exp = np.sum(exp_coeffs[:, None] * exp_basis, axis=0)
+
             baseline_poly = poly
-            baseline_exp  = b_exp * decay
             baseline_total = baseline_poly + baseline_exp
-            fit_sev = a*shifted_sev + baseline_poly + baseline_exp
+            fit_sev = a * shifted_sev + baseline_total
                       
         
         d = {"event": [self._xdata, event], "template fit": [shifted_x, fit_sev]}
