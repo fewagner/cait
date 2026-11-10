@@ -42,7 +42,7 @@ def shift_arrays(sev: np.ndarray,
         if j==0:  f = flag
         elif j>0: f = flag[..., j:]
         else:     f = flag[..., :j]
-        out = (elem[..., f] for elem in out)
+        out = tuple(elem[..., f] for elem in out)
     
     return out
 
@@ -181,10 +181,8 @@ class _TemplateCachePoly:
     :type fit_onset: bool, optional
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``. Defaults to 50 samples
     :type max_shift: int, optional
-    :param baseline_type: Baseline model type: 'polynomial', 'exponential', or 'polyexp' (polynomial+exponential). Default to 'polynomial'.
-    :type baseline_type: str
-    :param exp_tau: Exponential decay rate τ. Units are reciprocal to xdata units. Required for 'exponential' or 'polyexp' baselines (default to 80).
-    :type exp_tau: float
+    :param exp_tau: Exponential decay rate(s) τ to be included in the baseline model.
+    :type exp_tau: List, optional
     """
     def __init__(self, 
                  sev: np.ndarray, 
@@ -192,7 +190,6 @@ class _TemplateCachePoly:
                  order: int, 
                  fit_onset: bool = True,
                  max_shift: int = 50,
-                 #baseline_type: str = 'polynomial',
                  exp_tau: float = None
                 ):
         self._sev = sev
@@ -221,7 +218,6 @@ class _TemplateCachePoly:
 
         # Number of taus
         self._n_exp = 0 if self._exp_tau is None else len(self._exp_tau)
-        print("n_exp", self._n_exp)
 
         # Parameters: amplitude, polynomial coefficients, then one coefficient
         # for each exponential basis.
@@ -489,7 +485,7 @@ class TemplateFit(ScalarFncBaseclass):
     :type fit_onset: bool
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``.
     :type max_shift: int
-    :param exp_tau: If not None, baseline fit will include an exponential decay with decay time constant τ. Units are reciprocal to xdata units. 
+    :param exp_tau: Optional, baseline fit will include exponential decays with decay time constants τ . The units need to match provided xdata (e.g. ms). If xdata is not provided, exp_tau needs to be in units of inverse samples.
     :type exp_tau: float
     
     :return: Tuple of fit result, optimal shift, and RMS value ``([amplitude, constant_bl_coeff, linear_bl_coeff, ...], shift, rms)``. If you set ``fit_onset=False``, the ``shift`` value will just be 0. If the fit fails, all fit parameters are set to 0 and the RMS value is set to -404.
@@ -544,8 +540,21 @@ class TemplateFit(ScalarFncBaseclass):
             raise TypeError(f"'bl_poly_order' has to be a non-negative integer, not {bl_poly_order}.")
         
         self._sev = np.array(sev)
-        self._xdata = np.linspace(0, 1, self._sev.shape[-1]) if xdata is None else xdata
         self._truncation_limit = truncation_limit
+
+        if xdata is None:
+            self._xdata = np.linspace(0, 1, self._sev.shape[-1])
+            if exp_tau is not None:
+                warnings.warn(
+                    "exp_tau is interpreted in the units of xdata. Since xdata was "
+                    "not provided, it defaults to a normalized range from 0 to 1; "
+                    "exp_tau is therefore not interpreted in milliseconds. Pass "
+                    "xdata in milliseconds (e.g. from xdata = dh.record_window(ms=True)) to use exp_tau values in milliseconds.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        else:
+            self._xdata = np.asarray(xdata)
         
         if exp_tau is None:
             self._exp_tau = None

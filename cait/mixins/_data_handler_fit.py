@@ -1,7 +1,7 @@
 import warnings
 from functools import partial
 from multiprocessing import Pool
-from typing import Callable, List, Union
+from typing import Callable, List, Union, Sequence, Optional
 
 import h5py
 import numpy as np
@@ -338,7 +338,7 @@ class FitMixin(object):
                            group: str,
                            sev: np.ndarray,
                            bl_poly_order: Union[int, List[int]] = 3,
-                           exp_tau: Union[float, List[float]] = None,
+                           exp_tau: Union[float, List[float], List[Union[float, List[float], None]], None,] = None,
                            truncation_limit: Union[float, List[float]] = None,
                            correlated: bool = False,
                            fit_onset: Union[bool, List[bool]] = True,
@@ -482,34 +482,59 @@ class FitMixin(object):
 
         events = self.get_event_iterator(group)
 
-        if only_channels is None: only_channels = slice(None, None, None)
-        if event_flag is None: event_flag = np.ones(len(events), dtype=bool)
+        if only_channels is None:
+            only_channels = slice(None, None, None)
+        if event_flag is None:
+            event_flag = np.ones(len(events), dtype=bool)
 
         n_channels = events.n_channels
         n_channels_used = events[only_channels].n_channels
         channels_used = np.atleast_1d(np.arange(n_channels)[only_channels])
         events_used = events[:, event_flag]
 
-        if correlated and n_channels_used<2:
+        if correlated and n_channels_used < 2:
             raise ValueError("The 'correlated' fit is only available for >=2 channels.")
 
-        # Make sure all (relevant) inputs are lists
+        # Normalize per-channel arguments.
         if bl_poly_order is None or isinstance(bl_poly_order, int):
-            bl_poly_order = [bl_poly_order]*n_channels_used
+            bl_poly_order = [bl_poly_order] * n_channels_used
 
-        if exp_tau is None or isinstance(exp_tau, (int, float)):
-            exp_tau = [float(exp_tau) if exp_tau is not None else None] * n_channels_used
-        else:
+        if truncation_limit is None or np.isscalar(truncation_limit):
+            truncation_limit = [truncation_limit] * n_channels_used
+
+        if fit_onset is None or isinstance(fit_onset, (bool, np.bool_)):
+            fit_onset = [fit_onset] * n_channels_used
+
+        if "xdata" not in kwargs and exp_tau is not None:
+                warnings.warn(
+                    "exp_tau is interpreted in the units of xdata. Since xdata was "
+                    "not provided, it defaults to a normalized range from 0 to 1; "
+                    "exp_tau is therefore not interpreted in milliseconds. Pass "
+                    "xdata in milliseconds (e.g. from xdata = dh.record_window(ms=True)) to use exp_tau values in milliseconds.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+        # Normalize exp_tau. For one fitted channel, a flat sequence denotes
+        # multiple exponential components for that channel. For multiple fitted
+        # channels, provide one entry per channel.
+        if exp_tau is None or np.isscalar(exp_tau):
+            # None or one scalar applies to every fitted channel.
+            exp_tau = [exp_tau] * n_channels_used
+        elif n_channels_used == 1:
+            # A flat sequence is multiple taus for the single fitted channel.
+            exp_tau = [exp_tau]
+        elif len(exp_tau) == n_channels_used:
+            # For multiple channels, each entry is a scalar, a tau sequence, or None.
             exp_tau = [
-                float(x) if x is not None else None
-                for x in exp_tau
+                None if channel_taus is None else
+                [channel_taus] if np.isscalar(channel_taus) else list(channel_taus)
+                for channel_taus in exp_tau
             ]
-
-        if truncation_limit is None or isinstance(truncation_limit, float):
-            truncation_limit = [truncation_limit]*n_channels_used
-
-        if fit_onset is None or isinstance(fit_onset, bool):
-            fit_onset = [fit_onset]*n_channels_used
+        else:
+            raise ValueError(
+                "'exp_tau' must be a scalar, a sequence of taus for one fitted "
+                "channel, or a sequence with one entry per fitted channel."
+            )
 
         # Make sure all lists have the same length as the number of used channels.
         if len(bl_poly_order) != n_channels_used:
@@ -535,13 +560,15 @@ class FitMixin(object):
 
 
         # Construct the output array (to be filled later)
-        non_none_orders = [x for x in bl_poly_order if x is not None]
-        max_order = np.max(non_none_orders) if len(non_none_orders) > 0 else -1
+        non_none_orders = [order for order in bl_poly_order if order is not None]
+        max_order = max(non_none_orders) if non_none_orders else -1
 
-        n_exp_params = 1 if any(x is not None for x in exp_tau) else 0
+        n_exp_params = max(
+            0 if taus is None else (1 if np.isscalar(taus) else len(taus))
+            for taus in exp_tau
+        )
 
         max_n_pars = 2 + max_order + n_exp_params
-
         output_shape = (n_channels, len(events), max_n_pars)
 
         # For unused channels, the RMS is set to -404 and the
@@ -580,10 +607,8 @@ class FitMixin(object):
         else:
             for i in range(n_channels_used):
                 ch = channels_used[i]
-                n_pars = 1 if bl_poly_order[i] is None else bl_poly_order[i] + 2
-
-                if exp_tau[i] is not None:
-                    n_pars += 1
+                n_exp = len(exp_tau[i]) if exp_tau[i] is not None else 0
+                n_pars = (1 if bl_poly_order[i] is None else bl_poly_order[i] + 2) + n_exp
 
                 tf = vai.TemplateFit(
                         sev=sev[i],
