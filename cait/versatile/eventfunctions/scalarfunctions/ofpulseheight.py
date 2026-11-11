@@ -258,16 +258,16 @@ def _mixed_of_helper(event, of_list, filter_groups):
 
 def _inverse(noise_model, norm):
     """
-    Calculate the inverse noise covariance matrix of the NPS/NCM for every frequency bin of one filter group.
+    Calculate the inverse of the NPS/NCM for every filter group.
  
-    Noise power spectra (one channel) and noise covariance matrices (two channels) are converted to the same shape ``(F, 2, 2)``, where ``F=N//2+1`` is the number of frequency bins. For a one-channel group only the entry ``[0, 0]`` is used (the other entries are zero).
- 
+    Noise power spectra (one channel) and noise covariance matrices (two channels) are converted to the same shape ``(F, 2, 2)``, where ``F=M//2+1`` is the number of frequency bins and M the record window length. For a one-channel group only the entry ``[0, 0]`` is used (the other entries are zero).
+    
     :param noise_model: The noise model (in V²/Hz) of the filter group. Either a noise power spectrum (NPS) of shape ``(F,)`` for a one-channel group, or a noise covariance matrix (NCM) of shape ``(2, 2, F)`` for a two-channel group 
     :type noise_model: np.ndarray
-    :param norm: Factor that converts a noise density in V²/Hz into the expected squared size of the (raw) Fourier coefficients of the noise. It is ``M/(2*dt)``, where ``dt`` is the time between two samples in seconds.
+    :param norm: Factor to convert the NPS (in V²/Hz) into the squared Fourier coefficients of the noise. It is ``M/(2*dt)``, where ``dt`` is the time between two samples in seconds.
     :type norm: float
  
-    :return: The inverse covariance matrix. Has shape ``(F, 2, 2)``.
+    :return: The inverted NPS/NCM. Has shape ``(F, 2, 2)``.
     :rtype: np.ndarray
     """
     noise_model = np.asarray(noise_model)
@@ -284,15 +284,17 @@ def _inverse(noise_model, norm):
  
 @numba.guvectorize(
     [(
+        # Inputs ---------------------------
         numba.float64[:, :],           # event (n_channels, n_samples)
         numba.float64[:, :],           # sev   (n_channels, n_samples)
         numba.float64[:],              # pulse_heights (n_groups,)
         numba.int64[:],                # eval_pos (n_groups,), event evaluation position
         numba.int64[:],                # sev_eval_pos (n_groups,), SEV evaluation position
         numba.int64[:, :],             # channels (n_groups, 2); 1-ch group = (c, c)
+        # Outputs --------------------------
         numba.float64[:, :],           # residual (n_channels, n_samples)
     )],
-    "(c,n),(c,n),(g),(g),(g),(g,w)->(c,n)",
+    "(n,m),(n,m),(g),(g),(g),(g,w)->(n,m)",
     nopython=True, cache=True,
 )
 def _time_domain_residual(event, sev, pulse_heights, eval_pos, sev_eval_pos, channels, residual):
@@ -335,19 +337,21 @@ def _time_domain_residual(event, sev, pulse_heights, eval_pos, sev_eval_pos, cha
  
 @numba.guvectorize(
     [(
+        # Inputs ---------------------------
         numba.complex128[:, :],        # residual_fft (n_channels, n_freqs)
         numba.int64[:, :],             # channels (n_groups, 2); 1-ch group = (c, c)
         numba.complex128[:, :, :, :],  # weighted_inverse_cov (n_groups, n_freqs, 2, 2)
+        # Outputs --------------------------
         numba.float64[:],              # chi2 (n_groups,)
     )],
-    "(c,f),(g,w),(g,f,r,s)->(g)",
+    "(n,f),(g,w),(g,f,r,s)->(g)",
     nopython=True, cache=True,
 )
 def _residual_of_chi2(residual_fft, channels, weighted_inverse_cov, chi2):
     """
     Calculate the chi2 of every filter group from the Fourier transform of the residual.
  
-    For every frequency, the squared size of the residual is weighted with the inverse noise covariance, and the results are summed over all frequencies: ``chi2 = sum_f residual^H W residual``, where ``W`` is the weighted inverse covariance matrix. Since ``W`` is Hermitian (its two off-diagonal entries are complex conjugates of each other), this can be written with three terms for the two channels (0, 1) of a group: ``W00 |res0|^2 + W11 |res1|^2 + 2 Re(conj(res0) W01 res1)``. For a one-channel group, ``W11`` and ``W01`` are zero, and only the first term remains.
+    For every frequency, the residual squared is weighted with the inverse NPS/NCM, and the results are summed over all frequencies: ``chi2 = sum_f residual^H W residual``, where ``W`` is the weighted inverse noise matrix. Since ``W`` is Hermitian, this can be written as: ``W00 |res0|^2 + W11 |res1|^2 + 2 Re(conj(res0) W01 res1)``. For a one-channel group, ``W11`` and ``W01`` are zero, and only the first term remains.
  
     Note that this is a ``numba`` pre-compiled function which automatically dispatches additional dimensions. Also note that the function signature includes the outputs as well (as this is the mechanism required by ``numpy``/``numba``).
  
