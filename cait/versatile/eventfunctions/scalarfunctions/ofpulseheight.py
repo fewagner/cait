@@ -483,7 +483,7 @@ class OFPulseHeight(ScalarFncBaseclass):
      
     :param of: The optimum filter(s) to use. One for each channel, i.e. has shape ``(N, M//2+1)`` where ``N`` is the number of channels and ``M`` is the record length. Using 2D filters is no exception here: The filters have to be supplied as shape ``(N, M//2+1)`` arrays.
     :type of: np.ndarray
-    :param sev: The standard events corresponding to the filters. They are used as reference to calculate the filter (peak) RMS. One standard event per entry in ``of`` is needed. I.e. has to be of shape ``(N, M)``.
+    :param sev: The standard events corresponding to the filters. They are used as reference to calculate the filter (peak) RMS and (optionally) the chi-squared. One standard event per entry in ``of`` is needed. I.e. has to be of shape ``(N, M)``.
     :type sev: np.ndarray
     :param filter_groups: Only relevant if you intend to use 2D filtering. Here, you may specify which filters/channels should be filtered together (producing one output trace). Has to be a list of integers (specifying channels that should be filtered with the regular 1D filter) and tuples of integers (specifying channels that should be filtered together using the 2D filter). E.g. the argument ``[(0, 1), 2]`` would apply the 2D filter to channels 0 and 1 together, and the 1D filter to channel 2. You may only specify each channel exactly once. Defaults to None, i.e. all channels are treated independently and no 2D optimum filtering is applied.
     :type filter_groups: List[Union[int, Tuple[int]]], optional
@@ -493,6 +493,13 @@ class OFPulseHeight(ScalarFncBaseclass):
     :type relative_to: List[int], optional
     :param peak_rms_width: The number of samples before and after the filter evaluation sample that are used for calculating the filter RMS value. Defaults to 5 samples
     :type peak_rms_width: int, optional
+    :param calc_chi2: If set to True, the Chi-squared of the events is evaluated, provided you also specify a ``nps`` (and possibly ``dt_us``, see below).
+    :type calc_chi2: bool, optional
+    :param nps: The NPS/NCM(s) of the channel(s). One for each elements in ``filter_groups``. Each element has to be either a noise power spectrum of shape ``(M//2+1,)`` for a one-channel group, or a noise covariance matrix (NCM) of shape ``(2, 2, M//2+1)`` for a two-channel group.
+    :type nps: Union[np.ndarray, List[np.ndarray]], optional
+    :param dt_us: The time between to consecutive samples in microseconds. Only relevant if the ``nps`` you provide does not contain ``vai.NPS`` or ``vai.NCM`` objects, but pure np.ndarray(s)
+    :type dt_us: int, optional
+    
     :param kwargs: Additional keyword arguments for :class:`cait.versatile.OptimumFiltering` (or :class:`cait.versatile.OptimumFiltering2D`). Most notably, you can set ``method='linear'`` for a linear convolution of event traces larger than the one dictated by ``sev``.
     :type kwargs: Any
 
@@ -507,6 +514,8 @@ class OFPulseHeight(ScalarFncBaseclass):
     - **of_max_pos** (samples): The position (index) of the global maximum of the filtered event (the value of the filtered event at this index is **of_max_val**).
     - **of_rms** (V): The root mean square (RMS) value between the filtered event and the filtered reference SEV. The reference is obtained by scaling the SEV to **of_ph** and shifting it relative to the event such that their **of_eval_pos** indices are aligned. This RMS value is global (all samples which were not invalidated because of the shifting).
     - **of_peak_rms** (V): Same as **of_rms** but only the number of samples specified by argument ``peak_rms_width`` before and after the **of_eval_pos** is used for the calculation.
+    - **of_chi2** (V): The chi-squared value of the event. Only returned if ``calc_chi2`` is set to True.
+    - **of_chi2_red** (V): The reduced chi-squared value of the event. Only returned if ``calc_chi2`` is set to True.
 
     .. warning::
         If you directly use this function, make sure to retrieve its results by first applying it to an iterator ``of_res = vai.apply(f, it)`` and unpacking it into a dictionary ``of_res_dict = {k: v for k, v in zip(f.names(), of_res)}`` (as explained in the example below). By doing so, you future-proof your code as more outputs might be added to the function in the future.
