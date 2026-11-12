@@ -130,7 +130,7 @@ class TestApplyTemplateFit:
 
     @pytest.mark.parametrize(
         "tau_exp, expected_n_pars",
-        [(None, 4), (10, 5), (10.1, 5)]
+        [(None, 4), (10, 5), ([10.1], 5), ([10, 20], 6)]
     )
     def test_exp_baseline_one_channel(self, datahandler, tau_exp, expected_n_pars):
         mock_data = vai.MockData(dt_us=datahandler.dt_us)
@@ -154,7 +154,7 @@ class TestApplyTemplateFit:
 
     @pytest.mark.parametrize(
         "tau_exp, expected_n_pars",
-        [([None, 10], 5), ([10.1, None], 5)]
+        [([None, 10], 5), ([10.1, 20], 5), ([[10, 20], [30, 40]], 6)]
     )
     def test_exp_baseline_two_channel(self, datahandler, tau_exp, expected_n_pars):
         mock_data = vai.MockData(dt_us=datahandler.dt_us)

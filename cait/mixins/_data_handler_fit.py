@@ -363,7 +363,7 @@ class FitMixin(object):
         :type sev: np.ndarray
         :param bl_poly_order: List of the baseline models to use in the fit (one entry for each channel that you want to fit). Has to be a non-zero integer or None. If 0, a constant offset is fitted, if 1, a linear baseline is assumed, etc. If None, the baseline is assumed to be constantly 0 (here, it's the users responsibility to remove the baseline accordingly). If only None or an integer is provided, this value is used for all fitted channels, defaults to 3, i.e. fitting a cubic baseline for all channels.
         :type bl_poly_order: Union[int, List[int]], optional
-        :param exp_tau: If set, adds a decaying baseline component with fixed exp_tau for fitting. Intended use for pulses that sit on top of decaying baselines.
+        :param exp_tau: If set, baseline fit will include exponential decays with decay time constants τ . The units need to match provided xdata (e.g. ms). If xdata is not provided, exp_tau needs to be in units of inverse samples. If multiple channels: Provide scalar to be used for all channels or [tau_ch1, tau_ch2, ...] or [[tau1_ch1, tau2_ch2, ...], [tau1_ch2, tau2_ch2, ...], ...]
         :type exp_tau: float, optional
         :param truncation_limit: List with as many entries as there are channels to fit. For each entry that is not None, a truncated fit is performed: all samples between the first and the last sample above 'truncation_limit' are ignored in the fit. To determine these samples, the baseline of the event is removed by fitting a linear polynomial to the beginning of the record window. If only None or a float is provided, this value is used for all fitted channels. Defaults to None, i.e. not performing a truncated fit in any channel.
         :type truncation_limit: Union[float, List[float]], optional
@@ -599,7 +599,10 @@ class FitMixin(object):
         else:
             for i in range(n_channels_used):
                 ch = channels_used[i]
-                n_exp = len(exp_tau[i]) if exp_tau[i] is not None else 0
+                if np.isscalar(exp_tau[i]):
+                    n_exp = 1
+                else:
+                    n_exp = len(exp_tau[i]) if exp_tau[i] is not None else 0
                 n_pars = (1 if bl_poly_order[i] is None else bl_poly_order[i] + 2) + n_exp
 
                 tf = vai.TemplateFit(
