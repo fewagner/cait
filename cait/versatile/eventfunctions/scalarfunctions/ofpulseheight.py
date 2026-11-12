@@ -851,11 +851,6 @@ class OFPulseHeight(ScalarFncBaseclass):
                     "if you set 'calc_chi2=True', you have to provide a 'nps'."
                 )
 
-            if not isinstance(nps, (list, np.ndarray)):
-                raise TypeError(
-                    f"'nps' must be a list or ndarray with the same length as 'filter_groups'. Got {len(nps)} and {len(filter_groups)}"
-                )
-
             if len(nps) != self._n_filters:
                 raise ValueError(
                     "There must be one NPS/NCM per filter group. "
