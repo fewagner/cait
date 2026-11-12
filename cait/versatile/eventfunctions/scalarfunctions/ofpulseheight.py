@@ -319,8 +319,8 @@ def _time_domain_residual(event, sev, pulse_heights, eval_pos, sev_eval_pos, cha
     :return: The residual array. Has the same shape as ``event``.
     :rtype: np.ndarray
     """
-    n_samples = event.shape[1]
-    for group in range(pulse_heights.shape[0]):
+    n_samples = event.shape[-1]
+    for group in range(pulse_heights.shape[-1]):
         for slot in range(2):
             channel = channels[group, slot]
             if slot == 1 and channel == channels[group, 0]:
@@ -339,7 +339,7 @@ def _time_domain_residual(event, sev, pulse_heights, eval_pos, sev_eval_pos, cha
     [(
         # Inputs ---------------------------
         numba.complex128[:, :],        # residual_fft (n_channels, n_freqs)
-        numba.int64[:, :],             # channels (n_groups, 2); 1-ch group = (c, c)
+        numba.int64[:, :],             # grouped_channels (n_groups, 2); 1-ch group = (c, c)
         numba.complex128[:, :, :, :],  # weighted_inverse_cov (n_groups, n_freqs, 2, 2)
         # Outputs --------------------------
         numba.float64[:],              # chi2 (n_groups,)
@@ -347,7 +347,7 @@ def _time_domain_residual(event, sev, pulse_heights, eval_pos, sev_eval_pos, cha
     "(n,f),(g,w),(g,f,r,s)->(g)",
     nopython=True, cache=True,
 )
-def _residual_of_chi2(residual_fft, channels, weighted_inverse_cov, chi2):
+def _residual_of_chi2(residual_fft, grouped_channels, weighted_inverse_cov, chi2):
     """
     Calculate the chi2 of every filter group from the Fourier transform of the residual.
  
@@ -357,18 +357,23 @@ def _residual_of_chi2(residual_fft, channels, weighted_inverse_cov, chi2):
  
     :param residual_fft: The Fourier transform (``np.fft.rfft``) of the residual. Has to have shape (N, F), where N is the number of channels and F is the number of frequency bins. Can also have shape (L, N, F) in which case it is treated as a batch of L (multi-channel) events. The output will then be of shape (L, G) as well.
     :type residual_fft: np.ndarray
-    :param channels: Integer array that specifies which channels belong to which filter group. Has shape (G, 2), where G is the number of filter groups. For a two-channel group, it contains both channels. For a one-channel group, it contains the same channel twice.
-    :type channels: np.ndarray
+    :param grouped_channels: Integer array that specifies which channels belong to which filter group. Has shape (G, 2), where G is the number of filter groups. For a two-channel group, it contains both channels. For a one-channel group, it contains the same channel twice.
+    :type grouped_channels: np.ndarray
     :param weighted_inverse_cov: The inverse noise covariance matrices, multiplied with the weight of each frequency bin (see 'make_residual_chi2'). Has to have shape (G, F, 2, 2). For one-channel groups, only the entry [0, 0] of each matrix is used.
     :type weighted_inverse_cov: np.ndarray
  
     :return: The chi2 value of each filter group. Has shape (G,), or (L, G) for a batch of events.
     :rtype: np.ndarray
     """
-    for group in range(channels.shape[0]):
-        channel0, channel1 = channels[group, 0], channels[group, 1]
+    # Initialize the output array with zeros (in place, i.e. the array that
+    # numba passes in is filled, no new array is created).
+    for group in range(chi2.shape[-1]):
+        chi2[group] = 0.0
+ 
+    for group in range(grouped_channels.shape[-2]):
+        channel0, channel1 = grouped_channels[group, 0], grouped_channels[group, 1]
         total = 0.0
-        for freq in range(residual_fft.shape[1]):
+        for freq in range(residual_fft.shape[-1]):
             residual0 = residual_fft[channel0, freq]
             residual1 = residual_fft[channel1, freq]
             total += (
@@ -408,7 +413,7 @@ def _chi2(event, pulse_heights, eval_pos, *, sev, sev_eval_pos, channels,
     :param dof: The degrees of freedom of each filter group. Has shape (G,).
     :type dof: np.ndarray
  
-    :return: Tuple of the chi2 and the reduced chi2 of all filter groups. Both have shape (G,), or (L, G) for a batch of events.
+    :return: Tuple of the chi2 and the reduced chi2 of all filter groups. Both have shape (N), or (N, G) for a batch of events.
     :rtype: Tuple[np.ndarray]
     """
     residual = _time_domain_residual(
@@ -633,8 +638,11 @@ class OFPulseHeight(ScalarFncBaseclass):
         ("of_chi2_red", float),
     )
 
+    # Dynamic outputs are currently not implemented
+    _outputs = _base_outputs + _chi2_outputs
+
     # Keep the original six outputs as the class-level default.
-    _outputs = _base_outputs
+    #_outputs = _base_outputs
 
     def __init__(
         self, 
@@ -689,13 +697,19 @@ class OFPulseHeight(ScalarFncBaseclass):
         self._n_filters = len(filter_groups)
         self._calc_chi2 = calc_chi2
 
-        if self._calc_chi2:
-            self._outputs = (
-                self._base_outputs
-                + self._chi2_outputs
-            )
-        else:
-            self._outputs = self._base_outputs
+        #Dynamic outputs are currently not implemented
+        self._outputs = (
+                        self._base_outputs
+                        + self._chi2_outputs
+                    )
+
+        #if self._calc_chi2:
+        #    self._outputs = (
+        #        self._base_outputs
+        #        + self._chi2_outputs
+        #    )
+        #else:
+        #    self._outputs = self._base_outputs
 
         # If max_search and relative_to aren't given as lists, the input is used for all channels.
         if not isinstance(max_search, list):
@@ -837,9 +851,9 @@ class OFPulseHeight(ScalarFncBaseclass):
                     "if you set 'calc_chi2=True', you have to provide a 'nps'."
                 )
 
-            if not isinstance(nps, list):
+            if not isinstance(nps, (list, np.ndarray)):
                 raise TypeError(
-                    "'nps' must be a list containing one NPS/NCM per each element of 'filter_group'."
+                    f"'nps' must be a list or ndarray with the same length as 'filter_groups'. Got {len(nps)} and {len(filter_groups)}"
                 )
 
             if len(nps) != self._n_filters:
@@ -887,14 +901,18 @@ class OFPulseHeight(ScalarFncBaseclass):
             peak_rms,
         )
 
-        if not self._calc_chi2:
-            return base_results
+        #if not self._calc_chi2:
+            #    return base_results
+            #
 
-        chi2, chi2_red = self._chi2(
-            event,
-            eval_ph,
-            eval_pos,
-        )
+        if self._calc_chi2:
+            chi2, chi2_red = self._chi2(
+                event,
+                eval_ph,
+                eval_pos,
+            )
+        else:
+            chi2 = chi2_red = -404*np.ones(self._n_filters)
 
         return (
             *base_results,
