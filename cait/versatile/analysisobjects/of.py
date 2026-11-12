@@ -139,6 +139,10 @@ class OF(ArrayWithBenefits):
                 ncm_inv = np.linalg.inv(np.transpose(np.array(nps), [2, 0, 1]))
                 H = np.squeeze(sev_vec @ ncm_inv).T
 
+                # In any case, we force the 0 component of the filter kernel to 0
+                # (this shifts the signal to 0)
+                H[..., 0] = 0
+
                 maximum = np.max(
                     np.sum(np.atleast_2d(OptimumFiltering(H)(sev)), axis=0)
                 )
