@@ -470,7 +470,9 @@ def make_residual_chi2(sev, sev_eval_pos, noise_models, filter_groups,
     # N-1 real data points per channel (DC excluded), minus the fitted
     # parameters: the amplitude, plus the pulse position if it was searched.
     n_channels_per_group = np.array([len(group) for group in groups])
-    n_fitted_parameters = 1 + np.asarray(fit_time_per_group)
+    n_fitted_parameters = 1
+    #Check if time is fitted or not
+    #n_fitted_parameters = 1 + np.asarray(fit_time_per_group)
     dof = n_channels_per_group * (n_samples - 1) - n_fitted_parameters
  
     sev_eval_pos = np.asarray(sev_eval_pos, dtype=np.int64)
