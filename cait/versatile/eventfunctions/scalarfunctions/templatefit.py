@@ -341,39 +341,6 @@ class _TemplateCachePoly:
         design = np.column_stack(columns)
         return design.T @ y / len(y)
 
-    '''
-    def _chij2(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
-        """
-        Returns the chi-squared value for a given shift after fitting ``sev`` to ``ev`` including a non-trivial baseline.
-
-        :param j: The shift.
-        :type j: int
-        :param ev: The event to be fitted.
-        :type ev: np.ndarray
-        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
-        :type flag: np.ndarray, optional
-        
-        :return: The chi-squared value.
-        :rtype: float
-        """
-        # this ensures that it works for both integers as well as the
-        # minimizer's output (length-1 array)
-        j = int(np.round(np.array(j)[None].flatten()[0]))
-        s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
-
-        if self._baseline_type == 'polynomial':
-            sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
-            return np.mean((y - sol[0]*s - np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0))**2)
-                
-        elif self._baseline_type == 'polyexp':
-            sol = solve(self._A(j, flag), self._b(j, ev, flag), assume_a="sym")
-            poly = np.sum([sol[k+1]*x**k for k in range(self._order+1)], axis=0)
-            b_exp = sol[self._order+2]
-            e = np.exp(-(1./self._exp_tau) * x)
-            fit = sol[0]*s + poly + b_exp*e
-            return np.mean((y - fit)**2)
-    '''
-
     def _A(self, j: int, flag: np.ndarray = None):
         """
         Returns the matrix for the linear system of equations needed for the template fit including a non-trivial baseline. If flag is None, cached values (if available) for a given shift value ``j`` are returned.
@@ -388,83 +355,9 @@ class _TemplateCachePoly:
         """
         return self._A_cached(j) if flag is None else self._A_uncached(j, flag)
 
-    """
-    def _A_uncached(self, j: int, flag: np.ndarray):
-        s, x = shift_arrays(self._sev, self._xdata, j=j, flag=flag)
-        
-        if self._baseline_type == 'polynomial':
-            return np.concatenate([
-                np.array([ [np.mean(s**2)] + [np.mean(s*x**k) for k in range(self._order+1)] ]),
-                np.array([ 
-                    [np.mean(s*x**l)] + [np.mean(x**(k+l)) for k in range(self._order+1)]
-                    for l in range(self._order+1)
-                ])
-            ])
-        
-        elif self._baseline_type == 'polyexp':
-            # size: (2 + order+1) x (2 + order+1)
-            # order of unknowns: [a, c0..c_order, b_exp]
-            e = np.exp(-(1./self._exp_tau) * x)
-            K = self._order + 2 + 1  # a + (order+1 poly) + b_exp
-            A = np.zeros((K, K), dtype=float)
-
-            # indices
-            ia = 0
-            i_poly0 = 1
-            i_exp = 1 + (self._order + 1)
-
-            # <s, s>
-            A[ia, ia] = np.mean(s*s)
-            # <s, x^k>
-            for k in range(self._order+1):
-                A[ia, i_poly0+k] = A[i_poly0+k, ia] = np.mean(s * x**k)
-                # <s, e>
-            A[ia, i_exp] = A[i_exp, ia] = np.mean(s * e)
-
-            # <x^l, x^k>
-            for l in range(self._order+1):
-                for k in range(self._order+1):
-                    A[i_poly0+l, i_poly0+k] = np.mean(x**(k+l))
-            # <x^l, e>
-            for l in range(self._order+1):
-                A[i_poly0+l, i_exp] = A[i_exp, i_poly0+l] = np.mean((x**l) * e)
-
-            # <e, e>
-            A[i_exp, i_exp] = np.mean(e*e)
-
-            return A
-        """
-        
     def _A_cached(self, j: int):
         return self._cache[j]
 
-    '''
-    def _b(self, j: int, ev: np.ndarray, flag: np.ndarray = None):
-        """
-        Returns right hand side for the linear system of equations needed for the template fit including a non-trivial baseline.
-
-        :param j: The shift value.
-        :type j: int
-        :param flag: The flag to apply to the data (used for truncated fit). Defaults to None, i.e. no slicing
-        :type flag: np.ndarray, optional
-
-        :return: The right hand side for the linear system of equations.
-        :rtype: np.ndarray
-        """
-        s, y, x = shift_arrays(self._sev, ev, self._xdata, j=j, flag=flag)
-        
-        if self._baseline_type == 'polynomial':
-            return np.array([np.mean(y*s)] + [np.mean(y*x**k) for k in range(self._order+1)])
-            
-        elif self._baseline_type == 'polyexp':
-            # [ <y,s>, <y,x^0>,...,<y,x^order>, <y,e> ]
-            e = np.exp(-(1./self._exp_tau) * x)
-            return np.array(
-                [np.mean(y*s)] +
-                [np.mean(y*x**k) for k in range(self._order+1)] +
-                [np.mean(y*e)]
-            )
-    '''
 ########################
 ### CLASS DEFINITION ###
 ########################
@@ -550,8 +443,7 @@ class TemplateFit(ScalarFncBaseclass):
                     "not provided, it defaults to a normalized range from 0 to 1; "
                     "exp_tau is therefore not interpreted in milliseconds. Pass "
                     "xdata in milliseconds (e.g. from xdata = dh.record_window(ms=True)) to use exp_tau values in milliseconds.",
-                    UserWarning,
-                    stacklevel=2,
+                    UserWarning, stacklevel=2,
                 )
         else:
             self._xdata = np.asarray(xdata)

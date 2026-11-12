@@ -504,16 +504,7 @@ class FitMixin(object):
 
         if fit_onset is None or isinstance(fit_onset, (bool, np.bool_)):
             fit_onset = [fit_onset] * n_channels_used
-
-        if "xdata" not in kwargs and exp_tau is not None:
-                warnings.warn(
-                    "exp_tau is interpreted in the units of xdata. Since xdata was "
-                    "not provided, it defaults to a normalized range from 0 to 1; "
-                    "exp_tau is therefore not interpreted in milliseconds. Pass "
-                    "xdata in milliseconds (e.g. from xdata = dh.record_window(ms=True)) to use exp_tau values in milliseconds.",
-                    UserWarning,
-                    stacklevel=2,
-                )
+            
         # Normalize exp_tau. For one fitted channel, a flat sequence denotes
         # multiple exponential components for that channel. For multiple fitted
         # channels, provide one entry per channel.
@@ -592,6 +583,7 @@ class FitMixin(object):
                     truncation_limit=truncation_limit,
                     fit_onset=fit_onset,
                     max_shift=max_shift,
+                    exp_tau=exp_tau,
                     **kwargs)
 
             if preview:

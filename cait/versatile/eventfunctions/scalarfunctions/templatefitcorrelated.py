@@ -1,4 +1,5 @@
 from typing import List
+import warnings
 
 import numpy as np
 from scipy.linalg import LinAlgError
@@ -27,13 +28,16 @@ class _TemplateCacheCorrelated:
     :type fit_onset: List[bool]
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``. Defaults to 50 samples
     :type max_shift: int, optional
+    :param exp_tau: Optional decay time constant(s), per channel, for exponential components in the baseline. Units must match xdata.
+    :type exp_tau: float or sequence, optional
     """
     def __init__(self, 
                  sev: np.ndarray, 
                  xdata: np.ndarray, 
                  order: List[int], 
                  fit_onset: List[bool],
-                 max_shift: int = 50):
+                 max_shift: int = 50,
+                 exp_tau: List = None):
         
         self._sev = sev
         self._n_channels = sev.shape[0]
@@ -41,6 +45,7 @@ class _TemplateCacheCorrelated:
         self._order = order
         self._fit_onset = fit_onset
         self._max_shift = max_shift
+        exp_tau = [None] * self._n_channels if exp_tau is None else exp_tau
         
         # Construct template fits for each channel separately
         self._template_fits = []
@@ -61,7 +66,8 @@ class _TemplateCacheCorrelated:
                         xdata=self._xdata,
                         order=self._order[i],
                         fit_onset=self._fit_onset[i],
-                        max_shift=self._max_shift
+                        max_shift=self._max_shift,
+                        exp_tau=exp_tau[i]
                     )
                 )
                 
@@ -70,7 +76,12 @@ class _TemplateCacheCorrelated:
         #  [ph_ch1, poly0_ch1, poly1_ch1, poly2_ch1, poly3_ch1]]
         non_none_orders = [x for x in self._order if x is not None]
         max_order = np.max(non_none_orders) if len(non_none_orders)>0 else -1
-        self._output_shape = (self._n_channels, 2+max_order)
+        max_params = max(
+            (1 if order is None else order + 2 +
+             (0 if exp_tau[i] is None else np.atleast_1d(exp_tau[i]).size))
+            for i, order in enumerate(self._order)
+        )
+        self._output_shape = (self._n_channels, max(2 + max_order, max_params))
         
         # Define error outputs (if fit fails, these will be the
         # fit results that tell you that the fit failed)
@@ -193,6 +204,8 @@ class TemplateFitCorrelated(ScalarFncBaseclass):
     :type fit_onset: List[bool]
     :param max_shift: The maximum shift value (in samples) to search for a minimum. The onset fit will search the minimum for shifts in ``(-max_shift, +max_shift)``.
     :type max_shift: int
+    :param exp_tau: Exponential decay time constant(s) for each channel's baseline. A scalar applies to every channel; otherwise provide a sequence of taus per channel. Units must match xdata.
+    :type exp_tau: float or sequence, optional
     
     :return: Tuple of fit result, optimal shift, and RMS value ``([[amplitude_ch0, constant_bl_coeff_ch0, linear_bl_coeff_ch0, ...], [amplitude_ch1, constant_bl_coeff_ch1, linear_bl_coeff_ch1, ...]], shift, [rms_ch0, rms_ch1, ...])``. If you set ``fit_onset=False``, the ``shift`` value will just be 0. If the fit fails, all fit parameters are set to 0 and the RMS value is set to -404. If different orders of baseline polynomials are used for different channels, the output is extended to the largest used polynomial order (i.e. unused coefficients are 0).
     :rtype: Tuple[np.ndarray, int, np.ndarray]
@@ -235,7 +248,8 @@ class TemplateFitCorrelated(ScalarFncBaseclass):
                  truncation_limit: List[float] = None,
                  xdata: List[float] = None,
                  fit_onset: List[bool] = True,
-                 max_shift: int = 50
+                 max_shift: int = 50,
+                 exp_tau: List = None
                  ):
         
         if not (np.array(sev).ndim == 2):
@@ -250,10 +264,29 @@ class TemplateFitCorrelated(ScalarFncBaseclass):
         self._sev = np.array(sev)
         self._n_channels = self._sev.shape[0]
         self._xdata = np.linspace(0, 1, self._sev.shape[-1]) if xdata is None else np.array(xdata)
+        if xdata is None and exp_tau is not None:
+            warnings.warn(
+                "exp_tau is interpreted in the units of xdata. Since xdata was not provided, "
+                "it defaults to a normalized range from 0 to 1; exp_tau is therefore not "
+                "interpreted in milliseconds. Pass xdata in milliseconds (e.g. from xdata = dh.record_window(ms=True)) to use exp_tau "
+                "values in milliseconds.", UserWarning, stacklevel=2)
         self._bl_poly_order = [bl_poly_order]*self._n_channels if (isinstance(bl_poly_order, int) or bl_poly_order is None) else bl_poly_order
         self._truncation_limit = [truncation_limit]*self._n_channels if (isinstance(truncation_limit, int) or truncation_limit is None) else truncation_limit
         self._fit_onset = [fit_onset]*self._n_channels if isinstance(fit_onset, bool) else fit_onset
         self._max_shift = max_shift
+
+        if exp_tau is None or np.isscalar(exp_tau):
+            exp_tau = [exp_tau] * self._n_channels
+        elif self._n_channels == 1:
+            exp_tau = [exp_tau]
+        elif len(exp_tau) == self._n_channels:
+            exp_tau = [None if taus is None else ([taus] if np.isscalar(taus) else taus)
+                       for taus in exp_tau]
+        else:
+            raise ValueError("'exp_tau' must be a scalar, a sequence of taus for one channel, or a sequence with one entry per channel.")
+        if len(exp_tau) != self._n_channels:
+            raise ValueError("'exp_tau' must have one entry per channel.")
+        self._exp_tau = exp_tau
         
         if not (len(self._bl_poly_order) == self._n_channels):
             raise ValueError(f"'bl_poly_order' has to be None, an integer, or a list/tuple the same length as there are channels in 'sev'. Got {len(self._bl_poly_order)} and {self._n_channels}.")
@@ -272,7 +305,8 @@ class TemplateFitCorrelated(ScalarFncBaseclass):
                                                 xdata=self._xdata, 
                                                 order=self._bl_poly_order, 
                                                 fit_onset=self._fit_onset, 
-                                                max_shift=self._max_shift)
+                                                max_shift=self._max_shift,
+                                                exp_tau=self._exp_tau)
 
     def __call__(self, event):
         if event.shape != self._sev.shape: 
@@ -299,10 +333,23 @@ class TemplateFitCorrelated(ScalarFncBaseclass):
         shifted_sev, shifted_x = shift_arrays(self._sev, self._xdata, j=shift)
         shifted_x = np.array([shifted_x]*self._n_channels)
 
-        fit_sev = fitpars[:,0][:,None]*shifted_sev + np.sum([
-            fitpars[:,k+1][:,None]*shifted_x**k 
-            for k in range(fitpars.shape[-1]-1)
-            ], axis=0)
+        fit_sev = np.zeros_like(shifted_sev, dtype=float)
+        for i, order in enumerate(self._bl_poly_order):
+            fit_sev[i] = fitpars[i, 0] * shifted_sev[i]
+            if order is not None:
+                n_poly = order + 1
+                fit_sev[i] += sum(
+                    fitpars[i, k + 1] * shifted_x[i] ** k
+                    for k in range(n_poly)
+                )
+                taus = self._exp_tau[i]
+                if taus is not None:
+                    taus = np.atleast_1d(taus)
+                    coeffs = fitpars[i, 1 + n_poly:1 + n_poly + len(taus)]
+                    fit_sev[i] += np.sum(
+                        coeffs[:, None] * np.exp(-shifted_x[i][None, :] / taus[:, None]),
+                        axis=0,
+                    )
         
         d = dict()
         for i in range(self._n_channels):
