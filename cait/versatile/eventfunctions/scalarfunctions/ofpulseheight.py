@@ -5,6 +5,7 @@ import numba
 import numpy as np
 
 from ..functionbase import ScalarFncBaseclass
+from ...analysisobjects import NPS, NCM
 from ..processing.optimumfiltering import OptimumFiltering, OptimumFiltering2D
 from ..processing.removebaseline import RemoveBaseline
 
@@ -626,25 +627,16 @@ class OFPulseHeight(ScalarFncBaseclass):
 
     .. image:: media/OFPulseHeight_preview4.png
     """
-    _base_outputs = (
+    _outputs = (
         ("of_ph", float),
         ("of_max_val", float),
         ("of_eval_pos", int),
         ("of_max_pos", int),
         ("of_rms", float),
         ("of_peak_rms", float),
-    )
-
-    _chi2_outputs = (
         ("of_chi2", float),
         ("of_chi2_red", float),
     )
-
-    # Dynamic outputs are currently not implemented
-    _outputs = _base_outputs + _chi2_outputs
-
-    # Keep the original six outputs as the class-level default.
-    #_outputs = _base_outputs
 
     def __init__(
         self, 
@@ -655,9 +647,7 @@ class OFPulseHeight(ScalarFncBaseclass):
         max_search: List[Union[int, float, Tuple[Union[int, float]]]] = (0.2, 0.4),
         relative_to: List[int] = None, 
         peak_rms_width: int = 5,
-        calc_chi2: bool = False,
-        nps: List[np.ndarray] = None,
-        dt_us: float = None,
+        nps: List[Union[NPS, NCM]] = None,
         **kwargs,
     ):
         # Sanitize input arrays
@@ -665,6 +655,7 @@ class OFPulseHeight(ScalarFncBaseclass):
         sev = np.atleast_2d(sev)
         self._record_length = sev.shape[-1]
         self._n_channels = sev.shape[0]
+        self._calc_chi2 = nps is not None
         
         # Check if shapes of OF and SEV are compatible.
         if not of.shape[0] == sev.shape[0]:
@@ -692,26 +683,11 @@ class OFPulseHeight(ScalarFncBaseclass):
             if i < 0 or i >= self._n_channels:
                 raise ValueError(f"Values in 'filter_groups' have to specify valid channel indices. Got index {i} but number of channels is {self._n_channels}.")
 
-        if calc_chi2 and str(kwargs.get("method", "")).lower() == "linear":
-            raise ValueError("If `calc_chi2` is set to `True`, `method = 'linear'` is not supported.")
+        if self._calc_chi2 and str(kwargs.get("method", "")).lower() == "linear":
+            raise NotImplementedError("Chi-squared calculation is not yet implemented for `method = 'linear'`.")
 
         self._filter_groups = filter_groups
         self._n_filters = len(filter_groups)
-        self._calc_chi2 = calc_chi2
-
-        #Dynamic outputs are currently not implemented
-        self._outputs = (
-                        self._base_outputs
-                        + self._chi2_outputs
-                    )
-
-        #if self._calc_chi2:
-        #    self._outputs = (
-        #        self._base_outputs
-        #        + self._chi2_outputs
-        #    )
-        #else:
-        #    self._outputs = self._base_outputs
 
         # If max_search and relative_to aren't given as lists, the input is used for all channels.
         if not isinstance(max_search, list):
@@ -848,11 +824,6 @@ class OFPulseHeight(ScalarFncBaseclass):
         self._rms = lambda event, phs, eval_pos: _rms(event, eval_pos, sev_filtered, phs, sev_eval_pos, peak_rms_width)
 
         if self._calc_chi2:
-            if nps is None:
-                raise ValueError(
-                    "if you set 'calc_chi2=True', you have to provide a 'nps'."
-                )
-
             if len(nps) != self._n_filters:
                 raise ValueError(
                     "There must be one NPS/NCM per filter group. "
@@ -860,16 +831,9 @@ class OFPulseHeight(ScalarFncBaseclass):
                     f"{self._n_filters} filter groups."
                 )
 
-            # Use the explicitly supplied timebase, or infer it from the
-            # first NPS/NCM object that provides one.
-            if dt_us is None:
-                dt_us = next(
-                    (m.dt_us for m in nps if getattr(m, "dt_us", None) is not None), None
-                )
-                if dt_us is None:
-                    raise ValueError(
-                        "'dt_us' must be provided when the NPS/NCM inputs have no 'dt_us' attribute."
-                    )
+            dt_us = next(
+                (m.dt_us for m in nps if getattr(m, "dt_us", None) is not None), None
+            )
             
             self._chi2 = make_residual_chi2(
                 sev, sev_eval_pos, nps, filter_groups, fit_time_per_group, dt_us
@@ -889,19 +853,6 @@ class OFPulseHeight(ScalarFncBaseclass):
         max_pos, eval_pos, max_ph, eval_ph, self._actual_where = self._search(self._filtered_event)
         rms, peak_rms = self._rms(self._filtered_event, eval_ph, eval_pos)
 
-        base_results = (
-            eval_ph,
-            max_ph,
-            eval_pos,
-            max_pos,
-            rms,
-            peak_rms,
-        )
-
-        #if not self._calc_chi2:
-            #    return base_results
-            #
-
         if self._calc_chi2:
             chi2, chi2_red = self._chi2(
                 event,
@@ -912,9 +863,14 @@ class OFPulseHeight(ScalarFncBaseclass):
             chi2 = chi2_red = -404*np.ones(self._n_filters)
 
         return (
-            *base_results,
+            eval_ph,
+            max_ph,
+            eval_pos,
+            max_pos,
+            rms,
+            peak_rms,
             chi2,
-            chi2_red,
+            chi2_red
         )
 
     @property
