@@ -5,10 +5,8 @@ import numba
 import numpy as np
 
 from ..functionbase import ScalarFncBaseclass
-from ...analysisobjects import NPS, NCM
 from ..processing.optimumfiltering import OptimumFiltering, OptimumFiltering2D
 from ..processing.removebaseline import RemoveBaseline
-
 
 @numba.guvectorize(
     [(
@@ -503,7 +501,7 @@ class OFPulseHeight(ScalarFncBaseclass):
     """
     Calculate optimum filter pulse heights.
 
-    For single channels, this merely filters event traces and performs a maximum search in a specified range of the record window (or evaluates the trace at a specific index). For multiple channels, however, the maximum search (or index evaluation) can be performed relative to other channels. 
+    For single channels, this merely filters event traces and performs a maximum search in a specified range of the record window (or evaluates the trace at a specific index). For multiple channels, however, the maximum search (or index evaluation) can be performed relative to other channels. If ``nps`` is supplied, the OF chi-squared is also computed.
 
     2D optimum filtering is also supported.
      
@@ -519,12 +517,8 @@ class OFPulseHeight(ScalarFncBaseclass):
     :type relative_to: List[int], optional
     :param peak_rms_width: The number of samples before and after the filter evaluation sample that are used for calculating the filter RMS value. Defaults to 5 samples
     :type peak_rms_width: int, optional
-    :param calc_chi2: If set to True, the Chi-squared of the events is evaluated, provided you also specify a ``nps`` (and possibly ``dt_us``, see below).
-    :type calc_chi2: bool, optional
-    :param nps: The NPS/NCM(s) of the channel(s). One for each elements in ``filter_groups``. Each element has to be either a noise power spectrum of shape ``(M//2+1,)`` for a one-channel group, or a noise covariance matrix (NCM) of shape ``(2, 2, M//2+1)`` for a two-channel group.
-    :type nps: Union[np.ndarray, List[np.ndarray]], optional
-    :param dt_us: The time between to consecutive samples in microseconds. Only relevant if the ``nps`` you provide does not contain ``vai.NPS`` or ``vai.NCM`` objects, but pure np.ndarray(s)
-    :type dt_us: int, optional
+    :param nps: The NPS/NCM(s) of the channel(s). One for each elements in ``filter_groups``. Each element has to be either a noise power spectrum of shape ``(M//2+1,)`` for a one-channel group, or a noise covariance matrix (NCM) of shape ``(2, 2, M//2+1)`` for a two-channel group. default to None
+    :type nps: List[Union[vai.NPS, vai.NCM]], optional
     
     :param kwargs: Additional keyword arguments for :class:`cait.versatile.OptimumFiltering` (or :class:`cait.versatile.OptimumFiltering2D`). Most notably, you can set ``method='linear'`` for a linear convolution of event traces larger than the one dictated by ``sev``.
     :type kwargs: Any
@@ -540,8 +534,8 @@ class OFPulseHeight(ScalarFncBaseclass):
     - **of_max_pos** (samples): The position (index) of the global maximum of the filtered event (the value of the filtered event at this index is **of_max_val**).
     - **of_rms** (V): The root mean square (RMS) value between the filtered event and the filtered reference SEV. The reference is obtained by scaling the SEV to **of_ph** and shifting it relative to the event such that their **of_eval_pos** indices are aligned. This RMS value is global (all samples which were not invalidated because of the shifting).
     - **of_peak_rms** (V): Same as **of_rms** but only the number of samples specified by argument ``peak_rms_width`` before and after the **of_eval_pos** is used for the calculation.
-    - **of_chi2** (V): The chi-squared value of the event. Only returned if ``calc_chi2`` is set to True.
-    - **of_chi2_red** (V): The reduced chi-squared value of the event. Only returned if ``calc_chi2`` is set to True.
+    - **of_chi2** (V): The chi-squared value of the event. If ``nps`` is None, it is set to -404 for all events.
+    - **of_chi2_red** (V): The reduced chi-squared value of the event. If ``nps`` is None, it is set to -404 for all events.
 
     .. warning::
         If you directly use this function, make sure to retrieve its results by first applying it to an iterator ``of_res = vai.apply(f, it)`` and unpacking it into a dictionary ``of_res_dict = {k: v for k, v in zip(f.names(), of_res)}`` (as explained in the example below). By doing so, you future-proof your code as more outputs might be added to the function in the future.
@@ -613,7 +607,7 @@ class OFPulseHeight(ScalarFncBaseclass):
         )
 
         # Filter two of the three channels with larger stream window
-        # (potentially reduces filter edge effects).
+        # (potentially reduces filter edge effects)
         f3 = vai.OFPulseHeight(
             of=of,
             sev=sev,
@@ -627,7 +621,7 @@ class OFPulseHeight(ScalarFncBaseclass):
     .. code-block:: python
 
         # Filter first two channels with 2D filter and read third one
-        # relative to the evaluation position of the 2D filtered trace.
+        # relative to the evaluation position of the 2D filtered trace, while also computing the chi-squared
         # Note that here, we just use the filter/sev of the second channel 
         # twice. This is just for this demonstration (you would have 
         # three different filters/templates of course).
@@ -639,6 +633,7 @@ class OFPulseHeight(ScalarFncBaseclass):
             max_search=[(0., 1.), -1200], # maximum search in entire window for (0, 1),
                                           # fixed evaluation of 2 (1200 samples before
                                           # maximum of (0, 1)).
+            nps=[ncm_ch0_ch1, nps_ch2]    # vai.NCM for (0, 1), vai.NPS for 2
         )
 
         vai.Preview(it, f4)
@@ -665,7 +660,7 @@ class OFPulseHeight(ScalarFncBaseclass):
         max_search: List[Union[int, float, Tuple[Union[int, float]]]] = (0.2, 0.4),
         relative_to: List[int] = None, 
         peak_rms_width: int = 5,
-        nps: List[Union[NPS, NCM]] = None,
+        nps: List[Union["NPS", "NCM"]] = None,
         **kwargs,
     ):
         # Sanitize input arrays
@@ -852,6 +847,9 @@ class OFPulseHeight(ScalarFncBaseclass):
             dt_us = next(
                 (m.dt_us for m in nps if getattr(m, "dt_us", None) is not None), None
             )
+
+            if not dt_us:
+                raise TypeError("At least one of the elements of ``nps`` must have a ``dt_us`` attribute, i.e. it must be a NPS or NCM object!")
             
             self._chi2 = make_residual_chi2(
                 sev, sev_eval_pos, nps, filter_groups, fit_time_per_group, dt_us
