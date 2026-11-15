@@ -283,57 +283,75 @@ def _inverse(noise_model, norm):
     return inverse_cov
  
  
+
 @numba.guvectorize(
     [(
-        # Inputs ---------------------------
-        numba.float64[:, :],           # event (n_channels, n_samples)
+        numba.float64[:, :],           # event (n_channels, n_event_samples)
         numba.float64[:, :],           # sev   (n_channels, n_samples)
         numba.float64[:],              # pulse_heights (n_groups,)
         numba.int64[:],                # eval_pos (n_groups,), event evaluation position
         numba.int64[:],                # sev_eval_pos (n_groups,), SEV evaluation position
         numba.int64[:, :],             # channels (n_groups, 2); 1-ch group = (c, c)
-        # Outputs --------------------------
         numba.float64[:, :],           # residual (n_channels, n_samples)
     )],
-    "(n,m),(n,m),(g),(g),(g),(g,w)->(n,m)",
+    "(c,e),(c,n),(g),(g),(g),(g,w)->(c,n)",
     nopython=True, cache=True,
 )
 def _time_domain_residual(event, sev, pulse_heights, eval_pos, sev_eval_pos, channels, residual):
     """
-    Calculate the residual between the events and the scaled and shifted standard event (SEV) in the time domain, i.e. ``residual = event - pulse_height * shifted_sev``.
-  
-    Note that this is a ``numba`` pre-compiled function which automatically dispatches additional dimensions. Also note that the function signature includes the outputs as well (as this is the mechanism required by ``numpy``/``numba``).
+    Calculate the residual between the events and the scaled standard event (SEV) in the time domain, i.e. ``residual = event_window - pulse_height * sev``, where ``event_window`` is the part of the event whose pulse is aligned with the pulse of the SEV.
  
-    :param event: The event in the time domain. Has to have shape (N, M), where N is the number of channels and M is the number of samples. Can also have shape (L, N, M) in which case it is treated as a batch of L (multi-channel) events. The output will then be of shape (L, N, M) as well.
+    The alignment uses ``shift = eval_pos - sev_eval_pos``. If the event has as many samples as the SEV (``method='circular'``), the SEV is shifted by ``shift`` samples, circularly. If the event is longer (``method='linear'``, at least 3M samples), the event is cropped to M samples instead, starting at sample ``M + shift``. If this window is not inside the event, the residual is NaN.
+ 
+    Note that this is a ``numba`` pre-compiled function which automatically dispatches additional dimensions (and that the outputs are part of the signature).
+ 
+    :param event: The event. Has to have shape (N, E), where N is the number of channels and E is the number of samples of the event, which can be equal (if ``method='circular'``) or larger (if ``method='linear'``) than M. Can also have shape (L, N, E) for a batch of L events.
     :type event: np.ndarray
     :param sev: The standard event. Has to have shape (N, M).
     :type sev: np.ndarray
-    :param pulse_heights: The pulse heights (obtained in '_max_search') that are used to scale the SEV, one for each filter group. Has to have shape (G,), where G is the number of filter groups. For a batch of events it has shape (L, G).
+    :param pulse_heights: The pulse height of each filter group, shape (G,) or (L, G).
     :type pulse_heights: np.ndarray
-    :param eval_pos: The evaluation positions of the event (obtained in '_max_search'), one for each filter group. Has shape (G,), or (L, G) for a batch of events.
+    :param eval_pos: The evaluation position of the event for each filter group, shape (G,) or (L, G).
     :type eval_pos: np.ndarray
-    :param sev_eval_pos: The evaluation positions of the SEV (positions where the SEV would get evaluated according to the maximum search requirements of '_max_search'), one for each filter group. It is used to align the SEV with the event. Has to have shape (G,).
+    :param sev_eval_pos: The evaluation position of the SEV for each filter group, shape (G,).
     :type sev_eval_pos: np.ndarray
-    :param channels: Integer array that specifies which channels belong to which filter group. Has shape (G, 2). For a two-channel group, it contains both channels. For a one-channel group, it contains the same channel twice.
+    :param channels: The channels of each filter group, shape (G, 2). A one-channel group lists its channel twice.
     :type channels: np.ndarray
  
-    :return: The residual array. Has the same shape as ``event``.
+    :return: The residual. Has shape (N, M), or (L, N, M) for a batch of events.
     :rtype: np.ndarray
     """
-    n_samples = event.shape[-1]
-    for group in range(pulse_heights.shape[-1]):
+    n_samples = sev.shape[-1]
+
+    # For an event with more samples than the SEV (method='linear'), the filtered trace starts at sample M of
+    # the event (see 'OptimumFiltering'), i.e. the record window starts after M extra samples.
+    extra_samples = event.shape[-1] - n_samples
+    for group in range(pulse_heights.shape[0]):
+        shift = eval_pos[group] - sev_eval_pos[group]
         for slot in range(2):
             channel = channels[group, slot]
             if slot == 1 and channel == channels[group, 0]:
                 continue                                  # 1-ch group: don't process the second fictitious channel
-            shift = eval_pos[group] - sev_eval_pos[group]
-            sev_index = (-shift) % n_samples
-            for i in range(n_samples):
-                residual[channel, i] = (event[channel, i]
-                                        - pulse_heights[group] * sev[channel, sev_index])
-                sev_index += 1
-                if sev_index == n_samples:
-                    sev_index = 0
+            if extra_samples == 0:
+                # Shift the event circularly: shifted_event[i] = shifted_event[(i + shift)]
+                event_index = shift
+                for i in range(n_samples):
+                    residual[channel, i] = (event[channel, event_index]
+                                            - pulse_heights[group] * sev[channel, i])
+                    event_index += 1
+                    if event_index == n_samples:
+                        event_index = 0
+            else:
+                # Crop the event, such that its pulse is aligned with the SEV
+                start = n_samples + shift
+                if start < 0 or start + n_samples > event.shape[-1]:
+                    for i in range(n_samples):
+                        residual[channel, i] = np.nan     # window is not inside the event
+                else:
+                    for i in range(n_samples):
+                        residual[channel, i] = (event[channel, start + i]
+                                                - pulse_heights[group] * sev[channel, i])
+ 
  
  
 @numba.guvectorize(
@@ -397,7 +415,7 @@ def _chi2(event, pulse_heights, eval_pos, *, sev, sev_eval_pos, channels,
     The SEV is scaled with the pulse height, shifted to the position of the event pulse and subtracted from the event (in the time domain) to get the event residuals.
     The chi-squared of the residual is calculated with the NPS/NCM. The reduced chi-squared is the chi2 divided by the degrees of freedom.
  
-    :param event: The event in the time domain. Has to have shape (N, M), where N is the number of channels and M is the number of samples. Can also have shape (L, N, M) in which case it is treated as a batch of L (multi-channel) events. The outputs will then be of shape (L, ...) as well.
+    :param event: The event in the time domain. Has to have shape (N, E), where N is the number of channels and E is the number of samples, that can be equal to or larger than M (the number of samples of the SEV) (see '_time_domain_residual'). Can also have shape (L, N, E) in which case it is treated as a batch of L (multi-channel) events. The outputs will then be of shape (L, ...) as well.
     :type event: np.ndarray
     :param pulse_heights: The pulse heights (obtained in '_max_search'), one for each filter group. Has to have shape (G,), where G is the number of filter groups. For a batch of events it has shape (L, G).
     :type pulse_heights: np.ndarray
@@ -683,8 +701,8 @@ class OFPulseHeight(ScalarFncBaseclass):
             if i < 0 or i >= self._n_channels:
                 raise ValueError(f"Values in 'filter_groups' have to specify valid channel indices. Got index {i} but number of channels is {self._n_channels}.")
 
-        if self._calc_chi2 and str(kwargs.get("method", "")).lower() == "linear":
-            raise NotImplementedError("Chi-squared calculation is not yet implemented for `method = 'linear'`.")
+        if self._calc_chi2 and str(kwargs.get("method", "")).lower() == "linear_pad":
+            raise NotImplementedError("Chi-squared calculation is not yet implemented for `method='linear_pad'`.")
 
         self._filter_groups = filter_groups
         self._n_filters = len(filter_groups)
