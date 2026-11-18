@@ -849,6 +849,152 @@ class FeaturesMixin(object):
         if np.any(self.get(group, "of_rms" + (f"-{tag}" if tag else "")) == -404):
             print(f"{txt_fmt('One or more RMS value(s) was/were set to -404.', style='bold')} The corresponding filter values should not be trusted! If you set 'on_stream=True' it is possible that some of the events extended outside of the stream range after expanding them. Such events cannot be reliably filtered and were removed from the calculation and their RMS value was set to -404. Likewise, if you chose only to filter a subset of channels using the 'only_channels' argument, channels which were not filtered had their RMS values set to -404. {txt_fmt('This means that you should ALWAYS perform a cut of the form RMS>0.', style='bold')}")
 
+    def calc_shape_indicator(
+            self,
+            group: str,
+            of: np.ndarray,
+            sev: np.ndarray,
+            nps: np.ndarray,
+            *,
+            only_channels: Union[int, List[int]] = None,
+            window: bool = False,
+            with_processing: Union[Callable, List[Callable]] = None,
+            tag: str = "",
+            batch_size: int = 100,
+            preview: bool = False,
+            dt_us: int = None,
+    ):
+        """
+        Calculate the Shape Indicator (SI) of the events in a group.
+
+        The SI quantifies how well an optimum-filtered event matches the filtered standard event (see :class:`cait.versatile.ShapeIndicator` for details and for the definition from Di Domizio, Orio & Vignati, JINST 6 (2011) P02007). Events with the shape of the standard event have a low SI, whereas non-physical events (spikes, vibrations, pile-up) have a much larger SI. The scale depends on the setup (see the note below).
+
+        :param group: The DataHandler group with the events for which the SI should be calculated. The result is saved to this group, too.
+        :type group: str
+        :param of: The optimum filter(s) to use. One for each selected channel, i.e. has shape ``(N, M//2+1)`` where ``N`` is the number of channels and ``M`` is the record length.
+        :type of: np.ndarray
+        :param sev: The standard events corresponding to the filters. Has shape ``(N, M)``.
+        :type sev: np.ndarray
+        :param nps: The noise power spectra corresponding to the filters, as stored by :class:`cait.versatile.NPS` (one-sided PSD in V^2/Hz). Note that nps has shape ``(N, M//2+1)``. The NPS has to be computed with the same timebase as the data in the DataHandler (``dh.dt_us``), or with ``dt_us`` if you specify it.
+        :type nps: np.ndarray
+        :param only_channels: If you only want to calculate the SI for some of the channels in 'group', you can specify the channel index/indices here. The sizes of ``of``, ``sev`` and ``nps`` have to match the number of selected channels. Defaults to None, i.e. all channels in 'group' are used.
+        :type only_channels: Union[int, List[int]], optional
+        :param window: If True, a Tukey window is applied to the events before filtering. Defaults to False.
+        :type window: bool, optional
+        :param with_processing: Processing applied to the event traces before calculating the SI. The SI requires events with their baseline removed. Therefore, this defaults to ``[vai.RemoveBaseline()]``. Note that if you specify your own processing, it replaces this default, i.e. you have to include the baseline removal yourself (e.g. with a different baseline model).
+        :type with_processing: Union[Callable, List[Callable]], optional
+        :param tag: A string that is appended to the dataset name when it is saved to the DataHandler (e.g. if you want to compare different filters). It is appended with a hyphen, i.e. for ``tag="wafer"`` the dataset is called ``shape_indicator-wafer``. Defaults to an empty string, i.e. no tag.
+        :type tag: str, optional
+        :param batch_size: The number of events to process at once.
+        :type batch_size: int, optional
+        :param preview: If True, an interactive preview of the fit for the first selected channel opens up instead of calculating and saving anything. Defaults to False.
+        :type preview: bool, optional
+        :param dt_us: The microsecond timebase of the recording, needed to convert the NPS (V^2/Hz) for the Shape Indicator. Defaults to None, i.e. the timebase of the DataHandler (``dh.dt_us``) is used. Only specify it if the timebase of the DataHandler is not the one of the NPS (e.g. ``dt_us=nps.dt_us`` for a :class:`cait.versatile.NPS` object).
+        :type dt_us: int, optional
+
+        .. note::
+            The output dataset ``shape_indicator`` has shape ``(n_channels, n_events)`` where ``n_channels`` is the number of channels in ``group``. Channels which were not selected with ``only_channels`` are filled with -404 (indicating missing values). Events whose fit window exceeds the record window have an SI of NaN.
+            
+        .. note::
+            The noise variance :math:`\\sigma_L^2` only includes the frequency bins :math:`k \\geq M/L`. If the record is much longer than the fit window (large :math:`M/L`), :math:`\\sigma_L^2` covers only part of the filtered-noise variance and the SI of pure noise lies above 1 (e.g. about 1.5 for :math:`M/L \\approx 100\\text{-}250`). Choose cuts from the SI distribution of your own clean events rather than from the value 1.
+
+        **Example:**
+
+        .. code-block:: python
+
+            import cait as ai
+            import cait.versatile as vai
+
+            record_length = 2**14
+
+            # Generate mock data (two channels)
+            md = vai.MockData(record_length=record_length)
+            sev, of, nps = md.sev, md.of, md.nps
+
+            # Generate mock stream (two channels)
+            s = vai.MockStream(rate_Hz=1, seed=137)
+
+            # Initialize DataHandler
+            dh = ai.DataHandler(record_length=record_length,
+                                nmbr_channels=2,
+                                sample_frequency=s.sample_frequency)
+            dh.set_filepath(path_h5="",
+                            fname="calc_shape_indicator_test",
+                            appendix=False)
+            dh.init_empty()
+
+            # Trigger to get traces in DataHandler
+            dh.trigger_zscore(s, trigger_channels=["Ch0"], passive_channels=["Ch1"])
+
+            # Inspect the fits before committing
+            dh.calc_shape_indicator("events", of=of, sev=sev, nps=nps, preview=True)
+
+            # Calculate the Shape Indicator
+            dh.calc_shape_indicator("events", of=of, sev=sev, nps=nps)
+        """
+        if dt_us is None:
+            dt_us = self.dt_us
+
+        n_ch_total = self.get_event_iterator(group=group).n_channels
+        n_ev = len(self.get_event_iterator(group=group))
+
+        if only_channels is None:
+            selected_channels = list(range(n_ch_total))
+        elif isinstance(only_channels, int):
+            selected_channels = [only_channels]
+        else:
+            selected_channels = list(only_channels)
+
+        of, sev, nps = np.atleast_2d(of), np.atleast_2d(sev), np.atleast_2d(nps)
+        if len(set([
+            a := len(selected_channels),
+            b := of.shape[0],
+            c := sev.shape[0],
+            d := nps.shape[0],
+        ])) > 1:
+            raise ValueError(f"The number of OF, SEV and NPS channels must match the number of selected channels. Got {b}, {c}, {d} (and {a} selected channels).")
+
+        if with_processing is None:
+            with_processing = [vai.RemoveBaseline()]
+        elif callable(with_processing):
+            with_processing = [with_processing]
+
+        # Missing channels (and events) are marked with -404.
+        out = -404 * np.ones((n_ch_total, n_ev), dtype=float)
+
+        for i, ch in enumerate(selected_channels):
+            events = self.get_event_iterator(group=group, channel=ch).with_processing(with_processing)
+
+            # The function is configured for one channel at a time
+            f = vai.ShapeIndicator(of=of[i], sev=sev[i], nps=nps[i], window=window, dt_us=dt_us)
+
+            if preview:
+                return vai.Preview(events, f, backend="plotly")
+
+            res = vai.apply(
+                f,
+                events.with_batchsize(batch_size),
+                pb_prefix=f"Channel {ch}: calculating Shape Indicator",
+            )
+            # A function with a single output may return an array or a 1-tuple of arrays
+            if isinstance(res, tuple):
+                res = res[0]
+
+            out[ch] = res
+
+        name = f.names()[0] + (f"-{tag}" if tag else "")
+        self.set(
+            group=group,
+            **{name: out},
+            dtype=f.dtypes()[0],
+            overwrite_existing=True,
+            write_to_virtual=False,
+        )
+
+        n_nan = int(np.sum(np.isnan(out)))
+        if n_nan > 0:
+            print(f"{txt_fmt(f'{n_nan} event(s) have an SI of NaN.', style='bold')} Their fit window exceeds the record window (e.g. because the pulse is close to the edge of the record). Exclude them with a cut of the form SI>=0 (NaN comparisons evaluate to False).")
+
     # calc stdevent carrier
     def calc_exceptional_sev(self,
                              naming,
